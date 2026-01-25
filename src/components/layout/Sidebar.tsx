@@ -10,7 +10,6 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Building2,
   GitBranch,
   LogOut,
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
+import { SiteSelector } from './SiteSelector';
 
 interface NavItemProps {
   to: string;
@@ -75,17 +75,12 @@ export function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-primary-200 px-4">
-        <div className={cn('flex items-center gap-3', sidebarCollapsed && 'justify-center w-full')}>
-          <Building2 className="h-8 w-8 text-primary-900" />
-          {!sidebarCollapsed && (
-            <div className="flex flex-col">
-              <span className="font-display text-2xl text-primary-900">Cockpit</span>
-              <span className="text-[10px] text-primary-500 uppercase tracking-wider">Cosmos Angré</span>
-            </div>
-          )}
-        </div>
+      {/* Site Selector */}
+      <div className="border-b border-primary-200 p-3">
+        <SiteSelector
+          collapsed={sidebarCollapsed}
+          onManageSites={() => navigate('/settings?tab=sites')}
+        />
       </div>
 
       {/* Navigation */}

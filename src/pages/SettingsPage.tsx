@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Upload, Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Grid3X3, Warehouse } from 'lucide-react';
+import { Download, Upload, Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Grid3X3, Warehouse, Globe } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { exportDatabase, importDatabase, clearDatabase } from '@/db';
 import { generateAlertesAutomatiques } from '@/hooks';
@@ -12,12 +12,17 @@ import { ProjectSettings } from '@/components/settings/ProjectSettings';
 import { BuildingsSettings } from '@/components/settings/BuildingsSettings';
 import { SharePointSync } from '@/components/settings/SharePointSync';
 import { RACISettings } from '@/components/settings/RACISettings';
+import { SiteManagement } from '@/components/settings/SiteManagement';
 
 export function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [activeTab, setActiveTab] = useState('project');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check URL params for tab
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'sites';
+  });
 
   const handleExport = async () => {
     setExporting(true);
@@ -113,7 +118,11 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-10 mb-6">
+        <TabsList className="grid w-full grid-cols-11 mb-6">
+          <TabsTrigger value="sites" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Sites
+          </TabsTrigger>
           <TabsTrigger value="project" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Projet
@@ -155,6 +164,11 @@ export function SettingsPage() {
             Systeme
           </TabsTrigger>
         </TabsList>
+
+        {/* Sites Tab */}
+        <TabsContent value="sites">
+          <SiteManagement />
+        </TabsContent>
 
         {/* Project Tab */}
         <TabsContent value="project">

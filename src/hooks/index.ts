@@ -12,3 +12,4 @@ export * from './useSynchronisation';
 export * from './useImportIA';
 export * from './useSync';
 export * from './useProph3t';
+export * from './useSites';

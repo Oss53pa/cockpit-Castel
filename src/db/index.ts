@@ -16,6 +16,7 @@ import type {
   IAIntegration,
   IAFile,
 } from '@/types';
+import type { Site } from '@/types/site';
 import type {
   StudioReport,
   ReportVersion,
@@ -134,6 +135,9 @@ export interface ExternalUpdate {
 }
 
 class CockpitDatabase extends Dexie {
+  // Sites (multi-sites support)
+  sites!: EntityTable<Site, 'id'>;
+
   project!: EntityTable<Project, 'id'>;
   users!: EntityTable<User, 'id'>;
   teams!: EntityTable<Team, 'id'>;
@@ -533,6 +537,86 @@ class CockpitDatabase extends Dexie {
       // Project Settings table (métadonnées V2.0)
       projectSettings: '++id, projectId',
     });
+
+    // Version 12: Add Sites table for multi-site support + siteId indexes
+    this.version(12).stores({
+      // Sites table (NEW)
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      // Add siteId index to main data tables
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      // Report Studio tables
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      // Email & Update Links tables
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      // Synchronisation Chantier/Mobilisation table (legacy)
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      // Import IA tables
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      // DeepDive / Journal table
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Synchronisation Projet vs Mobilisation tables
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      // Secure Config table
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      // External Sharing tables
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      // Project Settings table
+      projectSettings: '++id, projectId',
+    }).upgrade(async (tx) => {
+      // Migration: Create default site and assign siteId to existing data
+      const sites = tx.table('sites');
+      const now = new Date().toISOString();
+
+      // Create default site
+      const defaultSiteId = await sites.add({
+        code: 'COSMOS',
+        nom: 'COSMOS ANGRE',
+        description: 'Centre commercial Cosmos Angré - Abidjan',
+        localisation: 'Abidjan, Côte d\'Ivoire',
+        dateOuverture: '2026-11-01',
+        surface: 45000,
+        couleur: '#18181b',
+        actif: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // Assign siteId to all existing records
+      const tables = ['actions', 'jalons', 'risques', 'budget', 'alertes', 'reports', 'deepDives'];
+      for (const tableName of tables) {
+        const table = tx.table(tableName);
+        const records = await table.toArray();
+        for (const record of records) {
+          if (!record.siteId) {
+            await table.update(record.id, { siteId: defaultSiteId });
+          }
+        }
+      }
+    });
   }
 }
 
@@ -549,8 +633,9 @@ export async function clearDatabase(): Promise<void> {
 
 export async function exportDatabase(): Promise<string> {
   const data = {
-    version: '11.0',
+    version: '12.0',
     exportedAt: new Date().toISOString(),
+    sites: await db.sites.toArray(),
     project: await db.project.toArray(),
     projectSettings: await db.projectSettings.toArray(),
     users: await db.users.toArray(),
@@ -601,6 +686,7 @@ export async function importDatabase(jsonData: string): Promise<void> {
     }
 
     // Import new data
+    if (data.sites?.length) await db.sites.bulkAdd(data.sites);
     if (data.project?.length) await db.project.bulkAdd(data.project);
     if (data.projectSettings?.length) await db.projectSettings.bulkAdd(data.projectSettings);
     if (data.users?.length) await db.users.bulkAdd(data.users);

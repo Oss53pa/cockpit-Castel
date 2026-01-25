@@ -19,7 +19,7 @@ import {
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
-import { generateAlertesAutomatiques, cleanupDuplicateAlertes } from '@/hooks';
+import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
 
 const queryClient = new QueryClient({
@@ -49,6 +49,8 @@ function AppContent() {
   useEffect(() => {
     async function initApp() {
       try {
+        // Initialize default site if none exists
+        await initializeDefaultSite();
         await seedDatabase();
         // Nettoyer les alertes en double avant d'en generer de nouvelles
         const cleaned = await cleanupDuplicateAlertes();
