@@ -129,50 +129,9 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   build: {
-    // Optimisation de la taille du bundle
-    rollupOptions: {
-      output: {
-        // Code-splitting par modules avec fonction
-        manualChunks(id) {
-          // Vendors React
-          if (id.includes('node_modules/react') ||
-              id.includes('node_modules/react-dom') ||
-              id.includes('node_modules/react-router')) {
-            return 'vendor-react';
-          }
-          // Vendors Radix UI
-          if (id.includes('node_modules/@radix-ui')) {
-            return 'vendor-radix';
-          }
-          // Vendors Charts
-          if (id.includes('node_modules/recharts') ||
-              id.includes('node_modules/d3-')) {
-            return 'vendor-charts';
-          }
-          // Vendors Dates
-          if (id.includes('node_modules/date-fns')) {
-            return 'vendor-dates';
-          }
-          // Vendors Database
-          if (id.includes('node_modules/dexie')) {
-            return 'vendor-dexie';
-          }
-          // Autres vendors
-          if (id.includes('node_modules')) {
-            return 'vendor-misc';
-          }
-        },
-      },
-    },
     // Avertir si un chunk depasse 1MB
     chunkSizeWarningLimit: 1000,
-    // Activer la minification avancee
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Supprimer console.log en production
-        drop_debugger: true,
-      },
-    },
+    // Utiliser esbuild (plus stable que terser)
+    minify: 'esbuild',
   },
 });
