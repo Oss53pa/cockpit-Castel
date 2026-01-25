@@ -314,10 +314,13 @@ export function SettingsPage() {
 
               <div className="space-y-2 text-sm text-primary-600">
                 <p>
-                  <strong>COSMOS ANGRE Cockpit</strong> — Application de pilotage de projet
+                  <strong>Cockpit</strong> — Application de pilotage de projet
                 </p>
                 <p>Version 1.0.0</p>
                 <p>Mode : 100% Local (IndexedDB)</p>
+                <p className="mt-2 text-primary-500">
+                  Developed by <strong>Pamela Atokouna</strong>
+                </p>
                 <div className="flex items-center gap-2 mt-4">
                   <Badge variant="success">PWA</Badge>
                   <Badge variant="info">Offline Ready</Badge>

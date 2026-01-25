@@ -1,6 +1,8 @@
-# Cockpit COSMOS ANGRE
+# Cockpit - Project Management
 
-Application de pilotage de projet pour le centre commercial COSMOS ANGRE. Tableau de bord complet pour le suivi des actions, jalons, risques, budget et rapports.
+Application de pilotage de projet multi-sites. Tableau de bord complet pour le suivi des actions, jalons, risques, budget et rapports.
+
+**Developed by Pamela Atokouna**
 
 ## Fonctionnalites
 

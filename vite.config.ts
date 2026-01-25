@@ -48,9 +48,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'COSMOS ANGRÉ Cockpit',
+        name: 'Cockpit - Project Management',
         short_name: 'Cockpit',
-        description: 'Application de pilotage du projet Cosmos Angré',
+        description: 'Application de pilotage de projet - Developed by Pamela Atokouna',
         theme_color: '#18181b',
         background_color: '#fafafa',
         display: 'standalone',

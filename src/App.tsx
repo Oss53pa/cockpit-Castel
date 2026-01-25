@@ -76,7 +76,7 @@ function AppContent() {
       <div className="min-h-screen flex items-center justify-center bg-primary-50">
         <div className="text-center">
           <h1 className="font-display text-5xl text-primary-900 mb-2">Cockpit</h1>
-          <p className="text-xs text-primary-500 uppercase tracking-wider mb-8">Cosmos Angré</p>
+          <p className="text-xs text-primary-500 uppercase tracking-wider mb-8">Project Management</p>
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-900 mx-auto"></div>
           <p className="mt-4 text-sm text-primary-400">Chargement...</p>
         </div>

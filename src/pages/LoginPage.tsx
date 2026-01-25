@@ -40,7 +40,7 @@ export function LoginPage() {
             <span className="text-4xl font-bold text-white">C</span>
           </div>
           <h1 className="font-display text-4xl text-primary-900 mb-2">Cockpit</h1>
-          <p className="text-sm text-primary-500 uppercase tracking-wider">COSMOS ANGRE</p>
+          <p className="text-sm text-primary-500 uppercase tracking-wider">PROJECT MANAGEMENT</p>
         </div>
 
         {/* Formulaire */}
@@ -103,9 +103,14 @@ export function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-primary-400 mt-6">
-          Application de pilotage de projet
-        </p>
+        <div className="text-center mt-6">
+          <p className="text-sm text-primary-400">
+            Application de pilotage de projet
+          </p>
+          <p className="text-xs text-primary-300 mt-2">
+            Developed by Pamela Atokouna
+          </p>
+        </div>
       </div>
     </div>
   );
