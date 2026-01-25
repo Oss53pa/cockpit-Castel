@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Download, Upload, Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Grid3X3, Warehouse, Globe } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Grid3X3, Warehouse, Globe } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
-import { exportDatabase, importDatabase, clearDatabase } from '@/db';
+import { clearDatabase } from '@/db';
 import { generateAlertesAutomatiques } from '@/hooks';
 import { resetAndSeedDatabase } from '@/data/cosmosAngre';
 import { TeamManagement } from '@/components/settings/TeamManagement';
@@ -13,57 +13,15 @@ import { BuildingsSettings } from '@/components/settings/BuildingsSettings';
 import { SharePointSync } from '@/components/settings/SharePointSync';
 import { RACISettings } from '@/components/settings/RACISettings';
 import { SiteManagement } from '@/components/settings/SiteManagement';
+import { BackupManagement } from '@/components/settings/BackupManagement';
 
 export function SettingsPage() {
-  const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params for tab
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'sites';
   });
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const data = await exportDatabase();
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cosmos-angre-backup-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export error:', error);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleImport = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      setImporting(true);
-      try {
-        const text = await file.text();
-        await importDatabase(text);
-        window.location.reload();
-      } catch (error) {
-        console.error('Import error:', error);
-        alert('Erreur lors de l\'import');
-      } finally {
-        setImporting(false);
-      }
-    };
-    input.click();
-  };
 
   const handleClearDatabase = async () => {
     if (
@@ -157,7 +115,7 @@ export function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
-            Donnees
+            Sauvegardes
           </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
@@ -212,73 +170,7 @@ export function SettingsPage() {
 
         {/* Data Tab */}
         <TabsContent value="data">
-          <Card padding="md">
-            <h3 className="text-lg font-semibold text-primary-900 mb-4">
-              Gestion des donnees
-            </h3>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-primary-900">
-                    Exporter les donnees
-                  </h4>
-                  <p className="text-sm text-primary-500">
-                    Telecharger une sauvegarde JSON complete
-                  </p>
-                </div>
-                <Button onClick={handleExport} disabled={exporting}>
-                  <Download className="h-4 w-4 mr-2" />
-                  {exporting ? 'Export...' : 'Exporter'}
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-primary-900">
-                    Importer des donnees
-                  </h4>
-                  <p className="text-sm text-primary-500">
-                    Restaurer depuis un fichier JSON
-                  </p>
-                </div>
-                <Button onClick={handleImport} disabled={importing}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {importing ? 'Import...' : 'Importer'}
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-warning-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-warning-900">
-                    Réinitialiser les données de démo
-                  </h4>
-                  <p className="text-sm text-warning-600">
-                    Recharger les données COSMOS ANGRÉ (8 structures, jalons, actions, risques)
-                  </p>
-                </div>
-                <Button variant="secondary" onClick={handleResetDatabase} disabled={resetting}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  {resetting ? 'Réinitialisation...' : 'Réinitialiser'}
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-error-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-error-900">
-                    Supprimer toutes les donnees
-                  </h4>
-                  <p className="text-sm text-error-600">
-                    Action irreversible
-                  </p>
-                </div>
-                <Button variant="danger" onClick={handleClearDatabase}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Supprimer
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <BackupManagement />
         </TabsContent>
 
         {/* System Tab */}
@@ -290,19 +182,51 @@ export function SettingsPage() {
                 Maintenance
               </h3>
 
-              <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-primary-900">
-                    Generer les alertes
-                  </h4>
-                  <p className="text-sm text-primary-500">
-                    Recalculer les alertes automatiques
-                  </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-primary-900">
+                      Generer les alertes
+                    </h4>
+                    <p className="text-sm text-primary-500">
+                      Recalculer les alertes automatiques
+                    </p>
+                  </div>
+                  <Button variant="secondary" onClick={handleGenerateAlertes}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Generer
+                  </Button>
                 </div>
-                <Button variant="secondary" onClick={handleGenerateAlertes}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Generer
-                </Button>
+
+                <div className="flex items-center justify-between p-4 bg-warning-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-warning-900">
+                      Réinitialiser les données de démo
+                    </h4>
+                    <p className="text-sm text-warning-600">
+                      Recharger les données de démonstration (structures, jalons, actions, risques)
+                    </p>
+                  </div>
+                  <Button variant="secondary" onClick={handleResetDatabase} disabled={resetting}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {resetting ? 'Réinitialisation...' : 'Réinitialiser'}
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-error-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-error-900">
+                      Supprimer toutes les donnees
+                    </h4>
+                    <p className="text-sm text-error-600">
+                      Action irreversible
+                    </p>
+                  </div>
+                  <Button variant="danger" onClick={handleClearDatabase}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                </div>
               </div>
             </Card>
 
