@@ -70,7 +70,7 @@ export function Header() {
         <h1 className="text-xl font-semibold text-primary-900">{pageTitle}</h1>
 
         {/* Site Selector */}
-        {sites.length > 0 && (
+        {(
           <div className="relative">
             <button
               onClick={() => setShowSiteSelector(!showSiteSelector)}
@@ -83,7 +83,7 @@ export function Header() {
                 {currentSite?.code?.charAt(0) ?? 'S'}
               </div>
               <span className="text-sm font-medium text-primary-700 hidden sm:inline">
-                {currentSite?.nom ?? 'Site'}
+                {currentSite?.nom ?? (sites.length > 0 ? sites[0]?.nom : 'Sélectionner un site')}
               </span>
               <ChevronDown className={cn(
                 'h-4 w-4 text-primary-500 transition-transform',
@@ -101,30 +101,36 @@ export function Header() {
                   <div className="px-3 py-2 text-xs font-semibold text-primary-500 uppercase">
                     Vos sites
                   </div>
-                  {sites.map((site) => (
-                    <button
-                      key={site.id}
-                      onClick={() => handleSelectSite(site)}
-                      className={cn(
-                        'w-full px-3 py-2 flex items-center gap-3 hover:bg-primary-50 transition-colors',
-                        currentSite?.id === site.id && 'bg-primary-100'
-                      )}
-                    >
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                        style={{ backgroundColor: site.couleur }}
+                  {sites.length > 0 ? (
+                    sites.map((site) => (
+                      <button
+                        key={site.id}
+                        onClick={() => handleSelectSite(site)}
+                        className={cn(
+                          'w-full px-3 py-2 flex items-center gap-3 hover:bg-primary-50 transition-colors',
+                          currentSite?.id === site.id && 'bg-primary-100'
+                        )}
                       >
-                        {site.code?.charAt(0)}
-                      </div>
-                      <div className="text-left min-w-0 flex-1">
-                        <p className="font-medium text-primary-900 truncate">{site.nom}</p>
-                        <p className="text-xs text-primary-500 truncate">{site.localisation}</p>
-                      </div>
-                      {currentSite?.id === site.id && (
-                        <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                      )}
-                    </button>
-                  ))}
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                          style={{ backgroundColor: site.couleur }}
+                        >
+                          {site.code?.charAt(0)}
+                        </div>
+                        <div className="text-left min-w-0 flex-1">
+                          <p className="font-medium text-primary-900 truncate">{site.nom}</p>
+                          <p className="text-xs text-primary-500 truncate">{site.localisation}</p>
+                        </div>
+                        {currentSite?.id === site.id && (
+                          <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-center text-sm text-primary-500">
+                      Aucun site configuré
+                    </div>
+                  )}
                   <div className="border-t border-primary-100 mt-2 pt-2">
                     <button
                       onClick={() => {
@@ -133,7 +139,7 @@ export function Header() {
                       }}
                       className="w-full px-3 py-2 text-left text-sm text-primary-600 hover:bg-primary-50 transition-colors"
                     >
-                      Gérer les sites...
+                      {sites.length > 0 ? 'Gérer les sites...' : 'Créer un site...'}
                     </button>
                   </div>
                 </div>
