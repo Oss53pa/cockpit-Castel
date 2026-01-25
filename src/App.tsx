@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout';
 import { ProphetChat } from '@/components/prophet';
 import {
+  LoginPage,
   DashboardPage,
   ActionsPage,
   JalonsPage,
@@ -16,6 +17,7 @@ import {
   ExternalUpdatePage,
   SynchronisationPage,
 } from '@/pages';
+import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { generateAlertesAutomatiques, cleanupDuplicateAlertes } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
@@ -29,8 +31,20 @@ const queryClient = new QueryClient({
   },
 });
 
+// Composant pour protéger les routes
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
     async function initApp() {
@@ -71,14 +85,26 @@ function AppContent() {
   return (
     <>
       <Routes>
-        {/* Shared Report Page - Standalone without layout */}
+        {/* Page de connexion */}
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+        />
+
+        {/* Shared Report Page - Standalone without layout (public) */}
         <Route path="/reports/share/:shareId" element={<SharedReportPage />} />
 
-        {/* External Update Page - Standalone without layout */}
+        {/* External Update Page - Standalone without layout (public) */}
         <Route path="/update/:type/:token" element={<ExternalUpdatePage />} />
 
-        {/* Main App with Layout */}
-        <Route element={<MainLayout />}>
+        {/* Main App with Layout (protected) */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/actions" element={<ActionsPage />} />
           <Route path="/jalons" element={<JalonsPage />} />
@@ -91,8 +117,8 @@ function AppContent() {
         </Route>
       </Routes>
 
-      {/* Proph3t AI Assistant */}
-      <ProphetChat />
+      {/* Proph3t AI Assistant - seulement si connecté */}
+      {isAuthenticated && <ProphetChat />}
     </>
   );
 }

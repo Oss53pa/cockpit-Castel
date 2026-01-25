@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -12,9 +12,11 @@ import {
   ChevronRight,
   Building2,
   GitBranch,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
 
 interface NavItemProps {
@@ -58,6 +60,13 @@ const navItems = [
 
 export function Sidebar() {
   const { sidebarCollapsed, setSidebarCollapsed } = useAppStore();
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside
@@ -100,6 +109,20 @@ export function Sidebar() {
           label="Paramètres"
           collapsed={sidebarCollapsed}
         />
+
+        {/* Logout button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className={cn(
+            'mt-2 w-full text-red-600 hover:text-red-700 hover:bg-red-50',
+            sidebarCollapsed && 'justify-center'
+          )}
+        >
+          <LogOut className="h-4 w-4" />
+          {!sidebarCollapsed && <span className="ml-2">Déconnexion</span>}
+        </Button>
 
         {/* Collapse toggle */}
         <Button
