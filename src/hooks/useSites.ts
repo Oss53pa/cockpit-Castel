@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 
 export function useSites() {
   const sites = useLiveQuery(async () => {
-    return db.sites.where('actif').equals(1).toArray();
+    return db.sites.filter(site => !!site.actif).toArray();
   }) ?? [];
 
   const { setSites, currentSite, setCurrentSite } = useSiteStore();
