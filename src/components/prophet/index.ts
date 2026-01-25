@@ -1,0 +1,1 @@
+export { ProphetChat } from './ProphetChat';

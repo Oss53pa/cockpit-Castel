@@ -1,0 +1,1 @@
+export { RACIMatrix } from './RACIMatrix';

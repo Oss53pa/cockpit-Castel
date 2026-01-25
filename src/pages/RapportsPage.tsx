@@ -1,0 +1,1938 @@
+import { useState, useMemo } from 'react';
+import {
+  FileText,
+  Download,
+  Calendar,
+  BarChart2,
+  AlertTriangle,
+  Plus,
+  Search,
+  Eye,
+  Edit2,
+  Trash2,
+  Copy,
+  MoreVertical,
+  FileSpreadsheet,
+  PenTool,
+  Database,
+  Table,
+  Gauge,
+  TrendingUp,
+  Link2,
+  Mail,
+  Globe,
+  Clock,
+  CheckCircle,
+  ExternalLink,
+  RefreshCw,
+  Share2,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  DollarSign,
+  Shield,
+  Presentation,
+  Bot,
+} from 'lucide-react';
+import {
+  Card,
+  Button,
+  Badge,
+  Input,
+  Textarea,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  Select,
+  SelectOption,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  useDashboardKPIs,
+  useActions,
+  useBudgetSynthese,
+  useRisques,
+  useReports,
+  createReport,
+  deleteReport,
+} from '@/hooks';
+import { ReportStudio } from '@/components/rapports/ReportStudio';
+import { EnhancedReportExport } from '@/components/rapports/EnhancedReportExport';
+import { DeepDive } from '@/components/rapports/DeepDive';
+import { DeepDiveLaunch } from '@/components/rapports/DeepDiveLaunch';
+import { ImportIA } from '@/components/rapports/ImportIA';
+import { Journal } from '@/components/rapports/Journal';
+import { ReportPeriodSelector, type ReportPeriod } from '@/components/rapports/ReportPeriodSelector';
+import { sendReportShareEmail, openEmailClientForReport } from '@/services/emailService';
+import type { ReportType, ReportStatus, ChartCategory, TableCategory } from '@/types/reportStudio';
+import {
+  REPORT_STATUS_LABELS,
+  REPORT_TYPE_LABELS,
+  CHART_CATEGORY_LABELS,
+  CHART_CATEGORY_COLORS,
+  TABLE_CATEGORY_LABELS,
+  TABLE_CATEGORY_COLORS,
+  CHART_CATEGORIES,
+  TABLE_CATEGORIES,
+} from '@/types/reportStudio';
+import {
+  REPORT_TEMPLATES,
+  CHART_TEMPLATES,
+  TABLE_TEMPLATES,
+  KPI_DEFINITIONS,
+  searchCharts,
+  searchTables,
+  searchKPIs,
+} from '@/data/dataLibrary';
+import {
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+  LineChart as RechartsLineChart,
+  Line,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+const rapportTypes = [
+  {
+    id: 'flash',
+    title: 'Flash Hebdomadaire',
+    description: 'Synthèse rapide sur 1 page',
+    icon: FileText,
+    color: 'bg-info-100 text-info-600',
+  },
+  {
+    id: 'mensuel',
+    title: 'Rapport Mensuel',
+    description: 'Rapport détaillé complet',
+    icon: Calendar,
+    color: 'bg-success-100 text-success-600',
+  },
+  {
+    id: 'budget',
+    title: 'Rapport Budgétaire',
+    description: 'Suivi financier et EVM',
+    icon: BarChart2,
+    color: 'bg-warning-100 text-warning-600',
+  },
+  {
+    id: 'risques',
+    title: 'Rapport Risques',
+    description: 'Registre et matrice',
+    icon: AlertTriangle,
+    color: 'bg-error-100 text-error-600',
+  },
+];
+
+const statusColors: Record<ReportStatus, string> = {
+  draft: 'default',
+  generating: 'warning',
+  review: 'warning',
+  approved: 'info',
+  published: 'success',
+  archived: 'default',
+};
+
+const CHART_COLORS = ['#1C3163', '#D4AF37', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal';
+
+// Type pour les commentaires de section
+interface ReportComment {
+  section: 'synthese' | 'avancement' | 'actions' | 'risques' | 'budget';
+  content: string;
+  author: string;
+  date: string;
+}
+
+// Type pour les rapports HTML partagés
+interface SharedHtmlReport {
+  id: string;
+  reportId: number;
+  reportTitle: string;
+  reportType: ReportType;
+  shareLink: string;
+  createdAt: string;
+  expiresAt: string | null;
+  viewCount: number;
+  isActive: boolean;
+  sharedBy: string;
+  recipients: string[];
+  executiveSummary?: string;
+  comments?: ReportComment[];
+}
+
+// Chart preview component for catalogue
+function ChartPreview({ chart }: { chart: typeof CHART_TEMPLATES[0] }) {
+  const data = chart.data.labels.map((label, i) => ({
+    name: label,
+    value: chart.data.datasets[0]?.data[i] || 0,
+    value2: chart.data.datasets[1]?.data[i],
+  }));
+
+  const colors = chart.config.colors || CHART_COLORS;
+
+  switch (chart.chartType) {
+    case 'bar':
+    case 'horizontal_bar':
+    case 'stacked_bar':
+      return (
+        <ResponsiveContainer width="100%" height={100}>
+          <RechartsBarChart data={data}>
+            <XAxis dataKey="name" tick={{ fontSize: 8 }} hide />
+            <YAxis hide />
+            <Bar dataKey="value" fill={colors[0]} radius={[2, 2, 0, 0]} />
+          </RechartsBarChart>
+        </ResponsiveContainer>
+      );
+    case 'line':
+    case 'area':
+      return (
+        <ResponsiveContainer width="100%" height={100}>
+          <RechartsLineChart data={data}>
+            <XAxis dataKey="name" tick={{ fontSize: 8 }} hide />
+            <YAxis hide />
+            <Line type="monotone" dataKey="value" stroke={colors[0]} strokeWidth={2} dot={false} />
+          </RechartsLineChart>
+        </ResponsiveContainer>
+      );
+    case 'pie':
+    case 'donut': {
+      const pieData = data.map((d, i) => ({ ...d, fill: colors[i % colors.length] }));
+      return (
+        <ResponsiveContainer width="100%" height={100}>
+          <RechartsPieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              innerRadius={chart.chartType === 'donut' ? 20 : 0}
+              outerRadius={40}
+            >
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+          </RechartsPieChart>
+        </ResponsiveContainer>
+      );
+    }
+    default:
+      return (
+        <div className="h-[100px] flex items-center justify-center text-gray-400">
+          <BarChart2 className="h-10 w-10" />
+        </div>
+      );
+  }
+}
+
+export function RapportsPage() {
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingReportId, setEditingReportId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | ''>('');
+  const [typeFilter, setTypeFilter] = useState<ReportType | ''>('');
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [showNewReportModal, setShowNewReportModal] = useState(false);
+  const [newReportData, setNewReportData] = useState<{
+    title: string;
+    type: ReportType;
+    templateId: string;
+    period: ReportPeriod | null;
+  }>(() => {
+    // Default period = current month
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return {
+      title: '',
+      type: 'RAPPORT_MENSUEL' as ReportType,
+      templateId: '',
+      period: {
+        type: 'month',
+        label: months[month],
+        startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+        endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
+        displayText: `${months[month]} ${year}`,
+      },
+    };
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // Catalogue state
+  const [catalogueTab, setCatalogueTab] = useState<'charts' | 'tables' | 'kpis'>('charts');
+  const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [chartCategory, setChartCategory] = useState<ChartCategory | 'all'>('all');
+  const [tableCategory, setTableCategory] = useState<TableCategory | 'all'>('all');
+
+  // Deep Dive state
+  const [deepDiveTemplate, setDeepDiveTemplate] = useState<'launch' | 'monthly'>('launch');
+
+  // HTML Reports state
+  const [sharedReports, setSharedReports] = useState<SharedHtmlReport[]>([
+    // Données de démonstration
+    {
+      id: 'share-1',
+      reportId: 1,
+      reportTitle: 'Rapport Mensuel - Janvier 2025',
+      reportType: 'RAPPORT_MENSUEL',
+      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/abc123xyz',
+      createdAt: '2025-01-15T10:30:00Z',
+      expiresAt: '2025-02-15T10:30:00Z',
+      viewCount: 24,
+      isActive: true,
+      sharedBy: 'Jean Martin',
+      recipients: ['direction@cosmos.com', 'finance@cosmos.com'],
+    },
+    {
+      id: 'share-2',
+      reportId: 2,
+      reportTitle: 'Avancement Projet Handover - S03',
+      reportType: 'AVANCEMENT_PROJET',
+      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/def456uvw',
+      createdAt: '2025-01-20T14:00:00Z',
+      expiresAt: null,
+      viewCount: 15,
+      isActive: true,
+      sharedBy: 'Sophie Dupont',
+      recipients: ['proprietaire@castel.com'],
+    },
+    {
+      id: 'share-3',
+      reportId: 3,
+      reportTitle: 'Flash Projet - Semaine 02',
+      reportType: 'FLASH_PROJET',
+      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/ghi789rst',
+      createdAt: '2025-01-10T09:00:00Z',
+      expiresAt: '2025-01-17T09:00:00Z',
+      viewCount: 8,
+      isActive: false,
+      sharedBy: 'Jean Martin',
+      recipients: ['equipe@cosmos.com'],
+    },
+  ]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedReportForShare, setSelectedReportForShare] = useState<number | null>(null);
+  const [sharePeriod, setSharePeriod] = useState<ReportPeriod | null>(() => {
+    // Default period = current month
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return {
+      type: 'month',
+      label: months[month],
+      startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+      endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
+      displayText: `${months[month]} ${year}`,
+    };
+  });
+  const [shareSettings, setShareSettings] = useState({
+    expirationDays: 30,
+    recipients: '',
+    notifyByEmail: true,
+  });
+  const [showCommentsSection, setShowCommentsSection] = useState(false);
+  const [reportComments, setReportComments] = useState({
+    executiveSummary: '',
+    avancement: '',
+    actions: '',
+    risques: '',
+    budget: '',
+  });
+
+  const reports = useReports({
+    status: statusFilter || undefined,
+    type: typeFilter || undefined,
+    search: searchQuery || undefined,
+  });
+
+  const kpis = useDashboardKPIs();
+  const actions = useActions();
+  const budget = useBudgetSynthese();
+  const risques = useRisques();
+
+  // Filtered catalogue data
+  const filteredCharts = useMemo(() => {
+    let charts = catalogueSearch ? searchCharts(catalogueSearch) : CHART_TEMPLATES;
+    if (chartCategory !== 'all') {
+      charts = charts.filter((c) => c.category === chartCategory);
+    }
+    return charts;
+  }, [catalogueSearch, chartCategory]);
+
+  const filteredTables = useMemo(() => {
+    let tables = catalogueSearch ? searchTables(catalogueSearch) : TABLE_TEMPLATES;
+    if (tableCategory !== 'all') {
+      tables = tables.filter((t) => t.category === tableCategory);
+    }
+    return tables;
+  }, [catalogueSearch, tableCategory]);
+
+  const filteredKPIs = useMemo(() => {
+    return catalogueSearch ? searchKPIs(catalogueSearch) : KPI_DEFINITIONS;
+  }, [catalogueSearch]);
+
+  const handleCreateReport = async () => {
+    if (!newReportData.title.trim()) return;
+
+    const template = newReportData.templateId
+      ? REPORT_TEMPLATES.find((t) => t.id === newReportData.templateId)
+      : null;
+
+    const id = await createReport({
+      centreId: 1,
+      title: newReportData.title,
+      description: template?.description || '',
+      type: newReportData.type,
+      status: 'draft',
+      author: 'Utilisateur',
+      contentTree: template?.contentTree || { sections: [] },
+      designSettings: template?.designSettings || {
+        page: { format: 'A4', orientation: 'portrait', margins: 'normal' },
+        typography: { headingFont: 'Exo 2', bodyFont: 'Inter', baseFontSize: 12 },
+        colors: {
+          primary: '#1C3163',
+          secondary: '#D4AF37',
+          accent: '#10b981',
+          text: '#1f2937',
+          background: '#ffffff',
+        },
+        branding: { showPageNumbers: true },
+        coverPage: { enabled: true, template: 'standard' },
+        tableOfContents: { enabled: true, depth: 2, showPageNumbers: true },
+      },
+    });
+
+    setShowNewReportModal(false);
+    // Reset avec période par défaut (mois courant)
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    setNewReportData({
+      title: '',
+      type: 'RAPPORT_MENSUEL',
+      templateId: '',
+      period: {
+        type: 'month',
+        label: months[month],
+        startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+        endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
+        displayText: `${months[month]} ${year}`,
+      },
+    });
+    setEditingReportId(id);
+    setViewMode('studio');
+  };
+
+  const handleDeleteReport = async (id: number) => {
+    await deleteReport(id);
+    setDeleteConfirm(null);
+  };
+
+  const handleDuplicateReport = async (report: NonNullable<typeof reports>[number]) => {
+    await createReport({
+      centreId: report.centreId,
+      title: `${report.title} (copie)`,
+      description: report.description,
+      type: report.type,
+      status: 'draft',
+      author: 'Utilisateur',
+      contentTree: report.contentTree,
+      designSettings: report.designSettings,
+    });
+  };
+
+  const generatePDF = async (type: string) => {
+    setGenerating(type);
+
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('COSMOS ANGRÉ', pageWidth / 2, 20, { align: 'center' });
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Rapport ${rapportTypes.find((r) => r.id === type)?.title}`, pageWidth / 2, 30, {
+        align: 'center',
+      });
+      doc.setFontSize(10);
+      doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 38, {
+        align: 'center',
+      });
+
+      if (type === 'flash' || type === 'mensuel') {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Indicateurs clés', 14, 55);
+
+        autoTable(doc, {
+          startY: 60,
+          head: [['Indicateur', 'Valeur']],
+          body: [
+            ["Taux d'occupation", `${Math.round(kpis.tauxOccupation)}%`],
+            ['Budget consommé', `${Math.round((budget.realise / budget.prevu) * 100)}%`],
+            ['Jalons atteints', `${kpis.jalonsAtteints}/${kpis.jalonsTotal}`],
+            ['Équipe', `${kpis.equipeTaille} membres`],
+          ],
+        });
+
+        const currentY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable
+          .finalY + 15;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Résumé des actions', 14, currentY);
+
+        autoTable(doc, {
+          startY: currentY + 5,
+          head: [['Statut', 'Nombre']],
+          body: [
+            ['À faire', actions.filter((a) => a.statut === 'a_faire').length.toString()],
+            ['En cours', actions.filter((a) => a.statut === 'en_cours').length.toString()],
+            ['Terminées', actions.filter((a) => a.statut === 'termine').length.toString()],
+            ['Bloquées', actions.filter((a) => a.statut === 'bloque').length.toString()],
+          ],
+        });
+      }
+
+      if (type === 'budget') {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Synthèse budgétaire', 14, 55);
+
+        autoTable(doc, {
+          startY: 60,
+          head: [['Poste', 'Montant (FCFA)']],
+          body: [
+            ['Budget prévu', budget.prevu.toLocaleString('fr-FR')],
+            ['Engagé', budget.engage.toLocaleString('fr-FR')],
+            ['Réalisé', budget.realise.toLocaleString('fr-FR')],
+            ['Écart', (budget.prevu - budget.realise).toLocaleString('fr-FR')],
+          ],
+        });
+      }
+
+      if (type === 'risques') {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Registre des risques', 14, 55);
+
+        autoTable(doc, {
+          startY: 60,
+          head: [['Risque', 'Catégorie', 'Score', 'Statut']],
+          body: risques.slice(0, 10).map((r) => [
+            r.titre.substring(0, 40),
+            r.categorie,
+            r.score?.toString() || '-',
+            r.status,
+          ]),
+        });
+      }
+
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(
+          `Page ${i} sur ${pageCount} - COSMOS ANGRÉ Cockpit`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      doc.save(`rapport-${type}-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const exportExcel = async (type: string) => {
+    setGenerating(type);
+
+    try {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.utils.book_new();
+
+      if (type === 'actions') {
+        const ws = XLSX.utils.json_to_sheet(
+          actions.map((a) => ({
+            Titre: a.titre,
+            Axe: a.axe,
+            Statut: a.statut,
+            Priorité: a.priorite,
+            Avancement: `${a.avancement}%`,
+            'Date début': a.date_debut_prevue,
+            'Date fin': a.date_fin_prevue,
+          }))
+        );
+        XLSX.utils.book_append_sheet(wb, ws, 'Actions');
+      }
+
+      XLSX.writeFile(wb, `export-${type}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  // If editing a report, show the Studio
+  if (viewMode === 'studio' && editingReportId) {
+    return (
+      <ReportStudio
+        reportId={editingReportId}
+        onClose={() => {
+          setViewMode('list');
+          setEditingReportId(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-primary-900">Rapports</h2>
+          <p className="text-sm text-primary-500">
+            Gérez vos rapports, accédez au catalogue et exportez vos données
+          </p>
+        </div>
+        <Button variant="primary" size="sm" onClick={() => setShowNewReportModal(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nouveau rapport
+        </Button>
+      </div>
+
+      {/* Main Tabs */}
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+        <TabsList>
+          <TabsTrigger value="list" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Mes rapports
+            {reports && reports.length > 0 && (
+              <Badge variant="secondary">{reports.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="catalogue" className="gap-2">
+            <Database className="h-4 w-4" />
+            Catalogue
+          </TabsTrigger>
+          <TabsTrigger value="exports" className="gap-2">
+            <Download className="h-4 w-4" />
+            Exports rapides
+          </TabsTrigger>
+          <TabsTrigger value="html_reports" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Partage HTML
+            {sharedReports.filter(r => r.isActive).length > 0 && (
+              <Badge variant="secondary">{sharedReports.filter(r => r.isActive).length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="deep_dive" className="gap-2">
+            <Presentation className="h-4 w-4" />
+            Deep Dive
+          </TabsTrigger>
+          <TabsTrigger value="import_ia" className="gap-2">
+            <Bot className="h-4 w-4" />
+            Import IA
+          </TabsTrigger>
+          <TabsTrigger value="journal" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Journal
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Reports List */}
+        <TabsContent value="list" className="space-y-4">
+          {/* Filters */}
+          <Card padding="md">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-400" />
+                  <Input
+                    placeholder="Rechercher un rapport..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as ReportStatus | '')}
+                className="w-40"
+              >
+                <SelectOption value="">Tous les statuts</SelectOption>
+                {Object.entries(REPORT_STATUS_LABELS).map(([value, label]) => (
+                  <SelectOption key={value} value={value}>
+                    {label}
+                  </SelectOption>
+                ))}
+              </Select>
+              <Select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as ReportType | '')}
+                className="w-40"
+              >
+                <SelectOption value="">Tous les types</SelectOption>
+                {Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => (
+                  <SelectOption key={value} value={value}>
+                    {label}
+                  </SelectOption>
+                ))}
+              </Select>
+            </div>
+          </Card>
+
+          {/* Reports Grid */}
+          {!reports || reports.length === 0 ? (
+            <Card padding="lg" className="text-center">
+              <div className="py-12">
+                <PenTool className="h-16 w-16 text-primary-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-primary-900 mb-2">
+                  Aucun rapport
+                </h3>
+                <p className="text-primary-500 mb-6">
+                  Créez votre premier rapport professionnel avec Report Studio
+                </p>
+                <Button variant="primary" onClick={() => setShowNewReportModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un rapport
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reports.map((report) => (
+                <Card key={report.id} padding="md" className="card-hover">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={statusColors[report.status] as 'default' | 'success' | 'warning' | 'info'}>
+                        {REPORT_STATUS_LABELS[report.status]}
+                      </Badge>
+                      <Badge variant="default">{REPORT_TYPE_LABELS[report.type]}</Badge>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingReportId(report.id!);
+                            setViewMode('studio');
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Modifier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateReport(report)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Dupliquer
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-error-600"
+                          onClick={() => setDeleteConfirm(report.id!)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <h4 className="font-semibold text-primary-900 mb-1 line-clamp-1">
+                    {report.title}
+                  </h4>
+                  {report.description && (
+                    <p className="text-sm text-primary-500 mb-3 line-clamp-2">
+                      {report.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-primary-400 mb-4">
+                    <span>{report.author}</span>
+                    <span>
+                      Modifié le {new Date(report.updatedAt).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setEditingReportId(report.id!);
+                        setViewMode('studio');
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Ouvrir
+                    </Button>
+                    <Button variant="secondary" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Catalogue */}
+        <TabsContent value="catalogue" className="space-y-4">
+          <Card padding="md">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-400" />
+                <Input
+                  placeholder="Rechercher dans le catalogue..."
+                  value={catalogueSearch}
+                  onChange={(e) => setCatalogueSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            <Tabs value={catalogueTab} onValueChange={(v) => setCatalogueTab(v as 'charts' | 'tables' | 'kpis')}>
+              <TabsList>
+                <TabsTrigger value="charts" className="gap-2">
+                  <BarChart2 className="h-4 w-4" />
+                  Graphiques
+                  <Badge variant="secondary">{filteredCharts.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="tables" className="gap-2">
+                  <Table className="h-4 w-4" />
+                  Tableaux
+                  <Badge variant="secondary">{filteredTables.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="kpis" className="gap-2">
+                  <Gauge className="h-4 w-4" />
+                  KPIs
+                  <Badge variant="secondary">{filteredKPIs.length}</Badge>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Charts */}
+              <TabsContent value="charts" className="mt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-sm text-primary-500">Catégorie:</span>
+                  <Select
+                    value={chartCategory}
+                    onChange={(e) => setChartCategory(e.target.value as ChartCategory | 'all')}
+                    className="w-48"
+                  >
+                    <SelectOption value="all">Toutes les catégories</SelectOption>
+                    {CHART_CATEGORIES.map((cat) => (
+                      <SelectOption key={cat} value={cat}>
+                        {CHART_CATEGORY_LABELS[cat]}
+                      </SelectOption>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredCharts.map((chart) => (
+                    <Card key={chart.id} padding="sm" className="card-hover">
+                      <div className="bg-gray-50 rounded-lg p-2 mb-3">
+                        <ChartPreview chart={chart} />
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-primary-900 truncate">
+                            {chart.name}
+                          </h4>
+                          <p className="text-xs text-primary-500 truncate">
+                            {chart.description}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 text-xs"
+                          style={{
+                            backgroundColor: `${CHART_CATEGORY_COLORS[chart.category]}20`,
+                            color: CHART_CATEGORY_COLORS[chart.category],
+                          }}
+                        >
+                          {CHART_CATEGORY_LABELS[chart.category]}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {filteredCharts.length === 0 && (
+                  <div className="text-center py-12">
+                    <BarChart2 className="h-12 w-12 text-primary-300 mx-auto mb-3" />
+                    <p className="text-primary-500">Aucun graphique trouvé</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Tables */}
+              <TabsContent value="tables" className="mt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-sm text-primary-500">Catégorie:</span>
+                  <Select
+                    value={tableCategory}
+                    onChange={(e) => setTableCategory(e.target.value as TableCategory | 'all')}
+                    className="w-48"
+                  >
+                    <SelectOption value="all">Toutes les catégories</SelectOption>
+                    {TABLE_CATEGORIES.map((cat) => (
+                      <SelectOption key={cat} value={cat}>
+                        {TABLE_CATEGORY_LABELS[cat]}
+                      </SelectOption>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTables.map((table) => (
+                    <Card key={table.id} padding="sm" className="card-hover">
+                      <div className="bg-gray-50 rounded-lg p-2 mb-3 overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              {table.headers.slice(0, 3).map((h) => (
+                                <th key={h.key} className="px-2 py-1 text-left font-medium truncate">
+                                  {h.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {table.rows.slice(0, 2).map((row, i) => (
+                              <tr key={i} className="border-t border-gray-200">
+                                {table.headers.slice(0, 3).map((h) => (
+                                  <td key={h.key} className="px-2 py-1 truncate">
+                                    {String(row[h.key] ?? '-')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-primary-900 truncate">
+                            {table.name}
+                          </h4>
+                          <p className="text-xs text-primary-500 truncate">
+                            {table.description}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 text-xs"
+                          style={{
+                            backgroundColor: `${TABLE_CATEGORY_COLORS[table.category]}20`,
+                            color: TABLE_CATEGORY_COLORS[table.category],
+                          }}
+                        >
+                          {TABLE_CATEGORY_LABELS[table.category]}
+                        </Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {filteredTables.length === 0 && (
+                  <div className="text-center py-12">
+                    <Table className="h-12 w-12 text-primary-300 mx-auto mb-3" />
+                    <p className="text-primary-500">Aucun tableau trouvé</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* KPIs */}
+              <TabsContent value="kpis" className="mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {filteredKPIs.map((kpi) => (
+                    <Card key={kpi.id} padding="md" className="card-hover">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                          <TrendingUp className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-primary-900 truncate">
+                            {kpi.name}
+                          </h4>
+                          <p className="text-xs text-primary-400">{kpi.code}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-primary-500 line-clamp-2 mb-2">
+                        {kpi.description}
+                      </p>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-primary-400">Unité: {kpi.unit}</span>
+                        <Badge variant="secondary">{kpi.axe}</Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {filteredKPIs.length === 0 && (
+                  <div className="text-center py-12">
+                    <Gauge className="h-12 w-12 text-primary-300 mx-auto mb-3" />
+                    <p className="text-primary-500">Aucun KPI trouvé</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </Card>
+        </TabsContent>
+
+        {/* Quick Exports */}
+        <TabsContent value="exports" className="space-y-6">
+          {/* Enhanced Report Export */}
+          <EnhancedReportExport />
+
+          {/* Simple PDF Reports */}
+          <div>
+            <h3 className="text-lg font-semibold text-primary-900 mb-4">Rapports PDF simples</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {rapportTypes.map((rapport) => (
+                <Card key={rapport.id} className="card-hover" padding="md">
+                  <div className={`rounded-lg p-3 w-fit ${rapport.color.split(' ')[0]}`}>
+                    <rapport.icon className={`h-6 w-6 ${rapport.color.split(' ')[1]}`} />
+                  </div>
+                  <h4 className="font-semibold text-primary-900 mt-4">{rapport.title}</h4>
+                  <p className="text-sm text-primary-500 mt-1">{rapport.description}</p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-4 w-full"
+                    onClick={() => generatePDF(rapport.id)}
+                    disabled={generating === rapport.id}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {generating === rapport.id ? 'Génération...' : 'Télécharger'}
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Excel Exports */}
+          <div>
+            <h3 className="text-lg font-semibold text-primary-900 mb-4">Exports Excel</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card padding="md">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="rounded-lg p-2 bg-success-100">
+                    <FileSpreadsheet className="h-5 w-5 text-success-600" />
+                  </div>
+                  <h4 className="font-semibold text-primary-900">Actions</h4>
+                </div>
+                <p className="text-sm text-primary-500 mb-4">
+                  Export complet des actions avec filtres
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => exportExcel('actions')}
+                  disabled={generating === 'actions'}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </Card>
+
+              <Card padding="md">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="rounded-lg p-2 bg-warning-100">
+                    <FileSpreadsheet className="h-5 w-5 text-warning-600" />
+                  </div>
+                  <h4 className="font-semibold text-primary-900">Budget</h4>
+                </div>
+                <p className="text-sm text-primary-500 mb-4">Détail budgétaire par poste</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => exportExcel('budget')}
+                  disabled={generating === 'budget'}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </Card>
+
+              <Card padding="md">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="rounded-lg p-2 bg-error-100">
+                    <FileSpreadsheet className="h-5 w-5 text-error-600" />
+                  </div>
+                  <h4 className="font-semibold text-primary-900">Risques</h4>
+                </div>
+                <p className="text-sm text-primary-500 mb-4">Registre complet des risques</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => exportExcel('risques')}
+                  disabled={generating === 'risques'}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter
+                </Button>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* HTML Reports / Partage */}
+        <TabsContent value="html_reports" className="space-y-6">
+          {/* Header avec bouton de partage */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-primary-900">Rapports HTML Partagés</h3>
+              <p className="text-sm text-primary-500">
+                Partagez vos rapports via un lien HTML accessible par email
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setSelectedReportForShare(null);
+                setShowShareModal(true);
+              }}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Partager un rapport
+            </Button>
+          </div>
+
+          {/* Stats cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card padding="md">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-info-100">
+                  <Link2 className="h-5 w-5 text-info-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-primary-900">
+                    {sharedReports.filter(r => r.isActive).length}
+                  </p>
+                  <p className="text-sm text-primary-500">Liens actifs</p>
+                </div>
+              </div>
+            </Card>
+            <Card padding="md">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-success-100">
+                  <Eye className="h-5 w-5 text-success-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-primary-900">
+                    {sharedReports.reduce((sum, r) => sum + r.viewCount, 0)}
+                  </p>
+                  <p className="text-sm text-primary-500">Vues totales</p>
+                </div>
+              </div>
+            </Card>
+            <Card padding="md">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-warning-100">
+                  <Clock className="h-5 w-5 text-warning-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-primary-900">
+                    {sharedReports.filter(r => r.expiresAt && new Date(r.expiresAt) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && r.isActive).length}
+                  </p>
+                  <p className="text-sm text-primary-500">Expirent bientôt</p>
+                </div>
+              </div>
+            </Card>
+            <Card padding="md">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg p-2 bg-primary-100">
+                  <Mail className="h-5 w-5 text-primary-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-primary-900">
+                    {sharedReports.reduce((sum, r) => sum + r.recipients.length, 0)}
+                  </p>
+                  <p className="text-sm text-primary-500">Destinataires</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Liste des rapports partagés */}
+          <Card padding="md">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-primary-700">Rapport</th>
+                    <th className="text-left py-3 px-4 font-medium text-primary-700">Type</th>
+                    <th className="text-left py-3 px-4 font-medium text-primary-700">Lien</th>
+                    <th className="text-center py-3 px-4 font-medium text-primary-700">Vues</th>
+                    <th className="text-left py-3 px-4 font-medium text-primary-700">Créé le</th>
+                    <th className="text-left py-3 px-4 font-medium text-primary-700">Expire le</th>
+                    <th className="text-center py-3 px-4 font-medium text-primary-700">Statut</th>
+                    <th className="text-right py-3 px-4 font-medium text-primary-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sharedReports.map((share) => (
+                    <tr key={share.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium text-primary-900">{share.reportTitle}</p>
+                          <p className="text-xs text-primary-400">Par {share.sharedBy}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant="default">{REPORT_TYPE_LABELS[share.reportType]}</Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-[150px]">
+                            {share.shareLink.split('/').pop()}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              navigator.clipboard.writeText(share.shareLink);
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-medium">{share.viewCount}</span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-primary-600">
+                        {new Date(share.createdAt).toLocaleDateString('fr-FR')}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {share.expiresAt ? (
+                          <span className={new Date(share.expiresAt) < new Date() ? 'text-error-600' : 'text-primary-600'}>
+                            {new Date(share.expiresAt).toLocaleDateString('fr-FR')}
+                          </span>
+                        ) : (
+                          <span className="text-primary-400">Jamais</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {share.isActive ? (
+                          <Badge variant="success">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Actif
+                          </Badge>
+                        ) : (
+                          <Badge variant="default">Expiré</Badge>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => window.open(share.shareLink, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              // Envoyer par email
+                              const subject = encodeURIComponent(`Rapport: ${share.reportTitle}`);
+                              const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-dessous le lien vers le rapport "${share.reportTitle}":\n\n${share.shareLink}\n\nCordialement`);
+                              window.open(`mailto:?subject=${subject}&body=${body}`);
+                            }}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          {share.isActive && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setSharedReports(prev =>
+                                  prev.map(r =>
+                                    r.id === share.id
+                                      ? { ...r, shareLink: r.shareLink.replace(/[^/]+$/, Math.random().toString(36).substring(7)) }
+                                      : r
+                                  )
+                                );
+                              }}
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-error-600 hover:text-error-700"
+                            onClick={() => {
+                              setSharedReports(prev => prev.filter(r => r.id !== share.id));
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {sharedReports.length === 0 && (
+                <div className="text-center py-12">
+                  <Globe className="h-12 w-12 text-primary-300 mx-auto mb-3" />
+                  <h4 className="font-semibold text-primary-900 mb-2">Aucun rapport partagé</h4>
+                  <p className="text-primary-500 mb-4">
+                    Partagez vos rapports via un lien HTML pour les rendre accessibles par email
+                  </p>
+                  <Button variant="primary" onClick={() => setShowShareModal(true)}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Partager un rapport
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Info sur le fonctionnement */}
+          <Card padding="md" className="bg-info-50 border-info-200">
+            <div className="flex gap-4">
+              <div className="rounded-lg p-2 bg-info-100 h-fit">
+                <Globe className="h-5 w-5 text-info-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-info-900 mb-2">Comment ça marche ?</h4>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-info-600 text-white flex items-center justify-center text-xs font-bold">1</span>
+                    <span className="text-sm text-info-800">Créez un rapport</span>
+                  </div>
+                  <div className="text-info-400">→</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-info-600 text-white flex items-center justify-center text-xs font-bold">2</span>
+                    <span className="text-sm text-info-800">Cliquez sur <Mail className="inline h-4 w-4" /></span>
+                  </div>
+                  <div className="text-info-400">→</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-info-600 text-white flex items-center justify-center text-xs font-bold">3</span>
+                    <span className="text-sm text-info-800">Email envoyé au destinataire</span>
+                  </div>
+                  <div className="text-info-400">→</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-info-600 text-white flex items-center justify-center text-xs font-bold">4</span>
+                    <span className="text-sm text-info-800">Clic sur "Voir le rapport"</span>
+                  </div>
+                  <div className="text-info-400">→</div>
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm">
+                    <span className="w-6 h-6 rounded-full bg-success-600 text-white flex items-center justify-center text-xs font-bold">✓</span>
+                    <span className="text-sm text-info-800">Rapport affiché</span>
+                  </div>
+                </div>
+                <p className="text-xs text-info-600">
+                  L'email contient un bouton "Voir le rapport" qui ouvre directement la page du rapport dans le navigateur.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* Deep Dive */}
+        <TabsContent value="deep_dive">
+          <div className="space-y-6">
+            {/* Template selector */}
+            <div className="flex items-center gap-4 pb-4 border-b">
+              <span className="text-sm font-medium text-primary-700">Type de présentation:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDeepDiveTemplate('launch')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    deepDiveTemplate === 'launch'
+                      ? 'bg-primary-600 text-white shadow-md'
+                      : 'bg-white border border-primary-200 text-primary-700 hover:border-primary-400'
+                  }`}
+                >
+                  <Presentation className="h-4 w-4" />
+                  <div className="text-left">
+                    <div>Deep Dive #1 - Lancement</div>
+                    <div className="text-xs opacity-75">~2h30 | 50 slides</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setDeepDiveTemplate('monthly')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    deepDiveTemplate === 'monthly'
+                      ? 'bg-primary-600 text-white shadow-md'
+                      : 'bg-white border border-primary-200 text-primary-700 hover:border-primary-400'
+                  }`}
+                >
+                  <Calendar className="h-4 w-4" />
+                  <div className="text-left">
+                    <div>Deep Dive Mensuel</div>
+                    <div className="text-xs opacity-75">~1h30 | 35 slides</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Selected template */}
+            {deepDiveTemplate === 'launch' ? <DeepDiveLaunch /> : <DeepDive />}
+          </div>
+        </TabsContent>
+
+        {/* Import IA */}
+        <TabsContent value="import_ia">
+          <ImportIA />
+        </TabsContent>
+
+        {/* Journal */}
+        <TabsContent value="journal">
+          <Journal
+            onOpenDeepDive={() => {
+              // Switch to deep_dive tab when opening a specific deep dive
+              setViewMode('deep_dive');
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* New Report Modal */}
+      <Dialog open={showNewReportModal} onOpenChange={setShowNewReportModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nouveau rapport</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Titre du rapport
+              </label>
+              <Input
+                placeholder="Ex: Rapport mensuel - Janvier 2025"
+                value={newReportData.title}
+                onChange={(e) =>
+                  setNewReportData((prev) => ({ ...prev, title: e.target.value }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Type de rapport
+              </label>
+              <Select
+                value={newReportData.type}
+                onChange={(e) =>
+                  setNewReportData((prev) => ({
+                    ...prev,
+                    type: e.target.value as ReportType,
+                  }))
+                }
+              >
+                {Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => (
+                  <SelectOption key={value} value={value}>
+                    {label}
+                  </SelectOption>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Modèle (optionnel)
+              </label>
+              <Select
+                value={newReportData.templateId}
+                onChange={(e) =>
+                  setNewReportData((prev) => ({ ...prev, templateId: e.target.value }))
+                }
+              >
+                <SelectOption value="">Document vierge</SelectOption>
+                {REPORT_TEMPLATES.map((template) => (
+                  <SelectOption key={template.id} value={template.id}>
+                    {template.name}
+                  </SelectOption>
+                ))}
+              </Select>
+            </div>
+
+            {/* Période du rapport */}
+            <ReportPeriodSelector
+              value={newReportData.period}
+              onChange={(period) => setNewReportData((prev) => ({ ...prev, period }))}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowNewReportModal(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateReport}
+              disabled={!newReportData.title.trim()}
+            >
+              Créer le rapport
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm !== null} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le rapport ?</DialogTitle>
+          </DialogHeader>
+          <p className="text-primary-600 py-4">
+            Cette action est irréversible. Le rapport et toutes ses versions seront
+            définitivement supprimés.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteConfirm(null)}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              className="bg-error-600 hover:bg-error-700"
+              onClick={() => deleteConfirm && handleDeleteReport(deleteConfirm)}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share HTML Report Modal */}
+      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              Partager un rapport en HTML
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Sélection du rapport */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Sélectionner un rapport
+              </label>
+              <Select
+                value={selectedReportForShare?.toString() || ''}
+                onChange={(e) => setSelectedReportForShare(e.target.value ? Number(e.target.value) : null)}
+              >
+                <SelectOption value="">Choisir un rapport...</SelectOption>
+                {reports?.map((report) => (
+                  <SelectOption key={report.id} value={report.id!.toString()}>
+                    {report.title}
+                  </SelectOption>
+                ))}
+              </Select>
+            </div>
+
+            {/* Période du rapport */}
+            <ReportPeriodSelector
+              value={sharePeriod}
+              onChange={setSharePeriod}
+            />
+
+            {/* Section Commentaires */}
+            {selectedReportForShare && (
+              <div className="border rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  onClick={() => setShowCommentsSection(!showCommentsSection)}
+                >
+                  <span className="flex items-center gap-2 font-medium text-primary-700">
+                    <MessageSquare className="h-4 w-4" />
+                    Ajouter des commentaires éditoriaux
+                  </span>
+                  {showCommentsSection ? (
+                    <ChevronUp className="h-4 w-4 text-primary-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-primary-500" />
+                  )}
+                </button>
+
+                {showCommentsSection && (
+                  <div className="p-4 space-y-4 border-t">
+                    {/* Synthèse Executive */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-primary-700 mb-2">
+                        <FileText className="h-4 w-4 text-primary-500" />
+                        Synthèse Executive
+                      </label>
+                      <Textarea
+                        placeholder="Rédigez une introduction narrative pour contextualiser le rapport... Vous pouvez utiliser **texte** pour mettre en gras."
+                        value={reportComments.executiveSummary}
+                        onChange={(e) =>
+                          setReportComments((prev) => ({
+                            ...prev,
+                            executiveSummary: e.target.value,
+                          }))
+                        }
+                        rows={4}
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-primary-400 mt-1">
+                        Cette synthèse apparaîtra en haut du rapport pour donner le contexte général.
+                      </p>
+                    </div>
+
+                    {/* Commentaire Avancement */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-primary-700 mb-2">
+                        <TrendingUp className="h-4 w-4 text-primary-500" />
+                        Commentaire sur l'Avancement
+                      </label>
+                      <Textarea
+                        placeholder="Analysez les progrès réalisés, les axes qui performent bien ou nécessitent attention..."
+                        value={reportComments.avancement}
+                        onChange={(e) =>
+                          setReportComments((prev) => ({
+                            ...prev,
+                            avancement: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    {/* Commentaire Actions */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-primary-700 mb-2">
+                        <Target className="h-4 w-4 text-primary-500" />
+                        Commentaire sur les Actions
+                      </label>
+                      <Textarea
+                        placeholder="Détaillez l'état des actions, les blocages éventuels et les mesures prises..."
+                        value={reportComments.actions}
+                        onChange={(e) =>
+                          setReportComments((prev) => ({
+                            ...prev,
+                            actions: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    {/* Commentaire Risques */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-primary-700 mb-2">
+                        <Shield className="h-4 w-4 text-primary-500" />
+                        Commentaire sur les Risques
+                      </label>
+                      <Textarea
+                        placeholder="Expliquez les risques majeurs, leur évolution et les plans de mitigation..."
+                        value={reportComments.risques}
+                        onChange={(e) =>
+                          setReportComments((prev) => ({
+                            ...prev,
+                            risques: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    {/* Commentaire Budget */}
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-primary-700 mb-2">
+                        <DollarSign className="h-4 w-4 text-primary-500" />
+                        Commentaire sur le Budget
+                      </label>
+                      <Textarea
+                        placeholder="Commentez l'exécution budgétaire, les écarts et les prévisions..."
+                        value={reportComments.budget}
+                        onChange={(e) =>
+                          setReportComments((prev) => ({
+                            ...prev,
+                            budget: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        className="text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 p-3 bg-info-50 rounded-lg text-sm text-info-700">
+                      <MessageSquare className="h-4 w-4 shrink-0" />
+                      <span>
+                        Les commentaires apparaîtront sous chaque section correspondante dans le rapport HTML partagé.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Destinataires */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Destinataires (emails séparés par des virgules)
+              </label>
+              <Input
+                placeholder="email1@example.com, email2@example.com"
+                value={shareSettings.recipients}
+                onChange={(e) =>
+                  setShareSettings((prev) => ({ ...prev, recipients: e.target.value }))
+                }
+              />
+            </div>
+
+            {/* Expiration */}
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Expiration du lien
+              </label>
+              <Select
+                value={shareSettings.expirationDays.toString()}
+                onChange={(e) =>
+                  setShareSettings((prev) => ({
+                    ...prev,
+                    expirationDays: Number(e.target.value),
+                  }))
+                }
+              >
+                <SelectOption value="7">7 jours</SelectOption>
+                <SelectOption value="14">14 jours</SelectOption>
+                <SelectOption value="30">30 jours</SelectOption>
+                <SelectOption value="90">90 jours</SelectOption>
+                <SelectOption value="0">Jamais</SelectOption>
+              </Select>
+            </div>
+
+            {/* Notification email */}
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="notifyByEmail"
+                checked={shareSettings.notifyByEmail}
+                onChange={(e) =>
+                  setShareSettings((prev) => ({ ...prev, notifyByEmail: e.target.checked }))
+                }
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="notifyByEmail" className="text-sm text-primary-700">
+                Envoyer une notification par email aux destinataires
+              </label>
+            </div>
+
+            {/* Aperçu du lien */}
+            {selectedReportForShare && (
+              <div className="p-3 bg-info-50 rounded-lg border border-info-200">
+                <p className="text-sm text-info-700">
+                  <strong>Aperçu du lien :</strong>
+                </p>
+                <code className="text-xs text-info-600 block mt-1 break-all">
+                  https://cockpit.cosmos-angre.com/reports/share/{Math.random().toString(36).substring(2, 10)}
+                </code>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => {
+              setShowShareModal(false);
+              setShowCommentsSection(false);
+              setReportComments({
+                executiveSummary: '',
+                avancement: '',
+                actions: '',
+                risques: '',
+                budget: '',
+              });
+            }}>
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!selectedReportForShare}
+              onClick={() => {
+                if (selectedReportForShare) {
+                  const report = reports?.find((r) => r.id === selectedReportForShare);
+                  if (report) {
+                    const now = new Date().toISOString();
+                    const comments: ReportComment[] = [];
+
+                    if (reportComments.avancement.trim()) {
+                      comments.push({
+                        section: 'avancement',
+                        content: reportComments.avancement,
+                        author: 'Utilisateur',
+                        date: now,
+                      });
+                    }
+                    if (reportComments.actions.trim()) {
+                      comments.push({
+                        section: 'actions',
+                        content: reportComments.actions,
+                        author: 'Utilisateur',
+                        date: now,
+                      });
+                    }
+                    if (reportComments.risques.trim()) {
+                      comments.push({
+                        section: 'risques',
+                        content: reportComments.risques,
+                        author: 'Utilisateur',
+                        date: now,
+                      });
+                    }
+                    if (reportComments.budget.trim()) {
+                      comments.push({
+                        section: 'budget',
+                        content: reportComments.budget,
+                        author: 'Utilisateur',
+                        date: now,
+                      });
+                    }
+
+                    const shareId = Math.random().toString(36).substring(2, 10);
+                    const newShare: SharedHtmlReport = {
+                      id: `share-${Date.now()}`,
+                      reportId: report.id!,
+                      reportTitle: report.title,
+                      reportType: report.type,
+                      shareLink: `https://cockpit.cosmos-angre.com/reports/share/${shareId}`,
+                      createdAt: now,
+                      expiresAt:
+                        shareSettings.expirationDays > 0
+                          ? new Date(Date.now() + shareSettings.expirationDays * 24 * 60 * 60 * 1000).toISOString()
+                          : null,
+                      viewCount: 0,
+                      isActive: true,
+                      sharedBy: 'Utilisateur',
+                      recipients: shareSettings.recipients
+                        .split(',')
+                        .map((e) => e.trim())
+                        .filter((e) => e),
+                      executiveSummary: reportComments.executiveSummary.trim() || undefined,
+                      comments: comments.length > 0 ? comments : undefined,
+                    };
+
+                    // Stocker les commentaires dans localStorage pour la page partagée
+                    const shareData = {
+                      reportTitle: report.title,
+                      reportType: report.type,
+                      author: 'Utilisateur',
+                      createdAt: now,
+                      period: sharePeriod?.displayText || new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+                      executiveSummary: reportComments.executiveSummary.trim() || undefined,
+                      comments: comments,
+                    };
+                    localStorage.setItem(`shared-report-${shareId}`, JSON.stringify(shareData));
+
+                    setSharedReports((prev) => [newShare, ...prev]);
+
+                    // Envoyer les emails de notification si activé
+                    if (shareSettings.notifyByEmail && shareSettings.recipients.trim()) {
+                      const recipients = shareSettings.recipients
+                        .split(',')
+                        .map((e) => e.trim())
+                        .filter((e) => e);
+
+                      // Calculer les stats
+                      const stats = {
+                        totalActions: actions?.length || 0,
+                        totalJalons: kpis?.jalonsByStatus?.total || 0,
+                        totalRisques: risques?.length || 0,
+                        avancementGlobal: Math.round(kpis?.progress?.planGlobal || 0),
+                      };
+
+                      // Envoyer un email à chaque destinataire
+                      for (const recipient of recipients) {
+                        const emailParams = {
+                          recipientEmail: recipient,
+                          recipientName: recipient.split('@')[0],
+                          senderName: 'Pamela ATOKOUNA',
+                          reportLink: newShare.shareLink,
+                          reportPeriod: sharePeriod?.displayText || 'Période en cours',
+                          stats,
+                        };
+
+                        // Essayer d'envoyer via le service email (EmailJS si configuré)
+                        sendReportShareEmail(emailParams).then((result) => {
+                          if (!result.success) {
+                            // Fallback: ouvrir le client email local
+                            openEmailClientForReport(emailParams);
+                          }
+                        });
+                      }
+                    }
+
+                    setShowShareModal(false);
+                    setSelectedReportForShare(null);
+                    setShareSettings({ expirationDays: 30, recipients: '', notifyByEmail: true });
+                    setShowCommentsSection(false);
+                    setReportComments({
+                      executiveSummary: '',
+                      avancement: '',
+                      actions: '',
+                      risques: '',
+                      budget: '',
+                    });
+                    // Passer à l'onglet des rapports HTML
+                    setViewMode('html_reports');
+                  }
+                }
+              }}
+            >
+              <Link2 className="h-4 w-4 mr-2" />
+              Générer le lien
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

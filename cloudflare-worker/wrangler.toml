@@ -1,0 +1,13 @@
+name = "cosmos-angre-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Variables d'environnement (a configurer dans le dashboard Cloudflare)
+# [vars]
+# ALLOWED_ORIGIN = "https://votre-app.vercel.app"
+
+# Les cles API doivent etre ajoutees comme secrets:
+# wrangler secret put ANTHROPIC_API_KEY
+# wrangler secret put OPENROUTER_API_KEY
+# wrangler secret put SENDGRID_API_KEY
+# wrangler secret put RESEND_API_KEY
