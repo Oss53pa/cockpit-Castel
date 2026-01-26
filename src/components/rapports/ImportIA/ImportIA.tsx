@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Upload,
   FileText,
@@ -19,6 +19,8 @@ import {
   ZoomIn,
   ZoomOut,
   Download,
+  X,
+  ExternalLink,
 } from 'lucide-react';
 import {
   Card,
@@ -41,7 +43,7 @@ import {
   createIAImport,
   updateIAImportStatus,
   updateIAImportExtraction,
-  validateIAImport,
+  validateAndIntegrateIAImport,
   deleteIAImport,
   saveIAFile,
   getIAFile,
@@ -56,7 +58,9 @@ import {
   type IAImport,
   type IATargetModule,
 } from '@/types';
+import { useNavigate } from 'react-router-dom';
 import { extractTextFromFile } from '@/services/claudeService';
+import type { IntegrationResult } from '@/services/iaIntegrationService';
 import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -654,6 +658,116 @@ function ValidationModal({
   );
 }
 
+// Navigation vers module cible
+const MODULE_ROUTES: Record<string, string> = {
+  actions: '/actions',
+  budget: '/budget',
+  risques: '/risques',
+  commercial: '/commercial',
+  recrutement: '/recrutement',
+  technique: '/technique',
+  documents: '/documents',
+  reunions: '/reunions',
+};
+
+// Panneau de résultat d'intégration
+function IntegrationResultPanel({
+  result,
+  onClose,
+}: {
+  result: IntegrationResult;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const targetRoute = MODULE_ROUTES[result.targetModule] || '/';
+
+  return (
+    <Card padding="lg" className={cn(
+      'border-2',
+      result.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+    )}>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'w-12 h-12 rounded-xl flex items-center justify-center',
+            result.success ? 'bg-green-100' : 'bg-red-100'
+          )}>
+            {result.success ? (
+              <CheckCircle className="w-7 h-7 text-green-600" />
+            ) : (
+              <AlertCircle className="w-7 h-7 text-red-600" />
+            )}
+          </div>
+          <div>
+            <h3 className={cn(
+              'text-lg font-semibold',
+              result.success ? 'text-green-900' : 'text-red-900'
+            )}>
+              {result.success ? 'Document intégré avec succès' : 'Erreur lors de l\'intégration'}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="secondary" className="text-xs">
+                {IA_DOCUMENT_TYPE_LABELS[result.documentType]}
+              </Badge>
+              <ArrowRight className="w-3 h-3 text-neutral-400" />
+              <Badge className="bg-indigo-100 text-indigo-700 text-xs">
+                {IA_TARGET_MODULE_LABELS[result.targetModule]}
+              </Badge>
+            </div>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {result.error && (
+        <div className="mb-4 p-3 bg-red-100 rounded-lg text-sm text-red-700">
+          {result.error}
+        </div>
+      )}
+
+      {result.records.length > 0 && (
+        <div className="space-y-2 mb-4">
+          <p className="text-sm font-medium text-neutral-700">
+            {result.records.length} enregistrement{result.records.length > 1 ? 's' : ''} créé{result.records.length > 1 ? 's' : ''} :
+          </p>
+          <div className="space-y-1.5">
+            {result.records.map((record, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200"
+              >
+                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <span className="text-sm text-neutral-800 flex-1">{record.label}</span>
+                <Badge variant="secondary" className="text-xs capitalize">
+                  {record.type}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {result.success && (
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate(targetRoute)}
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Voir dans {IA_TARGET_MODULE_LABELS[result.targetModule]}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Fermer
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // Composant Archives
 function ArchivesList() {
   const imports = useIAImports({ limit: 50 });
@@ -764,10 +878,29 @@ function ArchivesList() {
 export function ImportIA() {
   const [showArchives, setShowArchives] = useState(false);
   const [validationImport, setValidationImport] = useState<IAImport | null>(null);
+  const [integrationResult, setIntegrationResult] = useState<IntegrationResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+
+  // Ref pour tracker les imports en cours et auto-ouvrir la modale
+  const lastProcessedIdsRef = useRef<Set<number>>(new Set());
 
   const pendingImports = useIAPendingImports();
   const processingImports = useIAProcessingImports();
   const stats = useIAStats();
+
+  // Auto-ouverture de la modale quand un import passe en status "ready"
+  useEffect(() => {
+    if (pendingImports.length === 0) return;
+
+    for (const imp of pendingImports) {
+      if (imp.id && lastProcessedIdsRef.current.has(imp.id)) {
+        // Cet import vient de finir, ouvrir la modale automatiquement
+        lastProcessedIdsRef.current.delete(imp.id);
+        setValidationImport(imp);
+        break;
+      }
+    }
+  }, [pendingImports]);
 
   // Traitement d'un fichier uploadé
   const processFile = useCallback(async (file: File) => {
@@ -778,6 +911,9 @@ export function ImportIA() {
       sizeBytes: file.size,
       createdBy: 1, // TODO: utiliser l'utilisateur connecté
     });
+
+    // Tracker cet ID pour auto-ouverture de la modale
+    lastProcessedIdsRef.current.add(importId);
 
     // Sauvegarder le fichier
     await saveIAFile(importId, file);
@@ -809,6 +945,7 @@ export function ImportIA() {
       });
     } catch (error) {
       console.error('Erreur extraction IA:', error);
+      lastProcessedIdsRef.current.delete(importId);
       await updateIAImportStatus(importId, 'failed');
     }
   }, []);
@@ -816,6 +953,8 @@ export function ImportIA() {
   // Gestion des fichiers sélectionnés
   const handleFilesSelected = useCallback(
     (files: File[]) => {
+      // Fermer le panneau de résultat précédent
+      setIntegrationResult(null);
       files.forEach((file) => {
         processFile(file);
       });
@@ -823,16 +962,52 @@ export function ImportIA() {
     [processFile]
   );
 
-  // Validation d'un import
+  // Validation et intégration d'un import
   const handleValidate = useCallback(
     async (id: number, module: IATargetModule) => {
-      await validateIAImport(id, 1, module); // TODO: utiliser l'utilisateur connecté
+      setIsValidating(true);
+      setValidationImport(null);
+      try {
+        const result = await validateAndIntegrateIAImport(id, 1, module);
+        setIntegrationResult(result);
+      } catch (error) {
+        console.error('Erreur validation:', error);
+        setIntegrationResult({
+          success: false,
+          documentType: 'autre',
+          targetModule: module,
+          records: [],
+          error: error instanceof Error ? error.message : 'Erreur inconnue',
+        });
+      } finally {
+        setIsValidating(false);
+      }
     },
     []
   );
 
   return (
     <div className="space-y-6">
+      {/* Panneau de résultat d'intégration */}
+      {integrationResult && (
+        <IntegrationResultPanel
+          result={integrationResult}
+          onClose={() => setIntegrationResult(null)}
+        />
+      )}
+
+      {/* Indicateur de validation en cours */}
+      {isValidating && (
+        <Card padding="md" className="border-2 border-indigo-200 bg-indigo-50">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+            <span className="text-sm font-medium text-indigo-800">
+              Intégration en cours...
+            </span>
+          </div>
+        </Card>
+      )}
+
       {/* Stats rapides */}
       <div className="grid grid-cols-4 gap-4">
         <Card padding="md" className="bg-gradient-to-br from-indigo-50 to-white">

@@ -8,6 +8,7 @@ import type {
   IATargetModule,
   IAStats,
 } from '@/types';
+import { integrateImport, type IntegrationResult } from '@/services/iaIntegrationService';
 
 /**
  * Hook pour récupérer tous les imports
@@ -300,6 +301,40 @@ export async function validateIAImport(
     validatedBy,
     targetModule,
   });
+}
+
+/**
+ * Valider et intégrer un import en une seule opération.
+ * Valide l'import, puis appelle le service d'intégration pour créer
+ * les enregistrements dans les modules cibles.
+ */
+export async function validateAndIntegrateIAImport(
+  id: number,
+  validatedBy: number,
+  targetModule: IATargetModule
+): Promise<IntegrationResult> {
+  // 1. Marquer comme validé
+  await db.iaImports.update(id, {
+    status: 'validated',
+    validatedAt: new Date().toISOString(),
+    validatedBy,
+    targetModule,
+  });
+
+  // 2. Récupérer les données de l'import
+  const imp = await db.iaImports.get(id);
+  if (!imp || !imp.extractedData || !imp.documentType) {
+    return {
+      success: false,
+      documentType: imp?.documentType || 'autre',
+      targetModule,
+      records: [],
+      error: 'Données extraites non disponibles',
+    };
+  }
+
+  // 3. Intégrer dans le module cible
+  return integrateImport(id, targetModule, imp.extractedData, imp.documentType);
 }
 
 /**
