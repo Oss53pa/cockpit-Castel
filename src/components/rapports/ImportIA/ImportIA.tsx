@@ -4,6 +4,7 @@ import {
   FileText,
   Image,
   FileSpreadsheet,
+  Presentation,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -55,6 +56,7 @@ import {
   type IAImport,
   type IATargetModule,
 } from '@/types';
+import { extractTextFromFile } from '@/services/claudeService';
 import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -64,6 +66,7 @@ const getFileIcon = (mimeType: string) => {
   if (mimeType.includes('pdf')) return FileText;
   if (mimeType.includes('image')) return Image;
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return FileSpreadsheet;
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return Presentation;
   return FileText;
 };
 
@@ -81,7 +84,7 @@ function UploadZone({ onFilesSelected }: { onFilesSelected: (files: File[]) => v
 
     for (const file of fileList) {
       const isFormatOk = IA_SUPPORTED_FORMATS.includes(file.type as (typeof IA_SUPPORTED_FORMATS)[number])
-        || /\.(pdf|docx?|xlsx?|jpe?g|png|tiff?|csv)$/i.test(file.name);
+        || /\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|tiff?|csv)$/i.test(file.name);
       const isSizeOk = file.size <= MAX_FILE_SIZE;
 
       if (isFormatOk && isSizeOk) {
@@ -167,7 +170,7 @@ function UploadZone({ onFilesSelected }: { onFilesSelected: (files: File[]) => v
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.csv"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.tiff,.csv"
           className="hidden"
           onChange={handleFileInput}
         />
@@ -176,7 +179,7 @@ function UploadZone({ onFilesSelected }: { onFilesSelected: (files: File[]) => v
         </Button>
 
         <p className="text-xs text-neutral-400 mt-4">
-          PDF, Word, Excel, Images, Scans — Max 25 Mo/fichier
+          PDF, Word, Excel, PowerPoint, Images, Scans — Max 25 Mo/fichier
         </p>
 
         {error && (
@@ -341,6 +344,171 @@ function DocumentPreview({ importId, mimeType, filename }: { importId: number; m
   );
 }
 
+// Labels lisibles pour les champs extraits
+const FIELD_LABELS: Record<string, string> = {
+  fournisseur: 'Fournisseur',
+  nom: 'Nom',
+  siret: 'SIRET',
+  adresse: 'Adresse',
+  telephone: 'Téléphone',
+  email: 'Email',
+  facture: 'Facture',
+  numero: 'Numéro',
+  date: 'Date',
+  dateEcheance: 'Date échéance',
+  montants: 'Montants',
+  ht: 'HT',
+  tvaTaux: 'Taux TVA',
+  tvaMontant: 'Montant TVA',
+  ttc: 'TTC',
+  devise: 'Devise',
+  objet: 'Objet',
+  lignes: 'Lignes',
+  description: 'Description',
+  quantite: 'Quantité',
+  prixUnitaire: 'Prix unitaire',
+  montant: 'Montant',
+  reunion: 'Réunion',
+  type: 'Type',
+  lieu: 'Lieu',
+  participants: 'Participants',
+  present: 'Présent',
+  decisions: 'Décisions',
+  actionsIssues: 'Actions issues',
+  responsable: 'Responsable',
+  echeance: 'Échéance',
+  priorite: 'Priorité',
+  parties: 'Parties',
+  bailleur: 'Bailleur',
+  preneur: 'Preneur',
+  raisonSociale: 'Raison sociale',
+  representant: 'Représentant',
+  fonction: 'Fonction',
+  local: 'Local',
+  designation: 'Désignation',
+  surface: 'Surface',
+  unite: 'Unité',
+  niveau: 'Niveau',
+  zone: 'Zone',
+  conditions: 'Conditions',
+  loyerMensuel: 'Loyer mensuel',
+  chargesMensuelles: 'Charges mensuelles',
+  dureeAns: 'Durée (ans)',
+  dateEffet: 'Date effet',
+  depotGarantie: 'Dépôt garantie',
+  lot: 'Lot',
+  entreprise: 'Entreprise',
+  reception: 'Réception',
+  avecReserves: 'Avec réserves',
+  reserves: 'Réserves',
+  localisation: 'Localisation',
+  delaiLevee: 'Délai levée',
+  identite: 'Identité',
+  prenom: 'Prénom',
+  experience: 'Expérience',
+  poste: 'Poste',
+  debut: 'Début',
+  fin: 'Fin',
+  formation: 'Formation',
+  diplome: 'Diplôme',
+  etablissement: 'Établissement',
+  annee: 'Année',
+  competences: 'Compétences',
+  contenu: 'Contenu',
+  devis: 'Devis',
+  validite: 'Validité',
+  tva: 'TVA',
+  _warning: 'Avertissement',
+};
+
+function getLabel(key: string): string {
+  return FIELD_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+  if (typeof value === 'number') return value.toLocaleString('fr-FR');
+  return String(value);
+}
+
+// Composant affichage lisible des données extraites
+function ExtractedDataView({ data }: { data: Record<string, unknown> }) {
+  const renderValue = (value: unknown, depth = 0): React.ReactNode => {
+    if (value === null || value === undefined) return <span className="text-neutral-400">-</span>;
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <span className="text-neutral-400">Aucun</span>;
+      // Array of strings
+      if (typeof value[0] === 'string') {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {value.map((v, i) => (
+              <Badge key={i} variant="secondary" className="text-xs">{String(v)}</Badge>
+            ))}
+          </div>
+        );
+      }
+      // Array of objects
+      return (
+        <div className="space-y-2 mt-1">
+          {value.map((item, i) => (
+            <div key={i} className="bg-neutral-50 rounded-lg p-2 border border-neutral-100">
+              <span className="text-xs text-neutral-400 mb-1 block">#{i + 1}</span>
+              {typeof item === 'object' && item !== null
+                ? renderObject(item as Record<string, unknown>, depth + 1)
+                : <span className="text-sm">{formatValue(item)}</span>
+              }
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === 'object') {
+      return renderObject(value as Record<string, unknown>, depth + 1);
+    }
+
+    return <span className="text-sm text-neutral-900">{formatValue(value)}</span>;
+  };
+
+  const renderObject = (obj: Record<string, unknown>, depth = 0): React.ReactNode => {
+    const entries = Object.entries(obj).filter(([k]) => k !== '_warning');
+    const warning = obj._warning as string | undefined;
+
+    return (
+      <div className={cn('space-y-1', depth > 0 && 'pl-2')}>
+        {warning && (
+          <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">
+            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+            {warning}
+          </div>
+        )}
+        {entries.map(([key, val]) => {
+          const isSection = typeof val === 'object' && val !== null && !Array.isArray(val);
+          return (
+            <div key={key} className={cn(isSection && 'mt-2')}>
+              <div className={cn(
+                'text-xs font-medium',
+                isSection ? 'text-indigo-600 uppercase tracking-wide mb-1' : 'text-neutral-500'
+              )}>
+                {getLabel(key)}
+              </div>
+              {renderValue(val, depth)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-3">
+      {renderObject(data)}
+    </div>
+  );
+}
+
 // Composant Validation Modal
 function ValidationModal({
   imp,
@@ -456,10 +624,8 @@ function ValidationModal({
             {imp.extractedData && (
               <div>
                 <p className="text-sm font-medium text-neutral-700 mb-2">Données extraites</p>
-                <ScrollArea className="h-52 rounded-lg border border-neutral-200 bg-white p-3">
-                  <pre className="text-xs text-neutral-600 whitespace-pre-wrap font-mono">
-                    {JSON.stringify(imp.extractedData, null, 2)}
-                  </pre>
+                <ScrollArea className="h-52 rounded-lg border border-neutral-200 bg-white">
+                  <ExtractedDataView data={imp.extractedData} />
                 </ScrollArea>
               </div>
             )}
@@ -582,7 +748,7 @@ function ArchivesList() {
               Annuler
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             >
               Supprimer
@@ -616,24 +782,30 @@ export function ImportIA() {
     // Sauvegarder le fichier
     await saveIAFile(importId, file);
 
-    // Simuler le traitement
-    await updateIAImportStatus(importId, 'processing', 20);
-    await new Promise((r) => setTimeout(r, 500));
+    const startTime = Date.now();
 
+    // Étape 1: Traitement du fichier
+    await updateIAImportStatus(importId, 'processing', 20);
+
+    // Étape 2: Extraction du texte réel du document
+    let text: string;
+    try {
+      text = await extractTextFromFile(file);
+    } catch {
+      text = file.name;
+    }
     await updateIAImportStatus(importId, 'analyzing', 50);
 
-    // Extraire le texte (simulation)
-    const text = file.name; // Dans une vraie implémentation, on extrairait le texte du fichier
-
-    // Appeler l'IA pour l'extraction
+    // Étape 3: Analyse IA
     try {
       const result = await simulateAIExtraction(text, file.type);
+      const processingTimeMs = Date.now() - startTime;
 
       await updateIAImportExtraction(importId, {
         documentType: result.documentType,
         confidence: result.confidence,
         extractedData: result.extractedData,
-        processingTimeMs: 2500,
+        processingTimeMs,
       });
     } catch (error) {
       console.error('Erreur extraction IA:', error);

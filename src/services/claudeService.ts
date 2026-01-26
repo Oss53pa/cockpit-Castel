@@ -312,29 +312,128 @@ function simulateFallbackExtraction(
  */
 export async function extractTextFromFile(file: File): Promise<string> {
   const mimeType = file.type;
+  const ext = file.name.split('.').pop()?.toLowerCase();
 
-  // Pour les fichiers texte
-  if (mimeType.includes('text') || mimeType.includes('csv')) {
+  // Pour les fichiers texte et CSV
+  if (mimeType.includes('text') || mimeType.includes('csv') || ext === 'csv') {
     return await file.text();
+  }
+
+  // Pour les fichiers PDF
+  if (mimeType.includes('pdf') || ext === 'pdf') {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.mjs',
+        import.meta.url
+      ).toString();
+
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const lines: string[] = [];
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' ');
+        if (pageText.trim()) {
+          lines.push(pageText);
+        }
+      }
+
+      return lines.join('\n') || `[PDF: ${file.name}] - Aucun texte extractible`;
+    } catch (e) {
+      console.error('Erreur extraction PDF:', e);
+      return `[PDF: ${file.name}] - Erreur lors de l'extraction`;
+    }
+  }
+
+  // Pour les fichiers Word (.docx)
+  if (mimeType.includes('word') || mimeType.includes('document') || ext === 'docx' || ext === 'doc') {
+    try {
+      const mammoth = await import('mammoth');
+      const buffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+      return result.value || `[Word: ${file.name}] - Aucun texte extractible`;
+    } catch (e) {
+      console.error('Erreur extraction Word:', e);
+      return `[Word: ${file.name}] - Erreur lors de l'extraction`;
+    }
+  }
+
+  // Pour les fichiers Excel (.xls, .xlsx)
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || ext === 'xlsx' || ext === 'xls') {
+    try {
+      const XLSX = await import('xlsx');
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const lines: string[] = [];
+
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        lines.push(`--- Feuille: ${sheetName} ---`);
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { header: 1 });
+        for (const row of jsonData) {
+          const values = Object.values(row).filter((v) => v !== null && v !== undefined && v !== '');
+          if (values.length > 0) {
+            lines.push(values.join(' | '));
+          }
+        }
+      }
+
+      return lines.join('\n') || `[Excel: ${file.name}] - Aucun contenu extractible`;
+    } catch (e) {
+      console.error('Erreur extraction Excel:', e);
+      return `[Excel: ${file.name}] - Erreur lors de l'extraction`;
+    }
+  }
+
+  // Pour les fichiers PowerPoint (.pptx)
+  if (mimeType.includes('presentation') || mimeType.includes('powerpoint') || ext === 'pptx' || ext === 'ppt') {
+    try {
+      const JSZip = (await import('jszip')).default;
+      const buffer = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(buffer);
+      const lines: string[] = [];
+
+      // Les fichiers PPTX sont des archives ZIP contenant des XML
+      const slideFiles = Object.keys(zip.files)
+        .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+        .sort((a, b) => {
+          const numA = parseInt(a.match(/slide(\d+)/)?.[1] || '0');
+          const numB = parseInt(b.match(/slide(\d+)/)?.[1] || '0');
+          return numA - numB;
+        });
+
+      for (const slidePath of slideFiles) {
+        const slideNum = slidePath.match(/slide(\d+)/)?.[1];
+        const xml = await zip.files[slidePath].async('text');
+        // Extraire le texte des balises <a:t>
+        const textMatches = xml.match(/<a:t>([^<]*)<\/a:t>/g);
+        if (textMatches) {
+          const slideText = textMatches
+            .map((m) => m.replace(/<\/?a:t>/g, ''))
+            .filter((t) => t.trim())
+            .join(' ');
+          if (slideText.trim()) {
+            lines.push(`--- Slide ${slideNum} ---`);
+            lines.push(slideText);
+          }
+        }
+      }
+
+      return lines.join('\n') || `[PowerPoint: ${file.name}] - Aucun texte extractible`;
+    } catch (e) {
+      console.error('Erreur extraction PowerPoint:', e);
+      return `[PowerPoint: ${file.name}] - Erreur lors de l'extraction`;
+    }
   }
 
   // Pour les images, on renvoie juste le nom (OCR a implementer)
   if (mimeType.includes('image')) {
     return `[Image: ${file.name}] - OCR requis pour extraction`;
-  }
-
-  // Pour les PDF, on renvoie le nom (extraction PDF a implementer avec pdf.js)
-  if (mimeType.includes('pdf')) {
-    return `[PDF: ${file.name}] - Extraction PDF requise`;
-  }
-
-  // Pour les fichiers Office (a implementer avec mammoth.js pour Word, xlsx pour Excel)
-  if (mimeType.includes('word') || mimeType.includes('document')) {
-    return `[Document Word: ${file.name}] - Extraction Word requise`;
-  }
-
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
-    return `[Excel: ${file.name}] - Extraction Excel requise`;
   }
 
   return `[Fichier: ${file.name}] - Type non supporte pour extraction automatique`;
