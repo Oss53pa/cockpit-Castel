@@ -21,6 +21,8 @@ import {
   Download,
   X,
   ExternalLink,
+  Eye,
+  Database,
 } from 'lucide-react';
 import {
   Card,
@@ -39,6 +41,7 @@ import {
   useIAImports,
   useIAPendingImports,
   useIAProcessingImports,
+  useIAIntegrations,
   useIAStats,
   createIAImport,
   updateIAImportStatus,
@@ -768,10 +771,212 @@ function IntegrationResultPanel({
   );
 }
 
+// Modale de détail d'un import archivé
+function ArchiveDetailModal({
+  imp,
+  open,
+  onClose,
+}: {
+  imp: IAImport | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const integrations = useIAIntegrations(imp?.id ?? null);
+
+  if (!imp) return null;
+
+  const styles = IA_IMPORT_STATUS_STYLES[imp.status];
+  const targetRoute = imp.targetModule ? (MODULE_ROUTES[imp.targetModule] || '/') : null;
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSearch className="w-5 h-5 text-primary-600" />
+            Détail de l&apos;import
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-2 gap-6 py-4 max-h-[65vh] overflow-y-auto">
+          {/* Colonne gauche: Aperçu + Infos */}
+          <div className="space-y-4">
+            {/* Prévisualisation du document */}
+            {imp.id && (
+              <DocumentPreview
+                importId={imp.id}
+                mimeType={imp.mimeType}
+                filename={imp.filename}
+              />
+            )}
+
+            {/* Informations fichier */}
+            <div className="bg-neutral-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-neutral-400" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-neutral-900 truncate text-sm">{imp.filename}</p>
+                  <p className="text-xs text-neutral-500">
+                    {(imp.sizeBytes / 1024).toFixed(1)} Ko — {imp.importRef}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge className={cn(styles.bg, styles.text, 'text-xs')}>
+                  {imp.status === 'integrated' && <CheckCircle className="w-3 h-3 mr-1" />}
+                  {IA_IMPORT_STATUS_LABELS[imp.status]}
+                </Badge>
+                {imp.documentType && (
+                  <Badge variant="secondary" className="text-xs">
+                    {IA_DOCUMENT_TYPE_LABELS[imp.documentType]}
+                  </Badge>
+                )}
+                {imp.targetModule && (
+                  <Badge className="bg-indigo-100 text-indigo-700 text-xs">
+                    → {IA_TARGET_MODULE_LABELS[imp.targetModule]}
+                  </Badge>
+                )}
+                {imp.ocrApplied && (
+                  <Badge className="bg-purple-100 text-purple-700 text-xs">OCR</Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
+                <div>
+                  <span className="font-medium">Créé le :</span>{' '}
+                  {new Date(imp.createdAt).toLocaleDateString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </div>
+                {imp.validatedAt && (
+                  <div>
+                    <span className="font-medium">Validé le :</span>{' '}
+                    {new Date(imp.validatedAt).toLocaleDateString('fr-FR', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </div>
+                )}
+                {imp.processingTimeMs > 0 && (
+                  <div>
+                    <span className="font-medium">Traitement :</span>{' '}
+                    {(imp.processingTimeMs / 1000).toFixed(1)}s
+                  </div>
+                )}
+                {imp.confidence > 0 && (
+                  <div>
+                    <span className="font-medium">Confiance :</span>{' '}
+                    {Math.round(imp.confidence * 100)}%
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Colonne droite: Données extraites + Intégrations */}
+          <div className="space-y-4">
+            {/* Données extraites */}
+            {imp.extractedData && (
+              <div>
+                <p className="text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary-500" />
+                  Données extraites
+                </p>
+                <ScrollArea className="h-52 rounded-lg border border-neutral-200 bg-white">
+                  <ExtractedDataView data={imp.extractedData} />
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Intégrations réalisées */}
+            {integrations.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-neutral-700 mb-2 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-green-500" />
+                  Enregistrements créés ({integrations.length})
+                </p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {integrations.map((integ) => (
+                    <div
+                      key={integ.id}
+                      className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200"
+                    >
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-neutral-800 truncate">
+                          {integ.targetTable === 'actions' && 'Action'}
+                          {integ.targetTable === 'budget' && 'Budget'}
+                          {integ.targetTable === 'risques' && 'Risque'}
+                          {integ.targetTable === 'iaIntegrations' && 'Enregistrement'}
+                          {' #'}{integ.recordId}
+                          {integ.data && typeof integ.data === 'object' && 'titre' in integ.data && (
+                            <> — {String(integ.data.titre)}</>
+                          )}
+                          {integ.data && typeof integ.data === 'object' && 'libelle' in integ.data && (
+                            <> — {String(integ.data.libelle)}</>
+                          )}
+                          {integ.data && typeof integ.data === 'object' && 'description' in integ.data && !('titre' in integ.data) && !('libelle' in integ.data) && (
+                            <> — {String(integ.data.description).slice(0, 60)}</>
+                          )}
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          {IA_TARGET_MODULE_LABELS[integ.targetModule]} — {integ.action} — {new Date(integ.integratedAt).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pas de données */}
+            {!imp.extractedData && integrations.length === 0 && (
+              <div className="text-center py-8">
+                <FileText className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
+                <p className="text-neutral-500 text-sm">Aucune donnée extraite disponible</p>
+              </div>
+            )}
+
+            {/* Erreur */}
+            {imp.errorMessage && (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm font-medium text-red-700 mb-1">Erreur</p>
+                <p className="text-xs text-red-600">{imp.errorCode}: {imp.errorMessage}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="border-t pt-4">
+          <Button variant="ghost" onClick={onClose}>
+            Fermer
+          </Button>
+          {targetRoute && imp.status === 'integrated' && (
+            <Button
+              variant="primary"
+              onClick={() => {
+                onClose();
+                navigate(targetRoute);
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Voir dans {IA_TARGET_MODULE_LABELS[imp.targetModule!]}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Composant Archives
 function ArchivesList() {
   const imports = useIAImports({ limit: 50 });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [detailImport, setDetailImport] = useState<IAImport | null>(null);
 
   const handleDelete = async (id: number) => {
     await deleteIAImport(id);
@@ -794,7 +999,8 @@ function ArchivesList() {
             return (
               <div
                 key={imp.id}
-                className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
+                className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
+                onClick={() => setDetailImport(imp)}
               >
                 <div className="p-2 bg-white rounded-lg">
                   <FileIcon className="w-4 h-4 text-neutral-500" />
@@ -824,14 +1030,30 @@ function ArchivesList() {
                   </Badge>
                 )}
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleteConfirmId(imp.id!)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailImport(imp);
+                    }}
+                    className="text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirmId(imp.id!);
+                    }}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -844,6 +1066,13 @@ function ArchivesList() {
           )}
         </div>
       </ScrollArea>
+
+      {/* Modale détail archive */}
+      <ArchiveDetailModal
+        imp={detailImport}
+        open={detailImport !== null}
+        onClose={() => setDetailImport(null)}
+      />
 
       {/* Delete confirmation */}
       <Dialog
