@@ -224,12 +224,43 @@ export async function extractWithClaude(
 }
 
 /**
+ * Extraire les lignes d'action a partir du texte brut
+ * Detecte les lignes qui ressemblent a des taches/actions
+ */
+function extractActionLines(text: string): string[] {
+  const lines = text.split(/\n|\r\n?/).map((l) => l.trim()).filter(Boolean);
+  const actionLines: string[] = [];
+
+  for (const line of lines) {
+    // Detecter les lignes datees (ex: "24.11.24 – Réalisation du dallage")
+    if (/^\d{1,2}[./]\d{1,2}[./]\d{2,4}\s*[–\-:]\s*.+/.test(line)) {
+      actionLines.push(line);
+      continue;
+    }
+    // Detecter les lignes avec tiret qui decrivent une action
+    if (/^[-–•]\s*.{10,}/.test(line) && !line.startsWith('---')) {
+      actionLines.push(line.replace(/^[-–•]\s*/, ''));
+      continue;
+    }
+    // Detecter les lignes numerotees
+    if (/^\d+[.)]\s*.{10,}/.test(line)) {
+      actionLines.push(line.replace(/^\d+[.)]\s*/, ''));
+    }
+  }
+
+  return actionLines;
+}
+
+/**
  * Extraction de secours basee sur des mots-cles (fallback)
+ * Inclut le contenu reel du document dans les donnees extraites
  */
 function simulateFallbackExtraction(
   documentText: string
 ): ExtractionResult {
   const lowerText = documentText.toLowerCase();
+  const textPreview = documentText.slice(0, 3000);
+  const actionLines = extractActionLines(documentText);
 
   if (lowerText.includes('facture') || lowerText.includes('ttc') || lowerText.includes('tva')) {
     return {
@@ -249,6 +280,7 @@ function simulateFallbackExtraction(
           devise: 'XOF',
         },
         objet: 'A completer manuellement',
+        contenuExtrait: textPreview,
         _warning: 'Extraction en mode hors-ligne - verifier les donnees',
       },
     };
@@ -256,22 +288,37 @@ function simulateFallbackExtraction(
 
   if (
     lowerText.includes('compte-rendu') ||
+    lowerText.includes('compte rendu') ||
+    lowerText.includes('compre rendu') ||
     lowerText.includes('reunion') ||
-    lowerText.includes('participants')
+    lowerText.includes('réunion') ||
+    lowerText.includes('participants') ||
+    lowerText.includes('travaux en cours') ||
+    lowerText.includes('chantier') ||
+    lowerText.includes('point de situation') ||
+    lowerText.includes('avancement')
   ) {
+    const actionsIssues = actionLines.map((line) => ({
+      description: line.slice(0, 200),
+      responsable: 'A assigner',
+      echeance: '',
+      priorite: line.toLowerCase().includes('urgent') ? 'haute' : 'moyenne',
+    }));
+
     return {
       documentType: 'compte_rendu',
       confidence: 0.70,
       extractedData: {
         reunion: {
-          type: 'A identifier',
+          type: 'Reunion de chantier',
           date: new Date().toISOString().split('T')[0],
           lieu: 'A preciser',
           participants: [],
         },
         decisions: [],
-        actionsIssues: [],
-        _warning: 'Extraction en mode hors-ligne - verifier les donnees',
+        actionsIssues,
+        contenuExtrait: textPreview,
+        _warning: 'Extraction en mode hors-ligne - verifier et completer les donnees',
       },
     };
   }
@@ -293,30 +340,106 @@ function simulateFallbackExtraction(
           dureeAns: 0,
           dateEffet: '',
         },
+        contenuExtrait: textPreview,
         _warning: 'Extraction en mode hors-ligne - verifier les donnees',
       },
     };
   }
 
-  if (lowerText.includes('reception') || lowerText.includes('reserve') || lowerText.includes('lot')) {
+  if (
+    lowerText.includes('reception') ||
+    lowerText.includes('réception') ||
+    lowerText.includes('reserve') ||
+    lowerText.includes('réserve') ||
+    lowerText.includes('lot')
+  ) {
     return {
       documentType: 'pv_reception',
       confidence: 0.70,
       extractedData: {
         lot: { numero: 'A identifier', designation: 'A preciser', entreprise: '' },
         reception: { date: '', type: 'provisoire', avecReserves: true },
-        reserves: [],
+        reserves: actionLines.map((line, i) => ({
+          numero: i + 1,
+          description: line.slice(0, 200),
+          localisation: '',
+          delaiLevee: '',
+        })),
+        contenuExtrait: textPreview,
         _warning: 'Extraction en mode hors-ligne - verifier les donnees',
       },
     };
   }
 
+  if (
+    lowerText.includes('devis') ||
+    lowerText.includes('proposition') ||
+    lowerText.includes('offre de prix')
+  ) {
+    return {
+      documentType: 'devis',
+      confidence: 0.65,
+      extractedData: {
+        fournisseur: { nom: 'A identifier' },
+        devis: { numero: '', date: new Date().toISOString().split('T')[0] },
+        montants: { ht: 0, tva: 0, ttc: 0, devise: 'XOF' },
+        lignes: [],
+        contenuExtrait: textPreview,
+        _warning: 'Extraction en mode hors-ligne - verifier les donnees',
+      },
+    };
+  }
+
+  if (
+    lowerText.includes('audit') ||
+    lowerText.includes('inspection') ||
+    lowerText.includes('non-conformit') ||
+    lowerText.includes('constat')
+  ) {
+    return {
+      documentType: 'rapport_audit',
+      confidence: 0.65,
+      extractedData: {
+        constats: actionLines.map((line) => ({
+          description: line.slice(0, 200),
+          gravite: 'moyen',
+        })),
+        contenuExtrait: textPreview,
+        _warning: 'Extraction en mode hors-ligne - verifier les donnees',
+      },
+    };
+  }
+
+  if (
+    lowerText.includes('planning') ||
+    lowerText.includes('calendrier') ||
+    lowerText.includes('gantt') ||
+    lowerText.includes('phase')
+  ) {
+    return {
+      documentType: 'planning',
+      confidence: 0.60,
+      extractedData: {
+        taches: actionLines.map((line) => ({
+          description: line.slice(0, 200),
+          responsable: '',
+        })),
+        contenuExtrait: textPreview,
+        _warning: 'Extraction en mode hors-ligne - verifier les donnees',
+      },
+    };
+  }
+
+  // Fallback: inclure le contenu reel du document
   return {
     documentType: 'autre',
     confidence: 0.40,
     extractedData: {
-      contenu: 'Document non classifie automatiquement',
-      _warning: 'Classification automatique impossible - mode hors-ligne',
+      contenuExtrait: textPreview,
+      ...(actionLines.length > 0 && {
+        elementsDetecter: actionLines.map((l) => l.slice(0, 200)),
+      }),
+      _warning: 'Classification automatique impossible - mode hors-ligne. Configurez une cle API Claude dans les parametres pour une extraction plus precise.',
     },
   };
 }

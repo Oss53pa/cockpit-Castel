@@ -422,6 +422,12 @@ const FIELD_LABELS: Record<string, string> = {
   annee: 'Année',
   competences: 'Compétences',
   contenu: 'Contenu',
+  contenuExtrait: 'Contenu extrait du document',
+  elementsDetecter: 'Éléments détectés',
+  constats: 'Constats',
+  gravite: 'Gravité',
+  taches: 'Tâches',
+  recommandation: 'Recommandation',
   devis: 'Devis',
   validite: 'Validité',
   tva: 'TVA',
@@ -474,6 +480,15 @@ function ExtractedDataView({ data }: { data: Record<string, unknown> }) {
 
     if (typeof value === 'object') {
       return renderObject(value as Record<string, unknown>, depth + 1);
+    }
+
+    // Texte long : affichage en bloc scrollable
+    if (typeof value === 'string' && value.length > 200) {
+      return (
+        <pre className="text-xs text-neutral-800 bg-neutral-50 rounded-lg p-2 border border-neutral-100 whitespace-pre-wrap max-h-48 overflow-y-auto font-sans leading-relaxed">
+          {value}
+        </pre>
+      );
     }
 
     return <span className="text-sm text-neutral-900">{formatValue(value)}</span>;
@@ -667,16 +682,16 @@ function ValidationModal({
   );
 }
 
-// Navigation vers module cible
+// Navigation vers module cible (routes existantes uniquement)
 const MODULE_ROUTES: Record<string, string> = {
   actions: '/actions',
   budget: '/budget',
   risques: '/risques',
-  commercial: '/commercial',
-  recrutement: '/recrutement',
-  technique: '/technique',
-  documents: '/documents',
-  reunions: '/reunions',
+  commercial: '/rapports',
+  recrutement: '/rapports',
+  technique: '/rapports',
+  documents: '/rapports',
+  reunions: '/rapports',
 };
 
 // Panneau de résultat d'intégration
