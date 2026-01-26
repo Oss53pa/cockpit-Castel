@@ -41,6 +41,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SendReminderModal } from '@/components/shared';
 import { useUsers, useJalons } from '@/hooks';
+import { createAction, updateAction } from '@/hooks/useActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Flag } from 'lucide-react';
 import { db } from '@/db';
@@ -440,9 +441,9 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
       };
 
       if (isEditing && action?.id) {
-        console.log('Update:', actionData);
+        await updateAction(action.id, actionData);
       } else {
-        console.log('Create:', actionData);
+        await createAction(actionData as Omit<Action, 'id' | 'createdAt' | 'updatedAt'>);
       }
       reset();
       onSuccess();

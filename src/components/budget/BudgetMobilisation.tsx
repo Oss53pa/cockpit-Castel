@@ -730,11 +730,12 @@ function VueDetail() {
   const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [ligneToDelete, setLigneToDelete] = useState<string | null>(null);
+  const [lignes, setLignes] = useState<LigneBudgetaireComplete[]>(LIGNES_BUDGETAIRES_COMPLETES);
 
-  const postes = ['all', ...new Set(LIGNES_BUDGETAIRES_COMPLETES.map(l => l.poste))];
+  const postes = ['all', ...new Set(lignes.map(l => l.poste))];
   const lignesFiltrees = filterPoste === 'all'
-    ? LIGNES_BUDGETAIRES_COMPLETES
-    : LIGNES_BUDGETAIRES_COMPLETES.filter(l => l.poste === filterPoste);
+    ? lignes
+    : lignes.filter(l => l.poste === filterPoste);
 
   const handleView = (ligne: LigneBudgetaireComplete) => {
     setSelectedLigne(ligne);
@@ -755,21 +756,21 @@ function VueDetail() {
 
   const handleConfirmDelete = () => {
     if (ligneToDelete) {
-      console.log('Suppression de la ligne:', ligneToDelete);
-      // TODO: Implémenter la suppression réelle
+      setLignes((prev) => prev.filter((l) => l.id !== ligneToDelete));
     }
     setDeleteModalOpen(false);
     setLigneToDelete(null);
   };
 
   const handleSave = (ligne: LigneBudgetaireComplete) => {
-    console.log('Enregistrement de la ligne:', ligne);
-    // TODO: Implémenter la sauvegarde réelle
+    setLignes((prev) => prev.map((l) => (l.id === ligne.id ? ligne : l)));
+    setSelectedLigne(ligne);
   };
 
   const handleDelete = (id: string) => {
-    console.log('Suppression depuis le modal:', id);
-    // TODO: Implémenter la suppression réelle
+    setLignes((prev) => prev.filter((l) => l.id !== id));
+    setModalOpen(false);
+    setSelectedLigne(null);
   };
 
   const handleInfosClick = (ligne: LigneBudgetaireComplete) => {
