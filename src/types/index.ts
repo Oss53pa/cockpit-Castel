@@ -1612,6 +1612,7 @@ export const IA_DOCUMENT_TYPE_LABELS: Record<IADocumentType, string> = {
 // Modules cibles pour l'intégration
 export const IA_TARGET_MODULES = [
   'actions',
+  'jalons',
   'budget',
   'risques',
   'commercial',
@@ -1624,6 +1625,7 @@ export type IATargetModule = (typeof IA_TARGET_MODULES)[number];
 
 export const IA_TARGET_MODULE_LABELS: Record<IATargetModule, string> = {
   actions: 'Actions',
+  jalons: 'Jalons',
   budget: 'Budget',
   risques: 'Risques',
   commercial: 'Commercial',

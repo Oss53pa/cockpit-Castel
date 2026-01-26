@@ -28,8 +28,6 @@ import {
   Card,
   Button,
   Badge,
-  Select,
-  SelectOption,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -54,6 +52,7 @@ import {
 } from '@/hooks';
 import {
   IA_DOCUMENT_TYPE_LABELS,
+  IA_TARGET_MODULES,
   IA_TARGET_MODULE_LABELS,
   IA_IMPORT_STATUS_LABELS,
   IA_IMPORT_STATUS_STYLES,
@@ -63,7 +62,7 @@ import {
 } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { extractTextFromFile, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/services/claudeService';
-import type { IntegrationResult } from '@/services/iaIntegrationService';
+import { getAutoDetectedModules, type IntegrationResult } from '@/services/iaIntegrationService';
 import { cn } from '@/lib/utils';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -431,6 +430,21 @@ const FIELD_LABELS: Record<string, string> = {
   devis: 'Devis',
   validite: 'Validité',
   tva: 'TVA',
+  // Champs d'extraction intelligente
+  datesTrouvees: 'Dates détectées',
+  montantsTrouves: 'Montants détectés',
+  personnesMentionnees: 'Personnes mentionnées',
+  sections: 'Sections du document',
+  statistiquesDocument: 'Statistiques document',
+  pages: 'Pages',
+  lignes: 'Lignes',
+  caracteres: 'Caractères',
+  pointsAbordes: 'Points abordés',
+  resumeParParagraphe: 'Résumé par paragraphe',
+  lignesDetectees: 'Lignes de détail',
+  resumeContenu: 'Résumé du contenu',
+  actionsDetectees: 'Actions détectées',
+  contexte: 'Contexte',
   _warning: 'Avertissement',
 };
 
@@ -531,7 +545,10 @@ function ExtractedDataView({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-// Composant Validation Modal
+// Modules principaux d'intégration (affichés en priorité)
+const PRIMARY_MODULES: IATargetModule[] = ['actions', 'jalons', 'budget', 'risques'];
+
+// Composant Validation Modal avec sélection multi-modules
 function ValidationModal({
   imp,
   open,
@@ -541,18 +558,47 @@ function ValidationModal({
   imp: IAImport | null;
   open: boolean;
   onClose: () => void;
-  onValidate: (id: number, module: IATargetModule) => void;
+  onValidate: (id: number, modules: IATargetModule[]) => void;
 }) {
-  const [selectedModule, setSelectedModule] = useState<IATargetModule | ''>('');
+  const [selectedModules, setSelectedModules] = useState<Set<IATargetModule>>(new Set());
+  const [showAllModules, setShowAllModules] = useState(false);
+
+  // Auto-detect modules when import changes
+  useEffect(() => {
+    if (imp?.extractedData && imp.documentType) {
+      const detected = getAutoDetectedModules(imp.documentType, imp.extractedData);
+      setSelectedModules(new Set(detected));
+    }
+  }, [imp?.id, imp?.documentType, imp?.extractedData]);
 
   if (!imp) return null;
 
+  const toggleModule = (mod: IATargetModule) => {
+    setSelectedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(mod)) {
+        next.delete(mod);
+      } else {
+        next.add(mod);
+      }
+      return next;
+    });
+  };
+
   const handleValidate = () => {
-    if (selectedModule && imp.id) {
-      onValidate(imp.id, selectedModule);
+    if (selectedModules.size > 0 && imp.id) {
+      onValidate(imp.id, Array.from(selectedModules));
       onClose();
     }
   };
+
+  const autoDetected = imp.extractedData && imp.documentType
+    ? new Set(getAutoDetectedModules(imp.documentType, imp.extractedData))
+    : new Set<IATargetModule>();
+
+  const secondaryModules = IA_TARGET_MODULES.filter(
+    (m) => !PRIMARY_MODULES.includes(m)
+  );
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -567,7 +613,6 @@ function ValidationModal({
         <div className="grid grid-cols-2 gap-6 py-4 max-h-[60vh] overflow-y-auto">
           {/* Colonne gauche: Aperçu document */}
           <div className="space-y-4">
-            {/* Prévisualisation du document */}
             {imp.id && (
               <DocumentPreview
                 importId={imp.id}
@@ -576,7 +621,6 @@ function ValidationModal({
               />
             )}
 
-            {/* Informations fichier */}
             <div className="bg-neutral-50 rounded-xl p-4">
               <div className="flex items-center gap-3 mb-3">
                 <FileText className="w-6 h-6 text-neutral-400" />
@@ -609,7 +653,7 @@ function ValidationModal({
             </div>
           </div>
 
-          {/* Colonne droite: Données extraites */}
+          {/* Colonne droite: Données extraites + Modules cibles */}
           <div className="space-y-4">
             <div>
               <p className="text-sm font-medium text-neutral-700 mb-2">Type détecté</p>
@@ -634,25 +678,104 @@ function ValidationModal({
               </div>
             </div>
 
+            {/* Sélection multi-modules */}
             <div>
-              <p className="text-sm font-medium text-neutral-700 mb-2">Module cible</p>
-              <Select
-                value={selectedModule}
-                onChange={(e) => setSelectedModule(e.target.value as IATargetModule)}
+              <p className="text-sm font-medium text-neutral-700 mb-2">
+                Intégrer dans les modules
+              </p>
+              <p className="text-xs text-neutral-500 mb-3">
+                Les modules recommandés sont pré-sélectionnés. Cochez/décochez selon vos besoins.
+              </p>
+
+              {/* Modules principaux */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {PRIMARY_MODULES.map((mod) => {
+                  const isSelected = selectedModules.has(mod);
+                  const isRecommended = autoDetected.has(mod);
+                  return (
+                    <button
+                      key={mod}
+                      onClick={() => toggleModule(mod)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all',
+                        isSelected
+                          ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                          : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
+                      )}
+                    >
+                      <div className={cn(
+                        'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0',
+                        isSelected
+                          ? 'border-indigo-500 bg-indigo-500'
+                          : 'border-neutral-300'
+                      )}>
+                        {isSelected && (
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={cn(
+                          'text-sm font-medium block',
+                          isSelected ? 'text-indigo-700' : 'text-neutral-700'
+                        )}>
+                          {IA_TARGET_MODULE_LABELS[mod]}
+                        </span>
+                        {isRecommended && (
+                          <span className="text-xs text-indigo-500">Recommandé</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Toggle autres modules */}
+              <button
+                onClick={() => setShowAllModules(!showAllModules)}
+                className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
               >
-                <SelectOption value="">Sélectionner un module...</SelectOption>
-                {Object.entries(IA_TARGET_MODULE_LABELS).map(([value, label]) => (
-                  <SelectOption key={value} value={value}>
-                    {label}
-                  </SelectOption>
-                ))}
-              </Select>
+                {showAllModules ? 'Masquer les autres modules' : 'Afficher plus de modules...'}
+              </button>
+
+              {showAllModules && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {secondaryModules.map((mod) => {
+                    const isSelected = selectedModules.has(mod);
+                    return (
+                      <button
+                        key={mod}
+                        onClick={() => toggleModule(mod)}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all text-sm',
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-neutral-200 bg-white hover:border-neutral-300'
+                        )}
+                      >
+                        <div className={cn(
+                          'w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0',
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-500'
+                            : 'border-neutral-300'
+                        )}>
+                          {isSelected && (
+                            <CheckCircle className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <span className={isSelected ? 'text-indigo-700' : 'text-neutral-600'}>
+                          {IA_TARGET_MODULE_LABELS[mod]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {imp.extractedData && (
               <div>
                 <p className="text-sm font-medium text-neutral-700 mb-2">Données extraites</p>
-                <ScrollArea className="h-52 rounded-lg border border-neutral-200 bg-white">
+                <ScrollArea className="h-44 rounded-lg border border-neutral-200 bg-white">
                   <ExtractedDataView data={imp.extractedData} />
                 </ScrollArea>
               </div>
@@ -661,6 +784,13 @@ function ValidationModal({
         </div>
 
         <DialogFooter className="border-t pt-4">
+          <div className="flex items-center gap-2 mr-auto">
+            {selectedModules.size > 0 && (
+              <span className="text-xs text-neutral-500">
+                {selectedModules.size} module{selectedModules.size > 1 ? 's' : ''} sélectionné{selectedModules.size > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <Button variant="ghost" onClick={onClose}>
             Annuler
           </Button>
@@ -671,7 +801,7 @@ function ValidationModal({
           <Button
             variant="primary"
             onClick={handleValidate}
-            disabled={!selectedModule}
+            disabled={selectedModules.size === 0}
           >
             <CheckCircle className="w-4 h-4 mr-2" />
             Valider et intégrer
@@ -685,6 +815,7 @@ function ValidationModal({
 // Navigation vers module cible (routes existantes uniquement)
 const MODULE_ROUTES: Record<string, string> = {
   actions: '/actions',
+  jalons: '/jalons',
   budget: '/budget',
   risques: '/risques',
   commercial: '/rapports',
@@ -694,7 +825,7 @@ const MODULE_ROUTES: Record<string, string> = {
   reunions: '/rapports',
 };
 
-// Panneau de résultat d'intégration
+// Panneau de résultat d'intégration (multi-modules)
 function IntegrationResultPanel({
   result,
   onClose,
@@ -703,7 +834,17 @@ function IntegrationResultPanel({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
-  const targetRoute = MODULE_ROUTES[result.targetModule] || '/';
+  const modules = result.targetModules ?? [result.targetModule];
+
+  // Regrouper les records par module
+  const recordsByModule = new Map<IATargetModule, IntegrationResult['records']>();
+  for (const record of result.records) {
+    const mod = record.module ?? result.targetModule;
+    if (!recordsByModule.has(mod)) {
+      recordsByModule.set(mod, []);
+    }
+    recordsByModule.get(mod)!.push(record);
+  }
 
   return (
     <Card padding="lg" className={cn(
@@ -729,14 +870,16 @@ function IntegrationResultPanel({
             )}>
               {result.success ? 'Document intégré avec succès' : 'Erreur lors de l\'intégration'}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <Badge variant="secondary" className="text-xs">
                 {IA_DOCUMENT_TYPE_LABELS[result.documentType]}
               </Badge>
               <ArrowRight className="w-3 h-3 text-neutral-400" />
-              <Badge className="bg-indigo-100 text-indigo-700 text-xs">
-                {IA_TARGET_MODULE_LABELS[result.targetModule]}
-              </Badge>
+              {modules.map((mod) => (
+                <Badge key={mod} className="bg-indigo-100 text-indigo-700 text-xs">
+                  {IA_TARGET_MODULE_LABELS[mod]}
+                </Badge>
+              ))}
             </div>
           </div>
         </div>
@@ -752,37 +895,53 @@ function IntegrationResultPanel({
       )}
 
       {result.records.length > 0 && (
-        <div className="space-y-2 mb-4">
+        <div className="space-y-3 mb-4">
           <p className="text-sm font-medium text-neutral-700">
-            {result.records.length} enregistrement{result.records.length > 1 ? 's' : ''} créé{result.records.length > 1 ? 's' : ''} :
+            {result.records.length} enregistrement{result.records.length > 1 ? 's' : ''} créé{result.records.length > 1 ? 's' : ''} dans {recordsByModule.size} module{recordsByModule.size > 1 ? 's' : ''} :
           </p>
-          <div className="space-y-1.5">
-            {result.records.map((record, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200"
-              >
-                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span className="text-sm text-neutral-800 flex-1">{record.label}</span>
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {record.type}
-                </Badge>
+
+          {/* Grouper par module */}
+          {Array.from(recordsByModule.entries()).map(([mod, records]) => (
+            <div key={mod} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Database className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+                  {IA_TARGET_MODULE_LABELS[mod]} ({records.length})
+                </span>
               </div>
-            ))}
-          </div>
+              {records.map((record, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200"
+                >
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span className="text-sm text-neutral-800 flex-1">{record.label}</span>
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {record.type}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
       {result.success && (
-        <div className="flex items-center gap-3">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate(targetRoute)}
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Voir dans {IA_TARGET_MODULE_LABELS[result.targetModule]}
-          </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {Array.from(recordsByModule.keys()).map((mod) => {
+            const route = MODULE_ROUTES[mod] || '/';
+            return (
+              <Button
+                key={mod}
+                variant="primary"
+                size="sm"
+                onClick={() => navigate(route)}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Voir {IA_TARGET_MODULE_LABELS[mod]}
+              </Button>
+            );
+          })}
           <Button variant="ghost" size="sm" onClick={onClose}>
             Fermer
           </Button>
@@ -935,6 +1094,7 @@ function ArchiveDetailModal({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-neutral-800 truncate">
                           {integ.targetTable === 'actions' && 'Action'}
+                          {integ.targetTable === 'jalons' && 'Jalon'}
                           {integ.targetTable === 'budget' && 'Budget'}
                           {integ.targetTable === 'risques' && 'Risque'}
                           {integ.targetTable === 'iaIntegrations' && 'Enregistrement'}
@@ -1220,20 +1380,21 @@ export function ImportIA() {
     [processFile]
   );
 
-  // Validation et intégration d'un import
+  // Validation et intégration d'un import (multi-modules)
   const handleValidate = useCallback(
-    async (id: number, module: IATargetModule) => {
+    async (id: number, modules: IATargetModule[]) => {
       setIsValidating(true);
       setValidationImport(null);
       try {
-        const result = await validateAndIntegrateIAImport(id, 1, module);
+        const result = await validateAndIntegrateIAImport(id, 1, modules);
         setIntegrationResult(result);
       } catch (error) {
         console.error('Erreur validation:', error);
         setIntegrationResult({
           success: false,
           documentType: 'autre',
-          targetModule: module,
+          targetModule: modules[0] || 'documents',
+          targetModules: modules,
           records: [],
           error: error instanceof Error ? error.message : 'Erreur inconnue',
         });

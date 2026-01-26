@@ -8,7 +8,7 @@ import type {
   IATargetModule,
   IAStats,
 } from '@/types';
-import { integrateImport, type IntegrationResult } from '@/services/iaIntegrationService';
+import { integrateImport, integrateImportMultiModule, type IntegrationResult } from '@/services/iaIntegrationService';
 
 /**
  * Hook pour récupérer tous les imports
@@ -314,18 +314,22 @@ export async function validateIAImport(
  * Valider et intégrer un import en une seule opération.
  * Valide l'import, puis appelle le service d'intégration pour créer
  * les enregistrements dans les modules cibles.
+ * Supporte un seul module (rétrocompatibilité) ou plusieurs modules.
  */
 export async function validateAndIntegrateIAImport(
   id: number,
   validatedBy: number,
-  targetModule: IATargetModule
+  targetModules: IATargetModule | IATargetModule[]
 ): Promise<IntegrationResult> {
+  const modules = Array.isArray(targetModules) ? targetModules : [targetModules];
+  const primaryModule = modules[0];
+
   // 1. Marquer comme validé
   await db.iaImports.update(id, {
     status: 'validated',
     validatedAt: new Date().toISOString(),
     validatedBy,
-    targetModule,
+    targetModule: primaryModule,
   });
 
   // 2. Récupérer les données de l'import
@@ -334,14 +338,18 @@ export async function validateAndIntegrateIAImport(
     return {
       success: false,
       documentType: imp?.documentType || 'autre',
-      targetModule,
+      targetModule: primaryModule,
+      targetModules: modules,
       records: [],
       error: 'Données extraites non disponibles',
     };
   }
 
-  // 3. Intégrer dans le module cible
-  return integrateImport(id, targetModule, imp.extractedData, imp.documentType);
+  // 3. Intégrer dans les modules cibles
+  if (modules.length === 1) {
+    return integrateImport(id, primaryModule, imp.extractedData, imp.documentType);
+  }
+  return integrateImportMultiModule(id, modules, imp.extractedData, imp.documentType);
 }
 
 /**

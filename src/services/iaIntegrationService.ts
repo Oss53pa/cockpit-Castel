@@ -1,6 +1,7 @@
 import { createAction } from '@/hooks/useActions';
 import { createBudgetItem } from '@/hooks/useBudget';
 import { createRisque } from '@/hooks/useRisques';
+import { createJalon } from '@/hooks/useJalons';
 import { saveIAIntegration, integrateIAImport } from '@/hooks/useImportIA';
 import type { IADocumentType, IATargetModule } from '@/types';
 
@@ -11,12 +12,68 @@ export interface IntegrationResult {
   success: boolean;
   documentType: IADocumentType;
   targetModule: IATargetModule;
+  targetModules: IATargetModule[];
   records: Array<{
-    type: 'action' | 'budget' | 'risque' | 'integration';
+    type: 'action' | 'budget' | 'risque' | 'jalon' | 'integration';
     id: number;
     label: string;
+    module: IATargetModule;
   }>;
   error?: string;
+}
+
+/**
+ * Détecte automatiquement les modules pertinents selon le type de document et les données extraites.
+ * Retourne les modules recommandés (auto-cochés) dans l'interface.
+ */
+export function getAutoDetectedModules(
+  documentType: IADocumentType,
+  extractedData: Record<string, unknown>,
+): IATargetModule[] {
+  const modules: IATargetModule[] = [];
+
+  // Actions: compte_rendu, pv_reception, planning ont des actions
+  if (['compte_rendu', 'pv_reception', 'planning'].includes(documentType)) {
+    modules.push('actions');
+  }
+  // Jalons: planning, pv_reception, compte_rendu peuvent avoir des jalons
+  if (['planning', 'pv_reception', 'compte_rendu'].includes(documentType)) {
+    modules.push('jalons');
+  }
+  // Budget: facture, devis, bail_commercial ont des montants
+  if (['facture', 'devis', 'bail_commercial'].includes(documentType)) {
+    modules.push('budget');
+  }
+  // Risques: rapport_audit a des constats
+  if (documentType === 'rapport_audit') {
+    modules.push('risques');
+  }
+
+  // Détection dynamique via les données extraites
+  if (modules.length === 0) {
+    const keys = Object.keys(extractedData);
+    const text = JSON.stringify(extractedData).toLowerCase();
+
+    if (keys.some((k) => ['actionsIssues', 'actions', 'taches', 'reserves'].includes(k)) || text.includes('action')) {
+      modules.push('actions');
+    }
+    if (keys.some((k) => ['montants', 'loyer', 'prix', 'facture', 'devis'].includes(k)) || text.includes('montant') || text.includes('prix')) {
+      modules.push('budget');
+    }
+    if (keys.some((k) => ['constats', 'risques', 'nonConformites'].includes(k)) || text.includes('risque') || text.includes('non-conformit')) {
+      modules.push('risques');
+    }
+    if (keys.some((k) => ['jalons', 'phases', 'etapes', 'planning'].includes(k)) || text.includes('jalon') || text.includes('milestone')) {
+      modules.push('jalons');
+    }
+  }
+
+  // Fallback: si rien détecté, proposer documents
+  if (modules.length === 0) {
+    modules.push('documents');
+  }
+
+  return modules;
 }
 
 // ============================================================================
@@ -204,6 +261,7 @@ async function integrateToActions(
       type: 'action',
       id: actionId,
       label: `Action créée : ${titre}`,
+      module: 'actions',
     });
   }
 
@@ -269,6 +327,7 @@ async function integrateToBudget(
       type: 'budget',
       id: budgetId,
       label: `Budget créé : ${libelle} — ${(ttc || ht).toLocaleString('fr-FR')} ${devise}`,
+      module: 'budget',
     });
 
     // Si facture avec lignes détaillées, on crée aussi des sous-items
@@ -303,6 +362,7 @@ async function integrateToBudget(
           type: 'budget',
           id: ligneId,
           label: `Ligne budget : ${descLigne} — ${montantLigne.toLocaleString('fr-FR')} ${devise}`,
+          module: 'budget',
         });
       }
     }
@@ -346,6 +406,7 @@ async function integrateToBudget(
         type: 'budget',
         id: budgetId,
         label: `Budget bail : ${libelle} — ${loyerMensuel.toLocaleString('fr-FR')} ${devise}/mois`,
+        module: 'budget',
       });
     }
   }
@@ -474,6 +535,146 @@ async function integrateToRisques(
       type: 'risque',
       id: risqueId,
       label: `Risque créé : ${titre} (score ${probabilite * impact})`,
+      module: 'risques',
+    });
+  }
+
+  return records;
+}
+
+// ============================================================================
+// Intégration vers Jalons
+// ============================================================================
+
+async function integrateToJalons(
+  importId: number,
+  extractedData: Record<string, unknown>,
+  documentType: IADocumentType,
+): Promise<IntegrationResult['records']> {
+  const records: IntegrationResult['records'] = [];
+  const items: Array<{ titre: string; description?: string; date?: string; responsable?: string }> = [];
+
+  if (documentType === 'planning') {
+    const phases = (extractedData.phases || extractedData.etapes || extractedData.jalons) as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(phases)) {
+      for (const p of phases) {
+        items.push({
+          titre: toStr(p.titre || p.nom || p.description).slice(0, 100),
+          description: toStr(p.description || p.detail).slice(0, 500),
+          date: toStr(p.date || p.dateFin || p.echeance),
+          responsable: toStr(p.responsable),
+        });
+      }
+    }
+    // Si pas de phases explicites mais des tâches, créer un jalon par lot de tâches
+    if (items.length === 0) {
+      const taches = (extractedData.taches || extractedData.lignes) as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(taches) && taches.length > 0) {
+        items.push({
+          titre: `Jalon planning - ${toStr(extractedData.titre || extractedData.objet || 'Import IA')}`.slice(0, 100),
+          description: `Planning avec ${taches.length} tâche(s) importé via IA`,
+          date: toStr(taches[taches.length - 1]?.fin || taches[taches.length - 1]?.echeance),
+        });
+      }
+    }
+  } else if (documentType === 'pv_reception') {
+    items.push({
+      titre: `Réception - ${toStr(extractedData.objet || extractedData.chantier || 'PV Réception')}`.slice(0, 100),
+      description: `PV de réception importé via IA. ${toStr(extractedData.avecReserves) === 'true' ? 'Avec réserves.' : 'Sans réserves.'}`,
+      date: toStr((extractedData.reception as Record<string, unknown>)?.date) || today(),
+    });
+  } else if (documentType === 'compte_rendu') {
+    const reunion = extractedData.reunion as Record<string, unknown> | undefined;
+    if (reunion) {
+      items.push({
+        titre: `CR - ${toStr(reunion.type || reunion.objet || 'Réunion')}`.slice(0, 100),
+        description: `Compte rendu de réunion du ${toStr(reunion.date)}`,
+        date: toStr(reunion.date) || today(),
+      });
+    }
+  }
+
+  for (const item of items) {
+    if (!item.titre) continue;
+
+    const datePrevue = item.date || futureDate(30);
+
+    const jalonId = await createJalon({
+      id_jalon: generateRef('JAL'),
+      code_wbs: generateRef('WBS-JAL'),
+      titre: item.titre,
+      description: item.description || item.titre,
+      axe: 'axe3_technique',
+      categorie: 'technique',
+      type_jalon: 'technique',
+      niveau_importance: 'standard',
+      date_prevue: datePrevue,
+      date_reelle: null,
+      heure_cible: null,
+      fuseau_horaire: 'Africa/Abidjan',
+      date_butoir_absolue: null,
+      flexibilite: 'moyenne',
+      alerte_j30: futureDate(-30),
+      alerte_j15: futureDate(-15),
+      alerte_j7: futureDate(-7),
+      statut: 'a_venir',
+      avancement_prealables: 0,
+      confiance_atteinte: 50,
+      tendance: 'stable',
+      date_derniere_maj: today(),
+      maj_par: 'Import IA',
+      responsable: item.responsable || 'À assigner',
+      validateur: 'Direction',
+      contributeurs: [],
+      parties_prenantes: [],
+      escalade_niveau1: 'Chef de projet',
+      escalade_niveau2: 'Directeur',
+      escalade_niveau3: 'DG',
+      predecesseurs: [],
+      successeurs: [],
+      actions_prerequises: [],
+      chemin_critique: false,
+      impact_retard: 'modere',
+      cout_retard_jour: null,
+      risques_associes: [],
+      probabilite_atteinte: 50,
+      plan_contingence: null,
+      livrables: [],
+      criteres_acceptation: [],
+      budget_associe: null,
+      budget_consomme: null,
+      impact_financier_global: null,
+      documents: [],
+      lien_sharepoint: null,
+      alertes_actives: true,
+      canal_alerte: ['app'],
+      frequence_rappel: 'quotidien',
+      notifier: [],
+      notes: `Import IA - ${documentType}`,
+      commentaire_reporting: null,
+      visibilite: ['flash_hebdo'],
+      version: 1,
+      date_creation: today(),
+      cree_par: 'Import IA',
+      derniere_modification: today(),
+      modifie_par: 'Import IA',
+    });
+
+    await saveIAIntegration({
+      importId,
+      targetModule: 'jalons',
+      targetTable: 'jalons',
+      recordId: jalonId,
+      action: 'INSERT',
+      data: { titre: item.titre, datePrevue },
+      integratedBy: 1,
+    });
+
+    records.push({
+      type: 'jalon',
+      id: jalonId,
+      label: `Jalon créé : ${item.titre} — ${datePrevue}`,
+      module: 'jalons',
     });
   }
 
@@ -506,13 +707,48 @@ async function integrateGeneric(
     type: 'integration',
     id: integrationId,
     label: `Document ${documentType} enregistré dans ${targetModule}`,
+    module: targetModule,
   });
 
   return records;
 }
 
 // ============================================================================
-// Dispatch principal
+// Dispatch par module
+// ============================================================================
+
+/**
+ * Intègre les données extraites dans UN module cible.
+ */
+async function integrateToModule(
+  importId: number,
+  targetModule: IATargetModule,
+  extractedData: Record<string, unknown>,
+  documentType: IADocumentType,
+): Promise<IntegrationResult['records']> {
+  if (targetModule === 'actions') {
+    if (['compte_rendu', 'pv_reception', 'planning'].includes(documentType)) {
+      return integrateToActions(importId, extractedData, documentType);
+    }
+  } else if (targetModule === 'jalons') {
+    if (['planning', 'pv_reception', 'compte_rendu'].includes(documentType)) {
+      return integrateToJalons(importId, extractedData, documentType);
+    }
+  } else if (targetModule === 'budget') {
+    if (['facture', 'devis', 'bail_commercial'].includes(documentType)) {
+      return integrateToBudget(importId, extractedData, documentType);
+    }
+  } else if (targetModule === 'risques') {
+    if (documentType === 'rapport_audit') {
+      return integrateToRisques(importId, extractedData, documentType);
+    }
+  }
+  // Fallback: stockage générique
+  return integrateGeneric(importId, extractedData, documentType, targetModule);
+}
+
+// ============================================================================
+// Dispatch principal — un seul module (rétrocompatibilité)
 // ============================================================================
 
 /**
@@ -526,33 +762,9 @@ export async function integrateImport(
   documentType: IADocumentType,
 ): Promise<IntegrationResult> {
   try {
-    let records: IntegrationResult['records'] = [];
+    let records = await integrateToModule(importId, targetModule, extractedData, documentType);
 
-    // Dispatch selon le type de document et le module cible
-    if (targetModule === 'actions') {
-      if (['compte_rendu', 'pv_reception', 'planning'].includes(documentType)) {
-        records = await integrateToActions(importId, extractedData, documentType);
-      } else {
-        records = await integrateGeneric(importId, extractedData, documentType, targetModule);
-      }
-    } else if (targetModule === 'budget') {
-      if (['facture', 'devis', 'bail_commercial'].includes(documentType)) {
-        records = await integrateToBudget(importId, extractedData, documentType);
-      } else {
-        records = await integrateGeneric(importId, extractedData, documentType, targetModule);
-      }
-    } else if (targetModule === 'risques') {
-      if (documentType === 'rapport_audit') {
-        records = await integrateToRisques(importId, extractedData, documentType);
-      } else {
-        records = await integrateGeneric(importId, extractedData, documentType, targetModule);
-      }
-    } else {
-      // Modules sans intégration spécifique : stockage générique
-      records = await integrateGeneric(importId, extractedData, documentType, targetModule);
-    }
-
-    // Si aucun record n'a été créé par les fonctions spécialisées, enregistrer quand même
+    // Si aucun record n'a été créé, enregistrer quand même en générique
     if (records.length === 0) {
       records = await integrateGeneric(importId, extractedData, documentType, targetModule);
     }
@@ -565,6 +777,7 @@ export async function integrateImport(
       success: true,
       documentType,
       targetModule,
+      targetModules: [targetModule],
       records,
     };
   } catch (error) {
@@ -573,8 +786,59 @@ export async function integrateImport(
       success: false,
       documentType,
       targetModule,
+      targetModules: [targetModule],
       records: [],
       error: error instanceof Error ? error.message : 'Erreur inconnue',
     };
   }
+}
+
+// ============================================================================
+// Dispatch multi-modules
+// ============================================================================
+
+/**
+ * Intègre les données extraites dans PLUSIEURS modules cibles simultanément.
+ * Retourne un résultat combiné avec tous les enregistrements créés.
+ */
+export async function integrateImportMultiModule(
+  importId: number,
+  targetModules: IATargetModule[],
+  extractedData: Record<string, unknown>,
+  documentType: IADocumentType,
+): Promise<IntegrationResult> {
+  const allRecords: IntegrationResult['records'] = [];
+  const errors: string[] = [];
+
+  for (const module of targetModules) {
+    try {
+      const records = await integrateToModule(importId, module, extractedData, documentType);
+      allRecords.push(...records);
+    } catch (error) {
+      console.error(`Erreur intégration IA → ${module}:`, error);
+      errors.push(`${module}: ${error instanceof Error ? error.message : 'Erreur'}`);
+    }
+  }
+
+  // Si aucun enregistrement créé dans aucun module, enregistrer en générique
+  if (allRecords.length === 0 && errors.length === 0) {
+    const fallback = await integrateGeneric(importId, extractedData, documentType, targetModules[0] || 'documents');
+    allRecords.push(...fallback);
+  }
+
+  // Marquer l'import comme intégré
+  const recordIds = allRecords.map((r) => r.id);
+  await integrateIAImport(importId, recordIds, 1);
+
+  const hasErrors = errors.length > 0;
+  const hasRecords = allRecords.length > 0;
+
+  return {
+    success: hasRecords && !hasErrors,
+    documentType,
+    targetModule: targetModules[0] || 'documents',
+    targetModules,
+    records: allRecords,
+    error: hasErrors ? errors.join(' | ') : undefined,
+  };
 }
