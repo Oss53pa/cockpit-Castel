@@ -274,9 +274,10 @@ export async function updateIAImportExtraction(
     extractedData: Record<string, unknown>;
     ocrApplied?: boolean;
     processingTimeMs?: number;
+    modelVersion?: string;
   }
 ): Promise<void> {
-  await db.iaImports.update(id, {
+  const updates: Partial<IAImport> = {
     documentType: data.documentType,
     confidence: data.confidence,
     extractedData: data.extractedData,
@@ -284,7 +285,13 @@ export async function updateIAImportExtraction(
     processingTimeMs: data.processingTimeMs ?? 0,
     status: 'ready',
     progress: 100,
-  });
+  };
+
+  if (data.modelVersion) {
+    updates.modelVersion = data.modelVersion;
+  }
+
+  await db.iaImports.update(id, updates);
 }
 
 /**
@@ -482,7 +489,8 @@ export { extractWithClaude as performAIExtraction } from '@/services/claudeServi
  */
 export async function simulateAIExtraction(
   documentText: string,
-  mimeType: string
+  mimeType: string,
+  modelOverride?: string
 ): Promise<{
   documentType: IADocumentType;
   confidence: number;
@@ -493,10 +501,10 @@ export async function simulateAIExtraction(
 
   // Utiliser l'API Claude si configuree
   if (isClaudeConfigured()) {
-    return extractWithClaude(documentText, mimeType);
+    return extractWithClaude(documentText, mimeType, modelOverride);
   }
 
   // Sinon, utiliser le mode simulation (fallback)
   console.info('API Claude non configuree - Mode simulation active');
-  return extractWithClaude(documentText, mimeType);
+  return extractWithClaude(documentText, mimeType, modelOverride);
 }

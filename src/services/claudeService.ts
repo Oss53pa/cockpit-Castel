@@ -141,9 +141,21 @@ DEVIS:
 /**
  * Extraire les donnees d'un document via l'API Claude
  */
+/**
+ * Modeles IA disponibles pour l'extraction
+ */
+export const AVAILABLE_MODELS = [
+  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', description: 'Rapide et efficace (recommandé)' },
+  { id: 'claude-opus-4-20250514', label: 'Claude Opus 4', description: 'Plus précis, plus lent' },
+  { id: 'claude-haiku-3-20250307', label: 'Claude Haiku 3', description: 'Très rapide, moins précis' },
+] as const;
+
+export const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+
 export async function extractWithClaude(
   documentContent: string,
-  mimeType: string
+  mimeType: string,
+  modelOverride?: string
 ): Promise<ExtractionResult> {
   const config = getClaudeConfig();
 
@@ -151,6 +163,8 @@ export async function extractWithClaude(
     console.warn('API Claude non configuree, utilisation du mode simulation');
     return simulateFallbackExtraction(documentContent);
   }
+
+  const model = modelOverride || config.model || DEFAULT_MODEL;
 
   try {
     const response = await fetch(API_ENDPOINTS.anthropic.messages, {
@@ -162,7 +176,7 @@ export async function extractWithClaude(
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: config.model || 'claude-sonnet-4-20250514',
+        model,
         max_tokens: config.maxTokens || 4096,
         system: EXTRACTION_SYSTEM_PROMPT,
         messages: [

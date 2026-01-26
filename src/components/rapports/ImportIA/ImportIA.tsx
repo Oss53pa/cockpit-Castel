@@ -62,7 +62,7 @@ import {
   type IATargetModule,
 } from '@/types';
 import { useNavigate } from 'react-router-dom';
-import { extractTextFromFile } from '@/services/claudeService';
+import { extractTextFromFile, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/services/claudeService';
 import type { IntegrationResult } from '@/services/iaIntegrationService';
 import { cn } from '@/lib/utils';
 
@@ -578,6 +578,12 @@ function ValidationModal({
                 {imp.ocrApplied && (
                   <Badge className="bg-purple-100 text-purple-700 text-xs">OCR</Badge>
                 )}
+                {imp.modelVersion && (
+                  <Badge className="bg-sky-100 text-sky-700 text-xs">
+                    <Bot className="w-3 h-3 mr-1" />
+                    {imp.modelVersion}
+                  </Badge>
+                )}
                 {imp.processingTimeMs > 0 && (
                   <span className="text-xs text-neutral-500 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
@@ -840,6 +846,12 @@ function ArchiveDetailModal({
                 )}
                 {imp.ocrApplied && (
                   <Badge className="bg-purple-100 text-purple-700 text-xs">OCR</Badge>
+                )}
+                {imp.modelVersion && (
+                  <Badge className="bg-sky-100 text-sky-700 text-xs">
+                    <Bot className="w-3 h-3 mr-1" />
+                    {imp.modelVersion}
+                  </Badge>
                 )}
               </div>
 
@@ -1109,6 +1121,7 @@ export function ImportIA() {
   const [validationImport, setValidationImport] = useState<IAImport | null>(null);
   const [integrationResult, setIntegrationResult] = useState<IntegrationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
 
   // Ref pour tracker les imports en cours et auto-ouvrir la modale
   const lastProcessedIdsRef = useRef<Set<number>>(new Set());
@@ -1161,9 +1174,9 @@ export function ImportIA() {
     }
     await updateIAImportStatus(importId, 'analyzing', 50);
 
-    // Étape 3: Analyse IA
+    // Étape 3: Analyse IA avec le modèle sélectionné
     try {
-      const result = await simulateAIExtraction(text, file.type);
+      const result = await simulateAIExtraction(text, file.type, selectedModel);
       const processingTimeMs = Date.now() - startTime;
 
       await updateIAImportExtraction(importId, {
@@ -1171,13 +1184,14 @@ export function ImportIA() {
         confidence: result.confidence,
         extractedData: result.extractedData,
         processingTimeMs,
+        modelVersion: selectedModel,
       });
     } catch (error) {
       console.error('Erreur extraction IA:', error);
       lastProcessedIdsRef.current.delete(importId);
       await updateIAImportStatus(importId, 'failed');
     }
-  }, []);
+  }, [selectedModel]);
 
   // Gestion des fichiers sélectionnés
   const handleFilesSelected = useCallback(
@@ -1292,8 +1306,36 @@ export function ImportIA() {
         </Card>
       </div>
 
-      {/* Zone principale */}
+      {/* Sélecteur de modèle IA + Zone de dépôt */}
       <Card padding="lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-primary-600" />
+            <span className="text-sm font-medium text-neutral-700">Modèle IA</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {AVAILABLE_MODELS.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedModel(m.id)}
+                className={cn(
+                  'flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-all',
+                  selectedModel === m.id
+                    ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
+                    : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50'
+                )}
+              >
+                <span className={cn(
+                  'text-sm font-medium',
+                  selectedModel === m.id ? 'text-indigo-700' : 'text-neutral-700'
+                )}>
+                  {m.label}
+                </span>
+                <span className="text-xs text-neutral-500">{m.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <UploadZone onFilesSelected={handleFilesSelected} />
       </Card>
 
