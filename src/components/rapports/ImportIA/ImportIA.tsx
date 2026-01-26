@@ -70,39 +70,66 @@ const getFileIcon = (mimeType: string) => {
 // Composant Zone de dépôt
 function UploadZone({ onFilesSelected }: { onFilesSelected: (files: File[]) => void }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.value = '';
+  }, []);
+
+  const filterFiles = useCallback((fileList: File[]) => {
+    const accepted: File[] = [];
+    const rejected: string[] = [];
+
+    for (const file of fileList) {
+      const isFormatOk = IA_SUPPORTED_FORMATS.includes(file.type as (typeof IA_SUPPORTED_FORMATS)[number])
+        || /\.(pdf|docx?|xlsx?|jpe?g|png|tiff?|csv)$/i.test(file.name);
+      const isSizeOk = file.size <= MAX_FILE_SIZE;
+
+      if (isFormatOk && isSizeOk) {
+        accepted.push(file);
+      } else if (!isFormatOk) {
+        rejected.push(`${file.name} : format non supporté`);
+      } else {
+        rejected.push(`${file.name} : fichier trop volumineux (max 25 Mo)`);
+      }
+    }
+
+    if (rejected.length > 0) {
+      setError(rejected.join(', '));
+      setTimeout(() => setError(null), 5000);
+    }
+
+    return accepted;
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
 
-      const files = Array.from(e.dataTransfer.files).filter(
-        (file) =>
-          IA_SUPPORTED_FORMATS.includes(file.type as (typeof IA_SUPPORTED_FORMATS)[number]) &&
-          file.size <= MAX_FILE_SIZE
-      );
-
+      const files = filterFiles(Array.from(e.dataTransfer.files));
       if (files.length > 0) {
         onFilesSelected(files);
       }
     },
-    [onFilesSelected]
+    [onFilesSelected, filterFiles]
   );
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []).filter(
-        (file) =>
-          IA_SUPPORTED_FORMATS.includes(file.type as (typeof IA_SUPPORTED_FORMATS)[number]) &&
-          file.size <= MAX_FILE_SIZE
-      );
-
+      const files = filterFiles(Array.from(e.target.files || []));
       if (files.length > 0) {
         onFilesSelected(files);
       }
+      // Reset input pour permettre de re-sélectionner le même fichier
+      e.target.value = '';
     },
-    [onFilesSelected]
+    [onFilesSelected, filterFiles]
   );
+
+  const handleBrowseClick = useCallback(() => {
+    const input = document.getElementById('ia-file-input') as HTMLInputElement;
+    input?.click();
+  }, []);
 
   return (
     <div
@@ -135,22 +162,29 @@ function UploadZone({ onFilesSelected }: { onFilesSelected: (files: File[]) => v
 
         <p className="text-sm text-neutral-500 mb-4">ou</p>
 
-        <label>
-          <input
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.csv"
-            className="hidden"
-            onChange={handleFileInput}
-          />
-          <Button variant="secondary" asChild>
-            <span>Parcourir</span>
-          </Button>
-        </label>
+        <input
+          id="ia-file-input"
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.tiff,.csv"
+          className="hidden"
+          onChange={handleFileInput}
+        />
+        <Button variant="secondary" onClick={handleBrowseClick}>
+          Parcourir
+        </Button>
 
         <p className="text-xs text-neutral-400 mt-4">
           PDF, Word, Excel, Images, Scans — Max 25 Mo/fichier
         </p>
+
+        {error && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
       </div>
     </div>
   );
