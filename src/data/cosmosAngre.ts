@@ -8357,14 +8357,93 @@ function generateLiensSync(): LienChantierMobilisation[] {
   ];
 }
 
+/**
+ * Lier automatiquement les actions sans jalonId au jalon le plus approprié.
+ * Logique : même axe + même buildingCode + date_prevue du jalon la plus proche
+ * après la date_fin_prevue de l'action (= le prochain jalon à atteindre).
+ */
+async function linkActionsToJalons(): Promise<number> {
+  const allJalons = await db.jalons.toArray();
+  const allActions = await db.actions.toArray();
+
+  // Grouper les jalons par (axe, buildingCode)
+  const jalonsByGroup = new Map<string, (typeof allJalons)>();
+  for (const jalon of allJalons) {
+    const key = `${jalon.axe}|${(jalon as Jalon & { buildingCode?: string }).buildingCode || ''}`;
+    if (!jalonsByGroup.has(key)) jalonsByGroup.set(key, []);
+    jalonsByGroup.get(key)!.push(jalon);
+  }
+
+  // Trier chaque groupe par date_prevue ascending
+  for (const group of jalonsByGroup.values()) {
+    group.sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime());
+  }
+
+  // Calculer les liens en mémoire (pas de DB ici)
+  const updates: { id: number; jalonId: number }[] = [];
+
+  for (const action of allActions) {
+    const bc = (action as Action & { buildingCode?: string }).buildingCode || '';
+
+    let key = `${action.axe}|${bc}`;
+    let jalons = jalonsByGroup.get(key);
+
+    if ((!jalons || jalons.length === 0) && bc) {
+      key = `${action.axe}|`;
+      jalons = jalonsByGroup.get(key);
+    }
+
+    if (!jalons || jalons.length === 0) continue;
+
+    const actionEnd = new Date(action.date_fin_prevue).getTime();
+    let bestJalon = jalons[0];
+    let bestDist = Infinity;
+
+    for (const jalon of jalons) {
+      const dist = new Date(jalon.date_prevue).getTime() - actionEnd;
+      if (dist >= 0 && dist < bestDist) {
+        bestDist = dist;
+        bestJalon = jalon;
+      }
+    }
+
+    if (bestDist === Infinity) {
+      for (const jalon of jalons) {
+        const dist = Math.abs(new Date(jalon.date_prevue).getTime() - actionEnd);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestJalon = jalon;
+        }
+      }
+    }
+
+    if (action.id != null && bestJalon.id != null) {
+      updates.push({ id: action.id, jalonId: bestJalon.id });
+    }
+  }
+
+  // Appliquer en une seule transaction batch
+  await db.transaction('rw', db.actions, async () => {
+    for (const u of updates) {
+      await db.actions.update(u.id, { jalonId: u.jalonId });
+    }
+  });
+
+  return updates.length;
+}
+
 export async function seedDatabase(): Promise<void> {
   // Import des données transformées du référentiel officiel
   const { getAllActions, getAllJalons, getAllRisques } = await import('./cosmosAngreTransform');
+  const { repairJalonAxes, repairProjectPhases } = await import('@/hooks/useJalons');
 
   // Check if data already exists
   const existingProject = await db.project.count();
   if (existingProject > 0) {
     console.log('Database already seeded');
+    // Réparer les axes et phases des jalons/actions existants si nécessaire
+    await repairJalonAxes();
+    await repairProjectPhases();
     return;
   }
 
@@ -8376,12 +8455,15 @@ export async function seedDatabase(): Promise<void> {
   // Insert users (nouveaux rôles selon le référentiel)
   await db.users.bulkAdd(usersData as User[]);
 
+  // Insert jalons UNIQUEMENT depuis le référentiel officiel
+  const jalonsRef = getAllJalons();
+  await db.jalons.bulkAdd(jalonsRef as Jalon[]);
+
   // Insert actions depuis le référentiel officiel
   const actionsRef = getAllActions();
-  // Ajouter les actions legacy pour compléter
+  // Ajouter les actions legacy pour compléter (bâtiments spécifiques uniquement)
   const actionsLegacy = generateActions();
-  // Fusionner: priorité aux actions du référentiel, puis legacy pour les actions spécifiques aux bâtiments
-  const allActions = [...actionsRef, ...actionsLegacy.filter(a =>
+  const actionsLegacyFiltered = actionsLegacy.filter(a =>
     a.id_action.startsWith('CC.') ||
     a.id_action.startsWith('BB1.') ||
     a.id_action.startsWith('BB2.') ||
@@ -8390,26 +8472,9 @@ export async function seedDatabase(): Promise<void> {
     a.id_action.startsWith('ZE.') ||
     a.id_action.startsWith('MA.') ||
     a.id_action.startsWith('PK.')
-  )];
+  ).map(a => ({ ...a, jalonId: null })); // Reset jalonId, sera réassigné par linkActionsToJalons
+  const allActions = [...actionsRef, ...actionsLegacyFiltered];
   await db.actions.bulkAdd(allActions as Action[]);
-
-  // Insert jalons depuis le référentiel officiel
-  const jalonsRef = getAllJalons();
-  // Ajouter les jalons legacy pour les bâtiments spécifiques
-  const jalonsLegacyFiltered = jalonsData.filter(j =>
-    j.id_jalon.includes('-CC-') ||
-    j.id_jalon.includes('-BB') ||
-    j.id_jalon.includes('-ZE-') ||
-    j.id_jalon.includes('-MA-') ||
-    j.id_jalon.includes('-PK-')
-  ).map(jalon => {
-    const match = jalon.id_jalon.match(/^JAL-(CC|BB1|BB2|BB3|BB4|ZE|MA|PK)-/);
-    return {
-      ...jalon,
-      buildingCode: match ? match[1] as BuildingCode : undefined,
-    };
-  });
-  await db.jalons.bulkAdd([...jalonsRef, ...jalonsLegacyFiltered] as Jalon[]);
 
   // Insert risques depuis le référentiel officiel
   const risquesRef = getAllRisques();
@@ -8422,9 +8487,17 @@ export async function seedDatabase(): Promise<void> {
   const liensSync = generateLiensSync();
   await db.liensSync.bulkAdd(liensSync);
 
+  // Réparer les axes et phases après insertion
+  await repairJalonAxes();
+  await repairProjectPhases();
+
+  // Lier automatiquement les actions aux jalons (même axe + date la plus proche)
+  const actionsLinked = await linkActionsToJalons();
+
   console.log('Database seeded successfully with RÉFÉRENTIEL OFFICIEL!');
   console.log(`- ${allActions.length} actions créées (${actionsRef.length} référentiel + ${allActions.length - actionsRef.length} bâtiments)`);
-  console.log(`- ${jalonsRef.length + jalonsLegacyFiltered.length} jalons créés`);
+  console.log(`- ${jalonsRef.length} jalons créés (référentiel officiel uniquement)`);
+  console.log(`- ${actionsLinked} actions liées automatiquement à des jalons`);
   console.log(`- ${risquesRef.length} risques créés`);
   console.log(`- ${liensSync.length} liens de synchronisation créés`);
 }

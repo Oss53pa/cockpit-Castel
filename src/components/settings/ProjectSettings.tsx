@@ -9,9 +9,17 @@ import {
   Truck,
   PartyPopper,
   Flag,
+  X,
+  ArrowRight,
+  Lock,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { db } from '@/db';
+import {
+  previewRecalculation,
+  applyRecalculation,
+  type RecalculationPreview,
+} from '@/lib/dateCalculations';
 
 // Types pour la configuration du projet
 export interface ProjectConfig {
@@ -66,7 +74,7 @@ const DEFAULT_CONFIG: ProjectConfig = {
 };
 
 // Helpers pour la gestion des configurations
-async function getProjectConfig(): Promise<ProjectConfig> {
+export async function getProjectConfig(): Promise<ProjectConfig> {
   const stored = await db.secureConfigs.where('key').equals('projectConfig').first();
   if (stored) {
     try {
@@ -98,142 +106,6 @@ async function saveProjectConfig(config: ProjectConfig): Promise<void> {
   }
 }
 
-// Fonction pour recalculer les dates des jalons et actions
-async function recalculateDates(config: ProjectConfig): Promise<{ jalons: number; actions: number }> {
-  const jalons = await db.jalons.toArray();
-  const actions = await db.actions.toArray();
-
-  // Parser les dates de configuration
-  const phases = {
-    construction: new Date(config.dateDebutConstruction + '-01'),
-    mobilisation: new Date(config.dateDebutMobilisation + '-01'),
-    softOpening: new Date(config.dateSoftOpening + '-01'),
-    finMobilisation: new Date(config.dateFinMobilisation + '-01'),
-  };
-
-  let jalonsUpdated = 0;
-  let actionsUpdated = 0;
-
-  // Mettre a jour les jalons selon leur axe
-  for (const jalon of jalons) {
-    let newDate: Date | null = null;
-    const axe = jalon.axe?.toLowerCase() || '';
-
-    // Determiner la phase appropriee selon l'axe
-    if (axe.includes('construction') || axe.includes('technique') || axe.includes('infra')) {
-      // Phase construction: entre debut construction et debut mobilisation
-      const phaseStart = phases.construction;
-      const phaseEnd = phases.mobilisation;
-      newDate = interpolateDate(jalon.date_prevue, phaseStart, phaseEnd);
-    } else if (axe.includes('mobilisation') || axe.includes('formation') || axe.includes('rh')) {
-      // Phase mobilisation: entre debut mobilisation et soft opening
-      const phaseStart = phases.mobilisation;
-      const phaseEnd = phases.softOpening;
-      newDate = interpolateDate(jalon.date_prevue, phaseStart, phaseEnd);
-    } else if (axe.includes('ouverture') || axe.includes('commercial') || axe.includes('marketing')) {
-      // Phase soft opening: entre soft opening et fin mobilisation
-      const phaseStart = phases.softOpening;
-      const phaseEnd = phases.finMobilisation;
-      newDate = interpolateDate(jalon.date_prevue, phaseStart, phaseEnd);
-    } else {
-      // Par defaut: utiliser toute la periode du projet
-      const phaseStart = phases.construction;
-      const phaseEnd = phases.finMobilisation;
-      newDate = interpolateDate(jalon.date_prevue, phaseStart, phaseEnd);
-    }
-
-    if (newDate && jalon.id) {
-      const newDateStr = newDate.toISOString().split('T')[0];
-      if (newDateStr !== jalon.date_prevue) {
-        await db.jalons.update(jalon.id, { date_prevue: newDateStr });
-        jalonsUpdated++;
-      }
-    }
-  }
-
-  // Mettre a jour les actions selon leur axe et date
-  for (const action of actions) {
-    const axe = action.axe?.toLowerCase() || '';
-    let phaseStart: Date;
-    let phaseEnd: Date;
-
-    if (axe.includes('construction') || axe.includes('technique') || axe.includes('infra')) {
-      phaseStart = phases.construction;
-      phaseEnd = phases.mobilisation;
-    } else if (axe.includes('mobilisation') || axe.includes('formation') || axe.includes('rh')) {
-      phaseStart = phases.mobilisation;
-      phaseEnd = phases.softOpening;
-    } else if (axe.includes('ouverture') || axe.includes('commercial') || axe.includes('marketing')) {
-      phaseStart = phases.softOpening;
-      phaseEnd = phases.finMobilisation;
-    } else {
-      phaseStart = phases.construction;
-      phaseEnd = phases.finMobilisation;
-    }
-
-    let updated = false;
-    const updates: Partial<typeof action> = {};
-
-    if (action.date_debut) {
-      const newStart = interpolateDate(action.date_debut, phaseStart, phaseEnd);
-      if (newStart) {
-        const newStartStr = newStart.toISOString().split('T')[0];
-        if (newStartStr !== action.date_debut) {
-          updates.date_debut = newStartStr;
-          updated = true;
-        }
-      }
-    }
-
-    if (action.date_fin_prevue) {
-      const newEnd = interpolateDate(action.date_fin_prevue, phaseStart, phaseEnd);
-      if (newEnd) {
-        const newEndStr = newEnd.toISOString().split('T')[0];
-        if (newEndStr !== action.date_fin_prevue) {
-          updates.date_fin_prevue = newEndStr;
-          updated = true;
-        }
-      }
-    }
-
-    if (updated && action.id) {
-      await db.actions.update(action.id, updates);
-      actionsUpdated++;
-    }
-  }
-
-  return { jalons: jalonsUpdated, actions: actionsUpdated };
-}
-
-// Fonction helper pour interpoler une date dans une phase
-function interpolateDate(
-  currentDateStr: string | null | undefined,
-  phaseStart: Date,
-  phaseEnd: Date
-): Date | null {
-  if (!currentDateStr) return null;
-
-  const currentDate = new Date(currentDateStr);
-  if (isNaN(currentDate.getTime())) return null;
-
-  // Verifier si la date est deja dans la phase
-  if (currentDate >= phaseStart && currentDate <= phaseEnd) {
-    return currentDate;
-  }
-
-  // Si la date est avant le debut de phase, la placer au debut
-  if (currentDate < phaseStart) {
-    return phaseStart;
-  }
-
-  // Si la date est apres la fin de phase, la placer a la fin
-  if (currentDate > phaseEnd) {
-    return phaseEnd;
-  }
-
-  return currentDate;
-}
-
 export function ProjectSettings() {
   const [config, setConfig] = useState<ProjectConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
@@ -241,6 +113,8 @@ export function ProjectSettings() {
   const [recalculating, setRecalculating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [stats, setStats] = useState<{ jalons: number; actions: number } | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [preview, setPreview] = useState<RecalculationPreview | null>(null);
 
   // Charger la configuration
   useEffect(() => {
@@ -301,27 +175,38 @@ export function ProjectSettings() {
   };
 
   const handleRecalculate = async () => {
-    if (!confirm(
-      'Cette action va recalculer les dates de tous les jalons et actions pour les adapter aux phases du projet.\n\nContinuer ?'
-    )) {
-      return;
-    }
-
     setRecalculating(true);
     setMessage(null);
     try {
-      const result = await recalculateDates(config);
+      const result = await previewRecalculation(config);
+      setPreview(result);
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error('Error previewing recalculation:', error);
+      setMessage({ type: 'error', text: 'Erreur lors de l\'apercu du recalcul' });
+    } finally {
+      setRecalculating(false);
+    }
+  };
+
+  const handleApplyRecalculation = async () => {
+    setShowPreviewModal(false);
+    setRecalculating(true);
+    setMessage(null);
+    try {
+      const result = await applyRecalculation(config);
       setMessage({
         type: 'success',
         text: `${result.jalons} jalon(s) et ${result.actions} action(s) mis a jour`,
       });
+      setPreview(null);
 
       // Recharger les stats
       const jalonsCount = await db.jalons.count();
       const actionsCount = await db.actions.count();
       setStats({ jalons: jalonsCount, actions: actionsCount });
     } catch (error) {
-      console.error('Error recalculating dates:', error);
+      console.error('Error applying recalculation:', error);
       setMessage({ type: 'error', text: 'Erreur lors du recalcul des dates' });
     } finally {
       setRecalculating(false);
@@ -449,15 +334,135 @@ export function ProjectSettings() {
           <div>
             <h4 className="font-medium text-primary-900">Comment fonctionne le recalcul des dates ?</h4>
             <ul className="mt-2 text-sm text-primary-600 space-y-1">
-              <li>Les jalons et actions sont repartis selon leur axe strategique</li>
-              <li><strong>Axes Technique/Infrastructure:</strong> Phase construction</li>
-              <li><strong>Axes Mobilisation/Formation/RH:</strong> Phase mobilisation</li>
-              <li><strong>Axes Commercial/Marketing/Ouverture:</strong> Phase soft opening</li>
-              <li>Les dates sont ajustees pour rester dans les intervalles definis</li>
+              <li>Chaque jalon et action a un <strong>jalon de reference</strong> parmi les 4 phases du projet</li>
+              <li>Un <strong>delai de declenchement</strong> (ex: J-90) definit l'ecart en jours par rapport a cette phase</li>
+              <li>L'<strong>echeance</strong> est calculee : date debut + duree estimee</li>
+              <li>Quand une date de phase change, toutes les echeances se recalculent automatiquement</li>
+              <li>Les elements <strong>verrouilles manuellement</strong> sont ignores lors du recalcul</li>
+              <li>Utilisez "Recalculer les dates" pour voir un apercu avant d'appliquer</li>
             </ul>
           </div>
         </div>
       </Card>
+
+      {/* Preview Modal */}
+      {showPreviewModal && preview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-5 border-b flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900">Apercu du recalcul</h3>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Recalcul base sur les dates du projet
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowPreviewModal(false); setPreview(null); }}
+                className="p-1 hover:bg-neutral-100 rounded"
+              >
+                <X className="h-5 w-5 text-neutral-400" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-blue-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-700">{preview.jalonsAffectes}</div>
+                  <div className="text-xs text-blue-600">jalon(s) a mettre a jour</div>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-700">{preview.actionsAffectees}</div>
+                  <div className="text-xs text-green-600">action(s) a mettre a jour</div>
+                </div>
+              </div>
+
+              {(preview.jalonsVerrouilles > 0 || preview.actionsVerrouillees > 0) && (
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-orange-600" />
+                  <span className="text-sm text-orange-800">
+                    {preview.jalonsVerrouilles} jalon(s) et {preview.actionsVerrouillees} action(s) verrouille(s) seront ignore(s)
+                  </span>
+                </div>
+              )}
+
+              {preview.jalonsAffectes === 0 && preview.actionsAffectees === 0 && (
+                <div className="p-6 text-center text-neutral-500">
+                  <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-400" />
+                  <p>Aucune modification necessaire. Toutes les dates sont deja a jour.</p>
+                </div>
+              )}
+
+              {/* Jalons Preview */}
+              {preview.jalons.filter(j => !j.verrouille).length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-neutral-700 mb-2">
+                    Jalons ({preview.jalons.filter(j => !j.verrouille).length})
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {preview.jalons.filter(j => !j.verrouille).slice(0, 10).map((j) => (
+                      <div key={j.id} className="flex items-center gap-2 text-sm p-2 bg-neutral-50 rounded">
+                        <span className="flex-1 truncate text-neutral-900">{j.titre}</span>
+                        <span className="text-neutral-400 font-mono text-xs">{j.ancienneDate}</span>
+                        <ArrowRight className="h-3 w-3 text-neutral-400" />
+                        <span className="text-blue-600 font-mono text-xs font-medium">{j.nouvelleDate}</span>
+                      </div>
+                    ))}
+                    {preview.jalons.filter(j => !j.verrouille).length > 10 && (
+                      <p className="text-xs text-neutral-400 text-center py-1">
+                        ... et {preview.jalons.filter(j => !j.verrouille).length - 10} autre(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions Preview */}
+              {preview.actions.filter(a => !a.verrouille).length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-neutral-700 mb-2">
+                    Actions ({preview.actions.filter(a => !a.verrouille).length})
+                  </h4>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {preview.actions.filter(a => !a.verrouille).slice(0, 10).map((a) => (
+                      <div key={a.id} className="flex items-center gap-2 text-sm p-2 bg-neutral-50 rounded">
+                        <span className="flex-1 truncate text-neutral-900">{a.titre}</span>
+                        <span className="text-neutral-400 font-mono text-xs">{a.ancienDebut}</span>
+                        <ArrowRight className="h-3 w-3 text-neutral-400" />
+                        <span className="text-green-600 font-mono text-xs font-medium">{a.nouveauDebut}</span>
+                      </div>
+                    ))}
+                    {preview.actions.filter(a => !a.verrouille).length > 10 && (
+                      <p className="text-xs text-neutral-400 text-center py-1">
+                        ... et {preview.actions.filter(a => !a.verrouille).length - 10} autre(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 border-t flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setShowPreviewModal(false); setPreview(null); }}
+              >
+                Ignorer
+              </Button>
+              <Button
+                onClick={handleApplyRecalculation}
+                disabled={preview.jalonsAffectes === 0 && preview.actionsAffectees === 0}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Appliquer ({preview.jalonsAffectes + preview.actionsAffectees} modification(s))
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

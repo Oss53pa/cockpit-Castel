@@ -21,9 +21,17 @@ import {
   DropdownMenuSeparator,
   EmptyState,
 } from '@/components/ui';
-import { useActions, useUser, useJalon, deleteAction } from '@/hooks';
+import { useActions, useUser, useJalon, useProjectConfig, deleteAction } from '@/hooks';
 import { formatDate } from '@/lib/utils';
-import { AXE_LABELS } from '@/types';
+import {
+  AXE_SHORT_LABELS,
+  PHASE_REFERENCE_LABELS,
+  PROJECT_PHASE_LABELS,
+  type PhaseReference,
+} from '@/types';
+import { detectPhaseForDate, resolveActionEcheance, computeDateFromPhase, computeEcheance } from '@/lib/dateCalculations';
+import { detectPhaseForAction, calculateDureeEstimee } from '@/lib/phaseAutoDetect';
+import type { ProjectConfig } from '@/components/settings/ProjectSettings';
 import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 import type { Action, ActionFilters } from '@/types';
 import { Flag } from 'lucide-react';
@@ -48,27 +56,64 @@ function ActionResponsable({ responsableId }: { responsableId: number }) {
   );
 }
 
-function ActionJalon({ jalonId }: { jalonId: number | null | undefined }) {
-  const jalon = useJalon(jalonId ?? undefined);
-
-  if (!jalonId || !jalon) return <span className="text-primary-400">-</span>;
-
+function ActionPhase({ action }: { action: Action }) {
+  if (!action.projectPhase) return <span className="text-primary-400">-</span>;
   return (
-    <div className="flex items-center gap-1.5 max-w-[150px]">
-      <Flag className="h-3.5 w-3.5 text-primary-500 flex-shrink-0" />
-      <span className="text-sm truncate" title={jalon.titre}>{jalon.titre}</span>
-    </div>
+    <Badge variant="secondary" className="text-xs">
+      {PROJECT_PHASE_LABELS[action.projectPhase] || '-'}
+    </Badge>
   );
+}
+
+function ActionJalonRef({ action, config }: { action: Action; config?: ProjectConfig }) {
+  const jalon = useJalon(action.jalonId ?? undefined);
+  let phaseRef = (action as Action & { jalon_reference?: PhaseReference }).jalon_reference;
+
+  // Fallback 1: keyword-based detection from title + axe
+  if (!phaseRef) {
+    phaseRef = detectPhaseForAction({ titre: action.titre, axe: action.axe }) ?? undefined;
+  }
+
+  // Fallback 2: detect phase from the action's start date
+  if (!phaseRef && config && action.date_debut_prevue) {
+    phaseRef = detectPhaseForDate(config, action.date_debut_prevue);
+  }
+
+  // Show linked jalon title if available
+  if (action.jalonId && jalon) {
+    return (
+      <div className="flex items-center gap-1.5 max-w-[150px]">
+        <Flag className="h-3.5 w-3.5 text-primary-500 flex-shrink-0" />
+        <span className="text-sm truncate" title={jalon.titre}>{jalon.titre}</span>
+      </div>
+    );
+  }
+
+  // Otherwise show the phase reference label
+  if (phaseRef) {
+    return (
+      <div className="flex items-center gap-1.5 max-w-[180px]">
+        <Flag className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+        <span className="text-sm truncate" title={PHASE_REFERENCE_LABELS[phaseRef]}>
+          {PHASE_REFERENCE_LABELS[phaseRef]}
+        </span>
+      </div>
+    );
+  }
+
+  return <span className="text-primary-400">-</span>;
 }
 
 function ActionRow({
   action,
+  config,
   onEdit,
   onView,
   onSend,
   onShareExternal,
 }: {
   action: Action;
+  config?: ProjectConfig;
   onEdit: (action: Action) => void;
   onView: (action: Action) => void;
   onSend: (action: Action) => void;
@@ -80,9 +125,40 @@ function ActionRow({
     }
   };
 
+  // Compute échéance with fallback from project config
+  const actionWithRefs = action as Action & {
+    jalon_reference?: PhaseReference;
+    delai_declenchement?: number;
+    derniere_mise_a_jour_externe?: string;
+  };
+  let echeance: string | null = null;
+  if (config) {
+    // First try with stored data
+    echeance = resolveActionEcheance(config, {
+      date_fin_prevue: action.date_fin_prevue || undefined,
+      date_debut_prevue: action.date_debut_prevue || undefined,
+      jalon_reference: actionWithRefs.jalon_reference,
+      delai_declenchement: actionWithRefs.delai_declenchement,
+      duree_prevue_jours: action.duree_prevue_jours || undefined,
+    });
+    // Fallback: use auto-detected phase + default délai -30 + auto duration
+    if (!echeance) {
+      const detectedPhase = detectPhaseForAction({ titre: action.titre, axe: action.axe });
+      if (detectedPhase) {
+        const delai = actionWithRefs.delai_declenchement ?? -30;
+        const duree = action.duree_prevue_jours || calculateDureeEstimee({ titre: action.titre });
+        const dateDebut = computeDateFromPhase(config, detectedPhase, delai);
+        echeance = computeEcheance(dateDebut, duree);
+      }
+    }
+  }
+  if (!echeance) {
+    echeance = action.date_fin_prevue || null;
+  }
+
   // Check if there was an external update
-  const hasExternalUpdate = !!((action as Action & { derniere_mise_a_jour_externe?: string }).derniere_mise_a_jour_externe);
-  const externalUpdateDate = hasExternalUpdate ? new Date((action as Action & { derniere_mise_a_jour_externe?: string }).derniere_mise_a_jour_externe!) : null;
+  const hasExternalUpdate = !!actionWithRefs.derniere_mise_a_jour_externe;
+  const externalUpdateDate = hasExternalUpdate ? new Date(actionWithRefs.derniere_mise_a_jour_externe!) : null;
   const isRecentUpdate = externalUpdateDate && (Date.now() - externalUpdateDate.getTime()) < 24 * 60 * 60 * 1000; // Last 24h
 
   return (
@@ -107,10 +183,15 @@ function ActionRow({
         </div>
       </TableCell>
       <TableCell>
-        <ActionJalon jalonId={action.jalonId} />
+        <ActionPhase action={action} />
       </TableCell>
       <TableCell>
-        <Badge variant="secondary">{AXE_LABELS[action.axe]}</Badge>
+        <ActionJalonRef action={action} config={config} />
+      </TableCell>
+      <TableCell>
+        <Badge variant="secondary" className="text-xs">
+          {AXE_SHORT_LABELS[action.axe] || action.axe || '-'}
+        </Badge>
       </TableCell>
       <TableCell>
         <StatusBadge status={action.statut} />
@@ -128,7 +209,7 @@ function ActionRow({
         </div>
       </TableCell>
       <TableCell className="text-sm text-primary-500">
-        {formatDate(action.date_fin_prevue)}
+        {formatDate(echeance)}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
@@ -179,6 +260,7 @@ function ActionRow({
 
 export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps) {
   const actions = useActions(filters);
+  const projectConfig = useProjectConfig();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedActionForSend, setSelectedActionForSend] = useState<Action | null>(null);
   const [shareExternalModalOpen, setShareExternalModalOpen] = useState(false);
@@ -227,6 +309,7 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
           <TableHeader>
             <TableRow>
               <TableHead>Titre</TableHead>
+              <TableHead>Phase</TableHead>
               <TableHead>Jalon</TableHead>
               <TableHead>Axe</TableHead>
               <TableHead>Statut</TableHead>
@@ -242,6 +325,7 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
               <ActionRow
                 key={action.id}
                 action={action}
+                config={projectConfig}
                 onEdit={onEdit}
                 onView={onView}
                 onSend={handleSend}
@@ -250,6 +334,13 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Summary footer */}
+      <div className="flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm">
+        <span className="text-primary-600">
+          {actions.length} action{actions.length > 1 ? 's' : ''} au total
+        </span>
       </div>
 
       {/* Send Reminder Modal */}

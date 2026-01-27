@@ -1,7 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import type { Jalon, JalonFilters, JalonStatus, Axe } from '@/types';
+import type { Jalon, JalonFilters, JalonStatus, Axe, ProjectPhase } from '@/types';
+import { AXES, PROJECT_PHASES } from '@/types';
 import { getDaysUntil } from '@/lib/utils';
+import { recalculateActionsForJalon } from '@/lib/dateCalculations';
 
 export function useJalons(filters?: JalonFilters) {
   const jalons = useLiveQuery(async () => {
@@ -90,6 +92,24 @@ export async function updateJalon(
   });
 }
 
+/**
+ * Update a jalon and optionally propagate date changes to linked actions.
+ */
+export async function updateJalonWithPropagation(
+  id: number,
+  updates: Partial<Jalon>,
+  options: { propagateToActions?: boolean } = {}
+): Promise<{ actionsUpdated: number }> {
+  await updateJalon(id, updates);
+
+  let actionsUpdated = 0;
+  if (options.propagateToActions && updates.date_prevue) {
+    actionsUpdated = await recalculateActionsForJalon(id, updates.date_prevue);
+  }
+
+  return { actionsUpdated };
+}
+
 export async function deleteJalon(id: number): Promise<void> {
   // Also unlink actions
   const actions = await db.actions.where('jalonId').equals(id).toArray();
@@ -131,6 +151,130 @@ export function calculateJalonStatus(
 
   // Upcoming
   return 'a_venir';
+}
+
+// ============================================================================
+// RÉPARATION DES AXES JALONS
+// ============================================================================
+
+const VALID_AXES_SET = new Set<string>(AXES);
+
+/**
+ * Détermine l'axe correct d'un jalon à partir de son id_jalon et son titre.
+ */
+function inferAxeFromJalon(idJalon: string, titre: string): Axe {
+  // Jalons référentiel par préfixe d'ID
+  if (idJalon.startsWith('J1-')) return 'axe1_rh';
+  if (idJalon.startsWith('J2-')) return 'axe2_commercial';
+  if (idJalon.startsWith('J3-')) return 'axe3_technique';
+  if (idJalon.startsWith('J4-')) return 'axe4_budget';
+  if (idJalon.startsWith('J5-')) return 'axe5_marketing';
+  if (idJalon.startsWith('J6-')) return 'axe6_exploitation';
+
+  // Jalons globaux (J-001 à J-007)
+  if (idJalon === 'J-001') return 'axe4_budget';
+  if (idJalon === 'J-002') return 'axe1_rh';
+  if (idJalon === 'J-003') return 'axe2_commercial';
+  if (idJalon === 'J-004') return 'axe4_budget';
+  if (idJalon === 'J-005') return 'axe5_marketing';
+  if (idJalon === 'J-006') return 'axe6_exploitation';
+  if (idJalon === 'J-007') return 'axe5_marketing';
+
+  // Inférence par le titre pour les jalons legacy (JAL-YYYY-xxx, JAL-CC-xxx, etc.)
+  const t = titre.toLowerCase();
+  if (/recrut|formation|équipe|organigramme|\brh\b|manager recruté|agent|superviseur/.test(t)) return 'axe1_rh';
+  if (/commerci|befa|occupation|preneur|boutique|locat|bail|signé.*contrat|contrat.*sign|vente|grille tarifaire|plan de commercialisation|artisan/.test(t)) return 'axe2_commercial';
+  if (/budget|financ|coût|trésorerie|consolidé/.test(t)) return 'axe4_budget';
+  if (/marketing|communication|campagne|signalétique|site web|teasing|promo|inaugur|lancement.*comm/.test(t)) return 'axe5_marketing';
+  if (/exploit|sécurité|nettoyage|procédure.*exploit|logiciel.*gestion|commission.*sécurité|conformité|mise en service/.test(t)) return 'axe6_exploitation';
+
+  // Par défaut : technique (travaux, réception, OPR, livraison, etc.)
+  return 'axe3_technique';
+}
+
+/**
+ * Répare les jalons en base qui n'ont pas d'axe défini ou qui ont un axe invalide.
+ * Attribue l'axe correct basé sur l'id_jalon et le titre.
+ */
+export async function repairJalonAxes(): Promise<number> {
+  const jalons = await db.jalons.toArray();
+  let repaired = 0;
+
+  for (const jalon of jalons) {
+    if (!jalon.axe || !VALID_AXES_SET.has(jalon.axe)) {
+      const correctAxe = inferAxeFromJalon(jalon.id_jalon, jalon.titre);
+      await db.jalons.update(jalon.id!, { axe: correctAxe });
+      repaired++;
+    }
+  }
+
+  if (repaired > 0) {
+    console.log(`[repairJalonAxes] ${repaired} jalon(s) réparé(s) avec leur axe correct.`);
+  }
+
+  return repaired;
+}
+
+// ============================================================================
+// RÉPARATION DES PHASES PROJET
+// ============================================================================
+
+const VALID_PHASES_SET = new Set<string>(PROJECT_PHASES);
+
+/**
+ * Détermine la phase projet à partir d'une date (limites non chevauchantes).
+ *   Phase 1 Préparation   : ≤ 31 mars 2026
+ *   Phase 2 Mobilisation  : 1 avril – 30 septembre 2026
+ *   Phase 3 Lancement     : 1 octobre – 31 décembre 2026
+ *   Phase 4 Stabilisation : ≥ 1 janvier 2027
+ */
+function getPhaseFromDate(dateStr: string): ProjectPhase {
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = d.getMonth();
+
+  if (y < 2026) return 'phase1_preparation';
+  if (y === 2026 && m <= 2) return 'phase1_preparation';
+  if (y === 2026 && m <= 8) return 'phase2_mobilisation';
+  if (y === 2026) return 'phase3_lancement';
+  return 'phase4_stabilisation';
+}
+
+/**
+ * Répare le champ projectPhase de tous les jalons et actions
+ * en le recalculant à partir de leur date.
+ */
+export async function repairProjectPhases(): Promise<number> {
+  let repaired = 0;
+
+  // Jalons : basé sur date_prevue
+  const jalons = await db.jalons.toArray();
+  for (const jalon of jalons) {
+    if (!jalon.date_prevue) continue;
+    const correctPhase = getPhaseFromDate(jalon.date_prevue);
+    if (jalon.projectPhase !== correctPhase) {
+      await db.jalons.update(jalon.id!, { projectPhase: correctPhase });
+      repaired++;
+    }
+  }
+
+  // Actions : basé sur date_fin_prevue (ou dateDebut en fallback)
+  const actions = await db.actions.toArray();
+  for (const action of actions) {
+    const dateRef = action.date_fin_prevue || action.date_debut_prevue;
+    if (!dateRef) continue;
+    const correctPhase = getPhaseFromDate(dateRef);
+    if (action.projectPhase !== correctPhase) {
+      await db.actions.update(action.id!, { projectPhase: correctPhase });
+      repaired++;
+    }
+  }
+
+  if (repaired > 0) {
+    console.log(`[repairProjectPhases] ${repaired} enregistrement(s) réparé(s) avec la bonne phase projet.`);
+  }
+
+  return repaired;
 }
 
 export async function recalculateJalonStatuses(): Promise<void> {

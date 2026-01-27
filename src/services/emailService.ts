@@ -60,11 +60,21 @@ export interface SentEmail extends SendEmailParams {
 const CONFIG_KEY = 'email_config';
 const SECURE_CONFIG_KEY = 'email_secure_config';
 
+// Lecture des variables d'environnement EmailJS
+const ENV_EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID as string | undefined;
+const ENV_EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string | undefined;
+const ENV_EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string | undefined;
+const EMAILJS_ENV_CONFIGURED = !!(ENV_EMAILJS_SERVICE_ID && ENV_EMAILJS_TEMPLATE_ID && ENV_EMAILJS_PUBLIC_KEY);
+
 const DEFAULT_CONFIG: EmailConfig = {
-  provider: 'smtp',
+  provider: EMAILJS_ENV_CONFIGURED ? 'emailjs' : 'simulation',
   smtpHost: '',
   smtpPort: 587,
   smtpSecure: false,
+  // EmailJS auto-configuré depuis les variables d'environnement
+  emailjsServiceId: ENV_EMAILJS_SERVICE_ID,
+  emailjsTemplateId: ENV_EMAILJS_TEMPLATE_ID,
+  emailjsPublicKey: ENV_EMAILJS_PUBLIC_KEY,
   fromEmail: 'patokouna@cosmos-angre.com',
   fromName: 'COSMOS ANGRE Cockpit',
   defaultLinkDuration: 72, // 3 jours
@@ -94,8 +104,14 @@ export function getEmailConfig(): EmailConfig {
     const stored = localStorage.getItem(CONFIG_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Ne pas stocker les mots de passe en clair dans le cache
       configCache = { ...DEFAULT_CONFIG, ...parsed };
+      // Les variables d'environnement EmailJS prennent le dessus
+      if (EMAILJS_ENV_CONFIGURED) {
+        configCache.provider = 'emailjs';
+        configCache.emailjsServiceId = ENV_EMAILJS_SERVICE_ID;
+        configCache.emailjsTemplateId = ENV_EMAILJS_TEMPLATE_ID;
+        configCache.emailjsPublicKey = ENV_EMAILJS_PUBLIC_KEY;
+      }
       return configCache;
     }
   } catch (e) {
@@ -123,6 +139,13 @@ export async function getEmailConfigAsync(): Promise<EmailConfig> {
     }
 
     configCache = { ...DEFAULT_CONFIG, ...config };
+    // Les variables d'environnement EmailJS prennent le dessus
+    if (EMAILJS_ENV_CONFIGURED) {
+      configCache.provider = 'emailjs';
+      configCache.emailjsServiceId = ENV_EMAILJS_SERVICE_ID;
+      configCache.emailjsTemplateId = ENV_EMAILJS_TEMPLATE_ID;
+      configCache.emailjsPublicKey = ENV_EMAILJS_PUBLIC_KEY;
+    }
     return configCache;
   } catch (e) {
     console.error('Error loading email config from IndexedDB:', e);

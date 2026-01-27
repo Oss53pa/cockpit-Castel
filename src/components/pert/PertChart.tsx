@@ -339,7 +339,7 @@ function calculateNodePositions(nodes: PertNode[]): void {
 export const PertChart: React.FC<PertChartProps> = ({
   projectId,
   dimension = 'ALL',
-  projectStartDate = new Date('2024-01-15'),
+  projectStartDate = new Date('2025-06-01'),
 }) => {
   const { items, categories, loading } = useSync(projectId);
   const svgRef = useRef<SVGSVGElement>(null);

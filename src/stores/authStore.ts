@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // Mot de passe par défaut - à changer via variables d'environnement
-const APP_PASSWORD = import.meta.env.VITE_APP_PASSWORD || 'cosmos2026';
+const APP_PASSWORD = (import.meta.env.VITE_APP_PASSWORD || 'Cosmos2026').trim().toLowerCase();
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -15,7 +15,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       isAuthenticated: false,
       login: (password: string) => {
-        if (password === APP_PASSWORD) {
+        if (password.trim().toLowerCase() === APP_PASSWORD) {
           set({ isAuthenticated: true });
           return true;
         }

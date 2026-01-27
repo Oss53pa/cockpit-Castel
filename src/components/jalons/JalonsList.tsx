@@ -18,9 +18,20 @@ import {
   DropdownMenuSeparator,
   EmptyState,
 } from '@/components/ui';
-import { useJalons, useActionsByJalon, deleteJalon } from '@/hooks';
+import { useJalons, useActionsByJalon, useProjectConfig, deleteJalon } from '@/hooks';
 import { formatDate, getDaysUntil } from '@/lib/utils';
-import { AXE_LABELS, JALON_STATUS_LABELS, type Jalon, type JalonStatus, type JalonFilters } from '@/types';
+import {
+  AXE_SHORT_LABELS,
+  JALON_STATUS_LABELS,
+  PROJECT_PHASE_LABELS,
+  type Jalon,
+  type JalonStatus,
+  type JalonFilters,
+  type PhaseReference,
+} from '@/types';
+import { detectPhaseForDate, resolveJalonEcheance, computeDateFromPhase } from '@/lib/dateCalculations';
+import { detectPhaseForJalon } from '@/lib/phaseAutoDetect';
+import type { ProjectConfig } from '@/components/settings/ProjectSettings';
 import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 
 const statusConfig: Record<JalonStatus, { color: string; bgColor: string; icon: typeof Flag }> = {
@@ -63,12 +74,14 @@ function JalonActionsCount({ jalonId }: { jalonId?: number }) {
 
 function JalonRow({
   jalon,
+  projectConfig,
   onEdit,
   onView,
   onSend,
   onShareExternal,
 }: {
   jalon: Jalon;
+  projectConfig?: ProjectConfig;
   onEdit: () => void;
   onView: () => void;
   onSend: () => void;
@@ -76,7 +89,39 @@ function JalonRow({
 }) {
   const config = statusConfig[jalon.statut] || statusConfig.a_venir;
   const Icon = config.icon;
-  const daysUntil = getDaysUntil(jalon.date_prevue);
+
+  // Resolve phase reference: stored > keyword detection > date detection
+  const jalonWithRefs = jalon as Jalon & {
+    jalon_reference?: PhaseReference;
+    delai_declenchement?: number;
+  };
+  let phaseRef = jalonWithRefs.jalon_reference;
+  if (!phaseRef) {
+    phaseRef = detectPhaseForJalon({ titre: jalon.titre, axe: jalon.axe }) ?? undefined;
+  }
+  if (!phaseRef && projectConfig && jalon.date_prevue) {
+    phaseRef = detectPhaseForDate(projectConfig, jalon.date_prevue);
+  }
+
+  // Resolve échéance: stored data > auto-detected phase + default délai > date_prevue
+  let echeance: string | null = null;
+  if (projectConfig) {
+    // First try with stored jalon_reference + delai
+    echeance = resolveJalonEcheance(projectConfig, {
+      date_prevue: jalon.date_prevue || undefined,
+      jalon_reference: jalonWithRefs.jalon_reference,
+      delai_declenchement: jalonWithRefs.delai_declenchement,
+    });
+    // Fallback: use auto-detected phase + default délai -30
+    if (!echeance && phaseRef) {
+      const storedDelai = jalonWithRefs.delai_declenchement ?? -30;
+      echeance = computeDateFromPhase(projectConfig, phaseRef, storedDelai);
+    }
+  }
+  if (!echeance) {
+    echeance = jalon.date_prevue || null;
+  }
+  const daysUntil = getDaysUntil(echeance);
 
   const handleDelete = async () => {
     if (jalon.id && confirm('Supprimer ce jalon ?')) {
@@ -100,7 +145,18 @@ function JalonRow({
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant="secondary" className="text-xs">{AXE_LABELS[jalon.axe]}</Badge>
+        {jalon.projectPhase ? (
+          <Badge variant="secondary" className="text-xs">
+            {PROJECT_PHASE_LABELS[jalon.projectPhase] || jalon.projectPhase}
+          </Badge>
+        ) : (
+          <span className="text-primary-400 text-sm">-</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <Badge variant="secondary" className="text-xs">
+          {AXE_SHORT_LABELS[jalon.axe] || jalon.axe || '-'}
+        </Badge>
       </TableCell>
       <TableCell>
         <Badge className={cn(config.bgColor, config.color, 'text-xs')}>
@@ -109,8 +165,8 @@ function JalonRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          <span className="text-sm">{formatDate(jalon.date_prevue)}</span>
-          {jalon.statut !== 'atteint' && jalon.statut !== 'annule' && (
+          <span className="text-sm">{formatDate(echeance)}</span>
+          {echeance && jalon.statut !== 'atteint' && jalon.statut !== 'annule' && (
             <Badge
               variant={daysUntil < 0 ? 'error' : daysUntil <= 7 ? 'warning' : daysUntil <= 30 ? 'info' : 'secondary'}
               className="text-[10px]"
@@ -179,6 +235,7 @@ function JalonRow({
 
 export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
   const jalons = useJalons(filters);
+  const projectConfig = useProjectConfig();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedJalonForSend, setSelectedJalonForSend] = useState<Jalon | null>(null);
   const [shareExternalModalOpen, setShareExternalModalOpen] = useState(false);
@@ -269,6 +326,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
                   Jalon <SortIcon field="titre" />
                 </div>
               </TableHead>
+              <TableHead>Phase</TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-primary-100/50"
                 onClick={() => handleSort('axe')}
@@ -303,6 +361,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
               <JalonRow
                 key={jalon.id}
                 jalon={jalon}
+                projectConfig={projectConfig}
                 onEdit={() => onEdit(jalon)}
                 onView={() => onView(jalon)}
                 onSend={() => handleSend(jalon)}

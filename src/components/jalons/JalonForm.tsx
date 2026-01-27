@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Clock,
   Mail,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import {
   Dialog,
@@ -41,9 +43,20 @@ import {
   TabsContent,
   Badge,
 } from '@/components/ui';
-import { useUsers, useJalons, useRisques, useActions, createJalon, updateJalon } from '@/hooks';
+import { useUsers, useJalons, useRisques, useActions, createJalon, updateJalon, updateJalonWithPropagation } from '@/hooks';
 import { SendReminderModal } from '@/components/shared';
 import { cn } from '@/lib/utils';
+import {
+  computeDateFromPhase,
+  formatDelaiComplet,
+} from '@/lib/dateCalculations';
+import { getProjectConfig, type ProjectConfig } from '@/components/settings/ProjectSettings';
+import { db } from '@/db';
+import {
+  PHASE_REFERENCE_LABELS,
+  type PhaseReference,
+} from '@/types';
+import { detectPhaseForJalon } from '@/lib/phaseAutoDetect';
 import {
   AXES,
   AXE_LABELS,
@@ -266,10 +279,24 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
   const [notifier, setNotifier] = useState<string[]>([]);
   const [visibilite, setVisibilite] = useState<VisibiliteReporting[]>([]);
 
+  // Phase reference & verrouillage state
+  const [jalonReference, setJalonReference] = useState<PhaseReference | ''>('');
+  const [delaiDeclenchement, setDelaiDeclenchement] = useState<number | null>(null);
+  const [dateVerrouillage, setDateVerrouillage] = useState(false);
+  const [projectConfig, setProjectConfig] = useState<ProjectConfig | null>(null);
+  const [showPropagationDialog, setShowPropagationDialog] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<Partial<Jalon> | null>(null);
+
+  // Load project config on mount
+  useEffect(() => {
+    getProjectConfig().then(setProjectConfig);
+  }, []);
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<JalonFormData>({
@@ -301,6 +328,31 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
     j15: new Date(new Date(datePrevue).getTime() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     j7: new Date(new Date(datePrevue).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   } : { j30: '', j15: '', j7: '' };
+
+  // Auto-detect phase from titre + axe
+  const watchedTitre = watch('titre');
+  const watchedAxe = watch('axe');
+  useEffect(() => {
+    if (!dateVerrouillage && watchedTitre) {
+      const detected = detectPhaseForJalon({ titre: watchedTitre, axe: watchedAxe });
+      if (detected) {
+        setJalonReference(detected);
+      }
+    }
+  }, [watchedTitre, watchedAxe, dateVerrouillage]);
+
+  // Auto-calculate date_prevue from phase + délai + config
+  useEffect(() => {
+    if (projectConfig && jalonReference && delaiDeclenchement != null && !dateVerrouillage) {
+      const newDate = computeDateFromPhase(projectConfig, jalonReference as PhaseReference, delaiDeclenchement);
+      setValue('date_prevue', newDate);
+    }
+  }, [projectConfig, jalonReference, delaiDeclenchement, dateVerrouillage, setValue]);
+
+  // Handler for delai input changes
+  const handleDelaiChange = (newDelai: number) => {
+    setDelaiDeclenchement(newDelai);
+  };
 
   useEffect(() => {
     if (open) {
@@ -355,6 +407,9 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         setCanauxAlerte(jalon.canal_alerte || ['email']);
         setNotifier(jalon.notifier || []);
         setVisibilite(jalon.visibilite || []);
+        setJalonReference((jalon as Jalon & { jalon_reference?: PhaseReference }).jalon_reference || '');
+        setDelaiDeclenchement((jalon as Jalon & { delai_declenchement?: number }).delai_declenchement ?? -30);
+        setDateVerrouillage(!!(jalon as Jalon & { date_verrouillage_manuel?: boolean }).date_verrouillage_manuel);
       } else {
         const newCode = `JAL-${new Date().getFullYear()}-${String(jalons.length + 1).padStart(3, '0')}`;
         reset({
@@ -389,6 +444,9 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         setCanauxAlerte(['email']);
         setNotifier([]);
         setVisibilite([]);
+        setJalonReference('');
+        setDelaiDeclenchement(-30);
+        setDateVerrouillage(false);
       }
     }
   }, [jalon, open, reset, jalons.length]);
@@ -399,39 +457,51 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
   const criteresValides = criteres.filter(c => c.valide).length;
   const livrablesValides = livrables.filter(l => l.statut === 'valide').length;
 
-  const onSubmit = async (data: JalonFormData) => {
+  const buildSubmitData = (data: JalonFormData): Partial<Jalon> => {
+    const submitData: Partial<Jalon> & Record<string, unknown> = {
+      ...data,
+      contributeurs,
+      parties_prenantes: partiesPrenantes,
+      predecesseurs,
+      successeurs,
+      actions_prerequises: actionsPrerequisesIds,
+      livrables,
+      criteres_acceptation: criteres,
+      risques_associes: risquesAssocies,
+      documents,
+      canal_alerte: canauxAlerte,
+      notifier,
+      visibilite,
+      alerte_j30: alerteDates.j30,
+      alerte_j15: alerteDates.j15,
+      alerte_j7: alerteDates.j7,
+      date_derniere_maj: new Date().toISOString(),
+      maj_par: 'Utilisateur',
+      version: (jalon?.version || 0) + 1,
+      derniere_modification: new Date().toISOString(),
+      modifie_par: 'Utilisateur',
+      // Calcul automatique des echeances
+      jalon_reference: jalonReference || undefined,
+      delai_declenchement: delaiDeclenchement ?? undefined,
+      date_verrouillage_manuel: dateVerrouillage,
+    };
+
+    if (!isEditing) {
+      (submitData as Jalon).date_creation = new Date().toISOString();
+      (submitData as Jalon).cree_par = 'Utilisateur';
+    }
+
+    return submitData as Partial<Jalon>;
+  };
+
+  const doSave = async (submitData: Partial<Jalon>, propagate: boolean) => {
     try {
-      const submitData: Partial<Jalon> = {
-        ...data,
-        contributeurs,
-        parties_prenantes: partiesPrenantes,
-        predecesseurs,
-        successeurs,
-        actions_prerequises: actionsPrerequisesIds,
-        livrables,
-        criteres_acceptation: criteres,
-        risques_associes: risquesAssocies,
-        documents,
-        canal_alerte: canauxAlerte,
-        notifier,
-        visibilite,
-        alerte_j30: alerteDates.j30,
-        alerte_j15: alerteDates.j15,
-        alerte_j7: alerteDates.j7,
-        date_derniere_maj: new Date().toISOString(),
-        maj_par: 'Utilisateur',
-        version: (jalon?.version || 0) + 1,
-        derniere_modification: new Date().toISOString(),
-        modifie_par: 'Utilisateur',
-      };
-
-      if (!isEditing) {
-        (submitData as Jalon).date_creation = new Date().toISOString();
-        (submitData as Jalon).cree_par = 'Utilisateur';
-      }
-
       if (isEditing && jalon?.id) {
-        await updateJalon(jalon.id, submitData);
+        if (propagate) {
+          await updateJalonWithPropagation(jalon.id, submitData, { propagateToActions: true });
+        } else {
+          await updateJalon(jalon.id, submitData);
+        }
       } else {
         await createJalon(submitData as Omit<Jalon, 'id'>);
       }
@@ -440,6 +510,33 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
       onClose();
     } catch (error) {
       console.error('Error saving jalon:', error);
+    }
+  };
+
+  const onSubmit = async (data: JalonFormData) => {
+    const submitData = buildSubmitData(data);
+
+    // Check if date changed and there are linked actions
+    if (isEditing && jalon?.id && submitData.date_prevue !== jalon.date_prevue) {
+      const linkedActions = await db.actions.where('jalonId').equals(jalon.id).toArray();
+      const actionsWithOffsets = linkedActions.filter(
+        (a) => (a as Action & { delai_declenchement?: number }).delai_declenchement != null
+      );
+      if (actionsWithOffsets.length > 0) {
+        setPendingSubmitData(submitData);
+        setShowPropagationDialog(true);
+        return;
+      }
+    }
+
+    await doSave(submitData, false);
+  };
+
+  const handlePropagationConfirm = async (propagate: boolean) => {
+    setShowPropagationDialog(false);
+    if (pendingSubmitData) {
+      await doSave(pendingSubmitData, propagate);
+      setPendingSubmitData(null);
     }
   };
 
@@ -817,13 +914,83 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
               <TabsContent value="planning" className="space-y-4 mt-0">
                 <Section title="Dates & Échéances" icon={Calendar}>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Date prévue" required error={errors.date_prevue?.message}>
-                      <Input type="date" {...register('date_prevue')} />
+                    <Field label={`Date prévue${!dateVerrouillage ? ' (auto)' : ''}`} required error={errors.date_prevue?.message}>
+                      <Input
+                        type="date"
+                        {...register('date_prevue')}
+                        disabled={!dateVerrouillage}
+                        className={!dateVerrouillage ? 'bg-neutral-100' : ''}
+                      />
+                      {jalonReference && delaiDeclenchement != null && (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {formatDelaiComplet(delaiDeclenchement, PHASE_REFERENCE_LABELS[jalonReference as PhaseReference])}
+                          </Badge>
+                        </div>
+                      )}
                     </Field>
                     <Field label="Date réelle" hint="À renseigner une fois le jalon atteint">
                       <Input type="date" {...register('date_reelle')} />
                     </Field>
                   </div>
+
+                  {/* Calcul automatique des echeances */}
+                  {projectConfig && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-900">
+                          Calcul automatique
+                        </span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={dateVerrouillage}
+                            onChange={(e) => setDateVerrouillage(e.target.checked)}
+                            className="rounded border-blue-300"
+                          />
+                          {dateVerrouillage ? (
+                            <Lock className="h-4 w-4 text-orange-600" />
+                          ) : (
+                            <Unlock className="h-4 w-4 text-blue-600" />
+                          )}
+                          <span className="text-xs text-blue-800">
+                            {dateVerrouillage ? 'Date verrouillée (ignorée au recalcul)' : 'Recalcul automatique actif'}
+                          </span>
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-blue-700 block mb-1">Phase (auto-détectée)</label>
+                          <div className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-neutral-700 flex items-center gap-2">
+                            <Lock className="h-3 w-3 text-neutral-400" />
+                            {jalonReference
+                              ? PHASE_REFERENCE_LABELS[jalonReference as PhaseReference]
+                              : 'Non détectée'}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-blue-700 block mb-1">Délai de déclenchement (jours)</label>
+                          <Input
+                            type="number"
+                            value={delaiDeclenchement ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                              if (val != null && !isNaN(val)) {
+                                handleDelaiChange(val);
+                              } else {
+                                setDelaiDeclenchement(null);
+                              }
+                            }}
+                            className="bg-white"
+                            placeholder="ex: -90"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-blue-600">
+                        Négatif = avant la phase (J-90), positif = après (J+15). Défaut : -30
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <Field label="Heure cible">
@@ -1505,6 +1672,36 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
             entity={jalon}
             defaultRecipientId={users.find(u => `${u.prenom} ${u.nom}` === jalon.responsable)?.id}
           />
+        )}
+
+        {/* Propagation Dialog */}
+        {showPropagationDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+            <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+                Propager aux actions liées ?
+              </h3>
+              <p className="text-sm text-neutral-600 mb-4">
+                La date de ce jalon a changé. Des actions sont liées à ce jalon avec des offsets configurés.
+                Voulez-vous recalculer automatiquement leurs dates ?
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handlePropagationConfirm(false)}
+                >
+                  Non, garder les dates actuelles
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handlePropagationConfirm(true)}
+                >
+                  Oui, propager
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>

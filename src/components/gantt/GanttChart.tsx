@@ -105,7 +105,7 @@ const calculateCriticalPath = (tasks: GanttTask[]): Set<string> => {
 export const GanttChart: React.FC<GanttChartProps> = ({
   projectId,
   dimension = 'ALL',
-  projectStartDate = new Date('2024-01-15'),
+  projectStartDate = new Date('2025-06-01'),
   showBaseline = false,
 }) => {
   const { items, categories, loading, updateItemProgress } = useSync(projectId);

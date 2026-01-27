@@ -42,7 +42,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
   const [chartDimension, setChartDimension] = useState<SyncDimension | 'ALL'>('ALL');
 
   // Project start date (could be configurable)
-  const projectStartDate = new Date('2024-01-15');
+  const projectStartDate = new Date('2025-06-01');
 
   const handleCreateSnapshot = async () => {
     setIsCreatingSnapshot(true);

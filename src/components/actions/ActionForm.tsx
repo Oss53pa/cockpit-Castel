@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +22,8 @@ import {
   Mail,
   Link2,
   ArrowLeftRight,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import {
   Dialog,
@@ -42,6 +44,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { SendReminderModal } from '@/components/shared';
 import { useUsers, useJalons } from '@/hooks';
 import { createAction, updateAction } from '@/hooks/useActions';
+import {
+  computeDateFromPhase,
+  computeEcheance,
+  formatDelaiComplet,
+} from '@/lib/dateCalculations';
+import { getProjectConfig, type ProjectConfig } from '@/components/settings/ProjectSettings';
+import {
+  PHASE_REFERENCE_LABELS,
+  type PhaseReference,
+} from '@/types';
+import { detectPhaseForAction, calculateDureeEstimee } from '@/lib/phaseAutoDetect';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Flag } from 'lucide-react';
 import { db } from '@/db';
@@ -277,6 +290,23 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
     action?.visibilite_reporting || ['interne_equipe']
   );
 
+  // Phase reference & verrouillage state
+  const [actionPhaseRef, setActionPhaseRef] = useState<PhaseReference | ''>(
+    (action as Action & { jalon_reference?: PhaseReference } | undefined)?.jalon_reference || ''
+  );
+  const [actionDelai, setActionDelai] = useState<number | null>(
+    (action as Action & { delai_declenchement?: number } | undefined)?.delai_declenchement ?? -30
+  );
+  const [dateVerrouillageAction, setDateVerrouillageAction] = useState(
+    !!(action as Action & { date_verrouillage_manuel?: boolean } | undefined)?.date_verrouillage_manuel
+  );
+  const [projectConfig, setProjectConfig] = useState<ProjectConfig | null>(null);
+
+  // Load project config on mount
+  useEffect(() => {
+    getProjectConfig().then(setProjectConfig);
+  }, []);
+
   // State for sync links
   const [actionsLiees, setActionsLiees] = useState<string[]>([]);
   const [propagationRetard, setPropagationRetard] = useState(true);
@@ -293,6 +323,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
     formState: { isSubmitting },
     reset,
     watch,
+    setValue,
   } = useForm<ActionFormData>({
     resolver: zodResolver(actionSchema),
     defaultValues: action
@@ -399,6 +430,40 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
   const watchStatut = watch('statut');
   const watchAvancement = watch('avancement');
   const watchEscaladeRequise = watch('escalade_requise');
+  const watchTitre = watch('titre');
+  const watchAxe = watch('axe');
+
+  // Auto-detect phase from titre + axe
+  useEffect(() => {
+    if (!dateVerrouillageAction && watchTitre) {
+      const detected = detectPhaseForAction({ titre: watchTitre, axe: watchAxe });
+      if (detected) {
+        setActionPhaseRef(detected);
+      }
+    }
+  }, [watchTitre, watchAxe, dateVerrouillageAction]);
+
+  // Auto-calculate duration from titre keywords
+  const [autoCalcDuree, setAutoCalcDuree] = useState<number>(
+    action?.duree_prevue_jours || calculateDureeEstimee({ titre: action?.titre })
+  );
+  useEffect(() => {
+    if (!dateVerrouillageAction && watchTitre) {
+      const duree = calculateDureeEstimee({ titre: watchTitre });
+      setAutoCalcDuree(duree);
+    }
+  }, [watchTitre, dateVerrouillageAction]);
+
+  // Auto-calculate dates from phase + délai + config + duration
+  useEffect(() => {
+    if (projectConfig && actionPhaseRef && actionDelai != null && !dateVerrouillageAction) {
+      const dateDebut = computeDateFromPhase(projectConfig, actionPhaseRef as PhaseReference, actionDelai);
+      setValue('date_debut_prevue', dateDebut);
+      setValue('duree_prevue_jours', autoCalcDuree);
+      const dateFin = computeEcheance(dateDebut, autoCalcDuree);
+      setValue('date_fin_prevue', dateFin);
+    }
+  }, [projectConfig, actionPhaseRef, actionDelai, autoCalcDuree, dateVerrouillageAction, setValue]);
 
   // Calculate alerts based on date_fin_prevue
   const calculateAlerts = (dateFin: string) => {
@@ -415,7 +480,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
   const onSubmit = async (data: ActionFormData) => {
     try {
       const alerts = calculateAlerts(data.date_fin_prevue);
-      const actionData: Partial<Action> = {
+      const actionData: Partial<Action> & Record<string, unknown> = {
         ...data,
         consultes,
         informes,
@@ -438,6 +503,10 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         modifie_par: data.responsable,
         version: (action?.version || 0) + 1,
         jalonId: selectedJalonId,
+        // Calcul automatique des echeances
+        jalon_reference: actionPhaseRef || undefined,
+        delai_declenchement: actionDelai ?? undefined,
+        date_verrouillage_manuel: dateVerrouillageAction,
       };
 
       if (isEditing && action?.id) {
@@ -701,11 +770,21 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
     <div className="space-y-4">
       <Section title="Dates & Échéances" icon={<Calendar className="w-4 h-4" />}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Date début prévue" required>
-            <Input type="date" {...register('date_debut_prevue')} />
+          <Field label={`Date début prévue${!dateVerrouillageAction ? ' (auto)' : ''}`} required>
+            <Input
+              type="date"
+              {...register('date_debut_prevue')}
+              disabled={!dateVerrouillageAction && !!projectConfig && !!actionPhaseRef}
+              className={!dateVerrouillageAction && projectConfig && actionPhaseRef ? 'bg-neutral-100' : ''}
+            />
           </Field>
-          <Field label="Date fin prévue" required>
-            <Input type="date" {...register('date_fin_prevue')} />
+          <Field label={`Date fin prévue${!dateVerrouillageAction ? ' (auto)' : ''}`} required>
+            <Input
+              type="date"
+              {...register('date_fin_prevue')}
+              disabled={!dateVerrouillageAction && !!projectConfig && !!actionPhaseRef}
+              className={!dateVerrouillageAction && projectConfig && actionPhaseRef ? 'bg-neutral-100' : ''}
+            />
           </Field>
           <Field label="Date début réelle">
             <Input type="date" {...register('date_debut_reelle')} />
@@ -713,8 +792,14 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           <Field label="Date fin réelle">
             <Input type="date" {...register('date_fin_reelle')} />
           </Field>
-          <Field label="Durée prévue (jours)" hint="Auto-calculé ou saisi">
-            <Input type="number" min="0" {...register('duree_prevue_jours', { valueAsNumber: true })} />
+          <Field label={`Durée prévue (jours)${!dateVerrouillageAction ? ' (auto)' : ''}`} hint="Auto-calculé depuis le titre">
+            <Input
+              type="number"
+              min="0"
+              {...register('duree_prevue_jours', { valueAsNumber: true })}
+              disabled={!dateVerrouillageAction}
+              className={!dateVerrouillageAction ? 'bg-neutral-100' : ''}
+            />
           </Field>
           <Field label="Durée réelle (jours)" hint="Auto-calculé">
             <Input type="number" min="0" {...register('duree_reelle_jours', { valueAsNumber: true })} />
@@ -1051,7 +1136,11 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           <Field label="Jalon cible" hint="Le jalon que cette action contribue à atteindre">
             <Select
               value={selectedJalonId?.toString() ?? ''}
-              onChange={(e) => setSelectedJalonId(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => {
+                const newId = e.target.value ? Number(e.target.value) : null;
+                setSelectedJalonId(newId);
+                if (!newId) setDateVerrouillageAction(false);
+              }}
             >
               <SelectOption value="">Aucun jalon</SelectOption>
               {jalons.map((jalon) => (
@@ -1067,6 +1156,77 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
                 Cette action sera affichée dans le suivi du jalon sélectionné.
               </p>
             </div>
+          )}
+        </div>
+      </Section>
+
+      <Section title="Calcul automatique des échéances" icon={<Calendar className="w-4 h-4" />}>
+        <div className="space-y-4">
+          {projectConfig ? (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="Phase (auto-détectée)">
+                  <div className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-700 flex items-center gap-2">
+                    <Lock className="h-3 w-3 text-neutral-400" />
+                    {actionPhaseRef
+                      ? PHASE_REFERENCE_LABELS[actionPhaseRef as PhaseReference]
+                      : 'Non détectée'}
+                  </div>
+                </Field>
+                <Field label="Délai de déclenchement" hint="Seul champ éditable. Défaut : -30">
+                  <Input
+                    type="number"
+                    value={actionDelai ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                      setActionDelai(val);
+                    }}
+                    placeholder="ex: -30"
+                  />
+                </Field>
+                <Field label="Durée estimée (auto)">
+                  <div className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-700 flex items-center gap-2">
+                    <Lock className="h-3 w-3 text-neutral-400" />
+                    {autoCalcDuree} jours
+                  </div>
+                </Field>
+              </div>
+
+              {actionPhaseRef && actionDelai != null && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-xs font-mono bg-white">
+                      {formatDelaiComplet(actionDelai, PHASE_REFERENCE_LABELS[actionPhaseRef])}
+                    </Badge>
+                  </div>
+                  <div className="flex gap-4 text-xs text-blue-600">
+                    <span>Date début: {computeDateFromPhase(projectConfig, actionPhaseRef, actionDelai)}</span>
+                    <span>Date fin: {computeEcheance(computeDateFromPhase(projectConfig, actionPhaseRef, actionDelai), autoCalcDuree)}</span>
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={dateVerrouillageAction}
+                  onChange={(e) => setDateVerrouillageAction(e.target.checked)}
+                  className="rounded border-neutral-300"
+                />
+                {dateVerrouillageAction ? (
+                  <Lock className="h-4 w-4 text-orange-600" />
+                ) : (
+                  <Unlock className="h-4 w-4 text-blue-600" />
+                )}
+                <span className="text-neutral-700">
+                  {dateVerrouillageAction ? 'Dates verrouillées (ignorées au recalcul)' : 'Recalcul automatique actif'}
+                </span>
+              </label>
+            </>
+          ) : (
+            <p className="text-sm text-neutral-500">
+              Chargement de la configuration du projet...
+            </p>
           )}
         </div>
       </Section>
@@ -1570,8 +1730,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
   // ============================================================================
   // TAB: SYNC (Synchronisation Chantier/Mobilisation)
   // ============================================================================
-
-  const watchAxe = watch('axe');
 
   const renderSync = () => {
     const isTechnique = watchAxe === 'axe3_technique';

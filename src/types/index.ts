@@ -53,6 +53,15 @@ export const AXE_LABELS: Record<Axe, string> = {
   axe6_exploitation: 'AXE 6 - Exploitation & Systèmes',
 };
 
+export const AXE_SHORT_LABELS: Record<Axe, string> = {
+  axe1_rh: 'RH & Organisation',
+  axe2_commercial: 'Commercialisation',
+  axe3_technique: 'Technique',
+  axe4_budget: 'Budget & Pilotage',
+  axe5_marketing: 'Marketing & Comm.',
+  axe6_exploitation: 'Exploitation',
+};
+
 export const PHASES = [
   'initiation',
   'planification',
@@ -100,6 +109,41 @@ export const PROJECT_PHASE_DATES: Record<ProjectPhase, { debut: string; fin: str
   phase2_mobilisation: { debut: '2026-01-01', fin: '2026-09-30' },
   phase3_lancement: { debut: '2026-10-01', fin: '2026-12-31' },
   phase4_stabilisation: { debut: '2026-10-01', fin: '2027-03-31' },
+};
+
+// ============================================================================
+// RÉFÉRENCES DE PHASE PROJET (pour calcul automatique des échéances)
+// ============================================================================
+export const PHASE_REFERENCES = [
+  'dateDebutConstruction',
+  'dateDebutMobilisation',
+  'dateSoftOpening',
+  'dateFinMobilisation',
+] as const;
+export type PhaseReference = (typeof PHASE_REFERENCES)[number];
+
+export const PHASE_REFERENCE_LABELS: Record<PhaseReference, string> = {
+  dateDebutConstruction: 'Début de construction',
+  dateDebutMobilisation: 'Début de la mobilisation',
+  dateSoftOpening: 'Soft Opening',
+  dateFinMobilisation: 'Fin du projet',
+};
+
+/** Nom de la période/phase à laquelle appartient le jalon de référence */
+export const PHASE_PERIOD_LABELS: Record<PhaseReference, string> = {
+  dateDebutConstruction: 'Construction',
+  dateDebutMobilisation: 'Mobilisation',
+  dateSoftOpening: 'Pré-ouverture',
+  dateFinMobilisation: 'Clôture',
+};
+
+export const UNITES_TEMPS = ['jours', 'semaines', 'mois'] as const;
+export type UniteTemps = (typeof UNITES_TEMPS)[number];
+
+export const UNITE_TEMPS_LABELS: Record<UniteTemps, string> = {
+  jours: 'Jours',
+  semaines: 'Semaines',
+  mois: 'Mois',
 };
 
 // ============================================================================
@@ -1098,6 +1142,12 @@ export interface Action {
   chemin_critique: boolean;       // Sur le chemin critique?
   jalonId: number | null;         // ID du jalon associé
 
+  // Calcul automatique des échéances
+  jalon_reference?: PhaseReference;    // Phase projet de référence pour le calcul
+  delai_declenchement?: number;        // Jours relatifs au jalon de référence (négatif = avant, ex: J-90 = -90)
+  unite_temps?: UniteTemps;            // Unité pour saisie du délai
+  date_verrouillage_manuel?: boolean;  // Si true, ignoré lors du recalcul automatique
+
   // ═══════════════════════════════════════════════════════════════════════════
   // RESSOURCES & BUDGET (Onglet: Ressources)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1192,6 +1242,11 @@ export interface Jalon {
 
   date_butoir_absolue: string | null;  // Deadline impérative
   flexibilite: Flexibilite;
+
+  // Calcul automatique des échéances
+  jalon_reference?: PhaseReference;    // Phase projet de référence pour le calcul
+  delai_declenchement?: number;        // Jours relatifs au jalon de référence (négatif = avant, ex: -90)
+  date_verrouillage_manuel?: boolean;  // Si true, ignoré lors du recalcul automatique
 
   // Alertes automatiques
   alerte_j30: string;

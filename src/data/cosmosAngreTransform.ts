@@ -129,23 +129,21 @@ const PHASE_DATES_PARSED = {
 // ============================================================================
 
 // Déterminer la phase projet (Cosmos Angré V2.0) basée sur la date
+// Limites non chevauchantes pour attribution unique :
+//   Phase 1 Préparation   : ≤ 31 mars 2026
+//   Phase 2 Mobilisation  : 1 avril – 30 septembre 2026
+//   Phase 3 Lancement     : 1 octobre – 31 décembre 2026
+//   Phase 4 Stabilisation : ≥ 1 janvier 2027
 function getProjectPhaseFromDate(dateStr: string): ProjectPhase {
   const date = new Date(dateStr);
-  const { phase1, phase2, phase3, phase4 } = PHASE_DATES_PARSED;
+  const y = date.getFullYear();
+  const m = date.getMonth(); // 0-indexed
 
-  // Priorité: Phase 3 (Lancement) > Phase 2 (Mobilisation) > Phase 4 (Stabilisation) > Phase 1 (Préparation)
-  if (date >= phase3.start && date <= phase3.end) return 'phase3_lancement';
-  if (date >= phase2.start && date <= phase2.end) return 'phase2_mobilisation';
-  if (date >= phase4.start && date <= phase4.end) return 'phase4_stabilisation';
-  if (date >= phase1.start && date <= phase1.end) return 'phase1_preparation';
-
-  // Défaut basé sur l'année
-  const year = date.getFullYear();
-  if (year <= 2025) return 'phase1_preparation';
-  if (year >= 2027) return 'phase4_stabilisation';
-
-  // 2026: janvier-septembre = Mobilisation, octobre-décembre = Lancement
-  return date.getMonth() <= 8 ? 'phase2_mobilisation' : 'phase3_lancement';
+  if (y < 2026) return 'phase1_preparation';
+  if (y === 2026 && m <= 2) return 'phase1_preparation';   // Jan-Mar 2026
+  if (y === 2026 && m <= 8) return 'phase2_mobilisation';   // Apr-Sep 2026
+  if (y === 2026) return 'phase3_lancement';                // Oct-Dec 2026
+  return 'phase4_stabilisation';                            // 2027+
 }
 
 // Déterminer le statut basé sur les dates

@@ -505,6 +505,47 @@ export async function deleteAction(id: number): Promise<void> {
 }
 
 // ============================================================================
+// REPAIR: ADD MISSING DATES TO EXISTING ITEMS
+// ============================================================================
+
+/**
+ * Repair existing sync items that lack planned dates by matching
+ * them to the initial reference data by code.
+ */
+export async function repairSyncItemDates(projectId: string): Promise<number> {
+  // Build a lookup map: code → { plannedStartDate, plannedEndDate }
+  const dateMap = new Map<string, { start: string; end: string }>();
+  [...INITIAL_PROJECT_ITEMS, ...INITIAL_MOBILIZATION_ITEMS].forEach(item => {
+    if (item.code && item.plannedStartDate && item.plannedEndDate) {
+      dateMap.set(item.code, { start: item.plannedStartDate, end: item.plannedEndDate });
+    }
+  });
+
+  const items = await db.syncItems.where('projectId').equals(projectId).toArray();
+  let repaired = 0;
+
+  for (const item of items) {
+    if (item.plannedStartDate && item.plannedEndDate) continue;
+
+    const ref = dateMap.get(item.code);
+    if (ref) {
+      await db.syncItems.update(item.id!, {
+        plannedStartDate: item.plannedStartDate || ref.start,
+        plannedEndDate: item.plannedEndDate || ref.end,
+        updatedAt: new Date().toISOString(),
+      });
+      repaired++;
+    }
+  }
+
+  if (repaired > 0) {
+    console.log(`[repairSyncItemDates] ${repaired} item(s) mis à jour avec leurs dates planifiées.`);
+  }
+
+  return repaired;
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
@@ -514,6 +555,7 @@ export async function deleteAction(id: number): Promise<void> {
 export async function initSyncModule(projectId: string): Promise<void> {
   await initSyncCategories();
   await initSyncItems(projectId);
+  await repairSyncItemDates(projectId);
 }
 
 /**

@@ -617,6 +617,132 @@ class CockpitDatabase extends Dexie {
         }
       }
     });
+
+    // Version 13: Add offset fields for automatic date recalculation
+    this.version(13).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+    }).upgrade(async (tx) => {
+      // Migration v13: Calculate phase references and delai_declenchement from existing dates
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+      // Get project config from secureConfigs
+      const secureConfigs = tx.table('secureConfigs');
+      const configRecord = await secureConfigs.where('key').equals('projectConfig').first();
+
+      const defaultConfig = {
+        dateDebutConstruction: '2024-01',
+        dateDebutMobilisation: '2026-01',
+        dateSoftOpening: '2026-11',
+        dateFinMobilisation: '2027-03',
+      };
+
+      let config = defaultConfig;
+      if (configRecord) {
+        try {
+          config = { ...defaultConfig, ...JSON.parse(configRecord.value) };
+        } catch { /* use fallback */ }
+      }
+
+      // Normalize phase dates to YYYY-MM-DD
+      const phaseDates: Record<string, Date> = {
+        dateDebutConstruction: new Date(config.dateDebutConstruction + (config.dateDebutConstruction.length === 7 ? '-01' : '')),
+        dateDebutMobilisation: new Date(config.dateDebutMobilisation + (config.dateDebutMobilisation.length === 7 ? '-01' : '')),
+        dateSoftOpening: new Date(config.dateSoftOpening + (config.dateSoftOpening.length === 7 ? '-01' : '')),
+        dateFinMobilisation: new Date(config.dateFinMobilisation + (config.dateFinMobilisation.length === 7 ? '-01' : '')),
+      };
+
+      // Auto-detect closest phase for a given date
+      const detectPhase = (dateStr: string): string => {
+        const target = new Date(dateStr).getTime();
+        let closest = 'dateSoftOpening';
+        let minDist = Infinity;
+        for (const [key, phaseDate] of Object.entries(phaseDates)) {
+          const dist = Math.abs(target - phaseDate.getTime());
+          if (dist < minDist) {
+            minDist = dist;
+            closest = key;
+          }
+        }
+        return closest;
+      };
+
+      // Migrate jalons
+      const jalons = tx.table('jalons');
+      const allJalons = await jalons.toArray();
+
+      for (const jalon of allJalons) {
+        if (jalon.date_prevue) {
+          const phaseRef = detectPhase(jalon.date_prevue);
+          const phaseDate = phaseDates[phaseRef];
+          const delai = Math.round(
+            (new Date(jalon.date_prevue).getTime() - phaseDate.getTime()) / MS_PER_DAY
+          );
+          await jalons.update(jalon.id, {
+            jalon_reference: phaseRef,
+            delai_declenchement: delai,
+            date_verrouillage_manuel: false,
+          });
+        }
+      }
+
+      // Migrate actions
+      const actions = tx.table('actions');
+      const allActions = await actions.toArray();
+
+      for (const action of allActions) {
+        if (action.date_debut_prevue) {
+          const phaseRef = detectPhase(action.date_debut_prevue);
+          const phaseDate = phaseDates[phaseRef];
+          const delai = Math.round(
+            (new Date(action.date_debut_prevue).getTime() - phaseDate.getTime()) / MS_PER_DAY
+          );
+          await actions.update(action.id, {
+            jalon_reference: phaseRef,
+            delai_declenchement: delai,
+            unite_temps: 'jours',
+            date_verrouillage_manuel: false,
+          });
+        } else {
+          await actions.update(action.id, {
+            date_verrouillage_manuel: false,
+          });
+        }
+      }
+    });
   }
 }
 
