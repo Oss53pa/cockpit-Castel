@@ -427,6 +427,145 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         },
   });
 
+  // Reset form when modal opens with new action data
+  useEffect(() => {
+    if (open) {
+      setActiveTab('general');
+      if (action) {
+        reset({
+          id_action: action.id_action,
+          code_wbs: action.code_wbs,
+          titre: action.titre,
+          description: action.description,
+          axe: action.axe,
+          phase: action.phase,
+          categorie: action.categorie,
+          sous_categorie: action.sous_categorie,
+          type_action: action.type_action,
+          date_debut_prevue: action.date_debut_prevue,
+          date_fin_prevue: action.date_fin_prevue,
+          date_debut_reelle: action.date_debut_reelle,
+          date_fin_reelle: action.date_fin_reelle,
+          duree_prevue_jours: action.duree_prevue_jours,
+          duree_reelle_jours: action.duree_reelle_jours,
+          date_butoir: action.date_butoir,
+          flexibilite: action.flexibilite,
+          responsable: action.responsable,
+          approbateur: action.approbateur,
+          delegue: action.delegue,
+          escalade_niveau1: action.escalade_niveau1,
+          escalade_niveau2: action.escalade_niveau2,
+          escalade_niveau3: action.escalade_niveau3,
+          contraintes_externes: action.contraintes_externes,
+          chemin_critique: action.chemin_critique,
+          charge_homme_jour: action.charge_homme_jour,
+          budget_prevu: action.budget_prevu,
+          budget_engage: action.budget_engage,
+          budget_realise: action.budget_realise,
+          ligne_budgetaire: action.ligne_budgetaire,
+          validateur_qualite: action.validateur_qualite,
+          lien_sharepoint: action.lien_sharepoint,
+          modele_document: action.modele_document,
+          statut: action.statut,
+          avancement: action.avancement,
+          methode_avancement: action.methode_avancement,
+          tendance: action.tendance,
+          sante: action.sante,
+          notes_internes: action.notes_internes,
+          commentaire_reporting: action.commentaire_reporting,
+          points_blocage: action.points_blocage,
+          escalade_requise: action.escalade_requise,
+          niveau_escalade: action.niveau_escalade,
+          priorite: action.priorite,
+          score_priorite: action.score_priorite,
+          impact_si_retard: action.impact_si_retard,
+          motif_modification: null,
+        });
+        // Reset dynamic lists with action data
+        setConsultes(action.consultes || []);
+        setInformes(action.informes || []);
+        setRessourcesHumaines(action.ressources_humaines || []);
+        setPredecesseurs(action.predecesseurs || []);
+        setSuccesseurs(action.successeurs || []);
+        setLivrables(action.livrables || []);
+        setCriteres(action.criteres_acceptation || []);
+        setDocuments(action.documents || []);
+        setRisquesAssocies(action.risques_associes || []);
+        setVisibiliteReporting(action.visibilite_reporting || ['interne_equipe']);
+        setSelectedJalonId(action.jalonId ?? null);
+        setActionPhaseRef((action as Action & { jalon_reference?: PhaseReference }).jalon_reference || '');
+        setActionDelai((action as Action & { delai_declenchement?: number }).delai_declenchement ?? -30);
+        setDateVerrouillageAction(!!(action as Action & { date_verrouillage_manuel?: boolean }).date_verrouillage_manuel);
+      } else {
+        // Reset to empty form for new action
+        reset({
+          id_action: '',
+          code_wbs: '',
+          titre: '',
+          description: '',
+          axe: 'axe2_commercial',
+          phase: 'execution',
+          categorie: 'negociation',
+          sous_categorie: null,
+          type_action: 'tache',
+          date_debut_prevue: today,
+          date_fin_prevue: today,
+          date_debut_reelle: null,
+          date_fin_reelle: null,
+          duree_prevue_jours: 1,
+          duree_reelle_jours: null,
+          date_butoir: null,
+          flexibilite: 'moyenne',
+          responsable: '',
+          approbateur: '',
+          delegue: null,
+          escalade_niveau1: '',
+          escalade_niveau2: '',
+          escalade_niveau3: '',
+          contraintes_externes: null,
+          chemin_critique: false,
+          charge_homme_jour: null,
+          budget_prevu: null,
+          budget_engage: null,
+          budget_realise: null,
+          ligne_budgetaire: null,
+          validateur_qualite: null,
+          lien_sharepoint: null,
+          modele_document: null,
+          statut: 'a_planifier',
+          avancement: 0,
+          methode_avancement: 'manuel',
+          tendance: 'stable',
+          sante: 'gris',
+          notes_internes: null,
+          commentaire_reporting: null,
+          points_blocage: null,
+          escalade_requise: false,
+          niveau_escalade: null,
+          priorite: 'moyenne',
+          score_priorite: 50,
+          impact_si_retard: 'modere',
+          motif_modification: null,
+        });
+        // Reset dynamic lists to empty
+        setConsultes([]);
+        setInformes([]);
+        setRessourcesHumaines([]);
+        setPredecesseurs([]);
+        setSuccesseurs([]);
+        setLivrables([]);
+        setCriteres([]);
+        setDocuments([]);
+        setRisquesAssocies([]);
+        setVisibiliteReporting(['interne_equipe']);
+        setSelectedJalonId(null);
+        setActionPhaseRef('');
+        setActionDelai(-30);
+        setDateVerrouillageAction(false);
+      }
+    }
+  }, [open, action, reset, today]);
+
   const watchStatut = watch('statut');
   const watchAvancement = watch('avancement');
   const watchEscaladeRequise = watch('escalade_requise');
