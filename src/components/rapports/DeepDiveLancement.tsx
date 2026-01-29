@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Sun,
   CloudSun,
@@ -19,9 +19,19 @@ import {
   Shield,
   Target,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Printer,
   RefreshCw,
+  Eye,
+  Globe,
+  X,
+  Maximize2,
+  Minimize2,
+  ExternalLink,
+  Copy,
+  Share2,
+  CircleDot,
 } from 'lucide-react';
 import {
   Card,
@@ -38,6 +48,10 @@ import {
   TabsList,
   TabsTrigger,
   TabsContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/utils';
@@ -232,7 +246,7 @@ function SlideRappelProjet() {
         <h3 className="text-lg font-bold text-primary-900 mb-4">KPIs Temps Réel</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-blue-700">{kpis?.tauxOccupation || 0}%</p>
+            <p className="text-2xl font-bold text-blue-700">{(kpis?.tauxOccupation || 0).toFixed(2)}%</p>
             <p className="text-xs text-blue-600">Occupation</p>
           </div>
           <div className="p-4 bg-green-50 rounded-lg text-center">
@@ -254,7 +268,63 @@ function SlideRappelProjet() {
 }
 
 // ============================================================================
-// SLIDE 2 - AXE RH & ORGANISATION
+// SLIDE 2 - AGENDA
+// ============================================================================
+function SlideAgenda() {
+  const agendaItems = [
+    { num: 1, titre: 'Rappel Projet & Météo Globale', icon: Target },
+    { num: 2, titre: 'Agenda', icon: FileText },
+    { num: 3, titre: 'AXE RH & Organisation', icon: Users },
+    { num: 4, titre: 'AXE Commercial & Leasing', icon: Building2 },
+    { num: 5, titre: 'AXE Technique & Handover', icon: Wrench },
+    { num: 6, titre: 'AXE Budget & Finances', icon: DollarSign },
+    { num: 7, titre: 'AXE Marketing & Communication', icon: Megaphone },
+    { num: 8, titre: 'AXE Exploitation & Juridique', icon: Settings },
+    { num: 9, titre: 'Risques Majeurs', icon: AlertTriangle },
+    { num: 10, titre: 'Décisions Attendues', icon: CheckCircle },
+  ];
+
+  const midPoint = Math.ceil(agendaItems.length / 2);
+  const leftColumn = agendaItems.slice(0, midPoint);
+  const rightColumn = agendaItems.slice(midPoint);
+
+  return (
+    <div className="h-full flex flex-col">
+      <SectionHeader title="AGENDA" icon={FileText} color="text-primary-600" />
+
+      <div className="flex-1 grid grid-cols-2 gap-6 mt-4">
+        {/* Colonne gauche */}
+        <div className="space-y-3">
+          {leftColumn.map((item) => (
+            <div key={item.num} className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-100 hover:bg-primary-100 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-[#1C3163] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                {item.num}
+              </div>
+              <item.icon className="h-5 w-5 text-[#1C3163] flex-shrink-0" />
+              <span className="font-medium text-primary-900">{item.titre}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Colonne droite */}
+        <div className="space-y-3">
+          {rightColumn.map((item) => (
+            <div key={item.num} className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-100 hover:bg-primary-100 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-[#1C3163] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                {item.num}
+              </div>
+              <item.icon className="h-5 w-5 text-[#1C3163] flex-shrink-0" />
+              <span className="font-medium text-primary-900">{item.titre}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SLIDE 3 - AXE RH & ORGANISATION
 // ============================================================================
 function SlideAxeRH() {
   const actions = useActions();
@@ -384,11 +454,16 @@ function SlideAxeRH() {
 function SlideAxeCommercial() {
   const actions = useActions();
   const jalons = useJalons();
+  const kpis = useDashboardKPIs();
 
   const actionsCommerciales = useMemo(() => {
     if (!actions.data) return [];
     return actions.data.filter(a => a.axe === 'axe2_commercial');
   }, [actions.data]);
+
+  const actionsEnCours = useMemo(() => {
+    return actionsCommerciales.filter(a => a.statut === 'en_cours');
+  }, [actionsCommerciales]);
 
   const jalonsCommerciaux = useMemo(() => {
     if (!jalons.data) return [];
@@ -396,79 +471,67 @@ function SlideAxeCommercial() {
   }, [jalons.data]);
 
   const actionsTerminees = actionsCommerciales.filter(a => a.statut === 'termine').length;
+  const tauxOccupationReel = kpis?.tauxOccupation || 0;
+  const tauxCible = 85;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SectionHeader title="AXE COMMERCIAL & LEASING" icon={Building2} color="text-indigo-600" />
 
       {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-        <Sun className="h-5 w-5 text-green-600" />
-        <span className="font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
+      <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
+        <Sun className="h-4 w-4 text-green-600" />
+        <span className="text-sm font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
       </div>
 
-      {/* KPIs */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">KPIs Clés</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Indicateur</TableHead>
-              <TableHead className="text-center">Cible</TableHead>
-              <TableHead className="text-center">Actuel</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">Taux d'occupation cible</TableCell>
-              <TableCell className="text-center">85%</TableCell>
-              <TableCell className="text-center text-primary-400">À compléter</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">Nombre de BEFA signés</TableCell>
-              <TableCell className="text-center">-</TableCell>
-              <TableCell className="text-center text-primary-400">À compléter</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">Pipeline prospects</TableCell>
-              <TableCell className="text-center">-</TableCell>
-              <TableCell className="text-center text-primary-400">À compléter</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </Card>
+      <div className="grid grid-cols-2 gap-4">
+        {/* KPIs avec réalisé vs cible */}
+        <Card padding="sm">
+          <h4 className="font-semibold text-primary-900 mb-2 text-sm">KPIs Clés</h4>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="text-xs font-medium">Taux d'occupation</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${tauxOccupationReel >= tauxCible ? 'text-green-600' : 'text-amber-600'}`}>
+                  {tauxOccupationReel.toFixed(1)}%
+                </span>
+                <span className="text-xs text-gray-400">/ {tauxCible}%</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="text-xs font-medium">Actions terminées</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-green-600">{actionsTerminees}</span>
+                <span className="text-xs text-gray-400">/ {actionsCommerciales.length}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <span className="text-xs font-medium">Jalons</span>
+              <span className="text-sm font-bold text-blue-600">{jalonsCommerciaux.length}</span>
+            </div>
+          </div>
+        </Card>
 
-      {/* Avancement réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Avancement Temps Réel</h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-indigo-50 rounded-lg">
-            <p className="text-xl font-bold text-indigo-700">{actionsCommerciales.length}</p>
-            <p className="text-xs text-indigo-500">Actions</p>
+        {/* Actions en cours réelles */}
+        <Card padding="sm">
+          <h4 className="font-semibold text-primary-900 mb-2 text-sm">Actions en Cours ({actionsEnCours.length})</h4>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {actionsEnCours.length > 0 ? (
+              actionsEnCours.slice(0, 5).map((action) => (
+                <div key={action.id} className="flex items-start gap-1 p-1 bg-indigo-50 rounded text-xs">
+                  <CircleDot className="h-3 w-3 text-indigo-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-primary-700 line-clamp-1">{action.titre}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-400 italic">Aucune action en cours</p>
+            )}
+            {actionsEnCours.length > 5 && (
+              <p className="text-xs text-gray-400 italic">+{actionsEnCours.length - 5} autres...</p>
+            )}
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
-            <p className="text-xs text-green-500">Terminées</p>
-          </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{jalonsCommerciaux.length}</p>
-            <p className="text-xs text-blue-500">Jalons</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Actions en cours */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Actions en Cours</h4>
-        <ul className="space-y-2">
-          {COMMERCIAL_ACTIONS.map((action, idx) => (
-            <li key={idx} className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-primary-700">{action}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -1124,24 +1187,388 @@ function SlideDecisions() {
 // ============================================================================
 export function DeepDiveLancement() {
   const [activeSlide, setActiveSlide] = useState(1);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showHtmlModal, setShowHtmlModal] = useState(false);
+  const [htmlContent, setHtmlContent] = useState('');
   const [presentationDate, setPresentationDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // États pour le preview comme DeepDive normal
+  const [previewSlideIndex, setPreviewSlideIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const slides = [
     { numero: 1, titre: 'Rappel Projet & Météo Globale', component: SlideRappelProjet },
-    { numero: 2, titre: 'AXE RH & Organisation', component: SlideAxeRH },
-    { numero: 3, titre: 'AXE Commercial & Leasing', component: SlideAxeCommercial },
-    { numero: 4, titre: 'AXE Technique & Handover', component: SlideAxeTechnique },
-    { numero: 5, titre: 'AXE Budget & Finances', component: SlideAxeBudget },
-    { numero: 6, titre: 'AXE Marketing & Communication', component: SlideAxeMarketing },
-    { numero: 7, titre: 'AXE Exploitation & Juridique', component: SlideAxeExploitation },
-    { numero: 8, titre: 'Risques Majeurs', component: SlideRisquesMajeurs },
-    { numero: 9, titre: 'Décisions Attendues', component: SlideDecisions },
+    { numero: 2, titre: 'Agenda', component: SlideAgenda },
+    { numero: 3, titre: 'AXE RH & Organisation', component: SlideAxeRH },
+    { numero: 4, titre: 'AXE Commercial & Leasing', component: SlideAxeCommercial },
+    { numero: 5, titre: 'AXE Technique & Handover', component: SlideAxeTechnique },
+    { numero: 6, titre: 'AXE Budget & Finances', component: SlideAxeBudget },
+    { numero: 7, titre: 'AXE Marketing & Communication', component: SlideAxeMarketing },
+    { numero: 8, titre: 'AXE Exploitation & Juridique', component: SlideAxeExploitation },
+    { numero: 9, titre: 'Risques Majeurs', component: SlideRisquesMajeurs },
+    { numero: 10, titre: 'Décisions Attendues', component: SlideDecisions },
   ];
 
+  // Navigation dans le preview
+  const navigatePreview = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && previewSlideIndex > 0) {
+      setPreviewSlideIndex(previewSlideIndex - 1);
+    } else if (direction === 'next' && previewSlideIndex < slides.length - 1) {
+      setPreviewSlideIndex(previewSlideIndex + 1);
+    }
+  };
+
   const ActiveSlideComponent = slides.find(s => s.numero === activeSlide)?.component || SlideRappelProjet;
+
+  // Fonction pour générer le HTML complet
+  const generateHtmlContent = () => {
+    const dateFormatted = new Date(presentationDate).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Dive Lancement - Cosmos Angré - ${dateFormatted}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .page-break { page-break-after: always; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .slide { min-height: 100vh; padding: 2rem; background: white; }
+    .slide-header { border-bottom: 3px solid #1C3163; padding-bottom: 1rem; margin-bottom: 2rem; }
+    .meteo-soleil { color: #16a34a; background: #dcfce7; }
+    .meteo-nuage { color: #ea580c; background: #ffedd5; }
+    .meteo-pluie { color: #dc2626; background: #fee2e2; }
+    .meteo-soleil-nuage { color: #d97706; background: #fef3c7; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- Header -->
+  <div class="bg-gradient-to-r from-[#1C3163] to-[#2a4a8a] text-white p-8 no-print">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-bold mb-2">DEEP DIVE LANCEMENT</h1>
+      <p class="text-lg opacity-90">Projet Cosmos Angré - Validation Stratégique</p>
+      <p class="text-sm opacity-75 mt-2">Date: ${dateFormatted}</p>
+      <p class="text-sm opacity-75">Présenté par: Pamela Atokouna, DGA | Destinataires: PDG, Actionnaires</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="bg-white shadow-sm sticky top-0 z-50 no-print">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto">
+      ${slides.map(s => `<a href="#slide-${s.numero}" class="px-3 py-1 bg-gray-100 hover:bg-[#1C3163] hover:text-white rounded text-sm whitespace-nowrap transition-colors">${s.numero}. ${s.titre}</a>`).join('\n      ')}
+    </div>
+  </div>
+
+  <div class="max-w-6xl mx-auto py-8 space-y-8">
+    <!-- Slide 1: Rappel Projet -->
+    <div id="slide-1" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 1/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">RAPPEL PROJET & MÉTÉO GLOBALE</h2>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Le Projet</h3>
+          <table class="w-full text-sm">
+            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">45 000 m²</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">8</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">15 nov. 2026</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">15 déc. 2026</td></tr>
+            <tr><td class="py-2 font-medium">Occupation cible</td><td class="text-right">≥ 85%</td></tr>
+          </table>
+        </div>
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Météo par Axe</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>RH & Organisation</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ À valider</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Commercial</span><span class="meteo-soleil px-2 py-1 rounded text-xs">☀️ En avance</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Technique</span><span class="meteo-nuage px-2 py-1 rounded text-xs">☁️ À surveiller</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Budget</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ À valider</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Marketing</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ En préparation</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Exploitation</span><span class="meteo-soleil px-2 py-1 rounded text-xs">☀️ OK</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2: AXE RH -->
+    <div id="slide-2" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 2/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE RH & ORGANISATION</h2>
+      </div>
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-amber-600">⛅</span>
+        <span class="font-medium text-amber-800">Organigramme à valider</span>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold mb-4">Effectif Cible</h3>
+          <div class="text-center p-4 bg-blue-50 rounded-lg">
+            <p class="text-3xl font-bold text-blue-700">6</p>
+            <p class="text-sm text-blue-600">personnes</p>
+            <p class="text-xs text-gray-500 mt-2">4 dédiés + 2 mutualisés (25%)</p>
+          </div>
+        </div>
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold mb-4">Planning Recrutement</h3>
+          <table class="w-full text-sm">
+            <tr class="border-b"><td class="py-2">Vague 1</td><td>Mai 2026</td><td class="text-right">DGA, CM</td></tr>
+            <tr class="border-b"><td class="py-2">Vague 2</td><td>Juil 2026</td><td class="text-right">FSM, CTL</td></tr>
+            <tr><td class="py-2">Vague 3</td><td>Oct 2026</td><td class="text-right">AFT</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: AXE Commercial -->
+    <div id="slide-3" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 3/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE COMMERCIAL & LEASING</h2>
+      </div>
+      <div class="p-3 bg-green-50 border border-green-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-green-600">☀️</span>
+        <span class="font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">KPIs Clés</h3>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div class="bg-indigo-50 p-4 rounded-lg">
+            <p class="text-2xl font-bold text-indigo-700">85%</p>
+            <p class="text-xs text-indigo-600">Taux cible</p>
+          </div>
+          <div class="bg-green-50 p-4 rounded-lg">
+            <p class="text-2xl font-bold text-green-700">-</p>
+            <p class="text-xs text-green-600">BEFA signés</p>
+          </div>
+          <div class="bg-blue-50 p-4 rounded-lg">
+            <p class="text-2xl font-bold text-blue-700">-</p>
+            <p class="text-xs text-blue-600">Pipeline</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: AXE Technique -->
+    <div id="slide-4" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 4/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE TECHNIQUE & HANDOVER</h2>
+      </div>
+      <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-orange-600">☁️</span>
+        <span class="font-medium text-orange-800">À surveiller - Bassin de rétention en cours</span>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Jalons Clés</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 text-left">Jalon</th><th class="p-2">Cible</th><th class="p-2">Statut</th></tr>
+          <tr class="border-b"><td class="p-2">Livraison Centre Commercial</td><td class="p-2 text-center">15 oct. 2026</td><td class="p-2 text-center">🔵 Planifié</td></tr>
+          <tr class="border-b"><td class="p-2">Livraison Big Box</td><td class="p-2 text-center">30 sept. 2026</td><td class="p-2 text-center">🔵 Planifié</td></tr>
+          <tr class="border-b"><td class="p-2">Achèvement Bassin</td><td class="p-2 text-center">30 juin 2026</td><td class="p-2 text-center">🟡 En cours</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Slide 5: AXE Budget -->
+    <div id="slide-5" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 5/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE BUDGET & FINANCES</h2>
+      </div>
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-amber-600">⛅</span>
+        <span class="font-medium text-amber-800">Budgets à valider (ce Deep Dive)</span>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg mb-6">
+        <h3 class="font-bold mb-4">Vue Synthétique 2026</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 text-left">Budget</th><th class="p-2 text-right">Montant</th><th class="p-2">Type</th></tr>
+          <tr class="border-b"><td class="p-2">Mobilisation</td><td class="p-2 text-right font-mono">930 000 000 FCFA</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">CAPEX</span></td></tr>
+          <tr class="border-b"><td class="p-2">Exploitation</td><td class="p-2 text-right font-mono">1 142 000 000 FCFA</td><td class="p-2 text-center"><span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">OPEX</span></td></tr>
+          <tr class="bg-[#1C3163] text-white"><td class="p-2 font-bold">TOTAL 2026</td><td class="p-2 text-right font-bold font-mono">2 072 000 000 FCFA</td><td class="p-2"></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Slide 6: AXE Marketing -->
+    <div id="slide-6" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 6/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE MARKETING & COMMUNICATION</h2>
+      </div>
+      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-amber-600">⛅</span>
+        <span class="font-medium text-amber-800">En préparation - Identité de marque à lancer</span>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold mb-4">Jalons Clés</h3>
+          <ul class="space-y-2 text-sm">
+            <li class="flex justify-between"><span>Identité de marque</span><span class="text-orange-600">À planifier</span></li>
+            <li class="flex justify-between"><span>Stratégie digitale</span><span class="text-orange-600">À planifier</span></li>
+            <li class="flex justify-between"><span>Plan média lancement</span><span class="text-orange-600">À planifier</span></li>
+          </ul>
+        </div>
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold mb-4">Budget Marketing</h3>
+          <p class="text-center text-2xl font-bold text-pink-700">150 000 000 FCFA</p>
+          <p class="text-center text-sm text-gray-500">Inclus dans Mobilisation</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 7: AXE Exploitation -->
+    <div id="slide-7" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 7/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE EXPLOITATION & JURIDIQUE</h2>
+      </div>
+      <div class="p-3 bg-green-50 border border-green-200 rounded-lg mb-6 flex items-center gap-2">
+        <span class="text-green-600">☀️</span>
+        <span class="font-medium text-green-800">OK - BEFA standard prêt</span>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Modèle d'Exploitation</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 text-left">Prestation</th><th class="p-2">Mode</th><th class="p-2">Effectif</th></tr>
+          <tr class="border-b"><td class="p-2">Sécurité</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">12-15</td></tr>
+          <tr class="border-b"><td class="p-2">Nettoyage</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">8-10</td></tr>
+          <tr class="border-b"><td class="p-2">Maintenance</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">4-6</td></tr>
+          <tr><td class="p-2">Espaces verts</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">3-4</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Slide 8: Risques -->
+    <div id="slide-8" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 8/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">RISQUES MAJEURS</h2>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Top 5 Risques</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 w-12">#</th><th class="p-2 text-left">Risque</th><th class="p-2 text-center">Prob.</th><th class="p-2 text-center">Impact</th><th class="p-2">Mitigation</th></tr>
+          <tr class="border-b"><td class="p-2 font-bold">1</td><td class="p-2">Retard livraison bâtiments</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Suivi hebdomadaire MOE</td></tr>
+          <tr class="border-b"><td class="p-2 font-bold">2</td><td class="p-2">Taux occupation < 85%</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Plan commercialisation actif</td></tr>
+          <tr class="border-b"><td class="p-2 font-bold">3</td><td class="p-2">Dépassement budget</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🟠</td><td class="p-2 text-sm">Contrôle mensuel</td></tr>
+          <tr class="border-b"><td class="p-2 font-bold">4</td><td class="p-2">Recrutement clés tardif</td><td class="p-2 text-center">🟢</td><td class="p-2 text-center">🟠</td><td class="p-2 text-sm">Anticipation vagues</td></tr>
+          <tr><td class="p-2 font-bold">5</td><td class="p-2">Problème autorisations</td><td class="p-2 text-center">🟢</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Veille réglementaire</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Slide 9: Décisions -->
+    <div id="slide-9" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 9/9</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">DÉCISIONS ATTENDUES</h2>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg mb-6">
+        <h3 class="font-bold mb-4">Checklist de Validation</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+            <span>1. Validation Organigramme</span>
+            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+            <span>2. Validation Budget Mobilisation (930 MFCFA)</span>
+            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+            <span>3. Validation Budget Exploitation (1 142 MFCFA)</span>
+            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+            <span>4. Validation Modèle Externalisé</span>
+            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+          </div>
+          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+            <span>5. Validation Planning Recrutement</span>
+            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Signatures</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 text-left">Rôle</th><th class="p-2">Nom</th><th class="p-2">Date</th><th class="p-2">Signature</th></tr>
+          <tr class="border-b"><td class="p-2">PDG</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
+          <tr class="border-b"><td class="p-2">DGA</td><td class="p-2">Pamela Atokouna</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
+          <tr><td class="p-2">DAF</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="bg-[#1C3163] text-white p-4 mt-8 no-print">
+    <div class="max-w-6xl mx-auto text-center text-sm">
+      <p>Deep Dive Lancement - Cosmos Angré - CRMC / New Heaven SA</p>
+      <p class="opacity-75 mt-1">Document généré le ${new Date().toLocaleDateString('fr-FR')} via COCKPIT</p>
+    </div>
+  </div>
+
+  <script>
+    // Smooth scroll for navigation
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+</body>
+</html>`;
+  };
+
+  // Ouvrir HTML dans une nouvelle fenêtre
+  const openHtmlPreview = () => {
+    const html = generateHtmlContent();
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(html);
+      newWindow.document.close();
+    }
+  };
+
+  // Télécharger le fichier HTML
+  const downloadHtml = () => {
+    const html = generateHtmlContent();
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `deep-dive-lancement-${presentationDate}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Copier le lien HTML
+  const copyHtmlToClipboard = () => {
+    const html = generateHtmlContent();
+    navigator.clipboard.writeText(html).then(() => {
+      alert('HTML copié dans le presse-papiers !');
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -1156,7 +1583,7 @@ export function DeepDiveLancement() {
             Présenté par : Pamela Atokouna, DGA | Destinataires : PDG, Actionnaires
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary-400" />
             <input
@@ -1166,9 +1593,17 @@ export function DeepDiveLancement() {
               className="text-sm border rounded px-2 py-1"
             />
           </div>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
+          <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
+          </Button>
+          <Button variant="outline" size="sm" onClick={openHtmlPreview}>
+            <Globe className="h-4 w-4 mr-2" />
+            Voir HTML
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadHtml}>
+            <Download className="h-4 w-4 mr-2" />
+            Télécharger HTML
           </Button>
           <Button variant="outline" size="sm">
             <Printer className="h-4 w-4 mr-2" />
@@ -1242,6 +1677,137 @@ export function DeepDiveLancement() {
           </Button>
         </div>
       </Card>
+
+      {/* Modal Preview - Une slide à la fois avec navigation */}
+      <Dialog open={showPreview} onOpenChange={(open) => {
+        setShowPreview(open);
+        if (open) setPreviewSlideIndex(0);
+      }}>
+        <DialogContent className={cn(
+          "overflow-hidden flex flex-col",
+          isFullscreen ? "fixed inset-0 max-w-none max-h-none w-screen h-screen rounded-none" : "max-w-[95vw] max-h-[95vh] w-full h-[90vh]"
+        )}>
+          {/* Header du preview */}
+          <DialogHeader className="flex-shrink-0 border-b pb-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-4">
+                <h4 className="font-semibold text-primary-900">
+                  Slide {previewSlideIndex + 1} / {slides.length}
+                </h4>
+                <span className="text-sm text-primary-500">
+                  {slides[previewSlideIndex]?.titre}
+                </span>
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => navigatePreview('prev')} disabled={previewSlideIndex === 0}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigatePreview('next')} disabled={previewSlideIndex === slides.length - 1}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setIsFullscreen(!isFullscreen)}>
+                  {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="sm" onClick={openHtmlPreview}>
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  HTML
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadHtml}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Télécharger
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowPreview(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Contenu - Une seule slide à la fois */}
+          <div className={cn("bg-gray-100 rounded-lg p-4 flex items-center justify-center", isFullscreen ? "flex-1" : "flex-1 min-h-0")}>
+            <div
+              className={cn(
+                "bg-white shadow-lg overflow-hidden rounded-xl flex flex-col",
+                isFullscreen ? "w-full h-full" : "w-full max-w-4xl"
+              )}
+              style={{ height: isFullscreen ? '100%' : 'calc(100% - 16px)' }}
+            >
+              {/* Header de slide */}
+              <div className="flex-shrink-0 bg-gradient-to-r from-[#1C3163] to-[#2a4a8a] text-white px-6 py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[#D4AF37] text-sm font-semibold">
+                      SLIDE {previewSlideIndex + 1}/{slides.length}
+                    </span>
+                    <h3 className="text-lg font-bold mt-0.5">{slides[previewSlideIndex]?.titre.toUpperCase()}</h3>
+                  </div>
+                  <div className="text-right text-sm opacity-75">
+                    <p>Cosmos Angré</p>
+                    <p>Deep Dive Lancement</p>
+                  </div>
+                </div>
+              </div>
+              {/* Contenu de slide */}
+              <div className="flex-1 min-h-0 p-6 overflow-y-auto">
+                {slides[previewSlideIndex] && (() => {
+                  const SlideComponent = slides[previewSlideIndex].component;
+                  return <SlideComponent />;
+                })()}
+              </div>
+              {/* Footer de slide */}
+              <div className="flex-shrink-0 bg-gray-50 px-6 py-2 border-t flex items-center justify-between text-xs text-gray-500">
+                <span>CRMC / New Heaven SA - Confidentiel</span>
+                <span>Page {previewSlideIndex + 1}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Thumbnails des slides - seulement si pas en fullscreen */}
+          {!isFullscreen && (
+            <div className="flex-shrink-0 mt-4 flex gap-2 overflow-x-auto py-2 px-2">
+              {slides.map((slide, index) => (
+                <button
+                  key={slide.numero}
+                  onClick={() => setPreviewSlideIndex(index)}
+                  className={cn(
+                    "flex-shrink-0 w-20 h-14 rounded border-2 overflow-hidden transition-all",
+                    index === previewSlideIndex
+                      ? "border-primary-500 ring-2 ring-primary-200"
+                      : "border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center">
+                    <span className="text-sm font-bold text-gray-600">{index + 1}</span>
+                    <span className="text-[8px] text-gray-400 text-center px-1 truncate w-full">
+                      {slide.titre.split(' ').slice(0, 2).join(' ')}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Footer du modal */}
+          <div className="flex-shrink-0 border-t pt-4 flex items-center justify-between bg-white">
+            <p className="text-sm text-primary-500">
+              {slides.length} slides • {new Date(presentationDate).toLocaleDateString('fr-FR')}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={copyHtmlToClipboard}>
+                <Copy className="h-4 w-4 mr-1" />
+                Copier HTML
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 mr-1" />
+                Imprimer
+              </Button>
+              <Button size="sm" onClick={() => setShowPreview(false)}>
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -425,8 +425,8 @@ export async function createSnapshotV2(siteId: number, projectId: string): Promi
 /**
  * Obtient l'historique des snapshots
  */
-export async function getSnapshotHistoryV2(projectId: string, limit?: number): Promise<SyncSnapshot[]> {
-  if (!projectId) return [];
+export async function getSnapshotHistoryV2(projectId: string | undefined | null, limit?: number): Promise<SyncSnapshot[]> {
+  if (!projectId || typeof projectId !== 'string') return [];
   const snapshots = await db.syncSnapshots
     .where('projectId')
     .equals(projectId)
@@ -595,8 +595,8 @@ export async function generateSyncAlertsV2(
 /**
  * Obtient les alertes d'un projet
  */
-export async function getAlertsByProjectV2(projectId: string, onlyActive = false): Promise<SyncAlert[]> {
-  if (!projectId) return [];
+export async function getAlertsByProjectV2(projectId: string | undefined | null, onlyActive = false): Promise<SyncAlert[]> {
+  if (!projectId || typeof projectId !== 'string') return [];
   let alerts = await db.syncAlerts.where('projectId').equals(projectId).toArray();
   if (onlyActive) {
     alerts = alerts.filter(a => !a.isAcknowledged);
@@ -618,8 +618,8 @@ export async function acknowledgeAlertV2(id: number, by: string): Promise<void> 
 /**
  * Obtient les actions correctives d'un projet
  */
-export async function getActionsByProjectV2(projectId: string): Promise<SyncAction[]> {
-  if (!projectId) return [];
+export async function getActionsByProjectV2(projectId: string | undefined | null): Promise<SyncAction[]> {
+  if (!projectId || typeof projectId !== 'string') return [];
   return db.syncActions.where('projectId').equals(projectId).toArray();
 }
 

@@ -249,7 +249,6 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projec
             dimension="PROJECT"
             categories={projectCategories}
             projectId={projectId}
-            onUpdateProgress={updateItemProgress}
           />
         )}
         {selectedView !== 'project' && (
@@ -258,7 +257,6 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projec
             dimension="MOBILIZATION"
             categories={mobilizationCategories}
             projectId={projectId}
-            onUpdateProgress={updateItemProgress}
           />
         )}
       </div>

@@ -452,15 +452,49 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
   }, [risquesDb]);
 
   const risquesEvolution = useMemo((): RisquesEvolutionData => {
-    // Simplifié - à enrichir avec données historiques
-    const critiques = risquesDb.filter(r => (r.score_actuel || 0) >= 12).length;
-    const majeurs = risquesDb.filter(r => (r.score_actuel || 0) >= 8 && (r.score_actuel || 0) < 12).length;
-    const moderes = risquesDb.filter(r => (r.score_actuel || 0) >= 4 && (r.score_actuel || 0) < 8).length;
-    const faibles = risquesDb.filter(r => (r.score_actuel || 0) < 4).length;
+    // Période actuelle (mois en cours)
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Risques nouveaux: identifiés ce mois
+    const nouveaux = risquesDb
+      .filter(r => {
+        const dateIdent = r.date_identification ? new Date(r.date_identification) : null;
+        return dateIdent && dateIdent >= startOfMonth && dateIdent <= endOfMonth;
+      })
+      .map(r => ({
+        id: r.id?.toString() || '',
+        code: r.code || r.id_risque || '',
+        titre: r.titre,
+        score: r.score_actuel || r.score_initial || 0,
+        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        dateIdentification: r.date_identification || '',
+      }));
+
+    // Risques fermés: statut = 'ferme' (ou évaluation récente avec statut fermé)
+    const fermes = risquesDb
+      .filter(r => r.statut === 'ferme')
+      .map(r => ({
+        id: r.id?.toString() || '',
+        code: r.code || r.id_risque || '',
+        titre: r.titre,
+        scoreFinal: r.score_actuel || r.score_initial || 0,
+        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        dateFermeture: r.date_derniere_evaluation || '',
+        motif: 'Risque traité ou mitigé',
+      }));
+
+    // Comptage par niveau
+    const risquesOuverts = risquesDb.filter(r => r.statut !== 'ferme');
+    const critiques = risquesOuverts.filter(r => (r.score_actuel || 0) >= 12).length;
+    const majeurs = risquesOuverts.filter(r => (r.score_actuel || 0) >= 8 && (r.score_actuel || 0) < 12).length;
+    const moderes = risquesOuverts.filter(r => (r.score_actuel || 0) >= 4 && (r.score_actuel || 0) < 8).length;
+    const faibles = risquesOuverts.filter(r => (r.score_actuel || 0) < 4).length;
 
     return {
-      nouveaux: [],
-      fermes: [],
+      nouveaux,
+      fermes,
       evolutionParNiveau: [
         { niveau: 'critique', moisPrecedent: critiques, moisActuel: critiques, evolution: 0 },
         { niveau: 'majeur', moisPrecedent: majeurs, moisActuel: majeurs, evolution: 0 },

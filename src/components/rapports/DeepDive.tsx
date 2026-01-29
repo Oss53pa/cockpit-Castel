@@ -245,15 +245,10 @@ const fontOptions = [
   { value: 'Verdana', label: 'Verdana (Readable)' },
 ];
 
-// Helper to generate slides for each strategic axis
+// Helper to generate slides for each strategic axis (2 slides per axis)
 const generateAxeSlides = (axeKey: AxeType, axeConfig: { label: string; icon: React.ElementType }): SlideItem[] => [
-  { id: `axe_${axeKey}_intro`, title: `${axeConfig.label}`, icon: axeConfig.icon, description: 'Slide intercalaire avec sommaire des 5 sections', included: true, comment: '' },
-  { id: `axe_${axeKey}_actions`, title: `${axeConfig.label} - Actions`, icon: ListChecks, description: 'Tableau des actions avec statut et progression', included: true, comment: '' },
-  { id: `axe_${axeKey}_actions_suite`, title: `${axeConfig.label} - Actions (Suite)`, icon: ListChecks, description: 'Suite du tableau des actions', included: false, comment: '' },
-  { id: `axe_${axeKey}_jalons`, title: `${axeConfig.label} - Jalons`, icon: Calendar, description: 'Timeline des jalons clés', included: true, comment: '' },
-  { id: `axe_${axeKey}_budget`, title: `${axeConfig.label} - Budget`, icon: DollarSign, description: 'Budget alloué vs consommé', included: true, comment: '' },
-  { id: `axe_${axeKey}_risques`, title: `${axeConfig.label} - Risques`, icon: Shield, description: 'Matrice et mesures de maîtrise', included: true, comment: '' },
-  { id: `axe_${axeKey}_dg`, title: `${axeConfig.label} - Points DG`, icon: AlertTriangle, description: 'Points en attente de validation DG', included: true, comment: '' },
+  { id: `axe_${axeKey}_overview`, title: `${axeConfig.label} - Vue d'ensemble`, icon: axeConfig.icon, description: 'Actions, Jalons et Avancement', included: true, comment: '' },
+  { id: `axe_${axeKey}_finance_risques`, title: `${axeConfig.label} - Budget & Risques`, icon: Shield, description: 'Budget, Risques et Points DG', included: true, comment: '' },
 ];
 
 const defaultSlides: SlideItem[] = [
@@ -261,7 +256,7 @@ const defaultSlides: SlideItem[] = [
   { id: '1', title: 'Page de garde', icon: FileText, description: 'Titre, date, logo', included: true, comment: '' },
   { id: '2', title: 'Agenda', icon: FileText, description: 'Sommaire de la présentation', included: true, comment: '' },
   { id: '3', title: 'Synthèse exécutive & Météo projet', icon: Sun, description: 'Vue d\'ensemble et indicateurs clés', included: true, comment: '' },
-  { id: 'copil', title: 'Dashboard COPIL', icon: Users, description: 'Météo, Top 5 risques, Jalons J-30, Budget, Alertes, Décisions', included: true, comment: '' },
+  { id: 'copil', title: 'Dashboard COPIL', icon: Users, description: 'Météo, Top 5 risques, Jalons J-30, Budget, Alertes', included: true, comment: '' },
   { id: '18', title: 'Tableau de Bord Stratégique', icon: Target, description: 'Scorecard avec objectifs vs réalisé et tendances', included: true, comment: '' },
   { id: '19', title: 'Faits Marquants de la Période', icon: Zap, description: 'Réalisations clés, blocages, et alertes critiques', included: true, comment: '' },
   { id: '4', title: 'Vue d\'ensemble par axe', icon: BarChart2, description: 'Barres de progression par axe stratégique', included: true, comment: '' },
@@ -290,8 +285,7 @@ const defaultSlides: SlideItem[] = [
   { id: '20', title: 'Analyse EVM Détaillée', icon: TrendingUp, description: 'SPI, CPI, EAC, VAC avec graphiques de tendance', included: true, comment: '' },
   { id: '12', title: 'Risques Consolidés', icon: Shield, description: 'Top risques tous axes confondus', included: true, comment: '' },
   { id: '21', title: 'Matrice des Risques Globale', icon: Shield, description: 'Heat map Probabilité x Impact avec évolution', included: true, comment: '' },
-  { id: '13', title: 'Points DG Consolidés', icon: AlertTriangle, description: 'Toutes les décisions requises par axe', included: true, comment: '' },
-  { id: '13_suite', title: 'Points DG (Suite)', icon: AlertTriangle, description: 'Suite des décisions requises', included: false, comment: '' },
+  { id: '13', title: 'Décisions & Arbitrages DG', icon: AlertTriangle, description: 'Toutes les décisions requises par axe et niveau d\'urgence', included: true, comment: '' },
   { id: '22', title: 'Actions Critiques & Chemin Critique', icon: Zap, description: 'Top 10 actions critiques avec impacts', included: true, comment: '' },
   { id: '14', title: 'Planning Global & Jalons', icon: Calendar, description: 'Timeline consolidée et jalons clés', included: true, comment: '' },
   { id: '23', title: 'Roadmap & Timeline Visuelle', icon: Calendar, description: 'Gantt simplifié avec jalons majeurs', included: true, comment: '' },
@@ -640,7 +634,7 @@ export function DeepDive() {
       urgency: 'high',
       deadline: '2026-02-15',
       recommendation: 'Approuver pour lancer AO agence',
-      axe: 'communication',
+      axe: 'marketing', // Communication -> Marketing
     },
     {
       id: '2',
@@ -667,7 +661,7 @@ export function DeepDive() {
       urgency: 'high',
       deadline: '2026-02-10',
       recommendation: 'Valider version V3 avec modifications mineures',
-      axe: 'juridique',
+      axe: 'commercialisation', // Juridique -> Commercialisation (BEFA)
     },
     {
       id: '5',
@@ -770,7 +764,9 @@ export function DeepDive() {
     };
 
     decisionPoints.forEach((point) => {
-      grouped[point.axe].push(point);
+      // Map invalid axes to valid AxeType or fallback to 'general'
+      const validAxe = point.axe in grouped ? point.axe : 'general';
+      grouped[validAxe].push(point);
     });
 
     // Sort each group by urgency
@@ -1124,9 +1120,21 @@ export function DeepDive() {
     totalSlides: number
   ) => {
     const { primaryColor, accentColor, fontFamily, headerStyle } = designSettings;
-    const axeConfig = axesConfig[axe];
-    const data = axeDetailData[axe];
-    const axeDecisions = decisionPointsByAxe[axe];
+    const axeConfig = axesConfig[axe] || axesConfig.general;
+    const data = axeDetailData[axe] || {
+      avancement: 0,
+      budgetPrevu: 0,
+      budgetRealise: 0,
+      actionsCount: 0,
+      actionsTerminees: 0,
+      actionsEnCours: 0,
+      actionsBloquees: 0,
+      jalonsCount: 0,
+      jalonsAtteints: 0,
+      risquesCount: 0,
+      risquesCritiques: 0,
+    };
+    const axeDecisions = decisionPointsByAxe[axe] || [];
     const axeRisques = getRisquesForAxe(axe);
     const axeJalons = getJalonsForAxe(axe);
     const axeActions = getActionsForAxe(axe);
@@ -1499,6 +1507,197 @@ export function DeepDive() {
       );
     }
 
+    // Section Overview (Actions + Jalons combinés)
+    if (sectionType === 'overview') {
+      const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint').length;
+      const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
+      const actionsEnRetard = axeActions.filter(a => a.statut === 'en_retard' || a.statut === 'bloque').length;
+
+      return (
+        <div style={baseStyles} className="h-full flex flex-col">
+          <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: axeConfig.color }}>
+            <div className="flex items-center gap-2">
+              <axeConfig.icon className="h-5 w-5 text-white" />
+              <h2 className="text-lg font-bold text-white">{axeConfig.label}</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-center">
+                <div className="text-xl font-bold text-white">{data.avancement}%</div>
+                <div className="text-[9px] text-white/70">Avancement</div>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 p-2 overflow-hidden grid grid-cols-2 gap-2">
+            {/* Colonne Actions */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <ListChecks className="h-4 w-4" style={{ color: axeConfig.color }} />
+                <span className="font-semibold text-xs" style={{ color: primaryColor }}>Actions</span>
+                <span className="ml-auto text-[9px] text-gray-500">
+                  <span className="text-green-600 font-bold">{actionsTerminees}</span> / {axeActions.length}
+                  {actionsEnRetard > 0 && <span className="text-red-600 ml-1">({actionsEnRetard} retard)</span>}
+                </span>
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-lg p-1.5 overflow-auto">
+                <div className="space-y-1">
+                  {axeActions.slice(0, 8).map((action, idx) => {
+                    const statusColors: Record<string, string> = {
+                      termine: '#22C55E', en_cours: '#3B82F6', en_retard: '#EF4444', bloque: '#DC2626', a_faire: '#6B7280', planifie: '#9CA3AF'
+                    };
+                    return (
+                      <div key={idx} className="flex items-center gap-1.5 p-1 bg-white rounded text-[9px]">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[action.statut] || '#6B7280' }} />
+                        <span className="flex-1 truncate">{action.titre}</span>
+                        <span className="text-gray-400 shrink-0">{action.avancement}%</span>
+                      </div>
+                    );
+                  })}
+                  {axeActions.length === 0 && <p className="text-[9px] text-gray-400 italic text-center py-2">Aucune action</p>}
+                </div>
+              </div>
+            </div>
+            {/* Colonne Jalons */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <Calendar className="h-4 w-4" style={{ color: axeConfig.color }} />
+                <span className="font-semibold text-xs" style={{ color: primaryColor }}>Jalons</span>
+                <span className="ml-auto text-[9px] text-gray-500">
+                  <span className="text-green-600 font-bold">{jalonsAtteints}</span> / {axeJalons.length} atteints
+                </span>
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-lg p-1.5 overflow-auto">
+                <div className="space-y-1">
+                  {axeJalons.slice(0, 8).map((jalon, idx) => {
+                    const statusColors: Record<string, string> = {
+                      atteint: '#22C55E', en_danger: '#EF4444', depasse: '#DC2626', en_approche: '#3B82F6', a_venir: '#6B7280'
+                    };
+                    return (
+                      <div key={idx} className="flex items-center gap-1.5 p-1 bg-white rounded text-[9px]">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColors[jalon.statut] || '#6B7280' }} />
+                        <span className="flex-1 truncate">{jalon.titre}</span>
+                        <span className="text-gray-400 shrink-0">
+                          {jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '-'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {axeJalons.length === 0 && <p className="text-[9px] text-gray-400 italic text-center py-2">Aucun jalon</p>}
+                </div>
+              </div>
+            </div>
+          </div>
+          {renderSlideFooter(slideNumber, totalSlides)}
+        </div>
+      );
+    }
+
+    // Section Finance & Risques (Budget + Risques + Points DG combinés)
+    if (sectionType === 'finance_risques') {
+      const budgetPct = data.budgetPrevu > 0 ? Math.round((data.budgetRealise / data.budgetPrevu) * 100) : 0;
+      const ecart = data.budgetPrevu - data.budgetRealise;
+      const isOverBudget = ecart < 0;
+      const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12).length;
+
+      return (
+        <div style={baseStyles} className="h-full flex flex-col">
+          <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: axeConfig.color }}>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-white" />
+              <h2 className="text-lg font-bold text-white">{axeConfig.label} - Budget & Risques</h2>
+            </div>
+          </div>
+          <div className="flex-1 p-2 overflow-hidden grid grid-cols-3 gap-2">
+            {/* Colonne Budget */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <DollarSign className="h-4 w-4" style={{ color: axeConfig.color }} />
+                <span className="font-semibold text-xs" style={{ color: primaryColor }}>Budget</span>
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-lg p-2">
+                <div className="space-y-2">
+                  <div className="text-center p-2 bg-white rounded">
+                    <div className="text-[9px] text-gray-500">Alloué</div>
+                    <div className="text-sm font-bold" style={{ color: primaryColor }}>{(data.budgetPrevu / 1000000).toFixed(0)}M</div>
+                  </div>
+                  <div className="text-center p-2 bg-white rounded" style={{ borderLeft: `3px solid ${axeConfig.color}` }}>
+                    <div className="text-[9px] text-gray-500">Consommé</div>
+                    <div className="text-sm font-bold" style={{ color: axeConfig.color }}>{(data.budgetRealise / 1000000).toFixed(0)}M</div>
+                  </div>
+                  <div className={`text-center p-2 rounded ${isOverBudget ? 'bg-red-50' : 'bg-green-50'}`}>
+                    <div className="text-[9px] text-gray-500">Écart</div>
+                    <div className={`text-sm font-bold ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
+                      {isOverBudget ? '-' : '+'}{(Math.abs(ecart) / 1000000).toFixed(0)}M
+                    </div>
+                  </div>
+                  <div className="mt-1">
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 100 ? '#EF4444' : axeConfig.color }} />
+                    </div>
+                    <div className="text-[8px] text-center text-gray-500 mt-0.5">{budgetPct}% consommé</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Colonne Risques */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <Shield className="h-4 w-4" style={{ color: axeConfig.color }} />
+                <span className="font-semibold text-xs" style={{ color: primaryColor }}>Risques</span>
+                <span className="ml-auto text-[9px]">
+                  {risquesCritiques > 0 && <span className="text-red-600 font-bold">{risquesCritiques} crit.</span>}
+                </span>
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-lg p-1.5 overflow-auto">
+                <div className="space-y-1">
+                  {axeRisques.slice(0, 5).map((risque, idx) => {
+                    const score = risque.score || 0;
+                    const scoreColor = score >= 12 ? '#EF4444' : score >= 8 ? '#F97316' : score >= 4 ? '#EAB308' : '#22C55E';
+                    return (
+                      <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: scoreColor }}>
+                        <div className="flex items-center justify-between">
+                          <span className="truncate flex-1">{risque.titre}</span>
+                          <span className="font-bold ml-1 shrink-0" style={{ color: scoreColor }}>{score}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {axeRisques.length === 0 && <p className="text-[9px] text-gray-400 italic text-center py-2">Aucun risque</p>}
+                </div>
+              </div>
+            </div>
+            {/* Colonne Points DG */}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <AlertTriangle className="h-4 w-4" style={{ color: axeConfig.color }} />
+                <span className="font-semibold text-xs" style={{ color: primaryColor }}>Points DG</span>
+                <span className="ml-auto text-[9px] text-gray-500">{axeDecisions.length}</span>
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-lg p-1.5 overflow-auto">
+                {axeDecisions.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-gray-400">
+                      <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                      <p className="text-[9px]">Aucun point DG</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {axeDecisions.slice(0, 4).map((point, idx) => (
+                      <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: urgencyConfig[point.urgency].color }}>
+                        <div className="font-medium truncate">{point.subject}</div>
+                        <div className="text-gray-500 truncate">{point.recommendation}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          {renderSlideFooter(slideNumber, totalSlides)}
+        </div>
+      );
+    }
+
     // Default fallback
     return renderAxeDetailSlide(axe, slideItem, slideNumber, totalSlides);
   };
@@ -1563,20 +1762,39 @@ export function DeepDive() {
         );
 
       case '2': {
-        // Agenda simplifié - sections principales uniquement
-        const agendaItems = activeSlides
-          .filter((s) =>
-            s.id !== '1' &&
-            s.id !== '2' &&
-            s.id !== '17' &&
-            !s.id.includes('_suite') &&
-            !s.id.includes('_actions') &&
-            !s.id.includes('_jalons') &&
-            !s.id.includes('_budget') &&
-            !s.id.includes('_risques') &&
-            !s.id.includes('_dg')
-          )
-          .map((s, i) => ({ num: i + 1, title: s.title, isIntro: s.id.includes('_intro') }));
+        // Agenda - 1 ligne par axe (regroupement des 2 slides axe)
+        const agendaItems: { num: number; title: string; isIntro: boolean }[] = [];
+        let slideNum = 0;
+        const processedAxes = new Set<string>();
+
+        activeSlides.forEach((s) => {
+          // Exclure page de garde, agenda lui-même, et page de fin
+          if (s.id === '1' || s.id === '2' || s.id === '17') return;
+          // Exclure les slides _suite (continuations)
+          if (s.id.includes('_suite')) return;
+
+          // Regrouper les slides d'axe en un seul item par axe
+          const axeMatch = s.id.match(/^axe_(\w+)_(overview|finance_risques)$/);
+          if (axeMatch) {
+            const axeKey = axeMatch[1];
+            if (processedAxes.has(axeKey)) return; // Déjà ajouté
+            processedAxes.add(axeKey);
+            slideNum++;
+            const axeConfig = axesConfig[axeKey as AxeType];
+            agendaItems.push({
+              num: slideNum,
+              title: axeConfig ? axeConfig.label : s.title,
+              isIntro: false,
+            });
+          } else {
+            slideNum++;
+            agendaItems.push({
+              num: slideNum,
+              title: s.title,
+              isIntro: s.id.includes('_intro'),
+            });
+          }
+        });
 
         // Split into two columns
         const midPoint = Math.ceil(agendaItems.length / 2);
@@ -1847,27 +2065,154 @@ export function DeepDive() {
                 })}
               </div>
 
-              {/* Résumé global des décisions DG */}
-              {allDGDecisions.length > 0 && (
-                <div className="mt-3 p-2 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-orange-800">🚨 Décisions DG Prioritaires</span>
-                    <span className="text-xs text-orange-600">{decisionPoints.filter(d => d.urgency === 'critical').length} critique(s), {decisionPoints.filter(d => d.urgency === 'high').length} haute(s)</span>
+              {slideItem.comment && (
+                <div className="mt-2 p-2 bg-blue-50 rounded-lg border-l-3 border-blue-400">
+                  <p className="text-[10px] text-blue-800">{slideItem.comment}</p>
+                </div>
+              )}
+            </div>
+            {renderSlideFooter(slideNumber, totalSlides)}
+          </div>
+        );
+      }
+
+      case '4_dg': {
+        // Décisions DG Prioritaires - Slide dédiée
+        const allDGDecisions4dg = decisionPoints.filter(d => d.urgency === 'critical' || d.urgency === 'high');
+        const criticalDecisions4dg = decisionPoints.filter(d => d.urgency === 'critical');
+        const highDecisions4dg = decisionPoints.filter(d => d.urgency === 'high');
+
+        return (
+          <div style={baseStyles} className="h-full flex flex-col">
+            {headerStyle !== 'none' && (
+              <div className="px-6 py-3 flex items-center justify-between" style={{ backgroundColor: headerBg }}>
+                <div>
+                  <h2 className="text-xl font-bold" style={{ color: headerTextColor }}>🚨 Décisions DG Prioritaires</h2>
+                  <p className="text-sm opacity-80" style={{ color: headerTextColor }}>Points en attente de validation Direction Générale</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-center bg-white/20 px-4 py-2 rounded-lg">
+                    <div className="text-2xl font-bold" style={{ color: headerTextColor }}>{allDGDecisions4dg.length}</div>
+                    <div className="text-xs opacity-80" style={{ color: headerTextColor }}>Total</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1">
-                    {allDGDecisions.slice(0, 4).map((d) => (
-                      <div key={d.id} className="text-[9px] bg-white rounded px-1.5 py-1 border-l-2" style={{ borderLeftColor: urgencyConfig[d.urgency].color }}>
-                        <div className="font-medium text-gray-800 truncate">{d.subject}</div>
-                        <div className="text-gray-500">{axesConfig[d.axe]?.shortLabel || d.axe} • {d.deadline ? new Date(d.deadline).toLocaleDateString('fr-FR') : '-'}</div>
+                  {criticalDecisions4dg.length > 0 && (
+                    <div className="text-center bg-red-500/30 px-4 py-2 rounded-lg border border-red-300">
+                      <div className="text-2xl font-bold text-white">{criticalDecisions4dg.length}</div>
+                      <div className="text-xs text-red-100">Critique(s)</div>
+                    </div>
+                  )}
+                  {highDecisions4dg.length > 0 && (
+                    <div className="text-center bg-orange-500/30 px-4 py-2 rounded-lg border border-orange-300">
+                      <div className="text-2xl font-bold text-white">{highDecisions4dg.length}</div>
+                      <div className="text-xs text-orange-100">Haute(s)</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex-1 p-4 overflow-auto">
+              {allDGDecisions4dg.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-400" />
+                    <p className="text-lg font-medium text-green-600">Aucune décision critique en attente</p>
+                    <p className="text-sm text-gray-500">Toutes les décisions prioritaires ont été traitées</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Décisions Critiques */}
+                  {criticalDecisions4dg.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500" />
+                        <h3 className="text-sm font-bold text-red-700">Décisions Critiques (Bloquantes)</h3>
                       </div>
-                    ))}
+                      <div className="grid grid-cols-1 gap-2">
+                        {criticalDecisions4dg.map((decision) => (
+                          <div key={decision.id} className="p-3 bg-red-50 rounded-lg border-l-4 border-red-500">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-0.5 text-xs font-bold rounded" style={{ backgroundColor: axesConfig[decision.axe]?.color || '#6B7280', color: '#fff' }}>
+                                    {axesConfig[decision.axe]?.shortLabel || decision.axe}
+                                  </span>
+                                  <span className="px-2 py-0.5 text-xs font-bold bg-red-200 text-red-800 rounded">CRITIQUE</span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900">{decision.subject}</h4>
+                                {decision.recommendation && (
+                                  <p className="text-xs text-gray-600 mt-1">{decision.recommendation}</p>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-sm font-bold text-red-600">
+                                  {decision.deadline ? new Date(decision.deadline).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                                </div>
+                                {decision.amount && (
+                                  <div className="text-xs text-gray-500">{decision.amount}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Décisions Haute Priorité */}
+                  {highDecisions4dg.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full bg-orange-500" />
+                        <h3 className="text-sm font-bold text-orange-700">Décisions Haute Priorité</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {highDecisions4dg.map((decision) => (
+                          <div key={decision.id} className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-0.5 text-xs font-bold rounded" style={{ backgroundColor: axesConfig[decision.axe]?.color || '#6B7280', color: '#fff' }}>
+                                    {axesConfig[decision.axe]?.shortLabel || decision.axe}
+                                  </span>
+                                </div>
+                                <h4 className="font-medium text-gray-900 text-sm truncate">{decision.subject}</h4>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xs font-bold text-orange-600">
+                                  {decision.deadline ? new Date(decision.deadline).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Résumé par axe */}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <h3 className="text-xs font-bold text-gray-700 mb-2">Répartition par Axe</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(axesConfig).filter(([key]) => key !== 'general').map(([axeKey, config]) => {
+                        const count = allDGDecisions4dg.filter(d => d.axe === axeKey).length;
+                        if (count === 0) return null;
+                        return (
+                          <div key={axeKey} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white border" style={{ borderColor: config.color }}>
+                            <config.icon className="h-3 w-3" style={{ color: config.color }} />
+                            <span className="text-xs font-medium" style={{ color: config.color }}>{config.shortLabel}</span>
+                            <span className="text-xs font-bold bg-gray-100 px-1.5 rounded">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
 
               {slideItem.comment && (
-                <div className="mt-2 p-2 bg-blue-50 rounded-lg border-l-3 border-blue-400">
-                  <p className="text-[10px] text-blue-800">{slideItem.comment}</p>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                  <p className="text-sm text-blue-800">{slideItem.comment}</p>
                 </div>
               )}
             </div>
@@ -3937,19 +4282,39 @@ export function DeepDive() {
 
           case '2': {
             addSlideHeader(slide, 'Agenda');
-            const pptAgendaItems = activeSlides
-              .filter((s) =>
-                s.id !== '1' &&
-                s.id !== '2' &&
-                s.id !== '17' &&
-                !s.id.includes('_suite') &&
-                !s.id.includes('_actions') &&
-                !s.id.includes('_jalons') &&
-                !s.id.includes('_budget') &&
-                !s.id.includes('_risques') &&
-                !s.id.includes('_dg')
-              )
-              .map((s, i) => ({ num: i + 1, title: s.title, isIntro: s.id.includes('_intro') }));
+            // Agenda - 1 ligne par axe (regroupement des 2 slides axe)
+            const pptAgendaItems: { num: number; title: string; isIntro: boolean }[] = [];
+            let pptSlideNum = 0;
+            const pptProcessedAxes = new Set<string>();
+
+            activeSlides.forEach((s) => {
+              // Exclure page de garde, agenda lui-même, et page de fin
+              if (s.id === '1' || s.id === '2' || s.id === '17') return;
+              // Exclure les slides _suite (continuations)
+              if (s.id.includes('_suite')) return;
+
+              // Regrouper les slides d'axe en un seul item par axe
+              const axeMatch = s.id.match(/^axe_(\w+)_(overview|finance_risques)$/);
+              if (axeMatch) {
+                const axeKey = axeMatch[1];
+                if (pptProcessedAxes.has(axeKey)) return; // Déjà ajouté
+                pptProcessedAxes.add(axeKey);
+                pptSlideNum++;
+                const axeConfig = axesConfig[axeKey as AxeType];
+                pptAgendaItems.push({
+                  num: pptSlideNum,
+                  title: axeConfig ? axeConfig.label : s.title,
+                  isIntro: false,
+                });
+              } else {
+                pptSlideNum++;
+                pptAgendaItems.push({
+                  num: pptSlideNum,
+                  title: s.title,
+                  isIntro: s.id.includes('_intro'),
+                });
+              }
+            });
 
             const pptMidPoint = Math.ceil(pptAgendaItems.length / 2);
             const pptLeftColumn = pptAgendaItems.slice(0, pptMidPoint);

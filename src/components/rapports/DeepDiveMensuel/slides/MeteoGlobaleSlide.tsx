@@ -91,7 +91,7 @@ export function MeteoGlobaleSlide({ data, designSettings }: MeteoGlobaleSlidePro
 
                 <div className="flex items-end gap-2 mb-2">
                   <span className="text-3xl font-bold" style={{ color: primaryColor }}>
-                    {kpi.valeur}
+                    {Number.isInteger(kpi.valeur) ? kpi.valeur : Number(kpi.valeur).toFixed(2)}
                   </span>
                   <span className="text-gray-500 text-sm mb-1">{kpi.unite}</span>
                 </div>

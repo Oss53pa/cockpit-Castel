@@ -60,6 +60,7 @@ import {
   TableauBordAxesSlide,
   DetailAxeSlide,
   Top5RisquesSlide,
+  RisquesEvolutionSlide,
   DecisionsTableSlide,
   ActionsPrioritairesSlide,
   JalonsM1Slide,
@@ -318,16 +319,7 @@ export function DeepDiveMensuel({
           return <Top5RisquesSlide data={data.top5Risques} {...props} />;
 
         case 'risques_evolution':
-          // Placeholder for risques evolution slide
-          return (
-            <div className="h-full flex items-center justify-center bg-gray-50">
-              <div className="text-center text-gray-500">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">3.2 Risques Nouveaux / Fermés</p>
-                <p className="text-sm">Slide en cours de développement</p>
-              </div>
-            </div>
-          );
+          return <RisquesEvolutionSlide data={data.risquesEvolution} {...props} />;
 
         case 'decisions_table':
           return <DecisionsTableSlide data={decisions} {...props} />;
