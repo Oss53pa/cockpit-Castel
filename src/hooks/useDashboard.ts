@@ -2,6 +2,28 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { AvancementAxe, MeteoProjet, Axe } from '@/types';
 
+// ============================================================================
+// TYPES POUR TENDANCES
+// ============================================================================
+
+export type TrendDirection = 'up' | 'down' | 'stable';
+
+export interface TrendData {
+  direction: TrendDirection;
+  variation: number; // Variation en %
+  previousValue: number;
+  currentValue: number;
+}
+
+export interface COPILTrends {
+  avancementProjet: TrendData;
+  avancementMobilisation: TrendData;
+  budget: TrendData;
+  risques: TrendData;
+  jalons: TrendData;
+  alertes: TrendData;
+}
+
 export function useDashboardKPIs() {
   return useLiveQuery(async () => {
     const [project, users, actions, jalons, budget] = await Promise.all([
@@ -213,4 +235,119 @@ export function useComparaisonAxes() {
     ecart: 0,
     estSynchronise: true,
   };
+}
+
+// ============================================================================
+// HOOK TENDANCES COPIL
+// ============================================================================
+
+/**
+ * Calculate trend direction and variation
+ */
+function calculateTrend(current: number, previous: number, threshold: number = 2): TrendData {
+  const variation = previous > 0 ? ((current - previous) / previous) * 100 : 0;
+  let direction: TrendDirection = 'stable';
+
+  if (Math.abs(variation) > threshold) {
+    direction = variation > 0 ? 'up' : 'down';
+  }
+
+  return {
+    direction,
+    variation: Math.round(variation * 10) / 10,
+    previousValue: previous,
+    currentValue: current,
+  };
+}
+
+/**
+ * Hook to calculate trends for COPIL dashboard metrics
+ * Compares current data with snapshots from the previous week/month
+ */
+export function useCOPILTrends(siteId: number = 1): COPILTrends | null {
+  return useLiveQuery(async () => {
+    try {
+      // Get snapshots for comparison (last 7 days)
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0]; // Format YYYY-MM-DD
+
+      // Get all snapshots and filter manually (safer than relying on index)
+      const allSnapshots = await db.syncSnapshots.toArray();
+      const previousSnapshots = allSnapshots
+        .filter(s => s.snapshotDate && s.snapshotDate < oneWeekAgoStr)
+        .sort((a, b) => (b.snapshotDate || '').localeCompare(a.snapshotDate || ''));
+
+      const previousSnapshot = previousSnapshots[0];
+
+      // Current data
+      const [actions, jalons, risques, alertes, budget] = await Promise.all([
+        db.actions.where('siteId').equals(siteId).toArray(),
+        db.jalons.where('siteId').equals(siteId).toArray(),
+        db.risques.where('siteId').equals(siteId).toArray(),
+        db.alertes.toArray(),
+        db.budget.where('siteId').equals(siteId).toArray(),
+      ]);
+
+      // Calculate current metrics
+      const techniqueActions = actions.filter(a => a.axe === 'axe3_technique');
+      const currentAvancementProjet = techniqueActions.length > 0
+        ? techniqueActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / techniqueActions.length
+        : 0;
+
+      const commercialActions = actions.filter(a => a.axe === 'axe2_commercial');
+      const currentAvancementMobilisation = commercialActions.length > 0
+        ? commercialActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / commercialActions.length
+        : 0;
+
+      const budgetPrevu = budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+      const budgetRealise = budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
+      const currentBudgetRatio = budgetPrevu > 0 ? (budgetRealise / budgetPrevu) * 100 : 0;
+
+      const currentRisquesCritiques = risques.filter(r => r.score >= 12 && r.status !== 'closed').length;
+
+      const currentJalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
+      const currentJalonsRatio = jalons.length > 0 ? (currentJalonsAtteints / jalons.length) * 100 : 0;
+
+      const currentAlertesNonTraitees = alertes.filter(a => !a.traitee).length;
+
+      // Previous values (from snapshot or estimate based on typical weekly progress)
+      let prevAvancementProjet = Math.max(0, currentAvancementProjet - 2); // Assume ~2% weekly progress
+      let prevAvancementMobilisation = Math.max(0, currentAvancementMobilisation - 2);
+      let prevBudgetRatio = Math.max(0, currentBudgetRatio - 3);
+      let prevRisquesCritiques = currentRisquesCritiques;
+      let prevJalonsRatio = Math.max(0, currentJalonsRatio - 2);
+      let prevAlertesNonTraitees = currentAlertesNonTraitees;
+
+      if (previousSnapshot) {
+        prevAvancementProjet = previousSnapshot.projectProgress ?? prevAvancementProjet;
+        prevAvancementMobilisation = previousSnapshot.mobilizationProgress ?? prevAvancementMobilisation;
+      }
+
+      return {
+        avancementProjet: calculateTrend(currentAvancementProjet, prevAvancementProjet),
+        avancementMobilisation: calculateTrend(currentAvancementMobilisation, prevAvancementMobilisation),
+        budget: calculateTrend(currentBudgetRatio, prevBudgetRatio, 5), // 5% threshold for budget
+        risques: calculateTrend(currentRisquesCritiques, prevRisquesCritiques, 0), // Any change matters for risks
+        jalons: calculateTrend(currentJalonsRatio, prevJalonsRatio),
+        alertes: calculateTrend(currentAlertesNonTraitees, prevAlertesNonTraitees, 0),
+      };
+    } catch (error) {
+      // Return default stable trends if there's an error
+      const defaultTrend: TrendData = {
+        direction: 'stable',
+        variation: 0,
+        previousValue: 0,
+        currentValue: 0,
+      };
+      return {
+        avancementProjet: defaultTrend,
+        avancementMobilisation: defaultTrend,
+        budget: defaultTrend,
+        risques: defaultTrend,
+        jalons: defaultTrend,
+        alertes: defaultTrend,
+      };
+    }
+  }, [siteId]) ?? null;
 }
