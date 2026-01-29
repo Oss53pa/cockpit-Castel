@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText } from 'lucide-react';
+import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText, BarChart3 } from 'lucide-react';
 import { useAppStore } from '@/stores';
 import { Button, Select, SelectOption, Card, Badge } from '@/components/ui';
-import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10 } from '@/components/risques';
+import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
 import {
   RISQUE_CATEGORIES,
   RISQUE_CATEGORY_LABELS,
@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 
 export function RisquesPage() {
   const { risqueFilters, setRisqueFilters } = useAppStore();
-  const [viewMode, setViewMode] = useState<'list' | 'matrix' | 'top10'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'matrix' | 'top10' | 'synthese'>('list');
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRisque, setSelectedRisque] = useState<Risque | undefined>();
 
@@ -191,6 +191,14 @@ export function RisquesPage() {
             <FileText className="h-4 w-4 mr-1" />
             Top 10
           </Button>
+          <Button
+            variant={viewMode === 'synthese' ? 'primary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('synthese')}
+          >
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Synthèse
+          </Button>
         </div>
       </div>
 
@@ -203,6 +211,8 @@ export function RisquesPage() {
         />
       ) : viewMode === 'top10' ? (
         <RisquesTop10 />
+      ) : viewMode === 'synthese' ? (
+        <RisquesSynthese />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Matrice */}
@@ -330,6 +340,32 @@ export function RisquesPage() {
           </Card>
         </div>
       )}
+
+      {/* Note de risque */}
+      <Card padding="md" className="bg-primary-50 border-primary-200">
+        <h4 className="text-sm font-semibold text-primary-800 mb-2 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Note de risque
+        </h4>
+        <div className="text-xs text-primary-600 space-y-2">
+          <p>
+            <strong>Méthodologie :</strong> Score de risque = Probabilité × Impact (échelle 1-4 chacun).
+            Les risques sont classés en 4 niveaux : <span className="text-error-600 font-medium">Critique (12-16)</span>,{' '}
+            <span className="text-warning-600 font-medium">Majeur (8-11)</span>,{' '}
+            <span className="text-info-600 font-medium">Modéré (4-7)</span>,{' '}
+            <span className="text-success-600 font-medium">Faible (1-3)</span>.
+          </p>
+          <p>
+            <strong>Gouvernance :</strong> Les risques critiques sont revus hebdomadairement par la DGA,
+            les majeurs bi-mensuellement par les managers, les modérés mensuellement en COPIL,
+            et une revue globale trimestrielle est réalisée avec le PDG.
+          </p>
+          <p>
+            <strong>Registre :</strong> 46 risques identifiés alignés sur les 19 jalons du Référentiel de Mobilisation Cosmos Angré.
+            Chaque risque dispose d'un plan de mitigation avec actions, responsables et échéances.
+          </p>
+        </div>
+      </Card>
 
       {/* Form */}
       <RisqueForm

@@ -6,3 +6,6 @@ export * from './ActionsCalendar';
 export * from './ActionsPert';
 export * from './ActionForm';
 export * from './ActionFilters';
+export * from './QuickAddAction';
+export * from './ActionWizard';
+export * from './ActionTemplates';

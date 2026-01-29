@@ -231,7 +231,6 @@ export function NavigationPanel({
               <DropdownMenuItem
                 key={template.icon}
                 onClick={() => {
-                  console.log('DropdownMenuItem clicked:', template.icon);
                   onAddSection(template.icon);
                 }}
                 className="flex items-start gap-3 py-2.5 px-2 cursor-pointer rounded-lg hover:bg-gray-50 transition-colors"

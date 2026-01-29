@@ -90,7 +90,7 @@ function MeteoBadge({ status }: { status: MeteoItem['status'] }) {
 // Section: Météo Projet
 function MeteoProjetSection() {
   const avancementGlobal = useAvancementGlobal();
-  const syncData = useSync('cosmos-angre');
+  const syncData = useSync(1, 'cosmos-angre'); // siteId=1 for Cosmos Angré
   const budgetSynthese = useBudgetSynthese();
   const risques = useRisques();
   const jalons = useJalons();

@@ -173,7 +173,6 @@ export function ReportStudio({
   }, [store.report, store.content]);
 
   const handleAddSection = useCallback((icon?: string) => {
-    console.log('handleAddSection called with icon:', icon);
     try {
       const newSectionId = store.addSection({
         type: 'section',
@@ -185,7 +184,6 @@ export function ReportStudio({
         status: 'manual',
         isLocked: false,
       });
-      console.log('Section created with id:', newSectionId);
       store.selectSection(newSectionId);
     } catch (error) {
       console.error('Error adding section:', error);

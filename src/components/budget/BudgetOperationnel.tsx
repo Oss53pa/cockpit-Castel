@@ -8,6 +8,17 @@ import {
   ArrowDownLeft,
   Building2,
   Clock,
+  Users,
+  Shield,
+  Droplets,
+  Zap,
+  FileText,
+  Megaphone,
+  ChevronDown,
+  ChevronRight,
+  Calendar,
+  Percent,
+  Info,
 } from 'lucide-react';
 import {
   BarChart,
@@ -20,6 +31,9 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import {
@@ -39,50 +53,42 @@ import {
 } from '@/components/ui';
 import { formatNumber } from '@/lib/utils';
 
-// Données du Budget Opérationnel
-const BUDGET_OPERATIONNEL_TOTAL = 720_500_000;
-const BUDGET_ENGAGE = 0;
-const BUDGET_CONSOMME = 0;
-const PROVISIONS = 65_500_000;
-
-// Postes budgétaires opérationnels (à consommer après ouverture)
-interface PosteOperationnel {
-  id: string;
-  poste: string;
-  budgetAnnuel: number;
-  budgetMensuel: number;
-  categorie: 'personnel' | 'exploitation' | 'marketing' | 'maintenance' | 'autres';
-}
-
-const POSTES_OPERATIONNELS: PosteOperationnel[] = [
-  { id: 'salaires', poste: 'Masse salariale', budgetAnnuel: 280_000_000, budgetMensuel: 23_333_333, categorie: 'personnel' },
-  { id: 'charges_sociales', poste: 'Charges sociales', budgetAnnuel: 84_000_000, budgetMensuel: 7_000_000, categorie: 'personnel' },
-  { id: 'energie', poste: 'Énergie & Fluides', budgetAnnuel: 72_000_000, budgetMensuel: 6_000_000, categorie: 'exploitation' },
-  { id: 'maintenance', poste: 'Maintenance & Entretien', budgetAnnuel: 48_000_000, budgetMensuel: 4_000_000, categorie: 'maintenance' },
-  { id: 'securite', poste: 'Sécurité & Gardiennage', budgetAnnuel: 36_000_000, budgetMensuel: 3_000_000, categorie: 'exploitation' },
-  { id: 'marketing_ops', poste: 'Marketing opérationnel', budgetAnnuel: 60_000_000, budgetMensuel: 5_000_000, categorie: 'marketing' },
-  { id: 'assurances', poste: 'Assurances', budgetAnnuel: 24_000_000, budgetMensuel: 2_000_000, categorie: 'autres' },
-  { id: 'fournitures', poste: 'Fournitures & Consommables', budgetAnnuel: 18_000_000, budgetMensuel: 1_500_000, categorie: 'exploitation' },
-  { id: 'telecom', poste: 'Télécommunications', budgetAnnuel: 12_000_000, budgetMensuel: 1_000_000, categorie: 'exploitation' },
-  { id: 'divers', poste: 'Frais divers', budgetAnnuel: 21_000_000, budgetMensuel: 1_750_000, categorie: 'autres' },
-  { id: 'provisions_ops', poste: 'Provisions', budgetAnnuel: 65_500_000, budgetMensuel: 5_458_333, categorie: 'autres' },
-];
-
-// Prévisions mensuelles (12 mois)
-const PREVISIONS_MENSUELLES = [
-  { mois: 'Jan', prevu: 54_541_666, realise: 0 },
-  { mois: 'Fév', prevu: 54_541_666, realise: 0 },
-  { mois: 'Mar', prevu: 54_541_666, realise: 0 },
-  { mois: 'Avr', prevu: 54_541_666, realise: 0 },
-  { mois: 'Mai', prevu: 54_541_666, realise: 0 },
-  { mois: 'Juin', prevu: 54_541_666, realise: 0 },
-  { mois: 'Juil', prevu: 65_000_000, realise: 0 },
-  { mois: 'Août', prevu: 65_000_000, realise: 0 },
-  { mois: 'Sep', prevu: 60_000_000, realise: 0 },
-  { mois: 'Oct', prevu: 60_000_000, realise: 0 },
-  { mois: 'Nov', prevu: 72_000_000, realise: 0 },
-  { mois: 'Déc', prevu: 72_000_000, realise: 0 },
-];
+// Import des vraies données Cosmos Angré
+import {
+  BUDGET_EXPLOITATION_2026,
+  BUDGET_EXPLOITATION_2027,
+  SYNTHESE_COMPARATIVE,
+  RATIOS_BENCHMARKS,
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  PREVISIONS_MENSUELLES_2027,
+  GLA_COSMOS_ANGRE,
+  // Détails 2026
+  GRILLE_SALARIALE,
+  VAGUES_RECRUTEMENT_2026,
+  PRESTATIONS_SECURITE_2026,
+  PRESTATIONS_NETTOYAGE_2026,
+  PRESTATIONS_MAINTENANCE_2026,
+  FLUIDES_2026,
+  ASSURANCES_2026,
+  FONCTIONNEMENT_2026,
+  MARKETING_2026,
+  TOTAL_EFFECTIF_2026,
+  // Détails 2027
+  PRESTATIONS_SECURITE_2027,
+  PRESTATIONS_NETTOYAGE_2027,
+  PRESTATIONS_MAINTENANCE_2027,
+  FLUIDES_2027,
+  ASSURANCES_2027,
+  FONCTIONNEMENT_2027,
+  MARKETING_2027,
+  PROVISIONS_2027,
+  MASSE_SALARIALE_2027,
+  TOTAL_EFFECTIF_2027,
+  // Types
+  type BudgetExploitationAnnee,
+  type CategorieExploitation,
+} from '@/data/budgetExploitationCosmosAngre';
 
 // Format montant en FCFA
 function formatMontant(value: number): string {
@@ -99,21 +105,16 @@ function formatMontant(value: number): string {
   return formatNumber(value, 0);
 }
 
-// Couleurs par catégorie
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  personnel: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
-  exploitation: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
-  marketing: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
-  maintenance: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
-  autres: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' },
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  personnel: 'Personnel',
-  exploitation: 'Exploitation',
-  marketing: 'Marketing',
-  maintenance: 'Maintenance',
-  autres: 'Autres',
+// Icône par catégorie
+const CATEGORY_ICONS: Record<CategorieExploitation, React.ElementType> = {
+  masse_salariale: Users,
+  prestations: Shield,
+  fluides: Zap,
+  assurances: FileText,
+  fonctionnement: Building2,
+  marketing: Megaphone,
+  provisions: PiggyBank,
+  contingence: AlertTriangle,
 };
 
 // Composant KPI Card
@@ -150,102 +151,191 @@ function KPICard({
   );
 }
 
+// Sélecteur d'année
+function AnneeSelector({
+  annee,
+  onChange,
+}: {
+  annee: 2026 | 2027;
+  onChange: (annee: 2026 | 2027) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-primary-100 rounded-lg p-1">
+      <button
+        onClick={() => onChange(2026)}
+        className={cn(
+          'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+          annee === 2026
+            ? 'bg-white text-primary-900 shadow-sm'
+            : 'text-primary-600 hover:bg-primary-50'
+        )}
+      >
+        2026 (10 mois)
+      </button>
+      <button
+        onClick={() => onChange(2027)}
+        className={cn(
+          'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+          annee === 2027
+            ? 'bg-white text-primary-900 shadow-sm'
+            : 'text-primary-600 hover:bg-primary-50'
+        )}
+      >
+        2027 (12 mois)
+      </button>
+    </div>
+  );
+}
+
 // Vue Synthèse
-function VueSynthese() {
-  const totalAnnuel = POSTES_OPERATIONNELS.reduce((sum, p) => sum + p.budgetAnnuel, 0);
-  const parCategorie = POSTES_OPERATIONNELS.reduce((acc, poste) => {
-    if (!acc[poste.categorie]) {
-      acc[poste.categorie] = 0;
-    }
-    acc[poste.categorie] += poste.budgetAnnuel;
+function VueSynthese({ budget }: { budget: BudgetExploitationAnnee }) {
+  const parCategorie = budget.postes.reduce((acc, poste) => {
+    acc[poste.categorie] = (acc[poste.categorie] || 0) + poste.budgetAnnuel;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<CategorieExploitation, number>);
+
+  const pieData = Object.entries(parCategorie).map(([cat, montant]) => ({
+    name: CATEGORY_LABELS[cat as CategorieExploitation],
+    value: montant,
+    fill: CATEGORY_COLORS[cat as CategorieExploitation].fill,
+  }));
 
   return (
     <div className="space-y-6">
+      {/* Info périmètre */}
       <Card padding="md">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-amber-100">
-            <Clock className="h-5 w-5 text-primary-600" />
+          <div className="p-2 rounded-lg bg-blue-100">
+            <Info className="h-5 w-5 text-blue-600" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-primary-900">
-              Budget non encore activé
+              Périmètre {budget.annee}
             </h3>
-            <p className="text-sm text-primary-500">
-              Ce budget sera activé à l'ouverture du centre commercial
-            </p>
+            <p className="text-sm text-primary-500">{budget.periode}</p>
           </div>
         </div>
-
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          {Object.entries(parCategorie).map(([cat, montant]) => (
-            <div
-              key={cat}
-              className={cn(
-                'p-4 rounded-lg border',
-                CATEGORY_COLORS[cat].bg,
-                CATEGORY_COLORS[cat].border
-              )}
-            >
-              <p className={cn('text-xs mb-1', CATEGORY_COLORS[cat].text)}>
-                {CATEGORY_LABELS[cat]}
-              </p>
-              <p className="text-lg font-bold text-primary-900">{formatMontant(montant)}</p>
-              <p className="text-xs text-primary-500">
-                {((montant / totalAnnuel) * 100).toFixed(1)}%
-              </p>
-            </div>
+        <ul className="list-disc list-inside space-y-1 text-sm text-primary-600">
+          {budget.perimetre.map((item, idx) => (
+            <li key={idx}>{item}</li>
           ))}
-        </div>
+        </ul>
       </Card>
 
+      {/* Répartition par catégorie */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card padding="md">
+          <h3 className="text-lg font-semibold text-primary-900 mb-4">
+            Répartition par catégorie
+          </h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => `${formatMontant(value)} FCFA`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card padding="md">
+          <h3 className="text-lg font-semibold text-primary-900 mb-4">
+            Montants par catégorie
+          </h3>
+          <div className="space-y-3">
+            {Object.entries(parCategorie).map(([cat, montant]) => {
+              const colors = CATEGORY_COLORS[cat as CategorieExploitation];
+              const Icon = CATEGORY_ICONS[cat as CategorieExploitation];
+              const pct = (montant / budget.montantTotal) * 100;
+              return (
+                <div
+                  key={cat}
+                  className={cn('p-3 rounded-lg border', colors.bg, colors.border)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon className={cn('h-4 w-4', colors.text)} />
+                      <span className={cn('text-sm font-medium', colors.text)}>
+                        {CATEGORY_LABELS[cat as CategorieExploitation]}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-primary-900">{formatMontant(montant)}</p>
+                      <p className="text-xs text-primary-500">{pct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* Tableau des postes */}
       <Card padding="md">
         <h3 className="text-lg font-semibold text-primary-900 mb-4">
-          Postes budgétaires opérationnels
+          Postes budgétaires {budget.annee}
         </h3>
-
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8">#</TableHead>
               <TableHead>Poste</TableHead>
               <TableHead>Catégorie</TableHead>
-              <TableHead className="text-right">Budget Annuel</TableHead>
-              <TableHead className="text-right">Budget Mensuel</TableHead>
-              <TableHead className="text-right">Part du budget</TableHead>
+              <TableHead className="text-right">Montant (FCFA)</TableHead>
+              <TableHead className="text-right">Part</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {POSTES_OPERATIONNELS.map((poste) => (
-              <TableRow key={poste.id}>
-                <TableCell className="font-medium">{poste.poste}</TableCell>
-                <TableCell>
-                  <Badge
-                    className={cn(
-                      CATEGORY_COLORS[poste.categorie].bg,
-                      CATEGORY_COLORS[poste.categorie].text
-                    )}
-                  >
-                    {CATEGORY_LABELS[poste.categorie]}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">{formatMontant(poste.budgetAnnuel)}</TableCell>
-                <TableCell className="text-right">{formatMontant(poste.budgetMensuel)}</TableCell>
-                <TableCell className="text-right">
-                  {((poste.budgetAnnuel / BUDGET_OPERATIONNEL_TOTAL) * 100).toFixed(1)}%
-                </TableCell>
-              </TableRow>
-            ))}
+            {budget.postes.map((poste, idx) => {
+              const colors = CATEGORY_COLORS[poste.categorie];
+              return (
+                <TableRow key={poste.id}>
+                  <TableCell className="text-primary-400">{idx + 1}</TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{poste.poste}</p>
+                      {poste.details && (
+                        <p className="text-xs text-primary-400">{poste.details}</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={cn(colors.bg, colors.text)}>
+                      {CATEGORY_LABELS[poste.categorie]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {formatMontant(poste.budgetAnnuel)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {((poste.budgetAnnuel / budget.montantTotal) * 100).toFixed(1)}%
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
           <TableFooter>
             <TableRow className="bg-primary-100">
-              <TableCell className="font-bold">TOTAL</TableCell>
-              <TableCell></TableCell>
-              <TableCell className="text-right font-bold">
-                {formatMontant(BUDGET_OPERATIONNEL_TOTAL)}
+              <TableCell colSpan={3} className="font-bold">
+                TOTAL EXPLOITATION {budget.annee}
               </TableCell>
-              <TableCell className="text-right font-bold">
-                {formatMontant(BUDGET_OPERATIONNEL_TOTAL / 12)}
+              <TableCell className="text-right font-bold font-mono">
+                {formatMontant(budget.montantTotal)}
               </TableCell>
               <TableCell className="text-right font-bold">100%</TableCell>
             </TableRow>
@@ -256,32 +346,737 @@ function VueSynthese() {
   );
 }
 
-// Vue Prévisions
-function VuePrevisions() {
-  const cumulData = PREVISIONS_MENSUELLES.reduce((acc, item, index) => {
-    const previousCumul = index > 0 ? acc[index - 1].cumul : 0;
-    acc.push({
-      ...item,
-      cumul: previousCumul + item.prevu,
-    });
-    return acc;
-  }, [] as Array<{ mois: string; prevu: number; realise: number; cumul: number }>);
+// Vue Détails
+function VueDetails({ annee }: { annee: 2026 | 2027 }) {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    salaires: true,
+    securite: false,
+    nettoyage: false,
+    maintenance: false,
+    fluides: false,
+    assurances: false,
+    fonctionnement: false,
+    marketing: false,
+    provisions: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const SectionHeader = ({
+    id,
+    title,
+    total,
+    icon: Icon,
+  }: {
+    id: string;
+    title: string;
+    total: number;
+    icon: React.ElementType;
+  }) => (
+    <button
+      onClick={() => toggleSection(id)}
+      className="w-full flex items-center justify-between p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-primary-600" />
+        <span className="font-semibold text-primary-900">{title}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="font-bold text-primary-900">{formatMontant(total)} FCFA</span>
+        {expandedSections[id] ? (
+          <ChevronDown className="h-5 w-5 text-primary-400" />
+        ) : (
+          <ChevronRight className="h-5 w-5 text-primary-400" />
+        )}
+      </div>
+    </button>
+  );
+
+  if (annee === 2026) {
+    return (
+      <div className="space-y-4">
+        {/* Masse Salariale 2026 */}
+        <Card padding="none">
+          <SectionHeader id="salaires" title="1. Masse Salariale 2026" total={98_500_000} icon={Users} />
+          {expandedSections.salaires && (
+            <div className="p-4 border-t space-y-4">
+              {/* Grille salariale */}
+              <div>
+                <h4 className="font-medium text-primary-700 mb-2">Grille salariale (brut mensuel + charges 25%)</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Poste</TableHead>
+                      <TableHead className="text-right">Brut mensuel</TableHead>
+                      <TableHead className="text-right">Chargé mensuel</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {GRILLE_SALARIALE.map((item) => (
+                      <TableRow key={item.poste}>
+                        <TableCell className="font-medium">{item.poste}</TableCell>
+                        <TableCell className="text-right">{formatMontant(item.brutMensuel)}</TableCell>
+                        <TableCell className="text-right">{formatMontant(item.chargeMensuel)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <p className="text-xs text-primary-400 mt-2">*Mutualisé avec Yopougon (25% affecté Angré)</p>
+              </div>
+
+              {/* Échelonnement par vague */}
+              <div>
+                <h4 className="font-medium text-primary-700 mb-2">Échelonnement par vague</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vague</TableHead>
+                      <TableHead>Postes</TableHead>
+                      <TableHead className="text-center">Effectif</TableHead>
+                      <TableHead>Début</TableHead>
+                      <TableHead className="text-center">Mois 2026</TableHead>
+                      <TableHead className="text-right">Coût total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {VAGUES_RECRUTEMENT_2026.map((vague) => (
+                      <TableRow key={vague.vague}>
+                        <TableCell className="font-medium">{vague.vague}</TableCell>
+                        <TableCell className="text-sm">{vague.postes}</TableCell>
+                        <TableCell className="text-center">{vague.effectif}</TableCell>
+                        <TableCell>{vague.debutMois}</TableCell>
+                        <TableCell className="text-center">{vague.mois2026}</TableCell>
+                        <TableCell className="text-right font-mono">{formatMontant(vague.coutTotal)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={2} className="font-bold">TOTAL</TableCell>
+                      <TableCell className="text-center font-bold">{TOTAL_EFFECTIF_2026}</TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                      <TableCell className="text-right font-bold">90 525 000</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={5}>Charges sociales complémentaires (CNPS, etc.)</TableCell>
+                      <TableCell className="text-right font-mono">7 975 000</TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Prestations Sécurité */}
+        <Card padding="none">
+          <SectionHeader id="securite" title="2.1 Sécurité (Nov-Déc)" total={24_000_000} icon={Shield} />
+          {expandedSections.securite && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Prestation</TableHead>
+                    <TableHead className="text-center">Effectif</TableHead>
+                    <TableHead className="text-right">Coût/agent/mois</TableHead>
+                    <TableHead className="text-center">Mois</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PRESTATIONS_SECURITE_2026.map((item) => (
+                    <TableRow key={item.prestation}>
+                      <TableCell className="font-medium">{item.prestation}</TableCell>
+                      <TableCell className="text-center">{item.effectif}</TableCell>
+                      <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                      <TableCell className="text-center">{item.mois}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="font-bold">Total Sécurité</TableCell>
+                    <TableCell className="text-center font-bold">32</TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                    <TableCell className="text-right font-bold">24 000 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Prestations Nettoyage */}
+        <Card padding="none">
+          <SectionHeader id="nettoyage" title="2.2 Nettoyage (Nov-Déc)" total={22_500_000} icon={Droplets} />
+          {expandedSections.nettoyage && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Prestation</TableHead>
+                    <TableHead className="text-center">Effectif</TableHead>
+                    <TableHead className="text-right">Coût/mois</TableHead>
+                    <TableHead className="text-center">Mois</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PRESTATIONS_NETTOYAGE_2026.map((item) => (
+                    <TableRow key={item.prestation}>
+                      <TableCell className="font-medium">{item.prestation}</TableCell>
+                      <TableCell className="text-center">{item.effectif || '-'}</TableCell>
+                      <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                      <TableCell className="text-center">{item.mois}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="font-bold">Total Nettoyage</TableCell>
+                    <TableCell className="text-center font-bold">27</TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                    <TableCell className="text-right font-bold">22 500 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Prestations Maintenance */}
+        <Card padding="none">
+          <SectionHeader id="maintenance" title="2.3 Maintenance (Nov-Déc)" total={2_500_000} icon={Building2} />
+          {expandedSections.maintenance && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Prestation</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Mensuel</TableHead>
+                    <TableHead className="text-center">Mois</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PRESTATIONS_MAINTENANCE_2026.map((item) => (
+                    <TableRow key={item.prestation}>
+                      <TableCell className="font-medium">{item.prestation}</TableCell>
+                      <TableCell>
+                        <Badge variant={item.statut === 'Sous garantie' ? 'outline' : 'default'}>
+                          {item.statut}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                      <TableCell className="text-center">{item.mois}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={4} className="font-bold">Total Maintenance</TableCell>
+                    <TableCell className="text-right font-bold">2 500 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Fluides */}
+        <Card padding="none">
+          <SectionHeader id="fluides" title="3. Fluides & Énergies (Nov-Déc)" total={28_000_000} icon={Zap} />
+          {expandedSections.fluides && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Poste</TableHead>
+                    <TableHead className="text-right">Mensuel estimé</TableHead>
+                    <TableHead className="text-center">Mois</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {FLUIDES_2026.map((item) => (
+                    <TableRow key={item.poste}>
+                      <TableCell className="font-medium">{item.poste}</TableCell>
+                      <TableCell className="text-right">{formatMontant(item.mensuelEstime || 0)}</TableCell>
+                      <TableCell className="text-center">{item.mois}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={3} className="font-bold">Total Fluides (arrondi)</TableCell>
+                    <TableCell className="text-right font-bold">28 000 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Assurances */}
+        <Card padding="none">
+          <SectionHeader id="assurances" title="4. Assurances (prorata Nov-Déc)" total={5_000_000} icon={FileText} />
+          {expandedSections.assurances && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Annuel</TableHead>
+                    <TableHead className="text-right">Prorata 2 mois</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ASSURANCES_2026.map((item) => (
+                    <TableRow key={item.type}>
+                      <TableCell className="font-medium">{item.type}</TableCell>
+                      <TableCell className="text-right">{formatMontant(item.primeAnnuelle)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.prorata2Mois || 0)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="font-bold">Total Assurances</TableCell>
+                    <TableCell className="text-right">25 500 000</TableCell>
+                    <TableCell className="text-right font-bold">5 000 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Fonctionnement */}
+        <Card padding="none">
+          <SectionHeader id="fonctionnement" title="5. Fonctionnement (Nov-Déc)" total={4_000_000} icon={Building2} />
+          {expandedSections.fonctionnement && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Poste</TableHead>
+                    <TableHead className="text-right">Mensuel</TableHead>
+                    <TableHead className="text-center">Mois</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {FONCTIONNEMENT_2026.map((item) => (
+                    <TableRow key={item.poste}>
+                      <TableCell className="font-medium">{item.poste}</TableCell>
+                      <TableCell className="text-right">{formatMontant(item.mensuel)}</TableCell>
+                      <TableCell className="text-center">{item.mois}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={3} className="font-bold">Total Fonctionnement (arrondi)</TableCell>
+                    <TableCell className="text-right font-bold">4 000 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Marketing */}
+        <Card padding="none">
+          <SectionHeader id="marketing" title="6. Marketing Exploitation (Nov-Déc)" total={6_000_000} icon={Megaphone} />
+          {expandedSections.marketing && (
+            <div className="p-4 border-t">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Poste</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {MARKETING_2026.map((item) => (
+                    <TableRow key={item.poste}>
+                      <TableCell className="font-medium">{item.poste}</TableCell>
+                      <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="font-bold">Total Marketing</TableCell>
+                    <TableCell className="text-right font-bold">6 000 000</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
+  // Vue détails 2027
+  return (
+    <div className="space-y-4">
+      {/* Masse Salariale 2027 */}
+      <Card padding="none">
+        <SectionHeader id="salaires" title="1. Masse Salariale 2027" total={165_000_000} icon={Users} />
+        {expandedSections.salaires && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead className="text-center">Effectif</TableHead>
+                  <TableHead className="text-right">Coût mensuel chargé</TableHead>
+                  <TableHead className="text-right">Coût annuel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {MASSE_SALARIALE_2027.map((item) => (
+                  <TableRow key={item.categorie}>
+                    <TableCell className="font-medium">{item.categorie}</TableCell>
+                    <TableCell className="text-center">{item.effectif}</TableCell>
+                    <TableCell className="text-right">{formatMontant(item.coutMensuelCharge)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.coutAnnuel)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-bold">TOTAL</TableCell>
+                  <TableCell className="text-center font-bold">{TOTAL_EFFECTIF_2027}</TableCell>
+                  <TableCell className="text-right">10 850 000</TableCell>
+                  <TableCell className="text-right">161 100 000</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={3}>Charges complémentaires, primes, 13ème mois</TableCell>
+                  <TableCell className="text-right font-mono">3 900 000</TableCell>
+                </TableRow>
+                <TableRow className="bg-primary-100">
+                  <TableCell colSpan={3} className="font-bold">TOTAL MASSE SALARIALE 2027</TableCell>
+                  <TableCell className="text-right font-bold">165 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Prestations 2027 */}
+      <Card padding="none">
+        <SectionHeader id="securite" title="2.1 Sécurité" total={145_000_000} icon={Shield} />
+        {expandedSections.securite && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Prestation</TableHead>
+                  <TableHead className="text-center">Effectif</TableHead>
+                  <TableHead className="text-right">Coût/agent/mois</TableHead>
+                  <TableHead className="text-center">Mois</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {PRESTATIONS_SECURITE_2027.map((item) => (
+                  <TableRow key={item.prestation}>
+                    <TableCell className="font-medium">{item.prestation}</TableCell>
+                    <TableCell className="text-center">{item.effectif}</TableCell>
+                    <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                    <TableCell className="text-center">{item.mois}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={4} className="font-bold">Total Sécurité</TableCell>
+                  <TableCell className="text-right font-bold">145 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      <Card padding="none">
+        <SectionHeader id="nettoyage" title="2.2 Nettoyage" total={100_000_000} icon={Droplets} />
+        {expandedSections.nettoyage && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Prestation</TableHead>
+                  <TableHead className="text-center">Effectif</TableHead>
+                  <TableHead className="text-right">Coût/mois</TableHead>
+                  <TableHead className="text-center">Mois</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {PRESTATIONS_NETTOYAGE_2027.map((item) => (
+                  <TableRow key={item.prestation}>
+                    <TableCell className="font-medium">{item.prestation}</TableCell>
+                    <TableCell className="text-center">{item.effectif || '-'}</TableCell>
+                    <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                    <TableCell className="text-center">{item.mois}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={4} className="font-bold">Total Nettoyage</TableCell>
+                  <TableCell className="text-right font-bold">100 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      <Card padding="none">
+        <SectionHeader id="maintenance" title="2.3 Maintenance" total={50_000_000} icon={Building2} />
+        {expandedSections.maintenance && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Prestation</TableHead>
+                  <TableHead>Statut 2027</TableHead>
+                  <TableHead className="text-right">Mensuel</TableHead>
+                  <TableHead className="text-right">Annuel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {PRESTATIONS_MAINTENANCE_2027.map((item) => (
+                  <TableRow key={item.prestation}>
+                    <TableCell className="font-medium">{item.prestation}</TableCell>
+                    <TableCell>
+                      <Badge variant={item.statut === 'Sous garantie' ? 'outline' : 'default'}>
+                        {item.statut}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatMontant(item.coutUnitaireMensuel)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={3} className="font-bold">Total Maintenance (arrondi avec marge)</TableCell>
+                  <TableCell className="text-right font-bold">50 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Fluides 2027 */}
+      <Card padding="none">
+        <SectionHeader id="fluides" title="3. Fluides & Énergies" total={160_000_000} icon={Zap} />
+        {expandedSections.fluides && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Poste</TableHead>
+                  <TableHead>Conso. annuelle</TableHead>
+                  <TableHead>Tarif</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {FLUIDES_2027.map((item) => (
+                  <TableRow key={item.poste}>
+                    <TableCell className="font-medium">{item.poste}</TableCell>
+                    <TableCell>{item.consoAnnuelle || '-'}</TableCell>
+                    <TableCell>{item.tarif || '-'}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={3} className="font-bold">Total Fluides (arrondi)</TableCell>
+                  <TableCell className="text-right font-bold">160 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Assurances 2027 */}
+      <Card padding="none">
+        <SectionHeader id="assurances" title="4. Assurances" total={26_000_000} icon={FileText} />
+        {expandedSections.assurances && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Prime annuelle</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ASSURANCES_2027.map((item) => (
+                  <TableRow key={item.type}>
+                    <TableCell className="font-medium">{item.type}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.primeAnnuelle)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-bold">Total Assurances</TableCell>
+                  <TableCell className="text-right font-bold">26 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Fonctionnement 2027 */}
+      <Card padding="none">
+        <SectionHeader id="fonctionnement" title="5. Fonctionnement" total={24_000_000} icon={Building2} />
+        {expandedSections.fonctionnement && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Poste</TableHead>
+                  <TableHead className="text-right">Mensuel</TableHead>
+                  <TableHead className="text-right">Annuel</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {FONCTIONNEMENT_2027.map((item) => (
+                  <TableRow key={item.poste}>
+                    <TableCell className="font-medium">{item.poste}</TableCell>
+                    <TableCell className="text-right">{formatMontant(item.mensuel)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={2} className="font-bold">Total Fonctionnement</TableCell>
+                  <TableCell className="text-right font-bold">24 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Marketing 2027 */}
+      <Card padding="none">
+        <SectionHeader id="marketing" title="6. Marketing & Communication" total={35_000_000} icon={Megaphone} />
+        {expandedSections.marketing && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Poste</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {MARKETING_2027.map((item) => (
+                  <TableRow key={item.poste}>
+                    <TableCell className="font-medium">{item.poste}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-bold">Total Marketing</TableCell>
+                  <TableCell className="text-right font-bold">35 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Provisions 2027 */}
+      <Card padding="none">
+        <SectionHeader id="provisions" title="7. Provisions" total={20_000_000} icon={PiggyBank} />
+        {expandedSections.provisions && (
+          <div className="p-4 border-t">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Poste</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {PROVISIONS_2027.map((item) => (
+                  <TableRow key={item.poste}>
+                    <TableCell className="font-medium">{item.poste}</TableCell>
+                    <TableCell className="text-right font-mono">{formatMontant(item.montant)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-bold">Total Provisions</TableCell>
+                  <TableCell className="text-right font-bold">20 000 000</TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// Vue Comparative
+function VueComparative() {
+  const chartData = SYNTHESE_COMPARATIVE.postes.map((p) => ({
+    poste: p.poste,
+    '2026': p.budget2026,
+    '2027': p.budget2027,
+  }));
 
   return (
     <div className="space-y-6">
+      {/* Graphique comparatif */}
       <Card padding="md">
         <h3 className="text-lg font-semibold text-primary-900 mb-4">
-          Prévisions de dépenses mensuelles
+          Comparaison 2026 vs 2027
         </h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={PREVISIONS_MENSUELLES} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
               <XAxis
-                dataKey="mois"
-                tick={{ fontSize: 12 }}
+                dataKey="poste"
+                tick={{ fontSize: 10 }}
                 tickLine={false}
                 axisLine={{ stroke: '#e4e4e7' }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
               />
               <YAxis
                 tick={{ fontSize: 12 }}
@@ -298,112 +1093,103 @@ function VuePrevisions() {
                 }}
               />
               <Legend />
-              <Bar dataKey="prevu" name="Prévu" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="realise" name="Réalisé" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="2026" name="2026 (10 mois)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="2027" name="2027 (12 mois)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
+      {/* Tableau comparatif */}
       <Card padding="md">
         <h3 className="text-lg font-semibold text-primary-900 mb-4">
-          Budget cumulé prévisionnel
+          Synthèse comparative
         </h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={cumulData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-              <XAxis
-                dataKey="mois"
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={{ stroke: '#e4e4e7' }}
-              />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={{ stroke: '#e4e4e7' }}
-                tickFormatter={(value) => `${value / 1_000_000}M`}
-              />
-              <Tooltip
-                formatter={(value: number) => `${formatMontant(value)} FCFA`}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e4e4e7',
-                  borderRadius: '8px',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="cumul"
-                name="Cumul prévu"
-                stroke="#3b82f6"
-                fill="#93c5fd"
-                fillOpacity={0.3}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Poste</TableHead>
+              <TableHead className="text-right">2026 (10 mois)</TableHead>
+              <TableHead className="text-right">2027 (12 mois)</TableHead>
+              <TableHead className="text-right">Variation</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {SYNTHESE_COMPARATIVE.postes.map((p) => {
+              const variation = p.budget2027 - p.budget2026;
+              const variationPct = p.budget2026 > 0 ? ((variation / p.budget2026) * 100) : 100;
+              return (
+                <TableRow key={p.poste}>
+                  <TableCell className="font-medium">{p.poste}</TableCell>
+                  <TableCell className="text-right font-mono">{formatMontant(p.budget2026)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatMontant(p.budget2027)}</TableCell>
+                  <TableCell className="text-right">
+                    <span className={cn(
+                      'font-medium',
+                      variation > 0 ? 'text-amber-600' : variation < 0 ? 'text-green-600' : 'text-primary-500'
+                    )}>
+                      {variation > 0 ? '+' : ''}{formatMontant(variation)}
+                      {p.budget2026 > 0 && ` (${variationPct > 0 ? '+' : ''}${variationPct.toFixed(0)}%)`}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary-100">
+              <TableCell className="font-bold">TOTAL</TableCell>
+              <TableCell className="text-right font-bold font-mono">
+                {formatMontant(SYNTHESE_COMPARATIVE.totaux.budget2026)}
+              </TableCell>
+              <TableCell className="text-right font-bold font-mono">
+                {formatMontant(SYNTHESE_COMPARATIVE.totaux.budget2027)}
+              </TableCell>
+              <TableCell className="text-right font-bold text-amber-600">
+                +{formatMontant(SYNTHESE_COMPARATIVE.totaux.budget2027 - SYNTHESE_COMPARATIVE.totaux.budget2026)}
+                {' '}(+{(((SYNTHESE_COMPARATIVE.totaux.budget2027 - SYNTHESE_COMPARATIVE.totaux.budget2026) / SYNTHESE_COMPARATIVE.totaux.budget2026) * 100).toFixed(0)}%)
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </Card>
-    </div>
-  );
-}
 
-// Vue par Catégorie
-function VueParCategorie() {
-  const categoriesData = Object.entries(
-    POSTES_OPERATIONNELS.reduce((acc, poste) => {
-      if (!acc[poste.categorie]) {
-        acc[poste.categorie] = { postes: [], total: 0 };
-      }
-      acc[poste.categorie].postes.push(poste);
-      acc[poste.categorie].total += poste.budgetAnnuel;
-      return acc;
-    }, {} as Record<string, { postes: PosteOperationnel[]; total: number }>)
-  );
-
-  return (
-    <div className="space-y-6">
-      {categoriesData.map(([categorie, data]) => (
-        <Card key={categorie} padding="md">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={cn('p-2 rounded-lg', CATEGORY_COLORS[categorie].bg)}>
-                <Building2 className={cn('h-5 w-5', CATEGORY_COLORS[categorie].text)} />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-primary-900">
-                  {CATEGORY_LABELS[categorie]}
-                </h3>
-                <p className="text-sm text-primary-500">
-                  {data.postes.length} poste{data.postes.length > 1 ? 's' : ''} budgétaire{data.postes.length > 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary-900">{formatMontant(data.total)}</p>
-              <p className="text-sm text-primary-500">
-                {((data.total / BUDGET_OPERATIONNEL_TOTAL) * 100).toFixed(1)}% du budget
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {data.postes.map((poste) => (
-              <div
-                key={poste.id}
-                className="flex items-center justify-between p-3 bg-primary-50 rounded-lg"
-              >
-                <span className="font-medium text-primary-900">{poste.poste}</span>
-                <div className="text-right">
-                  <p className="font-semibold text-primary-900">{formatMontant(poste.budgetAnnuel)}</p>
-                  <p className="text-xs text-primary-500">{formatMontant(poste.budgetMensuel)}/mois</p>
-                </div>
-              </div>
+      {/* Ratios & Benchmarks */}
+      <Card padding="md">
+        <h3 className="text-lg font-semibold text-primary-900 mb-4">
+          Ratios & Benchmarks (2027)
+        </h3>
+        <p className="text-sm text-primary-500 mb-4">
+          GLA Cosmos Angré : {GLA_COSMOS_ANGRE.toLocaleString()} m²
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Indicateur</TableHead>
+              <TableHead className="text-center">Valeur</TableHead>
+              <TableHead className="text-center">Benchmark CI</TableHead>
+              <TableHead className="text-center">Statut</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {RATIOS_BENCHMARKS.map((r) => (
+              <TableRow key={r.indicateur}>
+                <TableCell className="font-medium">{r.indicateur}</TableCell>
+                <TableCell className="text-center font-mono">{r.valeur}</TableCell>
+                <TableCell className="text-center text-primary-500">{r.benchmarkCI}</TableCell>
+                <TableCell className="text-center">
+                  <Badge className="bg-green-100 text-green-700">
+                    Dans les standards
+                  </Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </div>
-        </Card>
-      ))}
+          </TableBody>
+        </Table>
+        <p className="text-sm text-primary-500 mt-4 italic">
+          Analyse : Budget dans les standards du marché ivoirien pour un centre de cette taille.
+        </p>
+      </Card>
     </div>
   );
 }
@@ -411,70 +1197,64 @@ function VueParCategorie() {
 // Composant principal Budget Opérationnel
 export function BudgetOperationnel() {
   const [activeTab, setActiveTab] = useState('synthese');
+  const [annee, setAnnee] = useState<2026 | 2027>(2027);
 
-  const tauxProvisions = (PROVISIONS / BUDGET_OPERATIONNEL_TOTAL) * 100;
-  const restant = BUDGET_OPERATIONNEL_TOTAL - BUDGET_CONSOMME;
-  const ecart = BUDGET_ENGAGE - BUDGET_CONSOMME;
+  const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-primary-900">Budget Opérationnel</h2>
-        <p className="text-sm text-primary-500">
-          Budget de fonctionnement annuel post-ouverture
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-primary-900">Budget d'Exploitation</h2>
+          <p className="text-sm text-primary-500">
+            Centre Commercial Cosmos Angré - New Heaven SA / CRMC
+          </p>
+        </div>
+        <AnneeSelector annee={annee} onChange={setAnnee} />
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard
           label="Budget total"
-          value={formatMontant(BUDGET_OPERATIONNEL_TOTAL)}
-          subValue="FCFA"
+          value={formatMontant(budget.montantTotal)}
+          subValue={`FCFA - ${budget.annee}`}
           icon={Wallet}
           color="text-primary-600"
           bgColor="bg-primary-100"
         />
         <KPICard
-          label="Engagé"
-          value={formatMontant(BUDGET_ENGAGE)}
-          subValue="0.0%"
-          icon={ArrowDownLeft}
+          label="Masse salariale"
+          value={formatMontant(budget.postes.find(p => p.categorie === 'masse_salariale')?.budgetAnnuel || 0)}
+          subValue={`${((budget.postes.find(p => p.categorie === 'masse_salariale')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          icon={Users}
           color="text-blue-600"
           bgColor="bg-blue-100"
         />
         <KPICard
-          label="Consommé"
-          value={formatMontant(BUDGET_CONSOMME)}
-          subValue="0.0%"
-          icon={CheckCircle}
+          label="Prestations"
+          value={formatMontant(budget.postes.find(p => p.categorie === 'prestations')?.budgetAnnuel || 0)}
+          subValue={`${((budget.postes.find(p => p.categorie === 'prestations')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          icon={Shield}
           color="text-green-600"
           bgColor="bg-green-100"
         />
         <KPICard
-          label="Restant"
-          value={formatMontant(restant)}
-          subValue=""
-          icon={TrendingDown}
-          color="text-orange-600"
-          bgColor="bg-orange-100"
+          label="Fluides"
+          value={formatMontant(budget.postes.find(p => p.categorie === 'fluides')?.budgetAnnuel || 0)}
+          subValue={`${((budget.postes.find(p => p.categorie === 'fluides')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          icon={Zap}
+          color="text-amber-600"
+          bgColor="bg-amber-100"
         />
         <KPICard
-          label="Provisions"
-          value={formatMontant(PROVISIONS)}
-          subValue={`${tauxProvisions.toFixed(1)}%`}
-          icon={PiggyBank}
+          label="Effectif"
+          value={annee === 2026 ? `${TOTAL_EFFECTIF_2026} pers.` : `${TOTAL_EFFECTIF_2027} pers.`}
+          subValue="Équipe exploitation"
+          icon={Users}
           color="text-purple-600"
           bgColor="bg-purple-100"
-        />
-        <KPICard
-          label="Écart"
-          value={ecart === 0 ? '-0' : ecart >= 0 ? `+${formatMontant(ecart)}` : `-${formatMontant(Math.abs(ecart))}`}
-          subValue="Engagé - Consommé"
-          icon={AlertTriangle}
-          color={ecart >= 0 ? 'text-success-600' : 'text-error-600'}
-          bgColor={ecart >= 0 ? 'bg-success-100' : 'bg-error-100'}
         />
       </div>
 
@@ -482,20 +1262,20 @@ export function BudgetOperationnel() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="synthese">Synthèse</TabsTrigger>
-          <TabsTrigger value="previsions">Prévisions</TabsTrigger>
-          <TabsTrigger value="par-categorie">Par catégorie</TabsTrigger>
+          <TabsTrigger value="details">Détails</TabsTrigger>
+          <TabsTrigger value="comparatif">Comparatif</TabsTrigger>
         </TabsList>
 
         <TabsContent value="synthese">
-          <VueSynthese />
+          <VueSynthese budget={budget} />
         </TabsContent>
 
-        <TabsContent value="previsions">
-          <VuePrevisions />
+        <TabsContent value="details">
+          <VueDetails annee={annee} />
         </TabsContent>
 
-        <TabsContent value="par-categorie">
-          <VueParCategorie />
+        <TabsContent value="comparatif">
+          <VueComparative />
         </TabsContent>
       </Tabs>
     </div>

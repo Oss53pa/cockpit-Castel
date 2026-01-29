@@ -267,7 +267,7 @@ async function getOrCreateList(siteId: string, listName: string, columns: Array<
       return lists.value[0].id;
     }
   } catch (_error) {
-    console.log(`Liste ${listName} non trouvée, création...`);
+    // Liste non trouvée, création...
   }
 
   // Créer la liste
@@ -591,23 +591,18 @@ export function startAutoSync(): void {
     try {
       const auth = getSharePointAuth();
       if (auth.isAuthenticated) {
-        console.log('[SharePoint] Auto-sync démarré...');
         await syncAllToSharePoint();
-        console.log('[SharePoint] Auto-sync terminé');
       }
     } catch (error) {
       console.error('[SharePoint] Erreur auto-sync:', error);
     }
   }, config.syncInterval * 60 * 1000);
-
-  console.log(`[SharePoint] Auto-sync activé (${config.syncInterval} min)`);
 }
 
 export function stopAutoSync(): void {
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
     autoSyncInterval = null;
-    console.log('[SharePoint] Auto-sync désactivé');
   }
 }
 

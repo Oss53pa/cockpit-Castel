@@ -1760,7 +1760,6 @@ export async function chat(
 
     // Fallback to local analysis if API fails
     if (config.provider !== 'local') {
-      console.log('Falling back to local analysis...');
       return localAnalysis(userMessage, context, history) +
         `\n\n---\n*Mode local active (erreur API: ${error instanceof Error ? error.message : 'Inconnue'})*`;
     }

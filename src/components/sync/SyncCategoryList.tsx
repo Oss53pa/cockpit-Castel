@@ -1,41 +1,59 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { SYNC_CONFIG } from '@/config/syncConfig';
-import type { CategoryProgress, SyncDimension, SyncItem } from '@/types/sync.types';
-import { useSyncCategoryItems } from '@/hooks/useSync';
-import { PROJECT_CATEGORIES, MOBILIZATION_CATEGORIES } from '@/types/sync.types';
+import type { CategoryProgress, SyncDimension } from '@/types/sync.types';
 
 interface SyncCategoryListProps {
   title: string;
   dimension: SyncDimension;
   categories: CategoryProgress[];
   projectId: string;
-  onEditItem?: (item: SyncItem) => void;
-  onAddItem?: (categoryId: string) => void;
   onUpdateProgress?: (itemId: number, progress: number) => void;
 }
 
 interface CategoryCardProps {
   category: CategoryProgress;
   dimension: SyncDimension;
-  projectId: string;
-  onEditItem?: (item: SyncItem) => void;
-  onUpdateProgress?: (itemId: number, progress: number) => void;
 }
+
+// Couleurs par défaut pour les catégories
+const DEFAULT_COLORS: Record<string, string> = {
+  // Phases de construction
+  phase1_preparation: '#6366F1',
+  phase2_mobilisation: '#F59E0B',
+  phase3_lancement: '#10B981',
+  phase4_stabilisation: '#3B82F6',
+  // Axes de mobilisation
+  axe1_rh: '#EF4444',
+  axe2_commercial: '#F97316',
+  axe3_technique: '#3B82F6',
+  axe4_budget: '#10B981',
+  axe5_marketing: '#EC4899',
+  axe6_exploitation: '#8B5CF6',
+};
+
+const getProgressColor = (progress: number): string => {
+  if (progress >= 75) return '#10B981'; // green
+  if (progress >= 50) return '#F59E0B'; // orange
+  if (progress >= 25) return '#3B82F6'; // blue
+  return '#EF4444'; // red
+};
 
 const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   dimension,
-  projectId,
-  onEditItem,
-  onUpdateProgress,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const items = useSyncCategoryItems(projectId, category.categoryId);
 
-  // Get category config
-  const allCategories = dimension === 'PROJECT' ? PROJECT_CATEGORIES : MOBILIZATION_CATEGORIES;
-  const categoryConfig = allCategories.find((c) => c.id === category.categoryId);
+  const color = DEFAULT_COLORS[category.categoryCode] ||
+    (dimension === 'PROJECT' ? SYNC_CONFIG.colors.project : SYNC_CONFIG.colors.mobilization);
+
+  const progressPercent = Math.round(category.progress);
+  const statusIcon = progressPercent >= 100
+    ? <CheckCircle className="h-4 w-4 text-green-500" />
+    : progressPercent > 0
+      ? <Clock className="h-4 w-4 text-orange-500" />
+      : <AlertCircle className="h-4 w-4 text-gray-400" />;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -54,7 +72,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           </button>
           <div
             className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: categoryConfig?.color || '#6B7280' }}
+            style={{ backgroundColor: color }}
           />
           <span className="font-medium text-gray-900">{category.categoryName}</span>
           <span className="text-xs text-gray-500">
@@ -62,81 +80,48 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-3">
+          {statusIcon}
           <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
-                width: `${category.progress}%`,
-                backgroundColor: categoryConfig?.color || '#6B7280',
+                width: `${progressPercent}%`,
+                backgroundColor: getProgressColor(progressPercent),
               }}
             />
           </div>
-          <span className="text-sm font-semibold w-12 text-right" style={{ color: categoryConfig?.color }}>
-            {category.progress.toFixed(0)}%
+          <span
+            className="text-sm font-semibold w-12 text-right"
+            style={{ color: getProgressColor(progressPercent) }}
+          >
+            {progressPercent}%
           </span>
         </div>
       </div>
 
-      {/* Items list */}
+      {/* Expanded details */}
       {isExpanded && (
-        <div className="divide-y">
-          {items.length > 0 ? (
-            items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-xs text-gray-400 font-mono">{item.code}</span>
-                  <span className="text-sm text-gray-700 truncate">{item.name}</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      SYNC_CONFIG.itemStatusStyles[item.status].bg
-                    } ${SYNC_CONFIG.itemStatusStyles[item.status].text}`}
-                  >
-                    {SYNC_CONFIG.itemStatusStyles[item.status].label}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {/* Quick progress slider */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={item.progressPercent}
-                      onChange={(e) => {
-                        if (onUpdateProgress && item.id) {
-                          onUpdateProgress(item.id, parseInt(e.target.value));
-                        }
-                      }}
-                      className="w-20 h-1.5 rounded-lg appearance-none cursor-pointer"
-                      style={{
-                        background: `linear-gradient(to right, ${categoryConfig?.color || '#3B82F6'} 0%, ${categoryConfig?.color || '#3B82F6'} ${item.progressPercent}%, #E5E7EB ${item.progressPercent}%, #E5E7EB 100%)`,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className="text-sm font-medium w-10 text-right">{item.progressPercent}%</span>
-                  </div>
-                  {onEditItem && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditItem(item);
-                      }}
-                      className="p-1 rounded hover:bg-gray-200 transition-colors"
-                    >
-                      <Edit2 className="h-3.5 w-3.5 text-gray-400" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="p-4 text-center text-sm text-gray-500">
-              Aucun élément dans cette catégorie
+        <div className="p-4 bg-white border-t">
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="text-center p-2 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Total</p>
+              <p className="font-semibold text-lg">{category.itemsCount}</p>
             </div>
-          )}
+            <div className="text-center p-2 bg-green-50 rounded-lg">
+              <p className="text-green-600">Terminés</p>
+              <p className="font-semibold text-lg text-green-700">{category.completedCount}</p>
+            </div>
+            <div className="text-center p-2 bg-orange-50 rounded-lg">
+              <p className="text-orange-600">En cours</p>
+              <p className="font-semibold text-lg text-orange-700">
+                {category.itemsCount - category.completedCount}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+            <span>Code: {category.categoryCode}</span>
+            <span>Progression pondérée: {category.progress.toFixed(1)}%</span>
+          </div>
         </div>
       )}
     </div>
@@ -147,12 +132,16 @@ export const SyncCategoryList: React.FC<SyncCategoryListProps> = ({
   title,
   dimension,
   categories,
-  projectId,
-  onEditItem,
-  onAddItem,
-  onUpdateProgress,
 }) => {
   const color = dimension === 'PROJECT' ? SYNC_CONFIG.colors.project : SYNC_CONFIG.colors.mobilization;
+
+  // Calculate overall progress
+  const overallProgress = categories.length > 0
+    ? categories.reduce((sum, cat) => sum + cat.progress, 0) / categories.length
+    : 0;
+
+  const totalItems = categories.reduce((sum, cat) => sum + cat.itemsCount, 0);
+  const completedItems = categories.reduce((sum, cat) => sum + cat.completedCount, 0);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -161,28 +150,42 @@ export const SyncCategoryList: React.FC<SyncCategoryListProps> = ({
           <div>
             <h3 className="font-semibold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              {categories.length} catégories
+              {categories.length} catégories • {completedItems}/{totalItems} éléments terminés
             </p>
           </div>
-          {onAddItem && (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-              <Plus className="h-4 w-4" />
-              Ajouter
-            </button>
-          )}
+          <div className="text-right">
+            <span className="text-2xl font-bold" style={{ color }}>
+              {overallProgress.toFixed(0)}%
+            </span>
+          </div>
+        </div>
+        {/* Overall progress bar */}
+        <div className="mt-3 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{
+              width: `${overallProgress}%`,
+              backgroundColor: color,
+            }}
+          />
         </div>
       </div>
       <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-        {categories.map((cat) => (
-          <CategoryCard
-            key={cat.categoryId}
-            category={cat}
-            dimension={dimension}
-            projectId={projectId}
-            onEditItem={onEditItem}
-            onUpdateProgress={onUpdateProgress}
-          />
-        ))}
+        {categories.length > 0 ? (
+          categories.map((cat) => (
+            <CategoryCard
+              key={cat.categoryId}
+              category={cat}
+              dimension={dimension}
+            />
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Aucune catégorie disponible</p>
+            <p className="text-sm">Les données seront affichées une fois les jalons et actions créés</p>
+          </div>
+        )}
       </div>
     </div>
   );

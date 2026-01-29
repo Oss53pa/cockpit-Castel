@@ -182,8 +182,6 @@ const jalonSchema = z.object({
   // Planning
   date_prevue: z.string().min(1, 'La date prévue est requise'),
   date_reelle: z.string().optional(),
-  heure_cible: z.string().optional(),
-  fuseau_horaire: z.string(),
   date_butoir_absolue: z.string().optional(),
   flexibilite: z.enum(FLEXIBILITES),
 
@@ -197,8 +195,6 @@ const jalonSchema = z.object({
   responsable: z.string().optional(),
   validateur: z.string().optional(),
   escalade_niveau1: z.string().optional(),
-  escalade_niveau2: z.string().optional(),
-  escalade_niveau3: z.string().optional(),
 
   // Dépendances
   chemin_critique: z.boolean(),
@@ -232,14 +228,10 @@ type JalonFormData = z.infer<typeof jalonSchema>;
 // ============================================================================
 
 const TABS = [
-  { id: 'general', label: 'Général', icon: Target },
+  { id: 'essentiel', label: 'Essentiel', icon: Target },
   { id: 'planning', label: 'Planning', icon: Calendar },
-  { id: 'raci', label: 'RACI', icon: Users },
-  { id: 'dependances', label: 'Dépendances', icon: GitBranch },
-  { id: 'livrables', label: 'Livrables', icon: Package },
-  { id: 'risques', label: 'Risques', icon: AlertTriangle },
-  { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'alertes', label: 'Alertes', icon: Bell },
+  { id: 'liens', label: 'Liens', icon: GitBranch },
+  { id: 'avance', label: 'Avancé', icon: FileText },
 ];
 
 // ============================================================================
@@ -309,7 +301,6 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
       statut: 'a_venir',
       niveau_importance: 'standard',
       date_prevue: new Date().toISOString().split('T')[0],
-      fuseau_horaire: 'Africa/Abidjan',
       flexibilite: 'moyenne',
       tendance: 'stable',
       impact_retard: 'modere',
@@ -342,6 +333,43 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
     }
   }, [watchedTitre, watchedAxe, dateVerrouillage]);
 
+  // Auto-generate ID and WBS code based on axe
+  const AXE_PREFIXES: Record<string, string> = {
+    'axe1_rh': 'RH',
+    'axe2_commercial': 'COM',
+    'axe3_technique': 'TECH',
+    'axe4_budget': 'BUD',
+    'axe5_marketing': 'MKT',
+    'axe6_exploitation': 'EXP',
+  };
+
+  useEffect(() => {
+    if (!isEditing && watchedAxe) {
+      const prefix = AXE_PREFIXES[watchedAxe] || 'GEN';
+      const year = new Date().getFullYear();
+      const num = String(jalons.length + 1).padStart(3, '0');
+      const newId = `JAL-${prefix}-${year}-${num}`;
+      const newWbs = `WBS-${prefix}-M${num}`;
+      setValue('id_jalon', newId);
+      setValue('code_wbs', newWbs);
+    }
+  }, [watchedAxe, isEditing, jalons.length, setValue]);
+
+  // Auto-calculate avancement_prealables from linked actions
+  const linkedActions = isEditing && jalon?.id
+    ? actions.filter(a => a.jalonId === jalon.id)
+    : [];
+
+  const calculatedAvancement = linkedActions.length > 0
+    ? Math.round(linkedActions.filter(a => a.statut === 'termine').length / linkedActions.length * 100)
+    : 0;
+
+  useEffect(() => {
+    if (isEditing && linkedActions.length > 0) {
+      setValue('avancement_prealables', calculatedAvancement);
+    }
+  }, [isEditing, linkedActions.length, calculatedAvancement, setValue]);
+
   // Auto-calculate date_prevue from phase + délai + config
   useEffect(() => {
     if (projectConfig && jalonReference && delaiDeclenchement != null && !dateVerrouillage) {
@@ -370,8 +398,6 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
           niveau_importance: jalon.niveau_importance || 'standard',
           date_prevue: jalon.date_prevue,
           date_reelle: jalon.date_reelle || '',
-          heure_cible: jalon.heure_cible || '',
-          fuseau_horaire: jalon.fuseau_horaire || 'Africa/Abidjan',
           date_butoir_absolue: jalon.date_butoir_absolue || '',
           flexibilite: jalon.flexibilite || 'moyenne',
           statut: jalon.statut,
@@ -381,8 +407,6 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
           responsable: jalon.responsable || '',
           validateur: jalon.validateur || '',
           escalade_niveau1: jalon.escalade_niveau1 || '',
-          escalade_niveau2: jalon.escalade_niveau2 || '',
-          escalade_niveau3: jalon.escalade_niveau3 || '',
           chemin_critique: jalon.chemin_critique || false,
           impact_retard: jalon.impact_retard || 'modere',
           cout_retard_jour: jalon.cout_retard_jour || undefined,
@@ -422,7 +446,6 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
           statut: 'a_venir',
           niveau_importance: 'standard',
           date_prevue: new Date().toISOString().split('T')[0],
-          fuseau_horaire: 'Africa/Abidjan',
           flexibilite: 'moyenne',
           tendance: 'stable',
           impact_retard: 'modere',
@@ -717,7 +740,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="grid grid-cols-8 mb-2">
+            <TabsList className="grid grid-cols-4 mb-2">
               {TABS.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id} className="text-xs">
                   <tab.icon className="h-3 w-3 mr-1" />
@@ -728,16 +751,26 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
 
             <div className="flex-1 overflow-y-auto pr-2 pb-4">
               {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 1: GÉNÉRAL
+                  TAB 1: ESSENTIEL (Identification + RACI)
                   ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="general" className="space-y-4 mt-0">
+              <TabsContent value="essentiel" className="space-y-4 mt-0">
                 <Section title="Identification" icon={Target}>
                   <div className="grid grid-cols-3 gap-4">
-                    <Field label="ID Jalon" hint="Format: JAL-YYYY-XXX">
-                      <Input {...register('id_jalon')} placeholder="JAL-2026-001" className="font-mono" />
+                    <Field label="ID Jalon" hint="Généré automatiquement">
+                      <Input
+                        {...register('id_jalon')}
+                        placeholder="JAL-2026-001"
+                        className="font-mono bg-neutral-100"
+                        disabled
+                      />
                     </Field>
-                    <Field label="Code WBS" hint="Format: WBS-XXX-MXX">
-                      <Input {...register('code_wbs')} placeholder="WBS-COM-M01" className="font-mono" />
+                    <Field label="Code WBS" hint="Généré automatiquement">
+                      <Input
+                        {...register('code_wbs')}
+                        placeholder="WBS-COM-M01"
+                        className="font-mono bg-neutral-100"
+                        disabled
+                      />
                     </Field>
                     <Field label="Axe stratégique" required error={errors.axe?.message}>
                       <Select {...register('axe')}>
@@ -827,13 +860,16 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
-                    <Field label="Avancement prérequis (%)" hint="Pourcentage des actions terminées">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        {...register('avancement_prealables', { valueAsNumber: true })}
-                      />
+                    <Field label="Avancement prérequis" hint={isEditing && linkedActions.length > 0 ? `${linkedActions.filter(a => a.statut === 'termine').length}/${linkedActions.length} actions terminées` : 'Calculé automatiquement depuis les actions'}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-3 bg-neutral-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${calculatedAvancement >= 80 ? 'bg-green-500' : calculatedAvancement >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${calculatedAvancement}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium w-12 text-right">{calculatedAvancement}%</span>
+                      </div>
                     </Field>
                     <Field label="Confiance d'atteinte (%)" hint="Probabilité d'atteindre le jalon à temps">
                       <Input
@@ -906,6 +942,83 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                       </div>
                     </Field>
                   </div>
+                </Section>
+
+                <Section title="Responsabilités" icon={Users}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Responsable (R)" required hint="Qui pilote l'atteinte du jalon">
+                      <Select {...register('responsable')}>
+                        <SelectOption value="">Sélectionner...</SelectOption>
+                        {users.map((user) => (
+                          <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
+                            {user.prenom} {user.nom}
+                          </SelectOption>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Validateur (A)" required hint="Qui approuve l'atteinte">
+                      <Select {...register('validateur')}>
+                        <SelectOption value="">Sélectionner...</SelectOption>
+                        {users.map((user) => (
+                          <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
+                            {user.prenom} {user.nom}
+                          </SelectOption>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <Section title="Plus d'options" defaultExpanded={false}>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Contributeurs (C)" hint="Qui est consulté">
+                        <div className="border rounded-lg p-2 max-h-24 overflow-y-auto space-y-1">
+                          {users.map((user) => {
+                            const userName = `${user.prenom} ${user.nom}`;
+                            return (
+                              <label key={user.id} className="flex items-center gap-2 p-1 rounded hover:bg-neutral-50 cursor-pointer text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={contributeurs.includes(userName)}
+                                  onChange={() => toggleContributeur(userName)}
+                                  className="rounded border-neutral-300"
+                                />
+                                {userName}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </Field>
+                      <Field label="Parties prenantes (I)" hint="Qui est informé">
+                        <div className="border rounded-lg p-2 max-h-24 overflow-y-auto space-y-1">
+                          {users.map((user) => {
+                            const userName = `${user.prenom} ${user.nom}`;
+                            return (
+                              <label key={user.id} className="flex items-center gap-2 p-1 rounded hover:bg-neutral-50 cursor-pointer text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={partiesPrenantes.includes(userName)}
+                                  onChange={() => togglePartiesPrenantes(userName)}
+                                  className="rounded border-neutral-300"
+                                />
+                                {userName}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </Field>
+                    </div>
+                    <div className="mt-4">
+                      <Field label="Contact d'escalade" hint="En cas de blocage">
+                        <Select {...register('escalade_niveau1')}>
+                          <SelectOption value="">Sélectionner...</SelectOption>
+                          {users.map((user) => (
+                            <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
+                              {user.prenom} {user.nom}
+                            </SelectOption>
+                          ))}
+                        </Select>
+                      </Field>
+                    </div>
+                  </Section>
                 </Section>
               </TabsContent>
 
@@ -994,19 +1107,6 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                   )}
 
                   <div className="grid grid-cols-2 gap-4 mt-4">
-                    <Field label="Heure cible">
-                      <Input type="time" {...register('heure_cible')} />
-                    </Field>
-                    <Field label="Fuseau horaire">
-                      <Select {...register('fuseau_horaire')}>
-                        <SelectOption value="Africa/Abidjan">Africa/Abidjan (GMT)</SelectOption>
-                        <SelectOption value="Europe/Paris">Europe/Paris (CET)</SelectOption>
-                        <SelectOption value="UTC">UTC</SelectOption>
-                      </Select>
-                    </Field>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-4">
                     <Field label="Date butoir absolue" hint="Deadline impérative non négociable">
                       <Input type="date" {...register('date_butoir_absolue')} />
                     </Field>
@@ -1044,125 +1144,9 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
               </TabsContent>
 
               {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 3: RACI
+                  TAB 3: LIENS (Dépendances + Actions)
                   ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="raci" className="space-y-4 mt-0">
-                <Section title="Matrice RACI" icon={Users}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Responsable (R)" hint="Qui pilote l'atteinte du jalon">
-                      <Select {...register('responsable')}>
-                        <SelectOption value="">Sélectionner...</SelectOption>
-                        {users.map((user) => (
-                          <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                            {user.prenom} {user.nom}
-                          </SelectOption>
-                        ))}
-                      </Select>
-                    </Field>
-                    <Field label="Validateur (A)" hint="Qui approuve l'atteinte">
-                      <Select {...register('validateur')}>
-                        <SelectOption value="">Sélectionner...</SelectOption>
-                        {users.map((user) => (
-                          <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                            {user.prenom} {user.nom}
-                          </SelectOption>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <Field label="Contributeurs (C)" hint="Qui est consulté">
-                      <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
-                        {users.map((user) => {
-                          const userName = `${user.prenom} ${user.nom}`;
-                          return (
-                            <label key={user.id} className="flex items-center gap-2 p-2 rounded hover:bg-neutral-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={contributeurs.includes(userName)}
-                                onChange={() => toggleContributeur(userName)}
-                                className="rounded border-neutral-300"
-                              />
-                              <span className="text-sm">{userName}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                    <Field label="Parties prenantes (I)" hint="Qui est informé">
-                      <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-1">
-                        {users.map((user) => {
-                          const userName = `${user.prenom} ${user.nom}`;
-                          return (
-                            <label key={user.id} className="flex items-center gap-2 p-2 rounded hover:bg-neutral-50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={partiesPrenantes.includes(userName)}
-                                onChange={() => togglePartiesPrenantes(userName)}
-                                className="rounded border-neutral-300"
-                              />
-                              <span className="text-sm">{userName}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </Field>
-                  </div>
-                </Section>
-
-                <Section title="Chaîne d'escalade" icon={AlertTriangle}>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium">Niveau 1</div>
-                      <div className="flex-1">
-                        <Select {...register('escalade_niveau1')}>
-                          <SelectOption value="">Sélectionner...</SelectOption>
-                          {users.map((user) => (
-                            <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                              {user.prenom} {user.nom}
-                            </SelectOption>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="text-xs text-neutral-500 w-32">Retard &lt; 5 jours</div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium">Niveau 2</div>
-                      <div className="flex-1">
-                        <Select {...register('escalade_niveau2')}>
-                          <SelectOption value="">Sélectionner...</SelectOption>
-                          {users.map((user) => (
-                            <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                              {user.prenom} {user.nom}
-                            </SelectOption>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="text-xs text-neutral-500 w-32">Retard 5-15 jours</div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-24 text-sm font-medium">Niveau 3</div>
-                      <div className="flex-1">
-                        <Select {...register('escalade_niveau3')}>
-                          <SelectOption value="">Sélectionner...</SelectOption>
-                          {users.map((user) => (
-                            <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                              {user.prenom} {user.nom}
-                            </SelectOption>
-                          ))}
-                        </Select>
-                      </div>
-                      <div className="text-xs text-neutral-500 w-32">Retard &gt; 15 jours</div>
-                    </div>
-                  </div>
-                </Section>
-              </TabsContent>
-
-              {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 4: DÉPENDANCES
-                  ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="dependances" className="space-y-4 mt-0">
+              <TabsContent value="liens" className="space-y-4 mt-0">
                 <Section title="Prérequis (Jalons précédents)" icon={GitBranch} badge={predecesseurs.length}>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {jalons.filter(j => j.id !== jalon?.id).map((j) => {
@@ -1231,9 +1215,9 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
               </TabsContent>
 
               {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 5: LIVRABLES
+                  TAB 4: AVANCÉ (Livrables + Risques + Documents)
                   ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="livrables" className="space-y-4 mt-0">
+              <TabsContent value="avance" className="space-y-4 mt-0">
                 <Section title="Livrables attendus" icon={Package} badge={livrables.length}>
                   <div className="flex justify-end mb-3">
                     <Button type="button" size="sm" variant="outline" onClick={addLivrable}>
@@ -1360,15 +1344,10 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                     </div>
                   )}
                 </Section>
-              </TabsContent>
 
-              {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 6: RISQUES
-                  ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="risques" className="space-y-4 mt-0">
-                <Section title="Impact en cas de retard" icon={AlertTriangle}>
+                <Section title="Risques & Impact" icon={AlertTriangle} defaultExpanded={false}>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Niveau d'impact">
+                    <Field label="Niveau d'impact en cas de retard">
                       <Select {...register('impact_retard')}>
                         {NIVEAUX_IMPACT.map((impact) => (
                           <SelectOption key={impact} value={impact}>
@@ -1377,17 +1356,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Coût du retard / jour (FCFA)">
-                      <Input
-                        type="number"
-                        {...register('cout_retard_jour', { valueAsNumber: true })}
-                        placeholder="0"
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="mt-4">
-                    <Field label="Probabilité d'atteinte (%)" hint="Estimation de la chance d'atteindre le jalon à temps">
+                    <Field label="Probabilité d'atteinte (%)">
                       <Input
                         type="number"
                         min={0}
@@ -1396,237 +1365,83 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
                       />
                     </Field>
                   </div>
-                </Section>
-
-                <Section title="Risques associés" icon={AlertTriangle} badge={risquesAssocies.length}>
-                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                    {risques.map((risque) => {
-                      const score = risque.score_actuel || (risque.probabilite_actuelle * risque.impact_actuel);
-                      return (
-                        <label key={risque.id} className="flex items-center gap-3 p-2 rounded hover:bg-neutral-50 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={risquesAssocies.includes(String(risque.id))}
-                            onChange={() => toggleRisqueAssocie(String(risque.id))}
-                            className="rounded border-neutral-300"
-                          />
-                          <span className="text-xs text-neutral-500 font-mono">{risque.id_risque}</span>
-                          <span className="flex-1 truncate">{risque.titre}</span>
-                          <Badge className={cn(
-                            score >= 12 && 'bg-red-100 text-red-700',
-                            score >= 8 && score < 12 && 'bg-orange-100 text-orange-700',
-                            score >= 4 && score < 8 && 'bg-yellow-100 text-yellow-700',
-                            score < 4 && 'bg-green-100 text-green-700',
-                          )}>
-                            {score}
-                          </Badge>
-                        </label>
-                      );
-                    })}
-                    {risques.length === 0 && (
-                      <p className="text-sm text-neutral-400 text-center py-4">Aucun risque disponible</p>
-                    )}
-                  </div>
-                </Section>
-
-                <Section title="Plan de contingence" icon={FileText}>
-                  <Field label="Actions alternatives" hint="Plan B si le jalon ne peut être atteint à temps">
-                    <Textarea
-                      {...register('plan_contingence')}
-                      placeholder="Décrire les actions alternatives à mettre en oeuvre si le jalon ne peut être atteint..."
-                      rows={4}
-                    />
-                  </Field>
-                </Section>
-
-                <Section title="Budget associé" icon={Activity} defaultExpanded={false}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label="Budget associé (FCFA)">
-                      <Input
-                        type="number"
-                        {...register('budget_associe', { valueAsNumber: true })}
-                        placeholder="0"
-                      />
-                    </Field>
-                    <Field label="Budget consommé (FCFA)">
-                      <Input
-                        type="number"
-                        {...register('budget_consomme', { valueAsNumber: true })}
-                        placeholder="0"
-                      />
-                    </Field>
-                  </div>
-                </Section>
-              </TabsContent>
-
-              {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 7: DOCUMENTS
-                  ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="documents" className="space-y-4 mt-0">
-                <Section title="Documentation" icon={FileText} badge={documents.length}>
-                  <div className="border-2 border-dashed border-neutral-200 rounded-lg p-8 text-center mb-4">
-                    <Upload className="h-10 w-10 text-neutral-300 mx-auto mb-2" />
-                    <p className="text-sm text-neutral-500">
-                      Glissez des fichiers ici ou cliquez pour parcourir
-                    </p>
-                    <Button type="button" variant="outline" size="sm" className="mt-3" onClick={addDocument}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Ajouter un document
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {documents.map((doc, index) => (
-                      <div key={doc.id} className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <Input
-                              value={doc.nom}
-                              onChange={(e) => updateDocument(index, 'nom', e.target.value)}
-                              placeholder="Nom du document"
-                            />
-                          </div>
-                          <Select
-                            value={doc.type}
-                            onChange={(e) => updateDocument(index, 'type', e.target.value)}
-                            className="w-32"
-                          >
-                            {TYPES_DOCUMENT.map((t) => (
-                              <SelectOption key={t} value={t}>
-                                {TYPE_DOCUMENT_LABELS[t]}
-                              </SelectOption>
-                            ))}
-                          </Select>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeDocument(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-primary-500" />
-                          </Button>
-                        </div>
-                        <div className="mt-2">
-                          <Input
-                            value={doc.url}
-                            onChange={(e) => updateDocument(index, 'url', e.target.value)}
-                            placeholder="URL ou chemin du document"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-
-                <Section title="Lien SharePoint" icon={FileText}>
-                  <Field label="Dossier SharePoint" hint="Lien vers le dossier de documents du jalon">
-                    <Input
-                      {...register('lien_sharepoint')}
-                      placeholder="/Sites/CosmosAngre/Jalons/..."
-                    />
-                  </Field>
-                </Section>
-              </TabsContent>
-
-              {/* ════════════════════════════════════════════════════════════════════════════
-                  TAB 8: ALERTES
-                  ════════════════════════════════════════════════════════════════════════════ */}
-              <TabsContent value="alertes" className="space-y-4 mt-0">
-                <Section title="Configuration des alertes" icon={Bell}>
-                  <label className="flex items-center gap-3 mb-4 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      {...register('alertes_actives')}
-                      className="rounded border-neutral-300"
-                    />
-                    <div>
-                      <div className="font-medium">Activer les alertes automatiques</div>
-                      <p className="text-xs text-neutral-500">
-                        Envoyer des rappels automatiques avant l'échéance (J-30, J-15, J-7)
-                      </p>
-                    </div>
-                  </label>
-
-                  {watch('alertes_actives') && (
-                    <div className="space-y-4 pt-4 border-t">
-                      <Field label="Canaux de notification">
-                        <div className="flex gap-4 mt-2">
-                          {CANAUX_ALERTE.map((canal) => (
-                            <label key={canal} className="flex items-center gap-2 cursor-pointer">
+                  {risques.length > 0 && (
+                    <div className="mt-4">
+                      <Field label="Risques associés" hint={`${risquesAssocies.length} sélectionné(s)`}>
+                        <div className="space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2">
+                          {risques.slice(0, 10).map((risque) => (
+                            <label key={risque.id} className="flex items-center gap-2 p-1 rounded hover:bg-neutral-50 cursor-pointer text-sm">
                               <input
                                 type="checkbox"
-                                checked={canauxAlerte.includes(canal)}
-                                onChange={() => toggleCanalAlerte(canal)}
+                                checked={risquesAssocies.includes(String(risque.id))}
+                                onChange={() => toggleRisqueAssocie(String(risque.id))}
                                 className="rounded border-neutral-300"
                               />
-                              <span>{CANAL_ALERTE_LABELS[canal]}</span>
+                              <span className="truncate">{risque.titre}</span>
                             </label>
                           ))}
                         </div>
                       </Field>
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <Field label="Plan de contingence" hint="Actions alternatives si retard">
+                      <Textarea
+                        {...register('plan_contingence')}
+                        placeholder="Plan B..."
+                        rows={2}
+                      />
+                    </Field>
+                  </div>
+                </Section>
 
-                      <Field label="Personnes à notifier">
-                        <div className="space-y-2 max-h-32 overflow-y-auto border rounded-lg p-2">
-                          {users.map((user) => {
-                            const userName = `${user.prenom} ${user.nom}`;
-                            return (
-                              <label key={user.id} className="flex items-center gap-3 p-2 rounded hover:bg-neutral-50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={notifier.includes(userName)}
-                                  onChange={() => toggleNotifier(userName)}
-                                  className="rounded border-neutral-300"
-                                />
-                                <span>{userName}</span>
-                                <span className="text-xs text-neutral-400">({user.role})</span>
-                              </label>
-                            );
-                          })}
+                <Section title="Documents" icon={FileText} badge={documents.length} defaultExpanded={false}>
+                  <div className="flex justify-between items-center mb-3">
+                    <Field label="Lien SharePoint">
+                      <Input
+                        {...register('lien_sharepoint')}
+                        placeholder="/Sites/CosmosAngre/..."
+                        className="w-64"
+                      />
+                    </Field>
+                    <Button type="button" size="sm" variant="outline" onClick={addDocument}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Document
+                    </Button>
+                  </div>
+                  {documents.length > 0 && (
+                    <div className="space-y-2">
+                      {documents.map((doc, index) => (
+                        <div key={doc.id} className="flex items-center gap-2 p-2 border rounded-lg">
+                          <Input
+                            value={doc.nom}
+                            onChange={(e) => updateDocument(index, 'nom', e.target.value)}
+                            placeholder="Nom"
+                            className="flex-1"
+                          />
+                          <Input
+                            value={doc.url}
+                            onChange={(e) => updateDocument(index, 'url', e.target.value)}
+                            placeholder="URL"
+                            className="flex-1"
+                          />
+                          <Button type="button" size="sm" variant="ghost" onClick={() => removeDocument(index)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
-                      </Field>
-
-                      <Field label="Fréquence de rappel">
-                        <Select {...register('frequence_rappel')}>
-                          {FREQUENCES_RAPPEL.map((freq) => (
-                            <SelectOption key={freq} value={freq}>
-                              {FREQUENCE_RAPPEL_LABELS[freq]}
-                            </SelectOption>
-                          ))}
-                        </Select>
-                      </Field>
+                      ))}
                     </div>
                   )}
                 </Section>
 
-                <Section title="Récapitulatif des alertes" icon={Bell} defaultExpanded={false}>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-yellow-800">Alerte J-30</div>
-                          <div className="text-sm text-yellow-600">{alerteDates.j30 || 'Non définie'}</div>
-                        </div>
-                        <Badge className="bg-yellow-100 text-yellow-700">Rappel</Badge>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-orange-800">Alerte J-15</div>
-                          <div className="text-sm text-orange-600">{alerteDates.j15 || 'Non définie'}</div>
-                        </div>
-                        <Badge className="bg-orange-100 text-orange-700">Attention</Badge>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-red-800">Alerte J-7</div>
-                          <div className="text-sm text-red-600">{alerteDates.j7 || 'Non définie'}</div>
-                        </div>
-                        <Badge className="bg-red-100 text-red-700">Urgent</Badge>
-                      </div>
-                    </div>
+                <Section title="Budget" icon={Activity} defaultExpanded={false}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Budget associé (FCFA)">
+                      <Input type="number" {...register('budget_associe', { valueAsNumber: true })} placeholder="0" />
+                    </Field>
+                    <Field label="Budget consommé (FCFA)">
+                      <Input type="number" {...register('budget_consomme', { valueAsNumber: true })} placeholder="0" />
+                    </Field>
                   </div>
                 </Section>
               </TabsContent>

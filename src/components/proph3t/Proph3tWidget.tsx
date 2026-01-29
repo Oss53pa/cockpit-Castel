@@ -17,6 +17,7 @@ import {
   FileText,
   Lightbulb,
   Activity,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Badge } from '@/components/ui';
@@ -26,8 +27,10 @@ import {
   useProph3tRecommendations,
   useProph3tConfig,
   useProph3tQuickAnalysis,
+  useProjectContext,
 } from '@/hooks';
 import ReactMarkdown from 'react-markdown';
+import { Proph3tConfigModal } from './Proph3tConfigModal';
 
 // ============================================================================
 // WIDGET PRINCIPAL
@@ -50,6 +53,7 @@ export function Proph3tWidget({
 }: Proph3tWidgetProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'health' | 'recommendations'>('health');
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
 
   if (variant === 'inline') {
     return <Proph3tInlineStatus className={className} />;
@@ -77,9 +81,22 @@ export function Proph3tWidget({
         </div>
         <div className="flex items-center gap-2">
           <Proph3tProviderBadge />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsConfigOpen(true);
+            }}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+            title="Configurer l'IA"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
+
+      {/* Config Modal */}
+      <Proph3tConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
 
       {isExpanded && (
         <>
@@ -205,7 +222,9 @@ function Proph3tInlineStatus({ className }: { className?: string }) {
 
 function Proph3tHealthPanel() {
   const health = useProph3tHealth();
+  const context = useProjectContext();
   const { analysis, isLoading, runAnalysis } = useProph3tQuickAnalysis();
+  const [showDataInfo, setShowDataInfo] = useState(false);
 
   if (!health) {
     return (
@@ -215,6 +234,21 @@ function Proph3tHealthPanel() {
       </div>
     );
   }
+
+  // Calcul des statistiques réelles de la DB
+  const dbStats = context ? {
+    totalActions: context.actions.length,
+    actionsEnCours: context.actions.filter(a => a.statut === 'en_cours').length,
+    actionsBloquees: context.actions.filter(a => a.statut === 'bloque').length,
+    actionsTerminees: context.actions.filter(a => a.statut === 'termine').length,
+    totalJalons: context.jalons.length,
+    totalRisques: context.risques.length,
+    risquesCritiques: context.risques.filter(r => (r.score || 0) >= 12).length,
+    risquesMajeurs: context.risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length,
+    totalAlertes: context.alertes.length,
+    alertesCritiques: context.alertes.filter(a => !a.traitee && a.criticite === 'critical').length,
+    alertesNonTraitees: context.alertes.filter(a => !a.traitee).length,
+  } : null;
 
   const statusColors = {
     vert: 'text-success-600 bg-success-50',
@@ -296,6 +330,49 @@ function Proph3tHealthPanel() {
       {analysis && (
         <div className="bg-primary-50 rounded-lg p-3 max-h-60 overflow-auto">
           <div className="prose prose-sm max-w-none"><ReactMarkdown>{analysis}</ReactMarkdown></div>
+        </div>
+      )}
+
+      {/* Info données DB */}
+      {dbStats && (
+        <div className="mt-4 border-t pt-3">
+          <button
+            onClick={() => setShowDataInfo(!showDataInfo)}
+            className="flex items-center gap-2 text-xs text-primary-500 hover:text-primary-700"
+          >
+            <FileText className="h-3 w-3" />
+            {showDataInfo ? 'Masquer' : 'Afficher'} les données source (IndexedDB)
+          </button>
+          {showDataInfo && (
+            <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
+              <div className="font-medium text-primary-700 mb-2">Données temps réel (IndexedDB)</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <span className="text-primary-500">Actions totales:</span>
+                <span className="font-medium">{dbStats.totalActions}</span>
+                <span className="text-primary-500">- En cours:</span>
+                <span className="font-medium">{dbStats.actionsEnCours}</span>
+                <span className="text-primary-500">- Bloquées:</span>
+                <span className="font-medium text-error-600">{dbStats.actionsBloquees}</span>
+                <span className="text-primary-500">- Terminées:</span>
+                <span className="font-medium text-success-600">{dbStats.actionsTerminees}</span>
+                <span className="text-primary-500">Jalons:</span>
+                <span className="font-medium">{dbStats.totalJalons}</span>
+                <span className="text-primary-500">Risques totaux:</span>
+                <span className="font-medium">{dbStats.totalRisques}</span>
+                <span className="text-primary-500">- Critiques (≥12):</span>
+                <span className="font-medium text-error-600">{dbStats.risquesCritiques}</span>
+                <span className="text-primary-500">- Majeurs (8-11):</span>
+                <span className="font-medium text-warning-600">{dbStats.risquesMajeurs}</span>
+                <span className="text-primary-500">Alertes totales:</span>
+                <span className="font-medium">{dbStats.totalAlertes}</span>
+                <span className="text-primary-500">- Critiques non traitées:</span>
+                <span className="font-medium text-error-600">{dbStats.alertesCritiques}</span>
+              </div>
+              <div className="mt-2 pt-2 border-t text-primary-400 italic">
+                Ces données proviennent de la base locale IndexedDB.
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

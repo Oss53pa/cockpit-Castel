@@ -64,10 +64,12 @@ import {
   createReport,
   deleteReport,
 } from '@/hooks';
+import { useCatalogueData, searchDynamicCharts, searchDynamicTables, searchDynamicKPIs } from '@/hooks/useCatalogueData';
 import { ReportStudio } from '@/components/rapports/ReportStudio';
 import { EnhancedReportExport } from '@/components/rapports/EnhancedReportExport';
 import { DeepDive } from '@/components/rapports/DeepDive';
 import { DeepDiveLaunch } from '@/components/rapports/DeepDiveLaunch';
+import { DeepDiveLancement } from '@/components/rapports/DeepDiveLancement';
 import { ImportIA } from '@/components/rapports/ImportIA';
 import { Journal } from '@/components/rapports/Journal';
 import { ReportPeriodSelector, type ReportPeriod } from '@/components/rapports/ReportPeriodSelector';
@@ -85,12 +87,6 @@ import {
 } from '@/types/reportStudio';
 import {
   REPORT_TEMPLATES,
-  CHART_TEMPLATES,
-  TABLE_TEMPLATES,
-  KPI_DEFINITIONS,
-  searchCharts,
-  searchTables,
-  searchKPIs,
 } from '@/data/dataLibrary';
 import {
   ResponsiveContainer,
@@ -368,26 +364,35 @@ export function RapportsPage() {
   const budget = useBudgetSynthese();
   const risques = useRisques();
 
-  // Filtered catalogue data
+  // Dynamic catalogue data from real project data
+  const catalogueData = useCatalogueData();
+
+  // Filtered catalogue data - using dynamic data
   const filteredCharts = useMemo(() => {
-    let charts = catalogueSearch ? searchCharts(catalogueSearch) : CHART_TEMPLATES;
+    let charts = catalogueSearch
+      ? searchDynamicCharts(catalogueData.charts, catalogueSearch)
+      : catalogueData.charts;
     if (chartCategory !== 'all') {
       charts = charts.filter((c) => c.category === chartCategory);
     }
     return charts;
-  }, [catalogueSearch, chartCategory]);
+  }, [catalogueSearch, chartCategory, catalogueData.charts]);
 
   const filteredTables = useMemo(() => {
-    let tables = catalogueSearch ? searchTables(catalogueSearch) : TABLE_TEMPLATES;
+    let tables = catalogueSearch
+      ? searchDynamicTables(catalogueData.tables, catalogueSearch)
+      : catalogueData.tables;
     if (tableCategory !== 'all') {
       tables = tables.filter((t) => t.category === tableCategory);
     }
     return tables;
-  }, [catalogueSearch, tableCategory]);
+  }, [catalogueSearch, tableCategory, catalogueData.tables]);
 
   const filteredKPIs = useMemo(() => {
-    return catalogueSearch ? searchKPIs(catalogueSearch) : KPI_DEFINITIONS;
-  }, [catalogueSearch]);
+    return catalogueSearch
+      ? searchDynamicKPIs(catalogueData.kpis, catalogueSearch)
+      : catalogueData.kpis;
+  }, [catalogueSearch, catalogueData.kpis]);
 
   const handleCreateReport = async () => {
     if (!newReportData.title.trim()) return;
@@ -1399,8 +1404,8 @@ export function RapportsPage() {
                 >
                   <Presentation className="h-4 w-4" />
                   <div className="text-left">
-                    <div>Deep Dive #1 - Lancement</div>
-                    <div className="text-xs opacity-75">~2h30 | 50 slides</div>
+                    <div>Deep Dive Lancement</div>
+                    <div className="text-xs opacity-75">Validation Stratégique | 9 slides</div>
                   </div>
                 </button>
                 <button
@@ -1421,7 +1426,7 @@ export function RapportsPage() {
             </div>
 
             {/* Selected template */}
-            {deepDiveTemplate === 'launch' ? <DeepDiveLaunch /> : <DeepDive />}
+            {deepDiveTemplate === 'launch' ? <DeepDiveLancement /> : <DeepDive />}
           </div>
         </TabsContent>
 

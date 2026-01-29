@@ -307,9 +307,18 @@ export async function generateAlertesAutomatiques(): Promise<void> {
     }
   }
 
-  // Check for desynchronisation between technical and commercial progress
+  // Check for desynchronisation between Construction (technique) and Mobilisation (5 autres axes)
+  // Construction = axe3_technique
   const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
-  const actionsMobilisation = actions.filter((a) => a.axe === 'axe2_commercial');
+  // Mobilisation = les 5 autres axes (RH, Commercial, Budget, Marketing, Exploitation)
+  const axesMobilisation: Array<'axe1_rh' | 'axe2_commercial' | 'axe4_budget' | 'axe5_marketing' | 'axe6_exploitation'> = [
+    'axe1_rh',
+    'axe2_commercial',
+    'axe4_budget',
+    'axe5_marketing',
+    'axe6_exploitation',
+  ];
+  const actionsMobilisation = actions.filter((a) => axesMobilisation.includes(a.axe as typeof axesMobilisation[number]));
 
   const avancementTechnique =
     actionsTechniques.length > 0
@@ -338,7 +347,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       await createAlerte({
         type: 'desynchronisation_chantier_mobilisation',
         titre: 'Risque de gaspillage ressources',
-        message: `La mobilisation commerciale (${Math.round(avancementMobilisation)}%) est en avance de ${Math.round(ecartSync)} points sur le chantier technique (${Math.round(avancementTechnique)}%). Risque de gaspillage de ressources.`,
+        message: `La mobilisation (${Math.round(avancementMobilisation)}%) est en avance de ${Math.round(ecartSync)} points sur la construction (${Math.round(avancementTechnique)}%). Risque de gaspillage de ressources.`,
         criticite: ecartSync > 30 ? 'critical' : 'high',
         entiteType: 'action',
         entiteId: 0, // Global alert, not linked to specific action
@@ -363,7 +372,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       await createAlerte({
         type: 'desynchronisation_chantier_mobilisation',
         titre: 'Risque de retard ouverture',
-        message: `Le chantier technique (${Math.round(avancementTechnique)}%) est en retard de ${Math.round(Math.abs(ecartSync))} points sur la mobilisation commerciale (${Math.round(avancementMobilisation)}%). Risque de retard d'ouverture.`,
+        message: `La construction (${Math.round(avancementTechnique)}%) est en retard de ${Math.round(Math.abs(ecartSync))} points sur la mobilisation (${Math.round(avancementMobilisation)}%). Risque de retard d'ouverture.`,
         criticite: ecartSync < -30 ? 'critical' : 'high',
         entiteType: 'action',
         entiteId: 0, // Global alert, not linked to specific action

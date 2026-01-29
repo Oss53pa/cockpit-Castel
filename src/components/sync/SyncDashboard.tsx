@@ -14,10 +14,11 @@ import { InterdependencyDiagram } from './interdependency';
 type MainTab = 'sync' | 'gantt' | 'pert' | 'interdependency';
 
 interface SyncDashboardProps {
+  siteId?: number;
   projectId: string;
 }
 
-export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
+export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projectId }) => {
   const {
     syncStatus,
     projectCategories,
@@ -25,15 +26,14 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
     alerts,
     actions,
     snapshots,
-    items,
+    stats,
     loading,
     initialized,
     refreshSync,
     createSnapshot,
     acknowledgeAlert,
-    updateItemProgress,
     updateActionStatus,
-  } = useSync(projectId);
+  } = useSync(siteId, projectId);
 
   const [mainTab, setMainTab] = useState<MainTab>('sync');
   const [selectedView, setSelectedView] = useState<'overview' | 'project' | 'mobilization'>('overview');
@@ -60,10 +60,10 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
 
   const activeAlerts = alerts.filter((a) => !a.isAcknowledged);
 
-  // Calculate some KPIs
-  const totalItems = items.length;
-  const completedItems = items.filter((i) => i.status === 'COMPLETED').length;
-  const blockedItems = items.filter((i) => i.status === 'BLOCKED' || i.status === 'DELAYED').length;
+  // Calculate KPIs from stats (real data)
+  const totalItems = stats ? stats.totalJalons + stats.totalActions : 0;
+  const completedItems = stats ? stats.jalonsAtteints + stats.actionsTerminees : 0;
+  const blockedItems = stats?.axeEnRetard || stats?.phaseEnRetard ? 1 : 0; // Simplified
 
   // Main tabs configuration
   const mainTabs = [

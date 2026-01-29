@@ -783,7 +783,6 @@ export class ExternalShareService {
           const updates = JSON.parse(localStorage.getItem('cockpit_external_updates') || '[]');
           updates.push(payload);
           localStorage.setItem('cockpit_external_updates', JSON.stringify(updates));
-          console.log('Update saved locally:', payload);
         } else {
           // Mode online: envoyer à l'API
           const response = await fetch(API_URL, {

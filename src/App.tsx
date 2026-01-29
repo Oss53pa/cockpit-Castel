@@ -53,10 +53,7 @@ function AppContent() {
         await initializeDefaultSite();
         await seedDatabase();
         // Nettoyer les alertes en double avant d'en generer de nouvelles
-        const cleaned = await cleanupDuplicateAlertes();
-        if (cleaned > 0) {
-          console.log(`Nettoyage: ${cleaned} alerte(s) en double supprimee(s)`);
-        }
+        await cleanupDuplicateAlertes();
         await generateAlertesAutomatiques();
         // Migration et initialisation des services email
         await migrateEmailConfig();

@@ -83,6 +83,8 @@ import {
 import { useSync } from '@/hooks/useSync';
 import { SYNC_CONFIG } from '@/config/syncConfig';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
+import { DeepDiveMensuel } from './DeepDiveMensuel';
+import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -541,6 +543,9 @@ export function DeepDive() {
 
   // Sync data (new module)
   const syncData = useSync('cosmos-angre');
+
+  // Template type state - monthly_v2 is the new COPIL format
+  const [templateType, setTemplateType] = useState<DeepDiveTemplateType | 'monthly_v2'>('monthly');
 
   // State
   const [activeTab, setActiveTab] = useState<ViewTab>('config');
@@ -4391,6 +4396,58 @@ export function DeepDive() {
     }
   };
 
+  // If monthly_v2 template is selected, render the new component
+  if (templateType === 'monthly_v2') {
+    return (
+      <div className="space-y-6">
+        {/* Header with template selector */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <Presentation className="h-6 w-6 text-primary-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-primary-900">
+                Deep Dive Mensuel V2 — Format COPIL
+              </h3>
+              <p className="text-sm text-primary-500">
+                6 sections conformes au template COPIL
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Select
+              value={templateType}
+              onChange={(e) => setTemplateType(e.target.value as typeof templateType)}
+              className="w-48"
+            >
+              <SelectOption value="monthly_v2">Mensuel V2 (COPIL)</SelectOption>
+              <SelectOption value="monthly">Mensuel (Classique)</SelectOption>
+              <SelectOption value="launch">Lancement</SelectOption>
+            </Select>
+          </div>
+        </div>
+
+        {/* DeepDive Mensuel V2 Component */}
+        <div className="h-[calc(100vh-200px)]">
+          <DeepDiveMensuel
+            designSettings={{
+              primaryColor: designSettings.primaryColor,
+              accentColor: designSettings.accentColor,
+              fontFamily: designSettings.fontFamily,
+              logoPosition: designSettings.logoPosition as 'left' | 'right' | 'center',
+              showSlideNumbers: designSettings.showSlideNumbers,
+              showDate: designSettings.showDate,
+              backgroundStyle: designSettings.backgroundStyle as 'solid' | 'gradient' | 'pattern',
+              headerStyle: designSettings.headerStyle as 'full' | 'minimal' | 'none',
+            }}
+            onExport={generatePowerPoint}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -4408,23 +4465,34 @@ export function DeepDive() {
             </p>
           </div>
         </div>
-        <Button
-          variant="primary"
-          onClick={generatePowerPoint}
-          disabled={generating || activeSlides.length === 0}
-        >
-          {generating ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Génération...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4 mr-2" />
-              Générer PowerPoint
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select
+            value={templateType}
+            onChange={(e) => setTemplateType(e.target.value as typeof templateType)}
+            className="w-48"
+          >
+            <SelectOption value="monthly_v2">Mensuel V2 (COPIL)</SelectOption>
+            <SelectOption value="monthly">Mensuel (Classique)</SelectOption>
+            <SelectOption value="launch">Lancement</SelectOption>
+          </Select>
+          <Button
+            variant="primary"
+            onClick={generatePowerPoint}
+            disabled={generating || activeSlides.length === 0}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Génération...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Générer PowerPoint
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Main Tabs */}

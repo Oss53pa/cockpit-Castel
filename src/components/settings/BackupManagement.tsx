@@ -21,6 +21,60 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/u
 import { exportDatabase, importDatabase, db } from '@/db';
 import { cn } from '@/lib/utils';
 
+// IndexedDB pour stocker les FileSystemDirectoryHandle (qui ne peuvent pas être sérialisés dans localStorage)
+const HANDLES_DB_NAME = 'cockpit-backup-handles';
+const HANDLES_STORE_NAME = 'handles';
+
+async function openHandlesDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(HANDLES_DB_NAME, 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(HANDLES_STORE_NAME)) {
+        db.createObjectStore(HANDLES_STORE_NAME);
+      }
+    };
+  });
+}
+
+async function saveHandle(key: string, handle: FileSystemDirectoryHandle): Promise<void> {
+  const db = await openHandlesDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HANDLES_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(HANDLES_STORE_NAME);
+    const request = store.put(handle, key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+    tx.oncomplete = () => db.close();
+  });
+}
+
+async function getHandle(key: string): Promise<FileSystemDirectoryHandle | undefined> {
+  const db = await openHandlesDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HANDLES_STORE_NAME, 'readonly');
+    const store = tx.objectStore(HANDLES_STORE_NAME);
+    const request = store.get(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+async function deleteHandle(key: string): Promise<void> {
+  const db = await openHandlesDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HANDLES_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(HANDLES_STORE_NAME);
+    const request = store.delete(key);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+    tx.oncomplete = () => db.close();
+  });
+}
+
 // Types
 interface BackupConfig {
   localFolderName?: string;
@@ -102,6 +156,8 @@ export function BackupManagement() {
     };
   });
 
+  const [handlesRestored, setHandlesRestored] = useState(false);
+
   const [history, setHistory] = useState<BackupHistoryEntry[]>(() => {
     const saved = localStorage.getItem('cockpit-backup-history');
     return saved ? JSON.parse(saved) : [];
@@ -113,6 +169,75 @@ export function BackupManagement() {
   const [dbStats, setDbStats] = useState({ size: 0, records: 0 });
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const autoBackupRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Restaurer les handles depuis IndexedDB au montage
+  useEffect(() => {
+    async function restoreHandles() {
+      try {
+        const localHandle = await getHandle('local');
+        const onedriveHandle = await getHandle('onedrive');
+
+        // Vérifier les permissions pour le handle local
+        if (localHandle) {
+          const permission = await localHandle.queryPermission({ mode: 'readwrite' });
+          if (permission === 'granted') {
+            setConfig((prev) => ({
+              ...prev,
+              localFolderHandle: localHandle,
+              localFolderName: localHandle.name,
+            }));
+          } else {
+            // Le handle existe mais les permissions ont expiré - garder le nom pour l'affichage
+            setConfig((prev) => ({
+              ...prev,
+              localFolderName: localHandle.name,
+            }));
+          }
+        }
+
+        // Vérifier les permissions pour le handle OneDrive
+        if (onedriveHandle) {
+          const permission = await onedriveHandle.queryPermission({ mode: 'readwrite' });
+          if (permission === 'granted') {
+            setConfig((prev) => ({
+              ...prev,
+              onedriveFolderHandle: onedriveHandle,
+              onedriveFolderName: onedriveHandle.name,
+            }));
+          } else {
+            // Le handle existe mais les permissions ont expiré - garder le nom pour l'affichage
+            setConfig((prev) => ({
+              ...prev,
+              onedriveFolderName: onedriveHandle.name,
+            }));
+          }
+        }
+
+        setHandlesRestored(true);
+      } catch (error) {
+        console.error('Erreur lors de la restauration des handles:', error);
+        setHandlesRestored(true);
+      }
+    }
+
+    restoreHandles();
+  }, []);
+
+  // Redémarrer la sauvegarde automatique si elle était activée et que les handles sont restaurés
+  useEffect(() => {
+    if (!handlesRestored) return;
+    if (!config.autoBackupEnabled) return;
+
+    const handle = config.autoBackupDestination === 'local'
+      ? config.localFolderHandle
+      : config.onedriveFolderHandle;
+
+    if (handle && !autoRunning) {
+      // Redémarrer automatiquement la sauvegarde
+      startAutoBackupInternal(handle, config.autoBackupDestination, config.autoBackupInterval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handlesRestored]);
 
   // Save config to localStorage
   useEffect(() => {
@@ -213,6 +338,10 @@ export function BackupManagement() {
         return;
       }
       const handle = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker();
+
+      // Sauvegarder le handle dans IndexedDB pour persistance
+      await saveHandle(type, handle);
+
       if (type === 'local') {
         setConfig((prev) => ({
           ...prev,
@@ -276,10 +405,16 @@ export function BackupManagement() {
     } catch (error) {
       console.error('Save error:', error);
       showStatus('error', 'Erreur lors de la sauvegarde. Reconfigurez le dossier.');
+      // Supprimer le handle invalide d'IndexedDB
+      await deleteHandle(type).catch(() => {});
       if (type === 'local') {
         setConfig((prev) => ({ ...prev, localFolderHandle: undefined }));
       } else {
         setConfig((prev) => ({ ...prev, onedriveFolderHandle: undefined }));
+      }
+      // Arrêter la sauvegarde automatique si elle était en cours
+      if (autoRunning) {
+        stopAutoBackup();
       }
     } finally {
       setIsExporting(false);
@@ -322,7 +457,29 @@ export function BackupManagement() {
     input.click();
   };
 
-  // Auto backup
+  // Fonction interne pour démarrer la sauvegarde automatique (utilisée au redémarrage et manuellement)
+  const startAutoBackupInternal = useCallback((
+    handle: FileSystemDirectoryHandle,
+    destination: 'local' | 'onedrive',
+    intervalMinutes: number
+  ) => {
+    if (autoBackupRef.current) {
+      clearInterval(autoBackupRef.current);
+    }
+
+    setAutoRunning(true);
+
+    // Run immediately
+    handleSaveToFolder(destination);
+
+    // Then at intervals
+    autoBackupRef.current = setInterval(() => {
+      handleSaveToFolder(destination);
+    }, intervalMinutes * 60 * 1000);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto backup (appelé manuellement par l'utilisateur)
   const startAutoBackup = () => {
     if (autoBackupRef.current) {
       clearInterval(autoBackupRef.current);
@@ -337,16 +494,9 @@ export function BackupManagement() {
       return;
     }
 
-    setAutoRunning(true);
     setConfig((prev) => ({ ...prev, autoBackupEnabled: true }));
-
-    // Run immediately
-    handleSaveToFolder(config.autoBackupDestination);
-
-    // Then at intervals
-    autoBackupRef.current = setInterval(() => {
-      handleSaveToFolder(config.autoBackupDestination);
-    }, config.autoBackupInterval * 60 * 1000);
+    startAutoBackupInternal(handle, config.autoBackupDestination, config.autoBackupInterval);
+    showStatus('success', 'Sauvegarde automatique démarrée');
   };
 
   const stopAutoBackup = () => {
@@ -398,6 +548,47 @@ export function BackupManagement() {
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
           )}
           {statusMessage.text}
+        </div>
+      )}
+
+      {/* Warning banner when auto-backup was enabled but permissions expired */}
+      {handlesRestored && config.autoBackupEnabled && !autoRunning && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900">Sauvegarde automatique interrompue</h3>
+            <p className="text-sm text-amber-700 mt-1">
+              La sauvegarde automatique était activée mais les permissions d'accès au dossier ont expiré.
+              Cliquez sur le bouton ci-dessous pour redemander l'accès et reprendre la sauvegarde automatique.
+            </p>
+            <Button
+              size="sm"
+              className="mt-2"
+              onClick={async () => {
+                const type = config.autoBackupDestination;
+                const handle = await getHandle(type);
+                if (handle) {
+                  const permission = await handle.requestPermission({ mode: 'readwrite' });
+                  if (permission === 'granted') {
+                    if (type === 'local') {
+                      setConfig((prev) => ({ ...prev, localFolderHandle: handle }));
+                    } else {
+                      setConfig((prev) => ({ ...prev, onedriveFolderHandle: handle }));
+                    }
+                    startAutoBackupInternal(handle, type, config.autoBackupInterval);
+                    showStatus('success', 'Sauvegarde automatique reprise');
+                  } else {
+                    showStatus('error', 'Permission refusée. Reconfigurez le dossier.');
+                  }
+                } else {
+                  showStatus('error', 'Dossier non trouvé. Reconfigurez le dossier.');
+                }
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Redemander les permissions
+            </Button>
+          </div>
         </div>
       )}
 
@@ -557,6 +748,12 @@ export function BackupManagement() {
                     Configurez d'abord un dossier de sauvegarde (local ou OneDrive) ci-dessus.
                   </p>
                 )}
+              </div>
+              <div className="mt-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <p className="text-xs text-primary-600">
+                  <strong>Note :</strong> La sauvegarde automatique reprend automatiquement au rechargement de la page si les permissions sont toujours valides.
+                  Cependant, après une fermeture complète du navigateur, vous devrez cliquer sur "Redemander les permissions" pour reprendre la sauvegarde automatique (sécurité navigateur).
+                </p>
               </div>
             </div>
           </div>

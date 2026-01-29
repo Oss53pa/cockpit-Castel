@@ -538,10 +538,6 @@ export async function repairSyncItemDates(projectId: string): Promise<number> {
     }
   }
 
-  if (repaired > 0) {
-    console.log(`[repairSyncItemDates] ${repaired} item(s) mis à jour avec leurs dates planifiées.`);
-  }
-
   return repaired;
 }
 

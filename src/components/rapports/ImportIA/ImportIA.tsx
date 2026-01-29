@@ -437,7 +437,6 @@ const FIELD_LABELS: Record<string, string> = {
   sections: 'Sections du document',
   statistiquesDocument: 'Statistiques document',
   pages: 'Pages',
-  lignes: 'Lignes',
   caracteres: 'Caractères',
   pointsAbordes: 'Points abordés',
   resumeParParagraphe: 'Résumé par paragraphe',

@@ -8433,21 +8433,31 @@ async function linkActionsToJalons(): Promise<number> {
 }
 
 export async function seedDatabase(): Promise<void> {
-  // Import des données transformées du référentiel officiel
-  const { getAllActions, getAllJalons, getAllRisques } = await import('./cosmosAngreTransform');
+  // Import des données transformées du référentiel V2.1 (19 jalons, 102 actions)
+  const { getAllJalonsV21, getAllActionsV21, updateActionsWithJalonIds, getStatsV21, JALONS_V21, ACTIONS_V21 } = await import('./cosmosAngreTransformV21');
+  const { getAllRisques } = await import('./cosmosAngreTransform');
   const { repairJalonAxes, repairProjectPhases } = await import('@/hooks/useJalons');
 
   // Check if data already exists
   const existingProject = await db.project.count();
   if (existingProject > 0) {
-    console.log('Database already seeded');
+    // Nettoyer les actions legacy (ne garder que les 102 V2.1)
+    const actionsCount = await db.actions.count();
+    if (actionsCount > 110) {
+      // Il y a probablement des actions legacy à supprimer
+      const { ACTIONS_V21 } = await import('./cosmosAngreTransformV21');
+      const actionsV21Ids = ACTIONS_V21.map(a => a.id);
+      const allActions = await db.actions.toArray();
+      const legacyActions = allActions.filter(a => !actionsV21Ids.includes(a.id_action));
+      if (legacyActions.length > 0) {
+        await db.actions.bulkDelete(legacyActions.map(a => a.id!));
+      }
+    }
     // Réparer les axes et phases des jalons/actions existants si nécessaire
     await repairJalonAxes();
     await repairProjectPhases();
     return;
   }
-
-  console.log('Seeding database with Cosmos Angré RÉFÉRENTIEL OFFICIEL...');
 
   // Insert project
   await db.project.add(projectData as Project);
@@ -8455,28 +8465,34 @@ export async function seedDatabase(): Promise<void> {
   // Insert users (nouveaux rôles selon le référentiel)
   await db.users.bulkAdd(usersData as User[]);
 
-  // Insert jalons UNIQUEMENT depuis le référentiel officiel
-  const jalonsRef = getAllJalons();
-  await db.jalons.bulkAdd(jalonsRef as Jalon[]);
+  // Insert jalons V2.1 (19 jalons)
+  const jalonsV21 = getAllJalonsV21();
+  const insertedJalonIds = await db.jalons.bulkAdd(jalonsV21 as Jalon[], { allKeys: true });
 
-  // Insert actions depuis le référentiel officiel
-  const actionsRef = getAllActions();
-  // Ajouter les actions legacy pour compléter (bâtiments spécifiques uniquement)
-  const actionsLegacy = generateActions();
-  const actionsLegacyFiltered = actionsLegacy.filter(a =>
-    a.id_action.startsWith('CC.') ||
-    a.id_action.startsWith('BB1.') ||
-    a.id_action.startsWith('BB2.') ||
-    a.id_action.startsWith('BB3.') ||
-    a.id_action.startsWith('BB4.') ||
-    a.id_action.startsWith('ZE.') ||
-    a.id_action.startsWith('MA.') ||
-    a.id_action.startsWith('PK.')
-  ).map(a => ({ ...a, jalonId: null })); // Reset jalonId, sera réassigné par linkActionsToJalons
-  const allActions = [...actionsRef, ...actionsLegacyFiltered];
-  await db.actions.bulkAdd(allActions as Action[]);
+  // Créer le mapping jalonId V2.1 -> jalonId DB
+  const jalonIdMapping = new Map<string, number>();
+  jalonsV21.forEach((jalon, index) => {
+    jalonIdMapping.set(jalon.id_jalon, insertedJalonIds[index] as number);
+  });
 
-  // Insert risques depuis le référentiel officiel
+  // Insert actions V2.1 (102 actions) avec les jalonId mis à jour
+  let actionsV21 = getAllActionsV21();
+
+  // Mettre à jour les jalonId des actions V2.1
+  const actionsWithJalonIds = actionsV21.map(action => {
+    // Trouver l'action V2.1 correspondante pour obtenir le jalonId original
+    const actionV21Source = ACTIONS_V21.find(a => a.id === action.id_action);
+    if (actionV21Source) {
+      const jalonDbId = jalonIdMapping.get(actionV21Source.jalonId);
+      return { ...action, jalonId: jalonDbId ?? null };
+    }
+    return action;
+  });
+
+  // Insert uniquement les 102 actions V2.1 (pas de legacy)
+  await db.actions.bulkAdd(actionsWithJalonIds as Action[]);
+
+  // Insert risques depuis le référentiel (gardé de l'ancien système)
   const risquesRef = getAllRisques();
   await db.risques.bulkAdd(risquesRef as Risque[]);
 
@@ -8491,19 +8507,99 @@ export async function seedDatabase(): Promise<void> {
   await repairJalonAxes();
   await repairProjectPhases();
 
-  // Lier automatiquement les actions aux jalons (même axe + date la plus proche)
-  const actionsLinked = await linkActionsToJalons();
+}
 
-  console.log('Database seeded successfully with RÉFÉRENTIEL OFFICIEL!');
-  console.log(`- ${allActions.length} actions créées (${actionsRef.length} référentiel + ${allActions.length - actionsRef.length} bâtiments)`);
-  console.log(`- ${jalonsRef.length} jalons créés (référentiel officiel uniquement)`);
-  console.log(`- ${actionsLinked} actions liées automatiquement à des jalons`);
-  console.log(`- ${risquesRef.length} risques créés`);
-  console.log(`- ${liensSync.length} liens de synchronisation créés`);
+/**
+ * Migre les données existantes vers le référentiel V2.1
+ * Supprime les anciens jalons/actions et insère les nouveaux
+ */
+export async function migrateToV21(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { getAllJalonsV21, getAllActionsV21, JALONS_V21, ACTIONS_V21, getStatsV21 } = await import('./cosmosAngreTransformV21');
+
+    // Compter les données actuelles
+    const currentJalonsCount = await db.jalons.count();
+    const currentActionsCount = await db.actions.count();
+
+    // Supprimer tous les jalons et actions V2.1 existants (par id_jalon ou id_action)
+    // On identifie les jalons V2.1 par leur format "J1"-"J19"
+    const jalonsV21Ids = JALONS_V21.map(j => j.id);
+    const actionsV21Ids = ACTIONS_V21.map(a => a.id);
+
+    // Supprimer les jalons V2.1 existants
+    const existingJalonsV21 = await db.jalons.filter(j => jalonsV21Ids.includes(j.id_jalon)).toArray();
+    if (existingJalonsV21.length > 0) {
+      await db.jalons.bulkDelete(existingJalonsV21.map(j => j.id!));
+    }
+
+    // Supprimer les actions V2.1 existantes
+    const existingActionsV21 = await db.actions.filter(a => actionsV21Ids.includes(a.id_action)).toArray();
+    if (existingActionsV21.length > 0) {
+      await db.actions.bulkDelete(existingActionsV21.map(a => a.id!));
+    }
+
+    // Insérer les nouveaux jalons V2.1
+    const jalonsV21 = getAllJalonsV21();
+    const insertedJalonIds = await db.jalons.bulkAdd(jalonsV21 as Jalon[], { allKeys: true });
+
+    // Créer le mapping jalonId V2.1 -> jalonId DB
+    const jalonIdMapping = new Map<string, number>();
+    jalonsV21.forEach((jalon, index) => {
+      jalonIdMapping.set(jalon.id_jalon, insertedJalonIds[index] as number);
+    });
+
+    // Insérer les nouvelles actions V2.1 avec jalonId mis à jour
+    let actionsV21 = getAllActionsV21();
+    actionsV21 = actionsV21.map(action => {
+      const actionV21Source = ACTIONS_V21.find(a => a.id === action.id_action);
+      if (actionV21Source) {
+        const jalonDbId = jalonIdMapping.get(actionV21Source.jalonId);
+        return { ...action, jalonId: jalonDbId ?? null };
+      }
+      return action;
+    });
+    await db.actions.bulkAdd(actionsV21 as Action[]);
+
+    const statsV21 = getStatsV21();
+    const newJalonsCount = await db.jalons.count();
+    const newActionsCount = await db.actions.count();
+
+    const message = `Migration V2.1 réussie:
+- Jalons: ${currentJalonsCount} → ${newJalonsCount} (${jalonsV21.length} V2.1)
+- Actions: ${currentActionsCount} → ${newActionsCount} (${actionsV21.length} V2.1)
+- Jalons critiques: ${statsV21.jalonsCritiques}
+- Jalons majeurs: ${statsV21.jalonsMajeurs}`;
+
+    return { success: true, message };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    console.error('Erreur lors de la migration V2.1:', errorMessage);
+    return { success: false, message: `Erreur: ${errorMessage}` };
+  }
 }
 
 export async function resetAndSeedDatabase(): Promise<void> {
   await db.delete();
   await db.open();
   await seedDatabase();
+}
+
+/**
+ * Nettoie les actions legacy (non V2.1) de la base de données
+ * Ne garde que les 102 actions V2.1
+ */
+export async function cleanupLegacyActions(): Promise<{ removed: number; remaining: number }> {
+  const { ACTIONS_V21 } = await import('./cosmosAngreTransformV21');
+  const actionsV21Ids = ACTIONS_V21.map(a => a.id);
+
+  // Trouver toutes les actions qui ne sont pas dans V2.1
+  const allActions = await db.actions.toArray();
+  const legacyActions = allActions.filter(a => !actionsV21Ids.includes(a.id_action));
+
+  if (legacyActions.length > 0) {
+    await db.actions.bulkDelete(legacyActions.map(a => a.id!));
+  }
+
+  const remainingCount = await db.actions.count();
+  return { removed: legacyActions.length, remaining: remainingCount };
 }

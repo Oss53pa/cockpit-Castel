@@ -24,6 +24,9 @@ import {
   ArrowLeftRight,
   Lock,
   Unlock,
+  Clock,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import {
   Dialog,
@@ -114,7 +117,6 @@ const actionSchema = z.object({
   axe: z.enum(AXES),
   phase: z.enum(PHASES),
   categorie: z.enum(ACTION_CATEGORIES),
-  sous_categorie: z.string().nullable(),
   type_action: z.enum(ACTION_TYPES),
 
   // Planification
@@ -131,9 +133,7 @@ const actionSchema = z.object({
   responsable: z.string().min(1, 'Le responsable est requis'),
   approbateur: z.string().min(1, "L'approbateur est requis"),
   delegue: z.string().nullable(),
-  escalade_niveau1: z.string(),
-  escalade_niveau2: z.string(),
-  escalade_niveau3: z.string(),
+  escalade_niveau1: z.string().optional(),
 
   // Dépendances
   contraintes_externes: z.string().nullable(),
@@ -165,9 +165,7 @@ const actionSchema = z.object({
   escalade_requise: z.boolean(),
   niveau_escalade: z.string().nullable(),
   priorite: z.enum(PRIORITES),
-  score_priorite: z.number().nullable(),
   impact_si_retard: z.enum(NIVEAUX_IMPACT),
-  motif_modification: z.string().nullable(),
 });
 
 type ActionFormData = z.infer<typeof actionSchema>;
@@ -335,7 +333,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           axe: action.axe,
           phase: action.phase,
           categorie: action.categorie,
-          sous_categorie: action.sous_categorie,
           type_action: action.type_action,
           date_debut_prevue: action.date_debut_prevue,
           date_fin_prevue: action.date_fin_prevue,
@@ -348,9 +345,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           responsable: action.responsable,
           approbateur: action.approbateur,
           delegue: action.delegue,
-          escalade_niveau1: action.escalade_niveau1,
-          escalade_niveau2: action.escalade_niveau2,
-          escalade_niveau3: action.escalade_niveau3,
+          escalade_niveau1: action.escalade_niveau1 || '',
           contraintes_externes: action.contraintes_externes,
           chemin_critique: action.chemin_critique,
           charge_homme_jour: action.charge_homme_jour,
@@ -372,9 +367,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           escalade_requise: action.escalade_requise,
           niveau_escalade: action.niveau_escalade,
           priorite: action.priorite,
-          score_priorite: action.score_priorite,
           impact_si_retard: action.impact_si_retard,
-          motif_modification: null,
         }
       : {
           id_action: '',
@@ -384,7 +377,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           axe: 'axe2_commercial',
           phase: 'execution',
           categorie: 'negociation',
-          sous_categorie: null,
           type_action: 'tache',
           date_debut_prevue: today,
           date_fin_prevue: today,
@@ -398,8 +390,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           approbateur: '',
           delegue: null,
           escalade_niveau1: '',
-          escalade_niveau2: '',
-          escalade_niveau3: '',
           contraintes_externes: null,
           chemin_critique: false,
           charge_homme_jour: null,
@@ -421,9 +411,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           escalade_requise: false,
           niveau_escalade: null,
           priorite: 'moyenne',
-          score_priorite: null,
           impact_si_retard: 'modere',
-          motif_modification: null,
         },
   });
 
@@ -440,7 +428,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           axe: action.axe,
           phase: action.phase,
           categorie: action.categorie,
-          sous_categorie: action.sous_categorie,
           type_action: action.type_action,
           date_debut_prevue: action.date_debut_prevue,
           date_fin_prevue: action.date_fin_prevue,
@@ -453,9 +440,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           responsable: action.responsable,
           approbateur: action.approbateur,
           delegue: action.delegue,
-          escalade_niveau1: action.escalade_niveau1,
-          escalade_niveau2: action.escalade_niveau2,
-          escalade_niveau3: action.escalade_niveau3,
+          escalade_niveau1: action.escalade_niveau1 || '',
           contraintes_externes: action.contraintes_externes,
           chemin_critique: action.chemin_critique,
           charge_homme_jour: action.charge_homme_jour,
@@ -477,9 +462,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           escalade_requise: action.escalade_requise,
           niveau_escalade: action.niveau_escalade,
           priorite: action.priorite,
-          score_priorite: action.score_priorite,
           impact_si_retard: action.impact_si_retard,
-          motif_modification: null,
         });
         // Reset dynamic lists with action data
         setConsultes(action.consultes || []);
@@ -506,7 +489,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           axe: 'axe2_commercial',
           phase: 'execution',
           categorie: 'negociation',
-          sous_categorie: null,
           type_action: 'tache',
           date_debut_prevue: today,
           date_fin_prevue: today,
@@ -520,8 +502,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           approbateur: '',
           delegue: null,
           escalade_niveau1: '',
-          escalade_niveau2: '',
-          escalade_niveau3: '',
           contraintes_externes: null,
           chemin_critique: false,
           charge_homme_jour: null,
@@ -543,9 +523,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           escalade_requise: false,
           niveau_escalade: null,
           priorite: 'moyenne',
-          score_priorite: 50,
           impact_si_retard: 'modere',
-          motif_modification: null,
         });
         // Reset dynamic lists to empty
         setConsultes([]);
@@ -592,6 +570,73 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
       setAutoCalcDuree(duree);
     }
   }, [watchTitre, dateVerrouillageAction]);
+
+  // Auto-generate ID and WBS code based on axe and jalon
+  const AXE_PREFIXES: Record<string, string> = {
+    'axe1_rh': 'RH',
+    'axe2_commercial': 'COM',
+    'axe3_technique': 'TECH',
+    'axe4_budget': 'BUD',
+    'axe5_marketing': 'MKT',
+    'axe6_exploitation': 'EXP',
+  };
+
+  useEffect(() => {
+    if (!isEditing && watchAxe) {
+      const prefix = AXE_PREFIXES[watchAxe] || 'GEN';
+      // Generate action ID based on jalon or standalone
+      if (selectedJalonId) {
+        const linkedJalon = jalons.find(j => j.id === selectedJalonId);
+        const jalonActions = allActions.filter(a => a.jalonId === selectedJalonId);
+        const num = jalonActions.length + 1;
+        const jalonNum = linkedJalon?.id_jalon?.split('-').pop() || '001';
+        setValue('id_action', `${prefix}.${jalonNum}.${num}`);
+      } else {
+        const axeActions = allActions.filter(a => a.axe === watchAxe);
+        const num = String(axeActions.length + 1).padStart(3, '0');
+        setValue('id_action', `ACT-${prefix}-${num}`);
+      }
+      // Generate WBS code
+      const wbsNum = String(allActions.length + 1).padStart(3, '0');
+      setValue('code_wbs', `WBS-${prefix}-A${wbsNum}`);
+    }
+  }, [watchAxe, selectedJalonId, isEditing, jalons, allActions, setValue]);
+
+  // Pre-fill fields from selected Jalon
+  useEffect(() => {
+    if (selectedJalonId && !isEditing) {
+      const linkedJalon = jalons.find(j => j.id === selectedJalonId);
+      if (linkedJalon) {
+        // Inherit axe from jalon
+        setValue('axe', linkedJalon.axe);
+
+        // Inherit responsable if defined
+        if (linkedJalon.responsable) {
+          setValue('responsable', linkedJalon.responsable);
+        }
+
+        // Map importance to priority
+        const prioriteMap: Record<string, 'critique' | 'haute' | 'moyenne' | 'basse'> = {
+          'critique': 'critique',
+          'majeur': 'haute',
+          'standard': 'moyenne',
+          'mineur': 'basse',
+        };
+        if (linkedJalon.niveau_importance) {
+          setValue('priorite', prioriteMap[linkedJalon.niveau_importance] || 'moyenne');
+        }
+
+        // Set default date (J-30 before jalon)
+        if (linkedJalon.date_prevue && !dateVerrouillageAction) {
+          const jalonDate = new Date(linkedJalon.date_prevue);
+          const actionEndDate = new Date(jalonDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+          const actionStartDate = new Date(actionEndDate.getTime() - (autoCalcDuree || 7) * 24 * 60 * 60 * 1000);
+          setValue('date_debut_prevue', actionStartDate.toISOString().split('T')[0]);
+          setValue('date_fin_prevue', actionEndDate.toISOString().split('T')[0]);
+        }
+      }
+    }
+  }, [selectedJalonId, isEditing, jalons, setValue, dateVerrouillageAction, autoCalcDuree]);
 
   // Auto-calculate dates from phase + délai + config + duration
   useEffect(() => {
@@ -718,16 +763,21 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
     <div className="space-y-4">
       <Section title="Identification" icon={<Target className="w-4 h-4" />}>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="ID Action" required hint="Format: X.Y.Z (ex: 2.3.1)">
+          <Field label="ID Action" hint="Généré automatiquement">
             <Input
               {...register('id_action')}
-              placeholder="2.3.1"
-              disabled={isEditing}
-              className={isEditing ? 'bg-neutral-100' : ''}
+              placeholder="COM.001.1"
+              disabled
+              className="bg-neutral-100 font-mono"
             />
           </Field>
-          <Field label="Code WBS" required hint="Format: WBS-XXX-YYY">
-            <Input {...register('code_wbs')} placeholder="WBS-COM-003" />
+          <Field label="Code WBS" hint="Généré automatiquement">
+            <Input
+              {...register('code_wbs')}
+              placeholder="WBS-COM-A001"
+              disabled
+              className="bg-neutral-100 font-mono"
+            />
           </Field>
           <Field label="Titre" required span={2}>
             <Input
@@ -735,6 +785,46 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
               placeholder="Finaliser négociation bail Carrefour"
               maxLength={100}
             />
+            {/* Suggestions intelligentes basées sur le titre */}
+            {watchTitre && watchTitre.length >= 5 && (
+              <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-800 text-sm font-medium mb-2">
+                  <Info className="w-4 h-4" />
+                  Suggestions automatiques
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  {actionPhaseRef && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3 h-3 text-blue-600" />
+                      <span className="text-neutral-600">Phase:</span>
+                      <span className="font-medium text-blue-700">
+                        {PHASE_REFERENCE_LABELS[actionPhaseRef as PhaseReference]}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-green-600" />
+                    <span className="text-neutral-600">Durée:</span>
+                    <span className="font-medium text-green-700">{autoCalcDuree} jours</span>
+                  </div>
+                  {selectedJalonId && (
+                    <div className="flex items-center gap-2">
+                      <Target className="w-3 h-3 text-purple-600" />
+                      <span className="text-neutral-600">Échéance:</span>
+                      <span className="font-medium text-purple-700">
+                        J-30 du jalon
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {!dateVerrouillageAction && (
+                  <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Dates calculées automatiquement
+                  </p>
+                )}
+              </div>
+            )}
           </Field>
           <Field label="Description" required span={2}>
             <Textarea
@@ -770,9 +860,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
                 </SelectOption>
               ))}
             </Select>
-          </Field>
-          <Field label="Sous-catégorie">
-            <Input {...register('sous_categorie')} placeholder="Bail commercial" />
           </Field>
         </div>
         <div className="mt-4">
@@ -862,6 +949,63 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
               </Select>
             </Field>
           </div>
+
+          {/* Alertes intelligentes basées sur l'avancement et le statut */}
+          {(() => {
+            const suggestions: { type: 'warning' | 'info' | 'success'; message: string }[] = [];
+
+            // Suggestion: avancement 100% mais statut pas terminé
+            if (watchAvancement === 100 && watchStatut !== 'termine') {
+              suggestions.push({
+                type: 'info',
+                message: `Avancement à 100% : pensez à passer le statut en "Terminé"`
+              });
+            }
+
+            // Suggestion: statut terminé mais avancement < 100
+            if (watchStatut === 'termine' && watchAvancement < 100) {
+              suggestions.push({
+                type: 'warning',
+                message: `Statut "Terminé" mais avancement à ${watchAvancement}% - mettre à jour l'avancement ?`
+              });
+            }
+
+            // Suggestion: statut en_cours mais avancement 0
+            if (watchStatut === 'en_cours' && watchAvancement === 0) {
+              suggestions.push({
+                type: 'info',
+                message: `Action "En cours" : pensez à mettre à jour l'avancement`
+              });
+            }
+
+            // Suggestion: avancement > 0 mais statut a_planifier
+            if (watchAvancement > 0 && (watchStatut === 'a_planifier' || watchStatut === 'planifie')) {
+              suggestions.push({
+                type: 'info',
+                message: `Avancement à ${watchAvancement}% : passer le statut en "En cours" ?`
+              });
+            }
+
+            if (suggestions.length === 0) return null;
+
+            return (
+              <div className="space-y-2 mt-2">
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`p-2 rounded-lg flex items-center gap-2 text-sm ${
+                      s.type === 'warning' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                      s.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                      'bg-blue-50 text-blue-800 border border-blue-200'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 flex-shrink-0" />
+                    {s.message}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <div>
             <Label className="text-sm font-medium text-neutral-700 mb-2 block">Priorité *</Label>
@@ -956,6 +1100,47 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
             </Select>
           </Field>
         </div>
+
+        {/* Alertes de validation des dates */}
+        {(() => {
+          const dateDebut = watch('date_debut_prevue');
+          const dateFin = watch('date_fin_prevue');
+          const dateButoir = watch('date_butoir');
+          const alerts: { type: 'error' | 'warning'; message: string }[] = [];
+
+          if (dateDebut && dateFin && new Date(dateFin) < new Date(dateDebut)) {
+            alerts.push({ type: 'error', message: 'La date de fin est antérieure à la date de début' });
+          }
+
+          if (dateButoir && dateFin && new Date(dateFin) > new Date(dateButoir)) {
+            alerts.push({ type: 'warning', message: 'La date de fin dépasse la date butoir' });
+          }
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (dateFin && new Date(dateFin) < today && watchStatut !== 'termine' && watchStatut !== 'annule') {
+            alerts.push({ type: 'warning', message: 'Échéance dépassée - action en retard' });
+          }
+
+          if (alerts.length === 0) return null;
+
+          return (
+            <div className="space-y-2 mt-3">
+              {alerts.map((a, i) => (
+                <div
+                  key={i}
+                  className={`p-2 rounded-lg flex items-center gap-2 text-sm ${
+                    a.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+                    'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {a.message}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </Section>
 
       <Section title="Alertes de rappel" icon={<Info className="w-4 h-4" />}>
@@ -1101,39 +1286,17 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         </div>
       </Section>
 
-      <Section title="Chaîne d'escalade">
-        <div className="grid grid-cols-3 gap-4">
-          <Field label="Niveau 1" hint="Retard < 5j">
-            <Select {...register('escalade_niveau1')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Niveau 2" hint="Retard 5-10j">
-            <Select {...register('escalade_niveau2')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Niveau 3" hint="Retard > 10j">
-            <Select {...register('escalade_niveau3')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
+      <Section title="Escalade" defaultExpanded={false}>
+        <Field label="Contact d'escalade" hint="Personne à contacter en cas de blocage">
+          <Select {...register('escalade_niveau1')}>
+            <SelectOption value="">Sélectionner...</SelectOption>
+            {users.map((user) => (
+              <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
+                {user.prenom} {user.nom}
+              </SelectOption>
+            ))}
+          </Select>
+        </Field>
       </Section>
     </div>
   );
@@ -1857,9 +2020,6 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
                 <span className="font-medium">{action?.modifie_par}</span>
               </div>
             </div>
-            <Field label="Motif de modification">
-              <Textarea {...register('motif_modification')} placeholder="Raison du changement..." rows={2} />
-            </Field>
           </div>
         </Section>
       )}

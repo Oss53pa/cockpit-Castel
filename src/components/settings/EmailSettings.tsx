@@ -62,10 +62,7 @@ export function EmailSettings() {
   const loadData = async () => {
     await initDefaultTemplates();
     // Clean up any duplicate templates
-    const cleaned = await cleanupDuplicateTemplates();
-    if (cleaned > 0) {
-      console.log(`Nettoyage: ${cleaned} template(s) en double supprime(s)`);
-    }
+    await cleanupDuplicateTemplates();
     setTemplates(await getEmailTemplates());
     setLinks(await getAllUpdateLinks());
     setNotifications(await getNotifications());

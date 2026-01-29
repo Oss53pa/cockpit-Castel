@@ -1153,8 +1153,6 @@ async function simulateSendEmail(params: SendEmailParams): Promise<EmailResult> 
   // EmailJS - Envoi reel cote client (pas besoin de backend!)
   if (config.provider === 'emailjs' && config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
     try {
-      console.log('Sending email via EmailJS...');
-
       const templateParams = {
         to_email: params.to,
         to_name: params.toName,
@@ -1172,7 +1170,6 @@ async function simulateSendEmail(params: SendEmailParams): Promise<EmailResult> 
         config.emailjsPublicKey
       );
 
-      console.log('EmailJS success:', response);
       storeEmail();
 
       return {
@@ -1189,12 +1186,6 @@ async function simulateSendEmail(params: SendEmailParams): Promise<EmailResult> 
   }
 
   // Mode simulation (defaut)
-  console.log('Simulating email send:', {
-    from: `${config.fromName} <${config.fromEmail}>`,
-    to: `${params.toName} <${params.to}>`,
-    subject: params.subject,
-  });
-
   storeEmail();
 
   // Simulate network delay
@@ -1383,12 +1374,6 @@ async function simulateSendEmailForReport(params: {
   }
 
   // Mode simulation (defaut)
-  console.log('Simulating report share email:', {
-    from: `${config.fromName} <${config.fromEmail}>`,
-    to: `${params.toName} <${params.to}>`,
-    subject: params.subject,
-  });
-
   storeEmail();
   await new Promise(resolve => setTimeout(resolve, 500));
 

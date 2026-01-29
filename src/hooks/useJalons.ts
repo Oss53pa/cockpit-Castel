@@ -208,10 +208,6 @@ export async function repairJalonAxes(): Promise<number> {
     }
   }
 
-  if (repaired > 0) {
-    console.log(`[repairJalonAxes] ${repaired} jalon(s) réparé(s) avec leur axe correct.`);
-  }
-
   return repaired;
 }
 
@@ -268,10 +264,6 @@ export async function repairProjectPhases(): Promise<number> {
       await db.actions.update(action.id!, { projectPhase: correctPhase });
       repaired++;
     }
-  }
-
-  if (repaired > 0) {
-    console.log(`[repairProjectPhases] ${repaired} enregistrement(s) réparé(s) avec la bonne phase projet.`);
   }
 
   return repaired;

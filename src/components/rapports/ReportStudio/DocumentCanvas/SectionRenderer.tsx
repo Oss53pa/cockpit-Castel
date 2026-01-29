@@ -236,7 +236,7 @@ export function SectionRenderer({
                 Ajouter un bloc
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {}}>
+              <DropdownMenuItem onClick={() => onDuplicateSection?.()}>
                 <Copy className="h-4 w-4 mr-2" />
                 Dupliquer la section
               </DropdownMenuItem>

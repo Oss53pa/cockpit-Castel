@@ -133,21 +133,16 @@ export function DesignSettingsModal({
   };
 
   const applyTheme = (themeColors: ThemeColors) => {
-    console.log('applyTheme called with:', themeColors);
-    setLocalSettings((prev) => {
-      const newSettings = {
-        ...prev,
-        colors: {
-          primary: themeColors.primary,
-          secondary: themeColors.secondary,
-          accent: themeColors.accent,
-          text: themeColors.text,
-          background: themeColors.background,
-        },
-      };
-      console.log('New settings:', newSettings.colors);
-      return newSettings;
-    });
+    setLocalSettings((prev) => ({
+      ...prev,
+      colors: {
+        primary: themeColors.primary,
+        secondary: themeColors.secondary,
+        accent: themeColors.accent,
+        text: themeColors.text,
+        background: themeColors.background,
+      },
+    }));
   };
 
   const updateCoverPage = (updates: Partial<ReportDesignSettings['coverPage']>) => {

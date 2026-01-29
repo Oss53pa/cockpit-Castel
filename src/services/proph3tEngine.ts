@@ -276,7 +276,6 @@ export async function callAI(
 
     // Fallback vers algorithme local
     if (config.provider !== 'local') {
-      console.log('Fallback vers algorithme local');
       const content = await processWithLocalAlgorithm(prompt, context);
       return {
         content,

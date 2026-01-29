@@ -3697,13 +3697,182 @@ export function DeepDiveLaunch() {
     );
   };
 
-  // Generate PPTX (placeholder)
+  // Generate PPTX
   const generatePPTX = async () => {
     setGenerating(true);
-    // TODO: Implement PPTX generation
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setGenerating(false);
-    alert('Deep Dive de Lancement généré ! (Fonctionnalité en développement)');
+
+    try {
+      const PptxGenJS = (await import('pptxgenjs')).default;
+      const pptx = new PptxGenJS();
+
+      pptx.author = 'Cockpit Cosmos Angré';
+      pptx.title = 'Deep Dive #1 : Lancement & Cadrage - 9 février 2026';
+      pptx.subject = 'Présentation Direction Générale - Lancement';
+      pptx.company = 'Cosmos Angré';
+
+      const { primaryColor, accentColor, fontFamily, showSlideNumbers, showDate, headerStyle } = designSettings;
+      const primaryHex = primaryColor.replace('#', '');
+      const accentHex = accentColor.replace('#', '');
+
+      // Helper: Add slide header
+      const addSlideHeader = (slide: typeof pptx.slides[0], title: string, axeColor?: string) => {
+        if (headerStyle === 'none') return;
+
+        const bgColor = headerStyle === 'full' ? primaryHex : 'F8F9FA';
+        const textColor = headerStyle === 'full' ? 'FFFFFF' : primaryHex;
+
+        slide.addShape('rect', {
+          x: 0,
+          y: 0,
+          w: '100%',
+          h: 0.8,
+          fill: { color: bgColor },
+        });
+
+        if (axeColor) {
+          slide.addShape('rect', {
+            x: 0.3,
+            y: 0.2,
+            w: 0.4,
+            h: 0.4,
+            fill: { color: axeColor.replace('#', '') },
+          });
+        }
+
+        slide.addText(title, {
+          x: axeColor ? 0.9 : 0.5,
+          y: 0.2,
+          w: 7,
+          h: 0.5,
+          fontSize: 24,
+          fontFace: fontFamily,
+          color: textColor,
+          bold: true,
+        });
+        slide.addText('COSMOS ANGRÉ', {
+          x: 7.5,
+          y: 0.2,
+          w: 2,
+          h: 0.5,
+          fontSize: 12,
+          fontFace: fontFamily,
+          color: accentHex,
+          align: 'right',
+        });
+      };
+
+      // Helper: Add slide footer
+      const addSlideFooter = (slide: typeof pptx.slides[0], pageNum: number, total: number) => {
+        if (showDate) {
+          slide.addText('Deep Dive #1 - Lancement & Cadrage - 9 février 2026', {
+            x: 0.5,
+            y: 5.2,
+            w: 4,
+            h: 0.3,
+            fontSize: 8,
+            fontFace: fontFamily,
+            color: '666666',
+          });
+        }
+        if (showSlideNumbers) {
+          slide.addText(`${pageNum} / ${total}`, {
+            x: 8.5,
+            y: 5.2,
+            w: 1,
+            h: 0.3,
+            fontSize: 8,
+            fontFace: fontFamily,
+            color: primaryHex,
+            align: 'right',
+          });
+        }
+      };
+
+      // Helper: Add comment box
+      const addComment = (slide: typeof pptx.slides[0], comment: string, y: number) => {
+        if (comment) {
+          slide.addShape('rect', {
+            x: 0.5,
+            y,
+            w: 9,
+            h: 0.5,
+            fill: { color: 'EFF6FF' },
+            line: { color: '3B82F6', width: 1 },
+          });
+          slide.addText(comment, {
+            x: 0.6,
+            y: y + 0.1,
+            w: 8.8,
+            h: 0.3,
+            fontSize: 9,
+            fontFace: fontFamily,
+            color: '1E40AF',
+            italic: true,
+          });
+        }
+      };
+
+      // Generate slides for included slides
+      const includedSlides = slides.filter(s => s.included);
+      const totalSlides = includedSlides.length;
+
+      includedSlides.forEach((slideItem, index) => {
+        const slide = pptx.addSlide();
+        const pageNum = index + 1;
+
+        // Check if this is an axe-related slide
+        const axeMatch = slideItem.id.match(/launch_axe_(\w+)_/);
+        const axeKey = axeMatch ? axeMatch[1] as AxeType : null;
+        const axeColor = axeKey && axesConfig[axeKey] ? axesConfig[axeKey].color : undefined;
+
+        // Add header
+        addSlideHeader(slide, slideItem.title, axeColor);
+
+        // Add main content
+        if (slideItem.content) {
+          slide.addText(slideItem.content, {
+            x: 0.5,
+            y: 1.0,
+            w: 9,
+            h: 3.8,
+            fontSize: 11,
+            fontFace: fontFamily,
+            color: '333333',
+            valign: 'top',
+          });
+        } else {
+          // Default content
+          slide.addText(slideItem.description, {
+            x: 0.5,
+            y: 1.0,
+            w: 9,
+            h: 0.5,
+            fontSize: 14,
+            fontFace: fontFamily,
+            color: '666666',
+            italic: true,
+          });
+        }
+
+        // Add comment if present
+        if (slideItem.comment) {
+          addComment(slide, slideItem.comment, 4.6);
+        }
+
+        // Add footer
+        addSlideFooter(slide, pageNum, totalSlides);
+      });
+
+      // Generate and download
+      const fileName = `DeepDive_Lancement_${new Date().toISOString().split('T')[0]}.pptx`;
+      await pptx.writeFile({ fileName });
+
+    } catch (error) {
+      console.error('Erreur génération PPTX:', error);
+      alert('Erreur lors de la génération du PowerPoint. Veuillez réessayer.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (

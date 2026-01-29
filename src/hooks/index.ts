@@ -14,3 +14,6 @@ export * from './useSync';
 export * from './useProph3t';
 export * from './useSites';
 export * from './useProjectConfig';
+export * from './useCatalogueData';
+export * from './useDeepDives';
+export * from './useInterdependency';
