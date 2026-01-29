@@ -897,7 +897,7 @@ export function EnhancedReportExport() {
         // Avancement Mobilisation par categorie
         if (syncData.mobilizationCategories.length > 0) {
           checkPageBreak(50);
-          currentY = drawSubtitle(doc, margin, currentY, 'Avancement Mobilisation (Exploitation)');
+          currentY = drawSubtitle(doc, margin, currentY, 'Avancement Mobilisation (6 categories)');
           const mobData = syncData.mobilizationCategories.map(cat => ({
             label: cat.categoryName,
             value: Math.round(cat.progress),

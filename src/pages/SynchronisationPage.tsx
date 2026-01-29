@@ -67,6 +67,7 @@ import {
   analyzeAutoLinkSuggestions,
   autoLinkActions,
   resetAndAutoLink,
+  AXES_MOBILISATION,
   type AutoLinkSuggestion,
 } from '@/hooks';
 import {
@@ -195,12 +196,14 @@ export function SynchronisationPage() {
   const allActions = useActions();
 
   // Actions filtrées par type
+  // Construction = axe3_technique
   const actionsTechniques = useMemo(
     () => allActions.filter((a) => a.axe === 'axe3_technique'),
     [allActions]
   );
+  // Mobilisation = les 5 autres axes (RH, Commercial, Budget, Marketing, Exploitation)
   const actionsMobilisation = useMemo(
-    () => allActions.filter((a) => a.axe === 'axe2_commercial'),
+    () => allActions.filter((a) => AXES_MOBILISATION.includes(a.axe)),
     [allActions]
   );
 
@@ -213,14 +216,14 @@ export function SynchronisationPage() {
   // Données pour les graphiques
   const comparisonChartData = [
     {
-      name: 'Technique (Chantier)',
+      name: 'Construction (AXE 3)',
       avancement: details.technique.avancement,
       terminees: details.technique.terminees,
       enRetard: details.technique.enRetard,
       total: details.technique.total,
     },
     {
-      name: 'Mobilisation',
+      name: 'Mobilisation (5 axes)',
       avancement: details.mobilisation.avancement,
       terminees: details.mobilisation.terminees,
       enRetard: details.mobilisation.enRetard,
@@ -495,16 +498,16 @@ export function SynchronisationPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <KPICard
-          title="Avancement Technique"
+          title="Avancement Construction"
           value={`${Math.round(metrics.avancement_technique)}%`}
-          subtitle="Chantier (AXE 3)"
+          subtitle="AXE 3 - Technique"
           icon={Building2}
           color="bg-blue-500"
         />
         <KPICard
           title="Avancement Mobilisation"
           value={`${Math.round(metrics.avancement_mobilisation)}%`}
-          subtitle="Commercial (AXE 2)"
+          subtitle="5 axes (RH, Comm., Budget...)"
           icon={ShoppingBag}
           color="bg-purple-500"
         />

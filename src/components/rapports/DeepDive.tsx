@@ -75,7 +75,9 @@ import {
   useDashboardKPIs,
   useActions,
   useJalons,
+  useBudget,
   useBudgetSynthese,
+  useBudgetParAxe,
   useRisques,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
@@ -86,7 +88,8 @@ import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector'
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
 type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 type ViewTab = 'config' | 'preview' | 'design';
-type AxeType = 'commercialisation' | 'technique' | 'exploitation' | 'juridique' | 'communication' | 'general';
+// 6 axes de mobilisation alignés avec le modèle projet
+type AxeType = 'rh' | 'commercialisation' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'general';
 
 interface DGDecisionPoint {
   id: string;
@@ -133,14 +136,26 @@ interface AxeDetailData {
   avancement: number;
 }
 
-// Axes configuration
+// Axes configuration - 6 axes alignés avec le modèle projet (Construction vs 5 axes Mobilisation)
 const axesConfig: Record<AxeType, { label: string; color: string; icon: React.ElementType; shortLabel: string }> = {
+  rh: { label: 'RH & Organisation', color: '#EF4444', icon: Users, shortLabel: 'RH' },
   commercialisation: { label: 'Commercialisation', color: '#3B82F6', icon: Building2, shortLabel: 'COM' },
   technique: { label: 'Technique & Handover', color: '#8B5CF6', icon: Wrench, shortLabel: 'TECH' },
-  exploitation: { label: 'Exploitation', color: '#10B981', icon: Briefcase, shortLabel: 'EXP' },
-  juridique: { label: 'Juridique & Conformité', color: '#F59E0B', icon: Scale, shortLabel: 'JUR' },
-  communication: { label: 'Communication', color: '#EC4899', icon: Megaphone, shortLabel: 'COMM' },
+  budget: { label: 'Budget & Pilotage', color: '#F59E0B', icon: DollarSign, shortLabel: 'BUD' },
+  marketing: { label: 'Marketing & Comm.', color: '#EC4899', icon: Megaphone, shortLabel: 'MKT' },
+  exploitation: { label: 'Exploitation & Systèmes', color: '#10B981', icon: Briefcase, shortLabel: 'EXP' },
   general: { label: 'Général / Transverse', color: '#6B7280', icon: Target, shortLabel: 'GEN' },
+};
+
+// Mapping entre les axes DeepDive et les codes d'axes de la base de données
+const axeToDbCode: Record<AxeType, string> = {
+  rh: 'axe1_rh',
+  commercialisation: 'axe2_commercial',
+  technique: 'axe3_technique',
+  budget: 'axe4_budget',
+  marketing: 'axe5_marketing',
+  exploitation: 'axe6_exploitation',
+  general: 'general',
 };
 
 // Weather config
@@ -249,23 +264,26 @@ const defaultSlides: SlideItem[] = [
   { id: '19', title: 'Faits Marquants de la Période', icon: Zap, description: 'Réalisations clés, blocages, et alertes critiques', included: true, comment: '' },
   { id: '4', title: 'Vue d\'ensemble par axe', icon: BarChart2, description: 'Barres de progression par axe stratégique', included: true, comment: '' },
 
-  // === AXE COMMERCIALISATION ===
+  // === AXE 1 - RH & ORGANISATION ===
+  ...generateAxeSlides('rh', axesConfig.rh),
+
+  // === AXE 2 - COMMERCIALISATION ===
   ...generateAxeSlides('commercialisation', axesConfig.commercialisation),
 
-  // === AXE TECHNIQUE ===
+  // === AXE 3 - TECHNIQUE (CONSTRUCTION) ===
   ...generateAxeSlides('technique', axesConfig.technique),
 
-  // === AXE EXPLOITATION ===
+  // === AXE 4 - BUDGET & PILOTAGE ===
+  ...generateAxeSlides('budget', axesConfig.budget),
+
+  // === AXE 5 - MARKETING & COMMUNICATION ===
+  ...generateAxeSlides('marketing', axesConfig.marketing),
+
+  // === AXE 6 - EXPLOITATION & SYSTÈMES ===
   ...generateAxeSlides('exploitation', axesConfig.exploitation),
 
-  // === AXE JURIDIQUE ===
-  ...generateAxeSlides('juridique', axesConfig.juridique),
-
-  // === AXE COMMUNICATION ===
-  ...generateAxeSlides('communication', axesConfig.communication),
-
   // === SECTION TRANSVERSE ===
-  { id: '10', title: 'Synchronisation Chantier / Mobilisation', icon: GitCompareArrows, description: 'Écart technique vs commercial, liens et alertes', included: true, comment: '' },
+  { id: '10', title: 'Synchronisation Construction / Mobilisation', icon: GitCompareArrows, description: 'Construction (AXE 3) vs 5 axes de mobilisation - écarts et alertes', included: true, comment: '' },
   { id: '11', title: 'Budget Global & EVM', icon: DollarSign, description: 'Indicateurs de performance budgétaire consolidés', included: true, comment: '' },
   { id: '20', title: 'Analyse EVM Détaillée', icon: TrendingUp, description: 'SPI, CPI, EAC, VAC avec graphiques de tendance', included: true, comment: '' },
   { id: '12', title: 'Risques Consolidés', icon: Shield, description: 'Top risques tous axes confondus', included: true, comment: '' },
@@ -517,7 +535,8 @@ export function DeepDive() {
   const kpis = useDashboardKPIs();
   const actions = useActions();
   const jalons = useJalons();
-  const budget = useBudgetSynthese();
+  const budgetItems = useBudget(); // Items individuels pour calcul par axe
+  const budget = useBudgetSynthese(); // Synthèse globale
   const risques = useRisques();
 
   // Sync data (new module)
@@ -682,62 +701,66 @@ export function DeepDive() {
   // Computed
   const activeSlides = useMemo(() => slides.filter((s) => s.included), [slides]);
 
-  // Calculate detailed data per axe
+  // Calculate detailed data per axe - DONNÉES RÉELLES depuis les hooks
   const axeDetailData = useMemo(() => {
-    const axeTypes: AxeType[] = ['commercialisation', 'technique', 'exploitation', 'juridique', 'communication'];
+    const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
     const data: Record<AxeType, AxeDetailData> = {} as Record<AxeType, AxeDetailData>;
 
     axeTypes.forEach((axe) => {
-      const axeLabel = axesConfig[axe].label.split(' ')[0].toLowerCase();
+      const dbCode = axeToDbCode[axe];
 
-      // Filter actions by axe
-      const axeActions = actions.filter((a) =>
-        a.axe?.toLowerCase().includes(axeLabel) ||
-        a.axe?.toLowerCase().includes(axe)
-      );
+      // Filter actions by axe (code DB exact)
+      const axeActions = actions.filter((a) => a.axe === dbCode);
 
-      // Filter jalons by axe (using linked actions or title)
-      const axeJalons = jalons.filter((j) =>
-        j.titre?.toLowerCase().includes(axeLabel) ||
-        j.titre?.toLowerCase().includes(axe)
-      );
+      // Filter jalons by axe
+      const axeJalons = jalons.filter((j) => j.axe === dbCode);
 
       // Filter risques by axe
-      const axeRisques = risques.filter((r) =>
-        r.categorie?.toLowerCase().includes(axeLabel) ||
-        r.titre?.toLowerCase().includes(axeLabel)
-      );
+      const axeRisques = risques.filter((r) => r.axe_impacte === dbCode);
 
+      // Filter budget items by axe
+      const axeBudgetItems = budgetItems.filter((b) => b.axe === dbCode);
+      const budgetPrevu = axeBudgetItems.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+      const budgetRealise = axeBudgetItems.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
+
+      // Calculate progress
       const totalProgress = axeActions.length > 0
         ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
-        : Math.floor(Math.random() * 40) + 30;
+        : 0;
+
+      // Count statuses
+      const today = new Date().toISOString().split('T')[0];
+      const actionsEnRetard = axeActions.filter((a) =>
+        a.statut !== 'termine' && a.date_fin_prevue && a.date_fin_prevue < today
+      ).length;
 
       data[axe] = {
-        actions: axeActions.length || Math.floor(Math.random() * 10) + 5,
-        actionsTerminees: axeActions.filter((a) => a.statut === 'terminee').length || Math.floor(Math.random() * 5),
-        actionsEnCours: axeActions.filter((a) => a.statut === 'en_cours').length || Math.floor(Math.random() * 5) + 2,
-        actionsEnRetard: axeActions.filter((a) => a.statut === 'en_retard').length || Math.floor(Math.random() * 3),
-        jalons: axeJalons.length || Math.floor(Math.random() * 5) + 2,
-        jalonsAtteints: axeJalons.filter((j) => j.statut === 'atteint').length || Math.floor(Math.random() * 3),
-        risques: axeRisques.length || Math.floor(Math.random() * 5) + 1,
-        risquesCritiques: axeRisques.filter((r) => (r.score || 0) >= 15).length || Math.floor(Math.random() * 2),
-        budgetPrevu: Math.floor(Math.random() * 500000000) + 100000000,
-        budgetRealise: Math.floor(Math.random() * 300000000) + 50000000,
+        actions: axeActions.length,
+        actionsTerminees: axeActions.filter((a) => a.statut === 'termine').length,
+        actionsEnCours: axeActions.filter((a) => a.statut === 'en_cours').length,
+        actionsEnRetard: actionsEnRetard,
+        jalons: axeJalons.length,
+        jalonsAtteints: axeJalons.filter((j) => j.statut === 'atteint').length,
+        risques: axeRisques.length,
+        risquesCritiques: axeRisques.filter((r) => (r.score_actuel || r.score_initial || 0) >= 12).length,
+        budgetPrevu: budgetPrevu,
+        budgetRealise: budgetRealise,
         avancement: totalProgress,
       };
     });
 
     return data;
-  }, [actions, jalons, risques]);
+  }, [actions, jalons, risques, budgetItems]);
 
   // Group decision points by axe
   const decisionPointsByAxe = useMemo(() => {
     const grouped: Record<AxeType, DGDecisionPoint[]> = {
+      rh: [],
       commercialisation: [],
       technique: [],
+      budget: [],
+      marketing: [],
       exploitation: [],
-      juridique: [],
-      communication: [],
       general: [],
     };
 
@@ -873,32 +896,22 @@ export function DeepDive() {
     }
   };
 
-  // Get risques for a specific axe
+  // Get risques for a specific axe (utilise le code DB)
   const getRisquesForAxe = (axe: AxeType) => {
-    const axeLabel = axesConfig[axe].label.split(' ')[0].toLowerCase();
-    return risques.filter((r) =>
-      r.categorie?.toLowerCase().includes(axeLabel) ||
-      r.titre?.toLowerCase().includes(axeLabel) ||
-      r.axe_impacte?.toLowerCase().includes(axe)
-    );
+    const dbCode = axeToDbCode[axe];
+    return risques.filter((r) => r.axe_impacte === dbCode);
   };
 
-  // Get jalons for a specific axe
+  // Get jalons for a specific axe (utilise le code DB)
   const getJalonsForAxe = (axe: AxeType) => {
-    const axeLabel = axesConfig[axe].label.split(' ')[0].toLowerCase();
-    return jalons.filter((j) =>
-      j.titre?.toLowerCase().includes(axeLabel) ||
-      j.axe?.toLowerCase().includes(axe)
-    );
+    const dbCode = axeToDbCode[axe];
+    return jalons.filter((j) => j.axe === dbCode);
   };
 
-  // Get actions for a specific axe
+  // Get actions for a specific axe (utilise le code DB)
   const getActionsForAxe = (axe: AxeType) => {
-    const axeLabel = axesConfig[axe].label.split(' ')[0].toLowerCase();
-    return actions.filter((a) =>
-      a.axe?.toLowerCase().includes(axeLabel) ||
-      a.axe?.toLowerCase().includes(axe)
-    );
+    const dbCode = axeToDbCode[axe];
+    return actions.filter((a) => a.axe === dbCode);
   };
 
   // Render axe detail slide
@@ -1506,12 +1519,14 @@ export function DeepDive() {
     }
 
     // Legacy map for old slide IDs (backwards compatibility)
+    // 6 axes : RH, Commercial, Technique (Construction), Budget, Marketing, Exploitation
     const axeSlideMap: Record<string, AxeType> = {
-      '5': 'commercialisation',
-      '6': 'technique',
-      '7': 'exploitation',
-      '8': 'juridique',
-      '9': 'communication',
+      '5': 'rh',
+      '6': 'commercialisation',
+      '7': 'technique',
+      '8': 'budget',
+      '9': 'marketing',
+      '9b': 'exploitation',
     };
 
     // Check if this is a legacy axe detail slide
@@ -1755,7 +1770,7 @@ export function DeepDive() {
 
       case '4': {
         // Vue d'ensemble par axe - avec détails DG
-        const axeTypes4: AxeType[] = ['commercialisation', 'technique', 'exploitation', 'juridique', 'communication'];
+        const axeTypes4: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
 
         // Collect all DG decisions for the summary
         const allDGDecisions = decisionPoints.filter(d => d.urgency === 'critical' || d.urgency === 'high');
@@ -2193,11 +2208,12 @@ export function DeepDive() {
 
         // Group points to show by axe
         const pointsToShowByAxe: Record<AxeType, DGDecisionPoint[]> = {
+          rh: [],
           commercialisation: [],
           technique: [],
+          budget: [],
+          marketing: [],
           exploitation: [],
-          juridique: [],
-          communication: [],
           general: [],
         };
         pointsToShow.forEach(p => {
@@ -3274,7 +3290,7 @@ export function DeepDive() {
               </div>
 
               {/* Axes avec barres */}
-              {(['commercialisation', 'technique', 'exploitation', 'juridique', 'communication'] as AxeType[]).map((axe) => {
+              {(['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'] as AxeType[]).map((axe) => {
                 const config = axesConfig[axe];
                 const data = axeDetailData[axe];
                 return (
@@ -3835,13 +3851,14 @@ export function DeepDive() {
       let pageNum = 0;
       const totalPages = activeSlides.length;
 
-      // Map slide IDs to axe types
+      // Map slide IDs to axe types - 6 axes alignés
       const axeSlideMap: Record<string, AxeType> = {
-        '5': 'commercialisation',
-        '6': 'technique',
-        '7': 'exploitation',
-        '8': 'juridique',
-        '9': 'communication',
+        '5': 'rh',
+        '6': 'commercialisation',
+        '7': 'technique',
+        '8': 'budget',
+        '9': 'marketing',
+        '9b': 'exploitation',
       };
 
       for (const slideItem of activeSlides) {
@@ -4033,7 +4050,7 @@ export function DeepDive() {
 
           case '4': {
             addSlideHeader(slide, 'Vue d\'Ensemble par Axe Stratégique');
-            const axeTypes: AxeType[] = ['commercialisation', 'technique', 'exploitation', 'juridique', 'communication'];
+            const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
             axeTypes.forEach((axe, i) => {
               const config = axesConfig[axe];
               const data = axeDetailData[axe];

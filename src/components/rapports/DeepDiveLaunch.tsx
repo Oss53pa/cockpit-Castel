@@ -92,6 +92,7 @@ import {
   useActions,
   useJalons,
   useBudgetSynthese,
+  useBudgetParAxe,
   useRisques,
 } from '@/hooks';
 
@@ -143,6 +144,17 @@ const axesConfig: Record<AxeType, { label: string; color: string; icon: React.El
   marketing: { label: 'Marketing & Communication', color: '#EF4444', icon: Megaphone, shortLabel: 'AX5' },
   exploitation: { label: 'Exploitation & Système', color: '#8B5CF6', icon: Settings, shortLabel: 'AX6' },
   general: { label: 'Général / Transverse', color: '#6B7280', icon: Target, shortLabel: 'GEN' },
+};
+
+// Mapping entre les axes DeepDive et les codes d'axes de la base de données
+const axeToDbCode: Record<AxeType, string> = {
+  rh: 'axe1_rh',
+  commercialisation: 'axe2_commercial',
+  technique: 'axe3_technique',
+  budget: 'axe4_budget',
+  marketing: 'axe5_marketing',
+  exploitation: 'axe6_exploitation',
+  general: 'general',
 };
 
 // Weather config
@@ -1920,12 +1932,76 @@ function SortableSlideItem({
 }
 
 export function DeepDiveLaunch() {
-  // Data hooks
-  useDashboardKPIs();
-  useActions();
+  // Data hooks - données réelles du projet
+  const kpis = useDashboardKPIs();
+  const actions = useActions();
   const jalons = useJalons();
   const budget = useBudgetSynthese();
+  const budgetParAxe = useBudgetParAxe();
   const risques = useRisques();
+
+  // Helper functions pour récupérer les données par axe
+  const getActionsForAxe = (axe: AxeType) => {
+    const dbCode = axeToDbCode[axe];
+    return (actions.data || []).filter((a) => a.axe === dbCode);
+  };
+
+  const getJalonsForAxe = (axe: AxeType) => {
+    const dbCode = axeToDbCode[axe];
+    return (jalons.data || []).filter((j) => j.axe === dbCode);
+  };
+
+  const getRisquesForAxe = (axe: AxeType) => {
+    const dbCode = axeToDbCode[axe];
+    return (risques.data || []).filter((r) => r.axe === dbCode);
+  };
+
+  const getBudgetForAxe = (axe: AxeType) => {
+    const dbCode = axeToDbCode[axe];
+    return budgetParAxe?.[dbCode] || { prevu: 0, engage: 0, realise: 0 };
+  };
+
+  // Calcul des données par axe pour l'affichage
+  const axeDetailData = useMemo(() => {
+    const axeKeys = Object.keys(axesConfig).filter(k => k !== 'general') as AxeType[];
+    return axeKeys.map((axeKey) => {
+      const axeActions = getActionsForAxe(axeKey);
+      const axeJalons = getJalonsForAxe(axeKey);
+      const axeRisques = getRisquesForAxe(axeKey);
+      const axeBudget = getBudgetForAxe(axeKey);
+
+      const actionsTerminees = axeActions.filter((a) => a.statut === 'termine').length;
+      const actionsEnCours = axeActions.filter((a) => a.statut === 'en_cours').length;
+      const actionsEnRetard = axeActions.filter((a) => {
+        if (a.statut === 'termine') return false;
+        const dateFin = new Date(a.date_fin_prevue);
+        return dateFin < new Date();
+      }).length;
+
+      const jalonsAtteints = axeJalons.filter((j) => j.statut === 'atteint').length;
+      const risquesCritiques = axeRisques.filter((r) => (r.score || 0) >= 12).length;
+
+      const avancement = axeActions.length > 0
+        ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
+        : 0;
+
+      return {
+        axe: axeKey,
+        actions: axeActions.length,
+        actionsTerminees,
+        actionsEnCours,
+        actionsEnRetard,
+        jalons: axeJalons.length,
+        jalonsAtteints,
+        risques: axeRisques.length,
+        risquesCritiques,
+        budgetPrevu: axeBudget.prevu,
+        budgetRealise: axeBudget.realise,
+        budgetEngage: axeBudget.engage,
+        avancement,
+      };
+    });
+  }, [actions.data, jalons.data, risques.data, budgetParAxe]);
 
   // State
   const [activeTab, setActiveTab] = useState<ViewTab>('config');
@@ -2820,6 +2896,23 @@ export function DeepDiveLaunch() {
       const daysToOpening = Math.ceil((new Date(projectEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       const _daysToSoftOpening = Math.ceil((new Date(softOpeningDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
 
+      // Calcul des vraies données
+      const budgetData = budget;
+      const tauxConsommation = budgetData?.prevu > 0
+        ? Math.round((budgetData.realise / budgetData.prevu) * 100)
+        : 0;
+      const budgetStatus = tauxConsommation > 100 ? 'Dépassement' : tauxConsommation > 80 ? 'Attention' : 'Sur budget';
+      const budgetColor = tauxConsommation > 100 ? '#EF4444' : tauxConsommation > 80 ? '#F59E0B' : '#10B981';
+
+      const totalRisques = risques.data?.length || 0;
+      const risquesCritiques = (risques.data || []).filter(r => (r.score || 0) >= 12).length;
+      const risquesStatus = risquesCritiques > 0 ? `${risquesCritiques} critique${risquesCritiques > 1 ? 's' : ''}` : `${totalRisques} identifié${totalRisques > 1 ? 's' : ''}`;
+      const risquesColor = risquesCritiques > 0 ? '#EF4444' : totalRisques > 5 ? '#F59E0B' : '#10B981';
+
+      const totalActions = actions.data?.length || 0;
+      const actionsTerminees = (actions.data || []).filter(a => a.statut === 'termine').length;
+      const qualiteStatus = totalActions > 0 ? `${Math.round((actionsTerminees / totalActions) * 100)}% complété` : 'En démarrage';
+
       return (
         <div style={baseStyles} className="h-full flex flex-col">
           {headerStyle !== 'none' && (
@@ -2842,10 +2935,10 @@ export function DeepDiveLaunch() {
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Coût', value: 'Sur budget', color: '#10B981', icon: Zap },
+                  { label: 'Coût', value: budgetStatus, color: budgetColor, icon: Zap },
                   { label: 'Délai', value: `J-${daysToOpening} ouverture`, color: '#3B82F6', icon: Clock },
-                  { label: 'Qualité', value: 'Conforme', color: primaryColor, icon: CheckCircle },
-                  { label: 'Risques', value: '3 majeurs', color: '#F59E0B', icon: AlertTriangle },
+                  { label: 'Qualité', value: qualiteStatus, color: primaryColor, icon: CheckCircle },
+                  { label: 'Risques', value: risquesStatus, color: risquesColor, icon: AlertTriangle },
                 ].map((item) => (
                   <div key={item.label} className="p-3 rounded-lg bg-gray-50 border">
                     <div className="text-sm font-bold flex items-center gap-1" style={{ color: item.color }}>
@@ -2870,6 +2963,11 @@ export function DeepDiveLaunch() {
     // === JALONS MAJEURS ===
     if (slideItem.id === 'launch_13') {
       const upcomingJalons = jalons.data?.slice(0, 6) || [];
+      const daysToOpening = Math.ceil((new Date(projectEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      const openingDate = new Date(projectEndDate);
+      const quarter = Math.ceil((openingDate.getMonth() + 1) / 3);
+      const quarterLabel = `Q${quarter} ${openingDate.getFullYear()}`;
+
       return (
         <div style={baseStyles} className="h-full flex flex-col">
           {headerStyle !== 'none' && (
@@ -2880,11 +2978,11 @@ export function DeepDiveLaunch() {
           <div className="flex-1 p-4">
             <div className="flex items-center justify-center gap-4 mb-4">
               <div className="text-center p-4 rounded-lg" style={{ backgroundColor: `${accentColor}20` }}>
-                <div className="text-3xl font-bold" style={{ color: primaryColor }}>J-270</div>
+                <div className="text-3xl font-bold" style={{ color: primaryColor }}>J-{daysToOpening}</div>
                 <div className="text-xs text-gray-600">Ouverture prévue</div>
               </div>
               <div className="text-center p-4 rounded-lg bg-gray-50">
-                <div className="text-2xl font-bold text-gray-700">Q4 2026</div>
+                <div className="text-2xl font-bold text-gray-700">{quarterLabel}</div>
                 <div className="text-xs text-gray-600">Date cible</div>
               </div>
             </div>
@@ -3099,13 +3197,19 @@ export function DeepDiveLaunch() {
               <div>
                 <h3 className="text-sm font-semibold mb-3" style={{ color: primaryColor }}>Répartition par Axe</h3>
                 <div className="space-y-2">
-                  {Object.values(axesConfig).slice(0, 5).map((axe) => (
-                    <div key={axe.label} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded" style={{ backgroundColor: axe.color }} />
-                      <span className="flex-1 text-xs">{axe.label.split(' ')[0]}</span>
-                      <span className="text-xs text-gray-500">À définir</span>
-                    </div>
-                  ))}
+                  {axeDetailData.map((axeData) => {
+                    const axeConfig = axesConfig[axeData.axe];
+                    const budgetAxe = axeData.budgetPrevu;
+                    return (
+                      <div key={axeData.axe} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: axeConfig.color }} />
+                        <span className="flex-1 text-xs">{axeConfig.label.split(' ')[0]}</span>
+                        <span className="text-xs font-medium" style={{ color: axeConfig.color }}>
+                          {budgetAxe > 0 ? `${(budgetAxe / 1000000).toFixed(0)} M` : '-'}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -3275,25 +3379,83 @@ export function DeepDiveLaunch() {
 
         // Situation slide
         if (slideType === 'situation') {
+          const axeActions = getActionsForAxe(axeKey);
+          const axeBudget = getBudgetForAxe(axeKey);
+          const actionsEnCours = axeActions.filter(a => a.statut === 'en_cours').length;
+          const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
+          const avancement = axeActions.length > 0
+            ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
+            : 0;
+
           return (
             <div style={baseStyles} className="h-full flex flex-col">
               <div className="px-6 py-3" style={{ backgroundColor: axeInfo.color }}>
                 <h2 className="text-lg font-bold text-white">{axeInfo.label} - Situation Actuelle</h2>
               </div>
-              <div className="flex-1 p-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2" style={{ color: axeInfo.color }}>État des lieux</h4>
-                    <p className="text-xs text-gray-600">Analyse de la situation actuelle...</p>
+              <div className="flex-1 p-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-sm mb-2" style={{ color: axeInfo.color }}>Actions</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total</span>
+                        <span className="font-medium">{axeActions.length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">En cours</span>
+                        <span className="font-medium text-blue-600">{actionsEnCours}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Terminées</span>
+                        <span className="font-medium text-green-600">{actionsTerminees}</span>
+                      </div>
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Avancement</span>
+                          <span className="font-bold" style={{ color: axeInfo.color }}>{avancement}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div className="h-1.5 rounded-full" style={{ width: `${avancement}%`, backgroundColor: axeInfo.color }} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2" style={{ color: axeInfo.color }}>Pipeline / Activités</h4>
-                    <p className="text-xs text-gray-600">Détail des activités en cours...</p>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-sm mb-2" style={{ color: axeInfo.color }}>Budget</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Prévu</span>
+                        <span className="font-medium">{axeBudget.prevu > 0 ? `${(axeBudget.prevu / 1000000).toFixed(1)} M` : '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Engagé</span>
+                        <span className="font-medium text-blue-600">{axeBudget.engage > 0 ? `${(axeBudget.engage / 1000000).toFixed(1)} M` : '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Réalisé</span>
+                        <span className="font-medium text-green-600">{axeBudget.realise > 0 ? `${(axeBudget.realise / 1000000).toFixed(1)} M` : '-'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                {/* Actions récentes */}
+                {axeActions.slice(0, 3).length > 0 && (
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-xs mb-2" style={{ color: axeInfo.color }}>Actions en cours</h4>
+                    <div className="space-y-1">
+                      {axeActions.filter(a => a.statut === 'en_cours').slice(0, 3).map((action, idx) => (
+                        <div key={action.id || idx} className="flex items-center gap-2 text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: axeInfo.color }} />
+                          <span className="flex-1 truncate">{action.titre}</span>
+                          <span className="text-gray-500">{action.avancement}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {slideItem.comment && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                    <p className="text-sm text-blue-800">{slideItem.comment}</p>
+                  <div className="mt-3 p-2 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                    <p className="text-xs text-blue-800">{slideItem.comment}</p>
                   </div>
                 )}
               </div>
@@ -3304,29 +3466,62 @@ export function DeepDiveLaunch() {
 
         // Objectifs slide
         if (slideType === 'objectifs') {
+          const axeJalons = getJalonsForAxe(axeKey);
+          const axeActions = getActionsForAxe(axeKey);
+          const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint').length;
+          const prochainJalon = axeJalons
+            .filter(j => j.statut !== 'atteint')
+            .sort((a, b) => new Date(a.date_cible).getTime() - new Date(b.date_cible).getTime())[0];
+
           return (
             <div style={baseStyles} className="h-full flex flex-col">
               <div className="px-6 py-3" style={{ backgroundColor: axeInfo.color }}>
                 <h2 className="text-lg font-bold text-white">{axeInfo.label} - Objectifs & Jalons</h2>
               </div>
-              <div className="flex-1 p-6">
-                <div className="space-y-3">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-sm mb-1" style={{ color: axeInfo.color }}>Objectif principal</h4>
-                    <p className="text-xs text-gray-600">À définir selon l'axe...</p>
+              <div className="flex-1 p-4">
+                {/* KPIs de l'axe */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="p-2 bg-gray-50 rounded-lg text-center">
+                    <div className="text-lg font-bold" style={{ color: axeInfo.color }}>{axeActions.length}</div>
+                    <div className="text-[10px] text-gray-600">Actions</div>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <h4 className="font-medium text-sm mb-1" style={{ color: axeInfo.color }}>Jalons clés</h4>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: axeInfo.color }} />
-                        <span>Jalon 1 - Date</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: axeInfo.color }} />
-                        <span>Jalon 2 - Date</span>
-                      </div>
+                  <div className="p-2 bg-gray-50 rounded-lg text-center">
+                    <div className="text-lg font-bold" style={{ color: axeInfo.color }}>{axeJalons.length}</div>
+                    <div className="text-[10px] text-gray-600">Jalons</div>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded-lg text-center">
+                    <div className="text-lg font-bold text-green-600">{jalonsAtteints}</div>
+                    <div className="text-[10px] text-gray-600">Atteints</div>
+                  </div>
+                </div>
+
+                {/* Prochain jalon */}
+                {prochainJalon && (
+                  <div className="p-3 rounded-lg mb-3" style={{ backgroundColor: `${axeInfo.color}10`, borderLeft: `4px solid ${axeInfo.color}` }}>
+                    <div className="text-xs font-medium text-gray-500 mb-1">Prochain jalon</div>
+                    <div className="text-sm font-medium" style={{ color: axeInfo.color }}>{prochainJalon.nom}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {prochainJalon.date_cible ? new Date(prochainJalon.date_cible).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                     </div>
+                  </div>
+                )}
+
+                {/* Liste des jalons */}
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-xs mb-2" style={{ color: axeInfo.color }}>Jalons clés</h4>
+                  <div className="space-y-1">
+                    {axeJalons.slice(0, 5).map((jalon, idx) => (
+                      <div key={jalon.id || idx} className="flex items-center gap-2 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${jalon.statut === 'atteint' ? 'bg-green-500' : ''}`} style={{ backgroundColor: jalon.statut !== 'atteint' ? axeInfo.color : undefined }} />
+                        <span className="flex-1 truncate">{jalon.nom}</span>
+                        <span className="text-gray-500">
+                          {jalon.date_cible ? new Date(jalon.date_cible).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }) : '-'}
+                        </span>
+                      </div>
+                    ))}
+                    {axeJalons.length === 0 && (
+                      <div className="text-xs text-gray-400 text-center py-2">Aucun jalon défini</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3337,27 +3532,61 @@ export function DeepDiveLaunch() {
 
         // Risques slide
         if (slideType === 'risques') {
+          const axeRisques = getRisquesForAxe(axeKey);
+          const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12);
+          const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
+          const risquesModeres = axeRisques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
+
+          const getRisqueStyle = (score: number) => {
+            if (score >= 12) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-800', desc: 'text-red-700' };
+            if (score >= 8) return { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', desc: 'text-orange-700' };
+            return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-800', desc: 'text-yellow-700' };
+          };
+
           return (
             <div style={baseStyles} className="h-full flex flex-col">
               <div className="px-6 py-3" style={{ backgroundColor: axeInfo.color }}>
                 <h2 className="text-lg font-bold text-white">{axeInfo.label} - Risques Identifiés</h2>
               </div>
-              <div className="flex-1 p-6">
+              <div className="flex-1 p-4">
+                {/* Résumé des risques */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="p-2 bg-red-50 rounded-lg text-center border border-red-200">
+                    <div className="text-lg font-bold text-red-600">{risquesCritiques.length}</div>
+                    <div className="text-[10px] text-red-700">Critiques</div>
+                  </div>
+                  <div className="p-2 bg-orange-50 rounded-lg text-center border border-orange-200">
+                    <div className="text-lg font-bold text-orange-600">{risquesEleves.length}</div>
+                    <div className="text-[10px] text-orange-700">Élevés</div>
+                  </div>
+                  <div className="p-2 bg-yellow-50 rounded-lg text-center border border-yellow-200">
+                    <div className="text-lg font-bold text-yellow-600">{risquesModeres.length}</div>
+                    <div className="text-[10px] text-yellow-700">Modérés</div>
+                  </div>
+                </div>
+
+                {/* Liste des risques */}
                 <div className="space-y-2">
-                  <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-primary-600" />
-                      <span className="text-sm font-medium text-orange-800">Risque identifié 1</span>
+                  {axeRisques.slice(0, 4).map((risque, idx) => {
+                    const style = getRisqueStyle(risque.score || 0);
+                    return (
+                      <div key={risque.id || idx} className={`p-2 ${style.bg} rounded-lg border-l-4 ${style.border}`}>
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className={`h-3 w-3 ${style.text}`} />
+                          <span className={`text-xs font-medium ${style.text} flex-1 truncate`}>{risque.titre}</span>
+                          <span className={`text-xs font-bold ${style.text}`}>Score: {risque.score || 0}</span>
+                        </div>
+                        {risque.description && (
+                          <p className={`text-[10px] ${style.desc} mt-1 line-clamp-1`}>{risque.description}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {axeRisques.length === 0 && (
+                    <div className="text-center text-sm text-gray-400 py-4 bg-gray-50 rounded-lg">
+                      Aucun risque identifié pour cet axe
                     </div>
-                    <p className="text-xs text-orange-700 mt-1">Description et impact potentiel</p>
-                  </div>
-                  <div className="p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-primary-600" />
-                      <span className="text-sm font-medium text-yellow-800">Risque identifié 2</span>
-                    </div>
-                    <p className="text-xs text-yellow-700 mt-1">Description et impact potentiel</p>
-                  </div>
+                  )}
                 </div>
               </div>
               {renderSlideFooter(slideNumber, totalSlides)}

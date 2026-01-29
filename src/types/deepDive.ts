@@ -2,7 +2,8 @@
 
 export type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
 export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
-export type AxeType = 'commercialisation' | 'technique' | 'exploitation' | 'juridique' | 'communication' | 'general';
+// 6 axes alignés avec le modèle projet (Construction vs 5 axes Mobilisation)
+export type AxeType = 'rh' | 'commercialisation' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'general';
 
 // Template types for different Deep Dive formats
 export type DeepDiveTemplateType = 'launch' | 'monthly';
@@ -124,12 +125,14 @@ export const URGENCY_CONFIG: Record<UrgencyLevel, { label: string; emoji: string
   low: { label: 'Basse', emoji: '🟢', color: '#22C55E', bgColor: '#DCFCE7' },
 };
 
+// Configuration des 6 axes alignés avec le modèle projet
 export const AXES_CONFIG: Record<AxeType, { label: string; color: string; shortLabel: string }> = {
+  rh: { label: 'RH & Organisation', color: '#EF4444', shortLabel: 'RH' },
   commercialisation: { label: 'Commercialisation', color: '#3B82F6', shortLabel: 'COM' },
   technique: { label: 'Technique & Handover', color: '#8B5CF6', shortLabel: 'TECH' },
-  exploitation: { label: 'Exploitation', color: '#10B981', shortLabel: 'EXPL' },
-  juridique: { label: 'Juridique & Conformité', color: '#F59E0B', shortLabel: 'JUR' },
-  communication: { label: 'Communication', color: '#EC4899', shortLabel: 'COMM' },
+  budget: { label: 'Budget & Pilotage', color: '#F59E0B', shortLabel: 'BUD' },
+  marketing: { label: 'Marketing & Comm.', color: '#EC4899', shortLabel: 'MKT' },
+  exploitation: { label: 'Exploitation & Systèmes', color: '#10B981', shortLabel: 'EXP' },
   general: { label: 'Général / Transverse', color: '#6B7280', shortLabel: 'GEN' },
 };
 

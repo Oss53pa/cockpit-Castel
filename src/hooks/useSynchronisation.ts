@@ -5,29 +5,91 @@ import type {
   SyncStatus,
   PropagationRetard,
   Action,
+  Axe,
 } from '@/types';
+import { AXE_SHORT_LABELS } from '@/types';
+
+/**
+ * Les 5 axes de mobilisation (tous sauf axe3_technique qui est la Construction)
+ */
+export const AXES_MOBILISATION: Axe[] = [
+  'axe1_rh',
+  'axe2_commercial',
+  'axe4_budget',
+  'axe5_marketing',
+  'axe6_exploitation',
+];
+
+/**
+ * Détail de l'avancement par axe de mobilisation
+ */
+export interface AxeMobilisationDetail {
+  axe: Axe;
+  label: string;
+  avancement: number;
+  actionsTotal: number;
+  actionsTerminees: number;
+  ecartVsConstruction: number;
+}
+
+/**
+ * Métriques de synchronisation étendues avec détail par axe
+ */
+export interface SynchronisationMetricsExtended extends SynchronisationMetrics {
+  detailParAxe: AxeMobilisationDetail[];
+  axeCritique: Axe | null;
+  axeEnAvance: Axe | null;
+}
 
 /**
  * Hook principal pour calculer les métriques de synchronisation
- * entre l'avancement technique (AXE 3) et commercial (AXE 2)
+ * entre l'avancement technique (AXE 3 - Construction) et les 5 axes de mobilisation
  */
-export function useSynchronisationMetrics(): SynchronisationMetrics {
+export function useSynchronisationMetrics(): SynchronisationMetricsExtended {
   const data = useLiveQuery(async () => {
     const actions = await db.actions.toArray();
 
-    // Filtrer les actions techniques (AXE 3)
+    // Filtrer les actions techniques (AXE 3 - Construction)
     const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
     const avancementTechnique =
       actionsTechniques.length > 0
         ? actionsTechniques.reduce((sum, a) => sum + a.avancement, 0) / actionsTechniques.length
         : 0;
 
-    // Filtrer les actions commerciales/mobilisation (AXE 2)
-    const actionsMobilisation = actions.filter((a) => a.axe === 'axe2_commercial');
+    // Filtrer les actions de mobilisation (5 autres axes)
+    const actionsMobilisation = actions.filter((a) => AXES_MOBILISATION.includes(a.axe));
     const avancementMobilisation =
       actionsMobilisation.length > 0
         ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
         : 0;
+
+    // Calculer le détail par axe de mobilisation
+    const detailParAxe: AxeMobilisationDetail[] = AXES_MOBILISATION.map((axe) => {
+      const actionsAxe = actions.filter((a) => a.axe === axe);
+      const avancement =
+        actionsAxe.length > 0
+          ? actionsAxe.reduce((sum, a) => sum + a.avancement, 0) / actionsAxe.length
+          : 0;
+      const actionsTerminees = actionsAxe.filter((a) => a.statut === 'termine').length;
+
+      return {
+        axe,
+        label: AXE_SHORT_LABELS[axe],
+        avancement: Math.round(avancement * 10) / 10,
+        actionsTotal: actionsAxe.length,
+        actionsTerminees,
+        ecartVsConstruction: Math.round((avancement - avancementTechnique) * 10) / 10,
+      };
+    });
+
+    // Identifier l'axe le plus en retard (critique) et le plus en avance
+    const axesAvecActions = detailParAxe.filter((d) => d.actionsTotal > 0);
+    const axeCritique = axesAvecActions.length > 0
+      ? axesAvecActions.reduce((min, d) => (d.avancement < min.avancement ? d : min)).axe
+      : null;
+    const axeEnAvance = axesAvecActions.length > 0
+      ? axesAvecActions.reduce((max, d) => (d.avancement > max.avancement ? d : max)).axe
+      : null;
 
     // Calculer l'écart (mobilisation - technique)
     const ecartPoints = avancementMobilisation - avancementTechnique;
@@ -55,6 +117,9 @@ export function useSynchronisationMetrics(): SynchronisationMetrics {
       sync_status: syncStatus,
       risque_gaspillage: risqueGaspillage,
       risque_retard_ouverture: risqueRetardOuverture,
+      detailParAxe,
+      axeCritique,
+      axeEnAvance,
     };
   });
 
@@ -66,6 +131,9 @@ export function useSynchronisationMetrics(): SynchronisationMetrics {
       sync_status: 'en_phase',
       risque_gaspillage: false,
       risque_retard_ouverture: false,
+      detailParAxe: [],
+      axeCritique: null,
+      axeEnAvance: null,
     }
   );
 }
@@ -82,21 +150,22 @@ export function useLiensSync() {
 /**
  * Hook pour récupérer les actions liées à une action donnée
  */
-export function useActionsLiees(actionId: string, axe: 'axe2_commercial' | 'axe3_technique') {
+export function useActionsLiees(actionId: string, axe: Axe) {
   return useLiveQuery(async () => {
     const liens = await db.liensSync.toArray();
     const actions = await db.actions.toArray();
 
+    // Action technique (Construction) → cherche les actions mobilisation liées
     if (axe === 'axe3_technique') {
-      // Pour une action technique, on cherche les actions mobilisation liées
       const liensAssocies = liens.filter((l) => l.action_technique_id === actionId);
       const actionIds = liensAssocies.map((l) => l.action_mobilisation_id);
       return {
         liens: liensAssocies,
         actions: actions.filter((a) => actionIds.includes(a.id_action)),
       };
-    } else {
-      // Pour une action mobilisation, on cherche les actions techniques liées
+    }
+    // Action mobilisation (5 axes) → cherche les actions techniques liées
+    else if (AXES_MOBILISATION.includes(axe)) {
       const liensAssocies = liens.filter((l) => l.action_mobilisation_id === actionId);
       const actionIds = liensAssocies.map((l) => l.action_technique_id);
       return {
@@ -104,6 +173,7 @@ export function useActionsLiees(actionId: string, axe: 'axe2_commercial' | 'axe3
         actions: actions.filter((a) => actionIds.includes(a.id_action)),
       };
     }
+    return { liens: [], actions: [] };
   }, [actionId, axe]) ?? { liens: [], actions: [] };
 }
 
@@ -240,28 +310,53 @@ export function useDetectionRetard(actionId: string) {
 }
 
 /**
+ * Détail des statistiques pour un axe
+ */
+export interface AxeStats {
+  total: number;
+  terminees: number;
+  enRetard: number;
+  avancement: number;
+}
+
+/**
  * Hook pour obtenir les statistiques détaillées par type d'action
+ * Inclut maintenant le détail pour chaque axe de mobilisation
  */
 export function useSynchronisationDetails() {
   return useLiveQuery(async () => {
     const actions = await db.actions.toArray();
     const liens = await db.liensSync.toArray();
-
-    const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
-    const actionsMobilisation = actions.filter((a) => a.axe === 'axe2_commercial');
-
-    // Compter les actions terminées
-    const techniqueTerminees = actionsTechniques.filter((a) => a.statut === 'termine').length;
-    const mobilisationTerminees = actionsMobilisation.filter((a) => a.statut === 'termine').length;
-
-    // Compter les actions en retard
     const today = new Date().toISOString().split('T')[0];
+
+    // Construction (AXE 3)
+    const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
+    const techniqueTerminees = actionsTechniques.filter((a) => a.statut === 'termine').length;
     const techniqueEnRetard = actionsTechniques.filter(
       (a) => a.statut !== 'termine' && a.date_fin_prevue < today
     ).length;
+
+    // Mobilisation (5 axes)
+    const actionsMobilisation = actions.filter((a) => AXES_MOBILISATION.includes(a.axe));
+    const mobilisationTerminees = actionsMobilisation.filter((a) => a.statut === 'termine').length;
     const mobilisationEnRetard = actionsMobilisation.filter(
       (a) => a.statut !== 'termine' && a.date_fin_prevue < today
     ).length;
+
+    // Détail par axe de mobilisation
+    const detailParAxe: Record<Axe, AxeStats> = {} as Record<Axe, AxeStats>;
+    for (const axe of AXES_MOBILISATION) {
+      const actionsAxe = actions.filter((a) => a.axe === axe);
+      detailParAxe[axe] = {
+        total: actionsAxe.length,
+        terminees: actionsAxe.filter((a) => a.statut === 'termine').length,
+        enRetard: actionsAxe.filter((a) => a.statut !== 'termine' && a.date_fin_prevue < today).length,
+        avancement:
+          actionsAxe.length > 0
+            ? actionsAxe.reduce((sum, a) => sum + a.avancement, 0) / actionsAxe.length
+            : 0,
+      };
+    }
 
     return {
       technique: {
@@ -282,6 +377,7 @@ export function useSynchronisationDetails() {
             ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
             : 0,
       },
+      detailParAxe,
       liens: {
         total: liens.length,
         avecPropagation: liens.filter((l) => l.propagation_retard).length,
@@ -290,6 +386,7 @@ export function useSynchronisationDetails() {
   }) ?? {
     technique: { total: 0, terminees: 0, enRetard: 0, avancement: 0 },
     mobilisation: { total: 0, terminees: 0, enRetard: 0, avancement: 0 },
+    detailParAxe: {} as Record<Axe, AxeStats>,
     liens: { total: 0, avecPropagation: 0 },
   };
 }
@@ -367,8 +464,10 @@ export async function analyzeAutoLinkSuggestions(): Promise<AutoLinkSuggestion[]
   const actions = await db.actions.toArray();
   const existingLinks = await db.liensSync.toArray();
 
+  // Construction = axe3_technique
   const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
-  const actionsMobilisation = actions.filter((a) => a.axe === 'axe2_commercial');
+  // Mobilisation = les 5 autres axes
+  const actionsMobilisation = actions.filter((a) => AXES_MOBILISATION.includes(a.axe));
 
   // Set des liens existants pour éviter les doublons
   const existingPairs = new Set(
