@@ -217,49 +217,49 @@ DATES CLÉS OFFICIELLES:
   updatedAt: new Date().toISOString(),
 };
 
-// Nouveaux utilisateurs selon le référentiel officiel
+// ============================================================================
+// PARTIES PRENANTES OFFICIELLES DU PROJET COSMOS ANGRÉ
+// ============================================================================
 const usersData: Omit<User, 'id'>[] = [
-  // ID 1 - DGA (Direction Générale Adjointe)
-  { nom: 'Kouamé', prenom: 'Aya', email: 'dga@cosmos.ci', role: 'admin', createdAt: new Date().toISOString() },
-  // ID 2 - Center Manager
-  { nom: 'Diallo', prenom: 'Ibrahim', email: 'center.manager@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 3 - FM (Facility Manager)
-  { nom: 'Bamba', prenom: 'Fatoumata', email: 'fm@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 4 - Commercial Manager
-  { nom: 'Koné', prenom: 'Aminata', email: 'commercial@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 5 - Security Manager
-  { nom: 'Traoré', prenom: 'Moussa', email: 'security@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 6 - Marketing Manager
-  { nom: 'Ouattara', prenom: 'Sékou', email: 'marketing@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 7 - IT
-  { nom: 'Sanogo', prenom: 'Mamadou', email: 'it@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 8 - Finance
-  { nom: 'Coulibaly', prenom: 'Mariam', email: 'finance@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 9 - Juridique
-  { nom: 'Soro', prenom: 'Jean', email: 'juridique@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
-  // ID 10 - RH
-  { nom: 'Yao', prenom: 'Nadège', email: 'rh@cosmos.ci', role: 'manager', createdAt: new Date().toISOString() },
+  // ID 1 - Administrateur
+  { nom: 'ATOKOUNA', prenom: 'Pamela', email: 'patokouna@cosmos-angre.com', role: 'admin', createdAt: new Date().toISOString() },
+  // ID 2 - Manager (Rocklane Capital)
+  { nom: 'NTUMY', prenom: 'Deborah', email: 'dntumy@rocklanecapital.com', role: 'manager', createdAt: new Date().toISOString() },
+  // ID 3 - Manager (Cosmos Angré)
+  { nom: 'Timite', prenom: 'Hadja', email: 'htimite@cosmos-angre.com', role: 'manager', createdAt: new Date().toISOString() },
+  // ID 4 - Manager (Cosmos Angré)
+  { nom: 'Affian', prenom: 'Adele', email: 'aaffian@cosmos-angre.com', role: 'manager', createdAt: new Date().toISOString() },
+  // ID 5 - Lecteur (Rocklane Capital)
+  { nom: 'Sanankoua', prenom: 'Cheick', email: 'Csanankoua@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
+  // ID 6 - Lecteur (Rocklane Capital)
+  { nom: 'Assie', prenom: 'Julien', email: 'jassie@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
+  // ID 7 - Lecteur (Rocklane Capital)
+  { nom: 'Keita', prenom: 'Mariam', email: 'mkeita@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
 ];
 
-// Mapping des rôles vers les IDs utilisateurs (selon le référentiel officiel)
+// Mapping des noms vers les IDs utilisateurs
 const userNameToId: Record<string, number> = {
+  // Par nom complet
+  'Pamela ATOKOUNA': 1,
+  'Deborah NTUMY': 2,
+  'Hadja Timite': 3,
+  'Adele Affian': 4,
+  'Cheick Sanankoua': 5,
+  'Julien Assie': 6,
+  'Mariam Keita': 7,
+  // Par rôle fonctionnel (pour compatibilité)
+  'Admin': 1,
+  'Manager': 2,
   'DGA': 1,
-  'Center Manager': 2,
-  'FM': 3,
-  'Commercial Mgr': 4,
-  'Security Mgr': 5,
-  'Marketing Mgr': 6,
-  'IT': 7,
-  'Finance': 8,
-  'Juridique': 9,
-  'RH': 10,
-  // Legacy mappings for backward compatibility
-  'Aya Kouamé': 1,
-  'Ibrahim Diallo': 2,
-  'Fatoumata Bamba': 3,
-  'Moussa Traoré': 5,
-  'Aminata Koné': 4,
-  'Sékou Ouattara': 6,
+  'Center Manager': 3,
+  'FM': 4,
+  'Commercial Mgr': 2,
+  'Security Mgr': 3,
+  'Marketing Mgr': 4,
+  'IT': 5,
+  'Finance': 6,
+  'Juridique': 7,
+  'RH': 3,
 };
 
 // Helper to create a complete Action object
