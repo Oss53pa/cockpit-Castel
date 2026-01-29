@@ -2992,9 +2992,14 @@ export function DeepDiveLaunch() {
                   <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: primaryColor }}>
                     {idx + 1}
                   </span>
-                  <span className="flex-1 text-xs">{jalon.nom || 'Jalon'}</span>
-                  <span className="text-xs text-gray-500">
-                    {jalon.date_cible ? new Date(jalon.date_cible).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '-'}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">{jalon.titre || 'Jalon'}</div>
+                    {jalon.responsable && (
+                      <div className="text-[10px] text-gray-500 truncate">{jalon.responsable}</div>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    {jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '-'}
                   </span>
                 </div>
               ))}
@@ -3471,7 +3476,7 @@ export function DeepDiveLaunch() {
           const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint').length;
           const prochainJalon = axeJalons
             .filter(j => j.statut !== 'atteint')
-            .sort((a, b) => new Date(a.date_cible).getTime() - new Date(b.date_cible).getTime())[0];
+            .sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime())[0];
 
           return (
             <div style={baseStyles} className="h-full flex flex-col">
@@ -3499,9 +3504,14 @@ export function DeepDiveLaunch() {
                 {prochainJalon && (
                   <div className="p-3 rounded-lg mb-3" style={{ backgroundColor: `${axeInfo.color}10`, borderLeft: `4px solid ${axeInfo.color}` }}>
                     <div className="text-xs font-medium text-gray-500 mb-1">Prochain jalon</div>
-                    <div className="text-sm font-medium" style={{ color: axeInfo.color }}>{prochainJalon.nom}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {prochainJalon.date_cible ? new Date(prochainJalon.date_cible).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                    <div className="text-sm font-medium" style={{ color: axeInfo.color }}>{prochainJalon.titre}</div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-gray-600">
+                        {prochainJalon.date_prevue ? new Date(prochainJalon.date_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                      </span>
+                      {prochainJalon.responsable && (
+                        <span className="text-[10px] text-gray-500">{prochainJalon.responsable}</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -3509,13 +3519,18 @@ export function DeepDiveLaunch() {
                 {/* Liste des jalons */}
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <h4 className="font-medium text-xs mb-2" style={{ color: axeInfo.color }}>Jalons clés</h4>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {axeJalons.slice(0, 5).map((jalon, idx) => (
                       <div key={jalon.id || idx} className="flex items-center gap-2 text-xs">
-                        <span className={`w-2 h-2 rounded-full ${jalon.statut === 'atteint' ? 'bg-green-500' : ''}`} style={{ backgroundColor: jalon.statut !== 'atteint' ? axeInfo.color : undefined }} />
-                        <span className="flex-1 truncate">{jalon.nom}</span>
-                        <span className="text-gray-500">
-                          {jalon.date_cible ? new Date(jalon.date_cible).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }) : '-'}
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${jalon.statut === 'atteint' ? 'bg-green-500' : ''}`} style={{ backgroundColor: jalon.statut !== 'atteint' ? axeInfo.color : undefined }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">{jalon.titre}</div>
+                          {jalon.responsable && (
+                            <div className="text-[9px] text-gray-400 truncate">{jalon.responsable}</div>
+                          )}
+                        </div>
+                        <span className="text-gray-500 whitespace-nowrap">
+                          {jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }) : '-'}
                         </span>
                       </div>
                     ))}

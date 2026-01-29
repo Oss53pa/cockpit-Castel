@@ -789,8 +789,8 @@ export function DeepDive() {
   // Upcoming jalons
   const upcomingJalons = useMemo(() => {
     return jalons
-      .filter((j) => new Date(j.date_cible) >= new Date())
-      .sort((a, b) => new Date(a.date_cible).getTime() - new Date(b.date_cible).getTime())
+      .filter((j) => new Date(j.date_prevue) >= new Date())
+      .sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime())
       .slice(0, 6);
   }, [jalons]);
 
@@ -1284,12 +1284,15 @@ export function DeepDive() {
                 };
                 return (
                   <div key={idx} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColors[jalon.statut] || '#6B7280' }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: statusColors[jalon.statut] || '#6B7280' }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[10px] font-medium truncate" style={{ color: primaryColor }}>{jalon.titre}</div>
+                      {jalon.responsable && (
+                        <div className="text-[8px] text-gray-400 truncate">{jalon.responsable}</div>
+                      )}
                     </div>
                     <div className="text-[9px] text-gray-500 whitespace-nowrap">
-                      {jalon.date_cible ? new Date(jalon.date_cible).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '-'}
+                      {jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '-'}
                     </div>
                   </div>
                 );
@@ -4237,7 +4240,10 @@ export function DeepDive() {
               const status = jalon.statut === 'atteint' ? '10B981' : jalon.statut === 'en_risque' ? 'F59E0B' : primaryHex;
               slide.addShape('circle', { x: 0.5, y: 1.55 + i * 0.55, w: 0.2, h: 0.2, fill: { color: status } });
               slide.addText(jalon.titre.substring(0, 45), { x: 0.8, y: 1.5 + i * 0.55, w: 5.5, h: 0.35, fontSize: 10, fontFace: fontFamily, color: primaryHex });
-              slide.addText(new Date(jalon.date_cible).toLocaleDateString('fr-FR'), { x: 6.5, y: 1.5 + i * 0.55, w: 2, h: 0.35, fontSize: 10, fontFace: fontFamily, color: '666666' });
+              slide.addText(jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-', { x: 6.5, y: 1.5 + i * 0.55, w: 1.2, h: 0.35, fontSize: 10, fontFace: fontFamily, color: '666666' });
+              if (jalon.responsable) {
+                slide.addText(jalon.responsable.substring(0, 15), { x: 7.8, y: 1.5 + i * 0.55, w: 1.5, h: 0.35, fontSize: 8, fontFace: fontFamily, color: '999999' });
+              }
             });
             addComment(slide, slideItem.comment, 4.6);
             addSlideFooter(slide, pageNum, totalPages);
