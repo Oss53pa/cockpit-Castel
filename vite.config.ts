@@ -129,9 +129,51 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   build: {
-    // Avertir si un chunk depasse 1MB
-    chunkSizeWarningLimit: 1000,
+    // Avertir si un chunk depasse 500KB
+    chunkSizeWarningLimit: 500,
     // Utiliser esbuild (plus stable que terser)
     minify: 'esbuild',
+    // Code splitting pour réduire la taille des bundles
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Vendor chunks - librairies tierces
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('lucide-react') || id.includes('recharts')) {
+              return 'vendor-ui';
+            }
+            if (id.includes('date-fns')) {
+              return 'vendor-date';
+            }
+            if (id.includes('dexie')) {
+              return 'vendor-db';
+            }
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'vendor-pdf';
+            }
+            if (id.includes('xlsx')) {
+              return 'vendor-excel';
+            }
+            if (id.includes('pptxgenjs')) {
+              return 'vendor-pptx';
+            }
+            if (id.includes('pdfjs-dist') || id.includes('react-pdf')) {
+              return 'vendor-pdf-viewer';
+            }
+          }
+          // App data chunks
+          if (id.includes('/data/cosmosAngre')) {
+            return 'app-data';
+          }
+          // App services chunks
+          if (id.includes('/services/')) {
+            return 'app-services';
+          }
+        },
+      },
+    },
   },
 });
