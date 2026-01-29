@@ -8,6 +8,13 @@ export { SyncActionList } from './SyncActionList';
 export { SyncStatusBadge } from './SyncStatusBadge';
 export { SyncItemModal } from './SyncItemModal';
 
+// Hierarchical components (AXE > JALON > ACTION)
+export { SyncGanttHierarchical } from './SyncGanttHierarchical';
+export { SyncPertHierarchical } from './SyncPertHierarchical';
+
+// Interdependency components
+export * from './interdependency';
+
 // Re-export Gantt and PERT components for convenience
 export { GanttChart } from '@/components/gantt';
 export { PertChart } from '@/components/pert';

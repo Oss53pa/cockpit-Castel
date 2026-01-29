@@ -295,7 +295,7 @@ function Proph3tHealthPanel() {
       {/* Résultat analyse */}
       {analysis && (
         <div className="bg-primary-50 rounded-lg p-3 max-h-60 overflow-auto">
-          <ReactMarkdown className="prose prose-sm max-w-none">{analysis}</ReactMarkdown>
+          <div className="prose prose-sm max-w-none"><ReactMarkdown>{analysis}</ReactMarkdown></div>
         </div>
       )}
     </div>
@@ -392,7 +392,7 @@ function Proph3tRecommendationsPanel() {
 
       {analysis && (
         <div className="bg-primary-50 rounded-lg p-3 max-h-60 overflow-auto">
-          <ReactMarkdown className="prose prose-sm max-w-none">{analysis}</ReactMarkdown>
+          <div className="prose prose-sm max-w-none"><ReactMarkdown>{analysis}</ReactMarkdown></div>
         </div>
       )}
     </div>
@@ -462,7 +462,7 @@ function Proph3tChatPanel() {
             )}
           >
             {message.role === 'assistant' ? (
-              <ReactMarkdown className="prose prose-sm max-w-none">{message.content}</ReactMarkdown>
+              <div className="prose prose-sm max-w-none"><ReactMarkdown>{message.content}</ReactMarkdown></div>
             ) : (
               <p className="text-sm">{message.content}</p>
             )}

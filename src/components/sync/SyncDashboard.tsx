@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, Camera, Loader2, TrendingUp, AlertTriangle, CheckCircle, BarChart3, GitBranch, Layers } from 'lucide-react';
+import { RefreshCw, Camera, Loader2, TrendingUp, AlertTriangle, CheckCircle, BarChart3, GitBranch, Layers, Network } from 'lucide-react';
 import { useSync } from '@/hooks/useSync';
 import { SyncGauge } from './SyncGauge';
 import { SyncTimeline } from './SyncTimeline';
@@ -7,11 +7,11 @@ import { SyncCategoryList } from './SyncCategoryList';
 import { SyncAlertBanner } from './SyncAlertBanner';
 import { SyncActionList } from './SyncActionList';
 import { SyncStatusBadge } from './SyncStatusBadge';
-import { GanttChart } from '@/components/gantt';
-import { PertChart } from '@/components/pert';
-import type { SyncDimension } from '@/types/sync.types';
+import { SyncGanttHierarchical } from './SyncGanttHierarchical';
+import { SyncPertHierarchical } from './SyncPertHierarchical';
+import { InterdependencyDiagram } from './interdependency';
 
-type MainTab = 'sync' | 'gantt' | 'pert';
+type MainTab = 'sync' | 'gantt' | 'pert' | 'interdependency';
 
 interface SyncDashboardProps {
   projectId: string;
@@ -39,10 +39,6 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
   const [selectedView, setSelectedView] = useState<'overview' | 'project' | 'mobilization'>('overview');
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | 'ALL'>('3M');
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
-  const [chartDimension, setChartDimension] = useState<SyncDimension | 'ALL'>('ALL');
-
-  // Project start date (could be configurable)
-  const projectStartDate = new Date('2025-06-01');
 
   const handleCreateSnapshot = async () => {
     setIsCreatingSnapshot(true);
@@ -74,6 +70,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
     { key: 'sync' as const, label: 'Synchronisation', icon: Layers },
     { key: 'gantt' as const, label: 'Gantt', icon: BarChart3 },
     { key: 'pert' as const, label: 'PERT', icon: GitBranch },
+    { key: 'interdependency' as const, label: 'Interdépendances', icon: Network },
   ];
 
   return (
@@ -130,46 +127,23 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ projectId }) => {
           })}
         </div>
 
-        {/* Dimension filter for Gantt/PERT */}
-        {(mainTab === 'gantt' || mainTab === 'pert') && (
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-            {[
-              { key: 'ALL' as const, label: 'Tout' },
-              { key: 'PROJECT' as const, label: 'Projet' },
-              { key: 'MOBILIZATION' as const, label: 'Mobilisation' },
-            ].map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setChartDimension(opt.key)}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  chartDimension === opt.key
-                    ? 'bg-white shadow text-blue-600 font-medium'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Gantt Chart Tab */}
+      {/* Gantt Chart Tab - Hierarchical (AXE > JALON > ACTION) */}
       {mainTab === 'gantt' && (
-        <GanttChart
-          projectId={projectId}
-          dimension={chartDimension}
-          projectStartDate={projectStartDate}
-        />
+        <SyncGanttHierarchical projectId={projectId} />
       )}
 
-      {/* PERT Chart Tab */}
+      {/* PERT Chart Tab - Hierarchical (AXE > JALON > ACTION) */}
       {mainTab === 'pert' && (
-        <PertChart
-          projectId={projectId}
-          dimension={chartDimension}
-          projectStartDate={projectStartDate}
-        />
+        <SyncPertHierarchical projectId={projectId} />
+      )}
+
+      {/* Interdependency Diagram Tab */}
+      {mainTab === 'interdependency' && (
+        <div className="bg-white rounded-xl shadow-sm border h-[calc(100vh-220px)]">
+          <InterdependencyDiagram projectId={parseInt(projectId, 10)} />
+        </div>
       )}
 
       {/* Sync Tab Content */}
