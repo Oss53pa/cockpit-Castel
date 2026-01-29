@@ -86,6 +86,7 @@ import {
   STATUT_LIVRABLE_LABELS,
   TYPES_DOCUMENT,
   TYPE_DOCUMENT_LABELS,
+  type Action,
   type Jalon,
   type JalonStatus,
   type Livrable,
@@ -1633,9 +1634,17 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
           </Tabs>
 
           <DialogFooter className="mt-2 pt-3 border-t flex items-center justify-between">
-            <div className="text-xs text-neutral-400">
-              {isEditing && jalon && (
-                <>Dernière MAJ: {jalon.derniere_modification ? new Date(jalon.derniere_modification).toLocaleDateString('fr-FR') : '-'}</>
+            <div className="flex items-center gap-4">
+              <div className="text-xs text-neutral-400">
+                {isEditing && jalon && (
+                  <>Dernière MAJ: {jalon.derniere_modification ? new Date(jalon.derniere_modification).toLocaleDateString('fr-FR') : '-'}</>
+                )}
+              </div>
+              {Object.keys(errors).length > 0 && (
+                <div className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {Object.keys(errors).length} erreur(s) de validation
+                </div>
               )}
             </div>
             <div className="flex gap-2">
