@@ -214,9 +214,19 @@ export function LigneBudgetaireModal({
   };
 
   const handleDeleteDepense = (depenseId: string) => {
+    if (!confirm('Supprimer cette dépense ?')) return;
     setEditedLigne((prev) =>
       prev
         ? { ...prev, depenses: prev.depenses.filter((d) => d.id !== depenseId) }
+        : null
+    );
+  };
+
+  const handleDeletePieceJointe = (pieceJointeId: string) => {
+    if (!confirm('Supprimer cette pièce jointe ?')) return;
+    setEditedLigne((prev) =>
+      prev
+        ? { ...prev, piecesJointes: prev.piecesJointes.filter((pj) => pj.id !== pieceJointeId) }
         : null
     );
   };
@@ -525,7 +535,11 @@ export function LigneBudgetaireModal({
                       </p>
                     </div>
                     {mode === 'edit' && (
-                      <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error-100 rounded text-error-500">
+                      <button
+                        onClick={() => handleDeletePieceJointe(pj.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error-100 rounded text-error-500"
+                        title="Supprimer la pièce jointe"
+                      >
                         <X className="h-4 w-4" />
                       </button>
                     )}
