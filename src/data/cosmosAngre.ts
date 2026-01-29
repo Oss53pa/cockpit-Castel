@@ -8433,79 +8433,59 @@ async function linkActionsToJalons(): Promise<number> {
 }
 
 export async function seedDatabase(): Promise<void> {
-  // Import des données transformées du référentiel V2.1 (19 jalons, 102 actions)
-  const { getAllJalonsV21, getAllActionsV21, updateActionsWithJalonIds, getStatsV21, JALONS_V21, ACTIONS_V21 } = await import('./cosmosAngreTransformV21');
-  const { getAllRisques } = await import('./cosmosAngreTransform');
-  const { repairJalonAxes, repairProjectPhases } = await import('@/hooks/useJalons');
-
   // Check if data already exists
   const existingProject = await db.project.count();
   if (existingProject > 0) {
-    // Nettoyer les actions legacy (ne garder que les 102 V2.1)
-    const actionsCount = await db.actions.count();
-    if (actionsCount > 110) {
-      // Il y a probablement des actions legacy à supprimer
-      const { ACTIONS_V21 } = await import('./cosmosAngreTransformV21');
-      const actionsV21Ids = ACTIONS_V21.map(a => a.id);
-      const allActions = await db.actions.toArray();
-      const legacyActions = allActions.filter(a => !actionsV21Ids.includes(a.id_action));
-      if (legacyActions.length > 0) {
-        await db.actions.bulkDelete(legacyActions.map(a => a.id!));
-      }
-    }
-    // Réparer les axes et phases des jalons/actions existants si nécessaire
-    await repairJalonAxes();
-    await repairProjectPhases();
     return;
   }
 
+  // Import des vraies données de production exportées de IndexedDB
+  const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
+
+  // Insert sites
+  if (PRODUCTION_DATA.sites?.length > 0) {
+    await db.sites.bulkAdd(PRODUCTION_DATA.sites);
+  }
+
   // Insert project
-  await db.project.add(projectData as Project);
+  if (PRODUCTION_DATA.project?.length > 0) {
+    await db.project.bulkAdd(PRODUCTION_DATA.project);
+  }
 
-  // Insert users (nouveaux rôles selon le référentiel)
-  await db.users.bulkAdd(usersData as User[]);
+  // Insert project settings
+  if (PRODUCTION_DATA.projectSettings?.length > 0) {
+    await db.projectSettings.bulkAdd(PRODUCTION_DATA.projectSettings);
+  }
 
-  // Insert jalons V2.1 (19 jalons)
-  const jalonsV21 = getAllJalonsV21();
-  const insertedJalonIds = await db.jalons.bulkAdd(jalonsV21 as Jalon[], { allKeys: true });
+  // Insert users
+  if (PRODUCTION_DATA.users?.length > 0) {
+    await db.users.bulkAdd(PRODUCTION_DATA.users);
+  }
 
-  // Créer le mapping jalonId V2.1 -> jalonId DB
-  const jalonIdMapping = new Map<string, number>();
-  jalonsV21.forEach((jalon, index) => {
-    jalonIdMapping.set(jalon.id_jalon, insertedJalonIds[index] as number);
-  });
+  // Insert teams
+  if (PRODUCTION_DATA.teams?.length > 0) {
+    await db.teams.bulkAdd(PRODUCTION_DATA.teams);
+  }
 
-  // Insert actions V2.1 (102 actions) avec les jalonId mis à jour
-  let actionsV21 = getAllActionsV21();
+  // Insert actions (102 vraies actions)
+  if (PRODUCTION_DATA.actions?.length > 0) {
+    await db.actions.bulkAdd(PRODUCTION_DATA.actions);
+  }
 
-  // Mettre à jour les jalonId des actions V2.1
-  const actionsWithJalonIds = actionsV21.map(action => {
-    // Trouver l'action V2.1 correspondante pour obtenir le jalonId original
-    const actionV21Source = ACTIONS_V21.find(a => a.id === action.id_action);
-    if (actionV21Source) {
-      const jalonDbId = jalonIdMapping.get(actionV21Source.jalonId);
-      return { ...action, jalonId: jalonDbId ?? null };
-    }
-    return action;
-  });
+  // Insert jalons (19 vrais jalons)
+  if (PRODUCTION_DATA.jalons?.length > 0) {
+    await db.jalons.bulkAdd(PRODUCTION_DATA.jalons);
+  }
 
-  // Insert uniquement les 102 actions V2.1 (pas de legacy)
-  await db.actions.bulkAdd(actionsWithJalonIds as Action[]);
-
-  // Insert risques depuis le référentiel (gardé de l'ancien système)
-  const risquesRef = getAllRisques();
-  await db.risques.bulkAdd(risquesRef as Risque[]);
+  // Insert risques (75 vrais risques)
+  if (PRODUCTION_DATA.risques?.length > 0) {
+    await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+  }
 
   // Insert budget
-  await db.budget.bulkAdd(budgetData as BudgetItem[]);
-
-  // Insert liens de synchronisation
-  const liensSync = generateLiensSync();
-  await db.liensSync.bulkAdd(liensSync);
-
-  // Réparer les axes et phases après insertion
-  await repairJalonAxes();
-  await repairProjectPhases();
+  if (PRODUCTION_DATA.budget?.length > 0) {
+    await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+  }
 
 }
 
