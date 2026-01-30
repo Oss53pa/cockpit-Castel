@@ -3,7 +3,7 @@
 // ============================================================================
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus, Plus, X, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Plus, X } from 'lucide-react';
 import type { RisquesEvolutionData } from '@/types/deepDive';
 import { AXES_MENSUEL_CONFIG } from '@/data/deepDiveMensuelTemplate';
 
