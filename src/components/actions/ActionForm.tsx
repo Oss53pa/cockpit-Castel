@@ -664,8 +664,14 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
   const onSubmit = async (data: ActionFormData) => {
     try {
       const alerts = calculateAlerts(data.date_fin_prevue);
+
+      // Trouver le responsableId à partir du nom
+      const responsableUser = users.find(u => `${u.prenom} ${u.nom}` === data.responsable);
+      const responsableId = responsableUser?.id ?? action?.responsableId ?? null;
+
       const actionData: Partial<Action> & Record<string, unknown> = {
         ...data,
+        responsableId,
         consultes,
         informes,
         ressources_humaines: ressourcesHumaines,

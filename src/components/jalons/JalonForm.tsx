@@ -482,8 +482,13 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
   const livrablesValides = livrables.filter(l => l.statut === 'valide').length;
 
   const buildSubmitData = (data: JalonFormData): Partial<Jalon> => {
+    // Trouver le responsableId à partir du nom
+    const responsableUser = users.find(u => `${u.prenom} ${u.nom}` === data.responsable);
+    const responsableId = responsableUser?.id ?? jalon?.responsableId ?? undefined;
+
     const submitData: Partial<Jalon> & Record<string, unknown> = {
       ...data,
+      responsableId,
       contributeurs,
       parties_prenantes: partiesPrenantes,
       predecesseurs,
