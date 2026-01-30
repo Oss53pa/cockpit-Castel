@@ -242,15 +242,26 @@ export interface RecalculationPreview {
   actionsAffectees: number;
   jalonsVerrouilles: number;
   actionsVerrouillees: number;
+  /** Indique si le recalcul forcé des verrouillés est activé */
+  forcerVerrouilles?: boolean;
+}
+
+export interface RecalculationOptions {
+  /** Si true, recalcule aussi les éléments verrouillés manuellement */
+  forcerVerrouilles?: boolean;
 }
 
 /**
  * Preview what would change if project phase dates are modified.
  * Recalculates all jalons/actions that have a jalon_reference + delai_declenchement.
+ * @param config - Configuration du projet avec les dates de phase
+ * @param options - Options de recalcul (forcerVerrouilles pour inclure les éléments verrouillés)
  */
 export async function previewRecalculation(
-  config: ProjectConfig
+  config: ProjectConfig,
+  options: RecalculationOptions = {}
 ): Promise<RecalculationPreview> {
+  const { forcerVerrouilles = false } = options;
   const jalons = await db.jalons.toArray();
   const actions = await db.actions.toArray();
 
@@ -321,25 +332,36 @@ export async function previewRecalculation(
   return {
     jalons: jalonPreviews,
     actions: actionPreviews,
-    jalonsAffectes: jalonPreviews.filter((j) => !j.verrouille).length,
-    actionsAffectees: actionPreviews.filter((a) => !a.verrouille).length,
+    // Si forcerVerrouilles, tous les éléments sont affectés
+    jalonsAffectes: forcerVerrouilles
+      ? jalonPreviews.length
+      : jalonPreviews.filter((j) => !j.verrouille).length,
+    actionsAffectees: forcerVerrouilles
+      ? actionPreviews.length
+      : actionPreviews.filter((a) => !a.verrouille).length,
     jalonsVerrouilles,
     actionsVerrouillees,
+    forcerVerrouilles,
   };
 }
 
 /**
  * Apply recalculation: update all jalon & action dates based on
  * their stored phase reference + delai_declenchement.
+ * @param config - Configuration du projet avec les dates de phase
+ * @param options - Options de recalcul (forcerVerrouilles pour inclure les éléments verrouillés)
  */
 export async function applyRecalculation(
-  config: ProjectConfig
-): Promise<{ jalons: number; actions: number }> {
+  config: ProjectConfig,
+  options: RecalculationOptions = {}
+): Promise<{ jalons: number; actions: number; verrrouillesModifies: number }> {
+  const { forcerVerrouilles = false } = options;
   const jalons = await db.jalons.toArray();
   const actions = await db.actions.toArray();
 
   let jalonsUpdated = 0;
   let actionsUpdated = 0;
+  let verrrouillesModifies = 0;
 
   for (const jalon of jalons) {
     const j = jalon as Jalon & {
@@ -348,14 +370,28 @@ export async function applyRecalculation(
       date_verrouillage_manuel?: boolean;
     };
 
-    if (!j.jalon_reference || j.delai_declenchement == null || j.date_verrouillage_manuel) {
+    // Skip si pas de référence ou délai
+    if (!j.jalon_reference || j.delai_declenchement == null) {
+      continue;
+    }
+
+    // Skip les verrouillés sauf si forcerVerrouilles est activé
+    if (j.date_verrouillage_manuel && !forcerVerrouilles) {
       continue;
     }
 
     const nouvelleDate = computeDateFromPhase(config, j.jalon_reference, j.delai_declenchement);
 
     if (nouvelleDate !== jalon.date_prevue) {
-      await db.jalons.update(jalon.id!, { date_prevue: nouvelleDate });
+      // Si on modifie un élément verrouillé, on déverrouille automatiquement
+      const updateData: { date_prevue: string; date_verrouillage_manuel?: boolean } = {
+        date_prevue: nouvelleDate,
+      };
+      if (j.date_verrouillage_manuel && forcerVerrouilles) {
+        updateData.date_verrouillage_manuel = false;
+        verrrouillesModifies++;
+      }
+      await db.jalons.update(jalon.id!, updateData);
       jalonsUpdated++;
     }
   }
@@ -367,7 +403,13 @@ export async function applyRecalculation(
       date_verrouillage_manuel?: boolean;
     };
 
-    if (!a.jalon_reference || a.delai_declenchement == null || a.date_verrouillage_manuel) {
+    // Skip si pas de référence ou délai
+    if (!a.jalon_reference || a.delai_declenchement == null) {
+      continue;
+    }
+
+    // Skip les verrouillés sauf si forcerVerrouilles est activé
+    if (a.date_verrouillage_manuel && !forcerVerrouilles) {
       continue;
     }
 
@@ -376,16 +418,27 @@ export async function applyRecalculation(
     const nouvelleFin = computeEcheance(nouveauDebut, duree);
 
     if (nouveauDebut !== action.date_debut_prevue || nouvelleFin !== action.date_fin_prevue) {
-      await db.actions.update(action.id!, {
+      // Si on modifie un élément verrouillé, on déverrouille automatiquement
+      const updateData: {
+        date_debut_prevue: string;
+        date_fin_prevue: string;
+        duree_prevue_jours: number;
+        date_verrouillage_manuel?: boolean;
+      } = {
         date_debut_prevue: nouveauDebut,
         date_fin_prevue: nouvelleFin,
         duree_prevue_jours: Math.max(duree, 0),
-      });
+      };
+      if (a.date_verrouillage_manuel && forcerVerrouilles) {
+        updateData.date_verrouillage_manuel = false;
+        verrrouillesModifies++;
+      }
+      await db.actions.update(action.id!, updateData);
       actionsUpdated++;
     }
   }
 
-  return { jalons: jalonsUpdated, actions: actionsUpdated };
+  return { jalons: jalonsUpdated, actions: actionsUpdated, verrrouillesModifies };
 }
 
 /**

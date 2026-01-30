@@ -115,6 +115,7 @@ export function ProjectSettings() {
   const [stats, setStats] = useState<{ jalons: number; actions: number } | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [preview, setPreview] = useState<RecalculationPreview | null>(null);
+  const [forcerVerrouilles, setForcerVerrouilles] = useState(false);
 
   // Charger la configuration
   useEffect(() => {
@@ -178,7 +179,7 @@ export function ProjectSettings() {
     setRecalculating(true);
     setMessage(null);
     try {
-      const result = await previewRecalculation(config);
+      const result = await previewRecalculation(config, { forcerVerrouilles });
       setPreview(result);
       setShowPreviewModal(true);
     } catch (error) {
@@ -194,12 +195,14 @@ export function ProjectSettings() {
     setRecalculating(true);
     setMessage(null);
     try {
-      const result = await applyRecalculation(config);
-      setMessage({
-        type: 'success',
-        text: `${result.jalons} jalon(s) et ${result.actions} action(s) mis a jour`,
-      });
+      const result = await applyRecalculation(config, { forcerVerrouilles });
+      let msg = `${result.jalons} jalon(s) et ${result.actions} action(s) mis a jour`;
+      if (result.verrrouillesModifies > 0) {
+        msg += ` (${result.verrrouillesModifies} element(s) deverrouille(s))`;
+      }
+      setMessage({ type: 'success', text: msg });
       setPreview(null);
+      setForcerVerrouilles(false); // Reset l'option après application
 
       // Recharger les stats
       const jalonsCount = await db.jalons.count();
@@ -315,15 +318,30 @@ export function ProjectSettings() {
         )}
 
         {/* Actions */}
-        <div className="flex gap-3 mt-6">
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-          </Button>
-          <Button variant="secondary" onClick={handleRecalculate} disabled={recalculating}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${recalculating ? 'animate-spin' : ''}`} />
-            {recalculating ? 'Recalcul...' : 'Recalculer les dates'}
-          </Button>
+        <div className="flex flex-col gap-3 mt-6">
+          <div className="flex gap-3">
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+            </Button>
+            <Button variant="secondary" onClick={handleRecalculate} disabled={recalculating}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${recalculating ? 'animate-spin' : ''}`} />
+              {recalculating ? 'Recalcul...' : 'Recalculer les dates'}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-neutral-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={forcerVerrouilles}
+              onChange={(e) => setForcerVerrouilles(e.target.checked)}
+              className="w-4 h-4 rounded border-neutral-300 text-orange-600 focus:ring-orange-500"
+            />
+            <Lock className="h-4 w-4 text-orange-500" />
+            <span>Forcer le recalcul des elements verrouilles</span>
+            {forcerVerrouilles && (
+              <span className="text-xs text-orange-600 font-medium">(les verrous seront supprimes)</span>
+            )}
+          </label>
         </div>
       </Card>
 
@@ -338,7 +356,8 @@ export function ProjectSettings() {
               <li>Un <strong>delai de declenchement</strong> (ex: J-90) definit l'ecart en jours par rapport a cette phase</li>
               <li>L'<strong>echeance</strong> est calculee : date debut + duree estimee</li>
               <li>Quand une date de phase change, toutes les echeances se recalculent automatiquement</li>
-              <li>Les elements <strong>verrouilles manuellement</strong> sont ignores lors du recalcul</li>
+              <li>Les elements <strong>verrouilles manuellement</strong> sont ignores lors du recalcul (sauf si option forcee)</li>
+              <li>Cochez <strong>"Forcer le recalcul des elements verrouilles"</strong> pour inclure les elements proteges (les verrous seront supprimes)</li>
               <li>Utilisez "Recalculer les dates" pour voir un apercu avant d'appliquer</li>
             </ul>
           </div>
@@ -380,10 +399,17 @@ export function ProjectSettings() {
               </div>
 
               {(preview.jalonsVerrouilles > 0 || preview.actionsVerrouillees > 0) && (
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm text-orange-800">
-                    {preview.jalonsVerrouilles} jalon(s) et {preview.actionsVerrouillees} action(s) verrouille(s) seront ignore(s)
+                <div className={`p-3 border rounded-lg flex items-center gap-2 ${
+                  forcerVerrouilles
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-orange-50 border-orange-200'
+                }`}>
+                  <Lock className={`h-4 w-4 ${forcerVerrouilles ? 'text-red-600' : 'text-orange-600'}`} />
+                  <span className={`text-sm ${forcerVerrouilles ? 'text-red-800' : 'text-orange-800'}`}>
+                    {forcerVerrouilles
+                      ? `${preview.jalonsVerrouilles} jalon(s) et ${preview.actionsVerrouillees} action(s) verrouille(s) seront RECALCULE(S) et DEVERROUILLE(S)`
+                      : `${preview.jalonsVerrouilles} jalon(s) et ${preview.actionsVerrouillees} action(s) verrouille(s) seront ignore(s)`
+                    }
                   </span>
                 </div>
               )}
@@ -396,52 +422,68 @@ export function ProjectSettings() {
               )}
 
               {/* Jalons Preview */}
-              {preview.jalons.filter(j => !j.verrouille).length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-neutral-700 mb-2">
-                    Jalons ({preview.jalons.filter(j => !j.verrouille).length})
-                  </h4>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {preview.jalons.filter(j => !j.verrouille).slice(0, 10).map((j) => (
-                      <div key={j.id} className="flex items-center gap-2 text-sm p-2 bg-neutral-50 rounded">
-                        <span className="flex-1 truncate text-neutral-900">{j.titre}</span>
-                        <span className="text-neutral-400 font-mono text-xs">{j.ancienneDate}</span>
-                        <ArrowRight className="h-3 w-3 text-neutral-400" />
-                        <span className="text-blue-600 font-mono text-xs font-medium">{j.nouvelleDate}</span>
-                      </div>
-                    ))}
-                    {preview.jalons.filter(j => !j.verrouille).length > 10 && (
-                      <p className="text-xs text-neutral-400 text-center py-1">
-                        ... et {preview.jalons.filter(j => !j.verrouille).length - 10} autre(s)
-                      </p>
-                    )}
+              {(() => {
+                const jalonsToShow = forcerVerrouilles
+                  ? preview.jalons
+                  : preview.jalons.filter(j => !j.verrouille);
+                return jalonsToShow.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-neutral-700 mb-2">
+                      Jalons ({jalonsToShow.length})
+                    </h4>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {jalonsToShow.slice(0, 10).map((j) => (
+                        <div key={j.id} className={`flex items-center gap-2 text-sm p-2 rounded ${
+                          j.verrouille ? 'bg-orange-50 border border-orange-200' : 'bg-neutral-50'
+                        }`}>
+                          {j.verrouille && <Lock className="h-3 w-3 text-orange-500 shrink-0" />}
+                          <span className="flex-1 truncate text-neutral-900">{j.titre}</span>
+                          <span className="text-neutral-400 font-mono text-xs">{j.ancienneDate}</span>
+                          <ArrowRight className="h-3 w-3 text-neutral-400" />
+                          <span className="text-blue-600 font-mono text-xs font-medium">{j.nouvelleDate}</span>
+                        </div>
+                      ))}
+                      {jalonsToShow.length > 10 && (
+                        <p className="text-xs text-neutral-400 text-center py-1">
+                          ... et {jalonsToShow.length - 10} autre(s)
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Actions Preview */}
-              {preview.actions.filter(a => !a.verrouille).length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-neutral-700 mb-2">
-                    Actions ({preview.actions.filter(a => !a.verrouille).length})
-                  </h4>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {preview.actions.filter(a => !a.verrouille).slice(0, 10).map((a) => (
-                      <div key={a.id} className="flex items-center gap-2 text-sm p-2 bg-neutral-50 rounded">
-                        <span className="flex-1 truncate text-neutral-900">{a.titre}</span>
-                        <span className="text-neutral-400 font-mono text-xs">{a.ancienDebut}</span>
-                        <ArrowRight className="h-3 w-3 text-neutral-400" />
-                        <span className="text-green-600 font-mono text-xs font-medium">{a.nouveauDebut}</span>
-                      </div>
-                    ))}
-                    {preview.actions.filter(a => !a.verrouille).length > 10 && (
-                      <p className="text-xs text-neutral-400 text-center py-1">
-                        ... et {preview.actions.filter(a => !a.verrouille).length - 10} autre(s)
-                      </p>
-                    )}
+              {(() => {
+                const actionsToShow = forcerVerrouilles
+                  ? preview.actions
+                  : preview.actions.filter(a => !a.verrouille);
+                return actionsToShow.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-neutral-700 mb-2">
+                      Actions ({actionsToShow.length})
+                    </h4>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {actionsToShow.slice(0, 10).map((a) => (
+                        <div key={a.id} className={`flex items-center gap-2 text-sm p-2 rounded ${
+                          a.verrouille ? 'bg-orange-50 border border-orange-200' : 'bg-neutral-50'
+                        }`}>
+                          {a.verrouille && <Lock className="h-3 w-3 text-orange-500 shrink-0" />}
+                          <span className="flex-1 truncate text-neutral-900">{a.titre}</span>
+                          <span className="text-neutral-400 font-mono text-xs">{a.ancienDebut}</span>
+                          <ArrowRight className="h-3 w-3 text-neutral-400" />
+                          <span className="text-green-600 font-mono text-xs font-medium">{a.nouveauDebut}</span>
+                        </div>
+                      ))}
+                      {actionsToShow.length > 10 && (
+                        <p className="text-xs text-neutral-400 text-center py-1">
+                          ... et {actionsToShow.length - 10} autre(s)
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}
