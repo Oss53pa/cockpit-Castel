@@ -5,6 +5,7 @@ import { MainLayout } from '@/components/layout';
 import { ProphetChat } from '@/components/prophet';
 import {
   LoginPage,
+  HomePage,
   DashboardPage,
   AxesPage,
   ActionsPage,
@@ -109,6 +110,16 @@ function AppContent() {
         {/* External Update Page - Standalone without layout (public) */}
         <Route path="/update/:type/:token" element={<ExternalUpdateRouter />} />
 
+        {/* Home Page - Welcome screen (protected, without sidebar) */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Main App with Layout (protected) */}
         <Route
           element={
@@ -117,7 +128,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/axes" element={<AxesPage />} />
           <Route path="/jalons" element={<JalonsPage />} />
           <Route path="/actions" element={<ActionsPage />} />

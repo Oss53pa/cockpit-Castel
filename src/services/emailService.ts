@@ -13,13 +13,13 @@ import { db, type UpdateLink, type EmailNotification, type EmailTemplate } from 
 import type { Action, Jalon, Risque } from '@/types';
 import emailjs from '@emailjs/browser';
 import {
-  createUpdateLinkInFirebase,
-  markLinkAccessedInFirebase,
   isFirebaseConfigured,
   getFirebaseConfig,
 } from './firebaseConfigService';
 import {
   createUpdateLinkInFirebase as createRealtimeLink,
+  getUpdateLinkFromFirebase,
+  markLinkAccessedInFirebase,
 } from './firebaseRealtimeSync';
 
 // ============================================
@@ -343,29 +343,68 @@ export async function createUpdateLink(
   return { ...link, id };
 }
 
-export async function getUpdateLink(token: string): Promise<UpdateLink | null> {
-  // Récupérer depuis IndexedDB local
-  const link = await db.updateLinks.where('token').equals(token).first();
-  if (!link) return null;
+export async function getUpdateLink(token: string): Promise<(UpdateLink & { entityData?: any }) | null> {
+  // D'abord essayer IndexedDB local
+  const localLink = await db.updateLinks.where('token').equals(token).first();
 
-  // Check if expired
-  if (new Date(link.expiresAt) < new Date()) {
-    if (!link.isExpired) {
-      await db.updateLinks.update(link.id!, { isExpired: true });
-      await createNotification({
-        type: 'link_expired',
-        linkId: link.id!,
-        entityType: link.entityType,
-        entityId: link.entityId,
-        recipientEmail: link.recipientEmail,
-        recipientName: link.recipientName,
-        message: `Le lien pour ${link.recipientName} a expiré`,
-      });
+  if (localLink) {
+    // Check if expired
+    if (new Date(localLink.expiresAt) < new Date()) {
+      if (!localLink.isExpired) {
+        await db.updateLinks.update(localLink.id!, { isExpired: true });
+        await createNotification({
+          type: 'link_expired',
+          linkId: localLink.id!,
+          entityType: localLink.entityType,
+          entityId: localLink.entityId,
+          recipientEmail: localLink.recipientEmail,
+          recipientName: localLink.recipientName,
+          message: `Le lien pour ${localLink.recipientName} a expiré`,
+        });
+      }
+      return { ...localLink, isExpired: true };
     }
-    return { ...link, isExpired: true };
+    return localLink;
   }
 
-  return link;
+  // Si pas trouvé localement, essayer Firebase (pour les appareils externes)
+  const firebaseConfig = getFirebaseConfig();
+  if (firebaseConfig.enabled && isFirebaseConfigured()) {
+    try {
+      const firebaseLink = await getUpdateLinkFromFirebase(token);
+      if (firebaseLink) {
+        // Convertir le format Firebase vers le format UpdateLink
+        return {
+          id: 0, // ID virtuel pour les liens Firebase
+          token: firebaseLink.token,
+          entityType: firebaseLink.entityType,
+          entityId: firebaseLink.entityId,
+          recipientEmail: firebaseLink.recipientEmail,
+          recipientName: firebaseLink.recipientName,
+          createdAt: firebaseLink.createdAt,
+          expiresAt: firebaseLink.expiresAt,
+          isUsed: firebaseLink.isUsed,
+          isExpired: firebaseLink.isExpired,
+          accessedAt: firebaseLink.accessedAt,
+          // Inclure les données de l'entité pour affichage
+          entityData: firebaseLink.entitySnapshot ? {
+            titre: firebaseLink.entitySnapshot.titre,
+            statut: firebaseLink.entitySnapshot.statut,
+            avancement: firebaseLink.entitySnapshot.avancement,
+            date_prevue: firebaseLink.entitySnapshot.date_prevue,
+            date_fin_prevue: firebaseLink.entitySnapshot.date_fin_prevue,
+            probabilite: firebaseLink.entitySnapshot.probabilite,
+            impact: firebaseLink.entitySnapshot.impact,
+            score: firebaseLink.entitySnapshot.score,
+          } : undefined,
+        };
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du lien depuis Firebase:', error);
+    }
+  }
+
+  return null;
 }
 
 export async function markLinkAccessed(token: string): Promise<void> {
@@ -384,6 +423,16 @@ export async function markLinkAccessed(token: string): Promise<void> {
       recipientName: link.recipientName,
       message: `${link.recipientName} a ouvert le lien de mise à jour`,
     });
+  }
+
+  // Aussi marquer comme accédé dans Firebase
+  const firebaseConfig = getFirebaseConfig();
+  if (firebaseConfig.enabled && isFirebaseConfigured()) {
+    try {
+      await markLinkAccessedInFirebase(token);
+    } catch (error) {
+      console.error('Erreur Firebase markLinkAccessed:', error);
+    }
   }
 }
 

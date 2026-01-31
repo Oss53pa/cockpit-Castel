@@ -1,4 +1,5 @@
 export * from './LoginPage';
+export * from './HomePage';
 export * from './DashboardPage';
 export * from './AxesPage';
 export * from './ActionsPage';

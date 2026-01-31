@@ -801,6 +801,34 @@ export async function seedDatabaseV2(): Promise<{
     }
   });
 
+  // ========================================================================
+  // FIREBASE CONFIG - Initialiser si n'existe pas (hors transaction)
+  // ========================================================================
+  const existingFirebaseConfig = await db.secureConfigs.where('key').equals('firebase_config').first();
+  if (!existingFirebaseConfig) {
+    const firebaseConfig = {
+      enabled: true,
+      apiKey: 'AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0',
+      authDomain: 'cockpit-project-management.firebaseapp.com',
+      projectId: 'cockpit-project-management',
+      storageBucket: 'cockpit-project-management.firebasestorage.app',
+      messagingSenderId: '525943959593',
+      appId: '1:525943959593:web:2f69e6d45c76ddf5846c38',
+      measurementId: 'G-43WJ8SGNCH',
+    };
+
+    await db.secureConfigs.add({
+      key: 'firebase_config',
+      value: JSON.stringify(firebaseConfig),
+      isEncrypted: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Aussi stocker dans localStorage pour accès synchrone
+    localStorage.setItem('firebase_config', JSON.stringify(firebaseConfig));
+  }
+
   return result;
 }
 

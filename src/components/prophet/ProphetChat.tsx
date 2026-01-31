@@ -175,17 +175,19 @@ export function ProphetChat() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50 group"
+          className="fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50 group overflow-hidden ring-2 ring-primary-900 hover:ring-primary-700"
         >
-          <div className="relative">
-            <Sparkles className="h-7 w-7 group-hover:scale-110 transition-transform" />
-            <span
-              className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ fontFamily: "'Grand Hotel', cursive", fontSize: '18px' }}
-            >
-              Proph3t
-            </span>
-          </div>
+          <img
+            src="/avatar-proph3t.jpg"
+            alt="Proph3t"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+          />
+          <span
+            className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-primary-900 text-sm opacity-0 group-hover:opacity-100 transition-opacity bg-white px-3 py-1 rounded-full shadow"
+            style={{ fontFamily: "'Grand Hotel', cursive", fontSize: '18px' }}
+          >
+            Proph3t
+          </span>
         </button>
       )}
 
@@ -195,8 +197,8 @@ export function ProphetChat() {
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Sparkles className="h-5 w-5" />
+              <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30">
+                <img src="/avatar-proph3t.jpg" alt="Proph3t" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h3
