@@ -23,10 +23,38 @@ import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase
 import type { UpdateLink } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
 
-// Grand Hotel font
-const grandHotelStyle = `
-  @import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');
+// COCKPIT Fonts
+const cockpitFonts = `
+  @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=Grand+Hotel&display=swap');
 `;
+
+// COCKPIT Design tokens
+const entityColors = {
+  action: {
+    gradient: 'from-indigo-600 via-purple-600 to-indigo-700',
+    bg: 'bg-indigo-600',
+    text: 'text-indigo-600',
+    light: 'bg-indigo-50',
+    border: 'border-indigo-200',
+    ring: 'focus:ring-indigo-500',
+  },
+  jalon: {
+    gradient: 'from-purple-600 via-indigo-600 to-purple-700',
+    bg: 'bg-purple-600',
+    text: 'text-purple-600',
+    light: 'bg-purple-50',
+    border: 'border-purple-200',
+    ring: 'focus:ring-purple-500',
+  },
+  risque: {
+    gradient: 'from-rose-600 via-red-600 to-rose-700',
+    bg: 'bg-rose-600',
+    text: 'text-rose-600',
+    light: 'bg-rose-50',
+    border: 'border-rose-200',
+    ring: 'focus:ring-rose-500',
+  },
+};
 
 type EntityType = 'action' | 'jalon' | 'risque';
 
@@ -331,11 +359,8 @@ export function ExternalUpdatePage() {
     return [];
   };
 
-  const getEntityColor = () => {
-    if (type === 'action') return 'from-indigo-600 to-purple-700';
-    if (type === 'jalon') return 'from-emerald-600 to-teal-700';
-    if (type === 'risque') return 'from-red-600 to-rose-700';
-    return 'from-gray-600 to-gray-700';
+  const getEntityTheme = () => {
+    return entityColors[type as keyof typeof entityColors] || entityColors.action;
   };
 
   const getEntityIcon = () => {
@@ -345,14 +370,22 @@ export function ExternalUpdatePage() {
     return <FileText className="h-8 w-8" />;
   };
 
+  const theme = getEntityTheme();
+
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <style>{grandHotelStyle}</style>
+      <div className="min-h-screen bg-primary-50 flex items-center justify-center" style={{ fontFamily: "'Exo 2', sans-serif" }}>
+        <style>{cockpitFonts}</style>
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement...</p>
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-primary-200 rounded-full"></div>
+            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <h2 className="mt-6 text-xl font-semibold text-primary-800" style={{ fontFamily: "'Grand Hotel', cursive" }}>
+            Cockpit
+          </h2>
+          <p className="text-primary-500 mt-2">Chargement...</p>
         </div>
       </div>
     );
@@ -361,14 +394,19 @@ export function ExternalUpdatePage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <style>{grandHotelStyle}</style>
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-8 w-8 text-primary-600" />
+      <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4" style={{ fontFamily: "'Exo 2', sans-serif" }}>
+        <style>{cockpitFonts}</style>
+        <div className="max-w-md w-full bg-white rounded-xl border border-primary-200 shadow-lg p-8 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-error-100 to-error-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <AlertCircle className="h-10 w-10 text-error-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Lien invalide</h1>
-          <p className="text-gray-600">{error}</p>
+          <h1 className="text-2xl font-bold text-primary-900 mb-3">Lien invalide</h1>
+          <p className="text-primary-600 leading-relaxed">{error}</p>
+          <div className="mt-6 pt-6 border-t border-primary-100">
+            <p className="text-sm text-primary-400">
+              Contactez l'équipe projet si vous pensez qu'il s'agit d'une erreur.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -377,19 +415,31 @@ export function ExternalUpdatePage() {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <style>{grandHotelStyle}</style>
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-8 w-8 text-primary-600" />
+      <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4" style={{ fontFamily: "'Exo 2', sans-serif" }}>
+        <style>{cockpitFonts}</style>
+        <div className="max-w-md w-full bg-white rounded-xl border border-primary-200 shadow-lg overflow-hidden">
+          {/* Success header */}
+          <div className="bg-gradient-to-r from-success-500 to-success-600 p-6 text-center">
+            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+              <CheckCircle className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Mise à jour enregistrée!</h1>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Mise a jour enregistree!</h1>
-          <p className="text-gray-600 mb-4">
-            Vos modifications ont ete sauvegardees avec succes. L'equipe projet a ete notifiee.
-          </p>
-          <p className="text-sm text-gray-500">
-            Vous pouvez fermer cette page.
-          </p>
+
+          {/* Success content */}
+          <div className="p-6 text-center">
+            <p className="text-primary-600 leading-relaxed mb-6">
+              Vos modifications ont été sauvegardées avec succès. L'équipe projet a été notifiée.
+            </p>
+            <p className="text-sm text-primary-400">Vous pouvez fermer cette page.</p>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 bg-primary-50 border-t border-primary-100 text-center">
+            <p className="text-xl text-indigo-600" style={{ fontFamily: "'Grand Hotel', cursive" }}>
+              Cockpit
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -397,272 +447,300 @@ export function ExternalUpdatePage() {
 
   // Main form
   return (
-    <div className="min-h-screen bg-gray-50">
-      <style>{grandHotelStyle}</style>
+    <div className="min-h-screen bg-primary-50" style={{ fontFamily: "'Exo 2', sans-serif" }}>
+      <style>{cockpitFonts}</style>
 
-      {/* Header */}
-      <header className={`bg-gradient-to-r ${getEntityColor()} text-white py-8`}>
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-white/20 rounded-xl">
+      {/* Header with COCKPIT design */}
+      <header className={`bg-gradient-to-r ${theme.gradient} text-white`}>
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          {/* Top bar with logo */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl" style={{ fontFamily: "'Grand Hotel', cursive" }}>
+              Cockpit
+            </h1>
+          </div>
+
+          {/* Entity info */}
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm flex-shrink-0">
               {getEntityIcon()}
             </div>
-            <div>
-              <p className="text-white/80 text-sm uppercase tracking-wider">
-                Mise a jour {type === 'action' ? "d'action" : type === 'jalon' ? 'de jalon' : 'de risque'}
+            <div className="flex-1 min-w-0">
+              <p className="text-white/80 text-xs uppercase tracking-wider font-medium mb-1">
+                Mise à jour {type === 'action' ? "d'action" : type === 'jalon' ? 'de jalon' : 'de risque'}
               </p>
-              <h1
-                className="text-3xl"
-                style={{ fontFamily: "'Grand Hotel', cursive" }}
-              >
-                COSMOS ANGRE
-              </h1>
+              <h2 className="text-xl font-bold truncate">{entity?.titre}</h2>
+              <div className="flex flex-wrap items-center gap-3 mt-3 text-white/80 text-sm">
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
+                  <User className="h-3.5 w-3.5" />
+                  {link?.recipientName}
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
+                  <Clock className="h-3.5 w-3.5" />
+                  Expire le {new Date(link?.expiresAt || '').toLocaleDateString('fr-FR')}
+                </span>
+              </div>
             </div>
-          </div>
-          <h2 className="text-xl font-semibold">{entity?.titre}</h2>
-          <div className="flex items-center gap-4 mt-2 text-white/80 text-sm">
-            <span className="flex items-center gap-1">
-              <User className="h-4 w-4" />
-              {link?.recipientName}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              Expire le {new Date(link?.expiresAt || '').toLocaleDateString('fr-FR')}
-            </span>
           </div>
         </div>
       </header>
 
       {/* Form */}
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Status & Progress */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary-600" />
-              Statut et avancement
-            </h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Statut
-                </label>
-                <select
-                  value={formData.statut || ''}
-                  onChange={e => setFormData({ ...formData, statut: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  {getStatusOptions().map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {type === 'action' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Avancement (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.avancement || 0}
-                    onChange={e => setFormData({ ...formData, avancement: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                  <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-indigo-600 transition-all"
-                      style={{ width: `${formData.avancement || 0}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {type === 'risque' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Probabilite (1-5)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={formData.probabilite || 1}
-                      onChange={e => setFormData({
-                        ...formData,
-                        probabilite: parseInt(e.target.value),
-                        score: parseInt(e.target.value) * (formData.impact || 1)
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Impact (1-5)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={formData.impact || 1}
-                      onChange={e => setFormData({
-                        ...formData,
-                        impact: parseInt(e.target.value),
-                        score: (formData.probabilite || 1) * parseInt(e.target.value)
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
-                </>
-              )}
+          <div className="bg-white rounded-xl border border-primary-200 shadow-sm overflow-hidden">
+            <div className={`px-5 py-3 ${theme.light} border-b ${theme.border}`}>
+              <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                <Target className={`h-5 w-5 ${theme.text}`} />
+                Statut et avancement
+              </h3>
             </div>
 
-            {type === 'risque' && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  Score actuel: <span className={`font-bold ${
-                    (formData.score || 0) >= 12 ? 'text-red-600' :
-                    (formData.score || 0) >= 6 ? 'text-orange-600' : 'text-green-600'
-                  }`}>{formData.score || 0}</span>
-                </p>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1.5">Statut</label>
+                  <select
+                    value={formData.statut || ''}
+                    onChange={e => setFormData({ ...formData, statut: e.target.value })}
+                    className={`w-full px-4 py-2.5 border border-primary-200 rounded-lg bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all text-primary-900`}
+                  >
+                    {getStatusOptions().map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {type === 'action' && (
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1.5">
+                      Avancement
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={formData.avancement || 0}
+                        onChange={e => setFormData({ ...formData, avancement: parseInt(e.target.value) })}
+                        className="flex-1 h-2 bg-primary-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      />
+                      <span className={`text-lg font-bold ${theme.text} min-w-[3rem] text-right`}>
+                        {formData.avancement || 0}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2.5 bg-primary-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-300`}
+                        style={{ width: `${formData.avancement || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {type === 'risque' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-primary-700 mb-1.5">
+                        Probabilité (1-5)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={formData.probabilite || 1}
+                        onChange={e => setFormData({
+                          ...formData,
+                          probabilite: parseInt(e.target.value),
+                          score: parseInt(e.target.value) * (formData.impact || 1)
+                        })}
+                        className={`w-full px-4 py-2.5 border border-primary-200 rounded-lg bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all text-primary-900`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-primary-700 mb-1.5">
+                        Impact (1-5)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={formData.impact || 1}
+                        onChange={e => setFormData({
+                          ...formData,
+                          impact: parseInt(e.target.value),
+                          score: (formData.probabilite || 1) * parseInt(e.target.value)
+                        })}
+                        className={`w-full px-4 py-2.5 border border-primary-200 rounded-lg bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all text-primary-900`}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
-            )}
+
+              {type === 'risque' && (
+                <div className="flex items-center justify-between p-4 bg-primary-50 rounded-xl border border-primary-100">
+                  <span className="text-sm font-medium text-primary-600">Score de risque</span>
+                  <span
+                    className={`text-2xl font-bold px-4 py-1 rounded-lg ${
+                      (formData.score || 0) >= 12
+                        ? 'text-error-700 bg-error-100'
+                        : (formData.score || 0) >= 6
+                        ? 'text-warning-700 bg-warning-100'
+                        : 'text-success-700 bg-success-100'
+                    }`}
+                  >
+                    {formData.score || 0}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Description/Notes */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary-600" />
-              Notes de mise a jour
-            </h3>
-            <textarea
-              value={formData.notes_mise_a_jour || ''}
-              onChange={e => setFormData({ ...formData, notes_mise_a_jour: e.target.value })}
-              placeholder="Ajoutez vos notes, observations ou informations supplementaires..."
-              className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-            />
+          <div className="bg-white rounded-xl border border-primary-200 shadow-sm overflow-hidden">
+            <div className={`px-5 py-3 ${theme.light} border-b ${theme.border}`}>
+              <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                <FileText className={`h-5 w-5 ${theme.text}`} />
+                Notes de mise à jour
+              </h3>
+            </div>
+            <div className="p-5">
+              <textarea
+                value={formData.notes_mise_a_jour || ''}
+                onChange={e => setFormData({ ...formData, notes_mise_a_jour: e.target.value })}
+                placeholder="Ajoutez vos notes, observations ou informations supplémentaires..."
+                className={`w-full h-32 px-4 py-3 border border-primary-200 rounded-lg bg-white focus:ring-2 ${theme.ring} focus:border-transparent resize-none transition-all text-primary-900 placeholder:text-primary-400`}
+              />
+            </div>
           </div>
 
           {/* Documents & Links */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <LinkIcon className="h-5 w-5 text-primary-600" />
+          <div className="bg-white rounded-xl border border-primary-200 shadow-sm overflow-hidden">
+            <div className={`px-5 py-3 ${theme.light} border-b ${theme.border} flex items-center justify-between`}>
+              <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                <LinkIcon className={`h-5 w-5 ${theme.text}`} />
                 Documents et liens
               </h3>
               <button
                 onClick={() => setShowAddLink(true)}
-                className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
+                className={`flex items-center gap-1.5 text-sm font-medium ${theme.text} hover:opacity-80 transition-opacity`}
               >
                 <Plus className="h-4 w-4" />
                 Ajouter
               </button>
             </div>
 
-            {showAddLink && (
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
-                <input
-                  type="text"
-                  placeholder="Titre du lien"
-                  value={linkTitle}
-                  onChange={e => setLinkTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-                <input
-                  type="url"
-                  placeholder="URL (https://...)"
-                  value={linkUrl}
-                  onChange={e => setLinkUrl(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddLink}
-                    disabled={!linkTitle || !linkUrl}
-                    className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    Ajouter
-                  </button>
-                  <button
-                    onClick={() => setShowAddLink(false)}
-                    className="px-3 py-1.5 text-gray-600 text-sm hover:text-gray-800"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {newLinks.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
-                Aucun document ou lien ajoute
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {newLinks.map(link => (
-                  <div
-                    key={link.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      {link.title}
-                    </a>
+            <div className="p-5">
+              {showAddLink && (
+                <div className="mb-4 p-4 bg-primary-50 rounded-xl border border-primary-100 space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Titre du lien"
+                    value={linkTitle}
+                    onChange={e => setLinkTitle(e.target.value)}
+                    className={`w-full px-3 py-2.5 border border-primary-200 rounded-lg text-sm bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all`}
+                  />
+                  <input
+                    type="url"
+                    placeholder="URL (https://...)"
+                    value={linkUrl}
+                    onChange={e => setLinkUrl(e.target.value)}
+                    className={`w-full px-3 py-2.5 border border-primary-200 rounded-lg text-sm bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all`}
+                  />
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleRemoveLink(link.id)}
-                      className="text-gray-400 hover:text-red-500"
+                      onClick={handleAddLink}
+                      disabled={!linkTitle || !linkUrl}
+                      className={`px-4 py-2 bg-gradient-to-r ${theme.gradient} text-white text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-all`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Ajouter
+                    </button>
+                    <button
+                      onClick={() => setShowAddLink(false)}
+                      className="px-4 py-2 text-primary-600 text-sm font-medium hover:text-primary-800 transition-colors"
+                    >
+                      Annuler
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
+
+              {newLinks.length === 0 ? (
+                <div className="text-center py-8">
+                  <LinkIcon className="h-10 w-10 text-primary-300 mx-auto mb-2" />
+                  <p className="text-sm text-primary-500">Aucun document ou lien ajouté</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {newLinks.map(link => (
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between p-3 bg-primary-50 rounded-lg border border-primary-100 hover:border-primary-200 transition-colors"
+                    >
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 text-sm font-medium ${theme.text} hover:opacity-80 transition-opacity`}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        {link.title}
+                      </a>
+                      <button
+                        onClick={() => handleRemoveLink(link.id)}
+                        className="p-1.5 text-primary-400 hover:text-error-500 hover:bg-error-50 rounded-lg transition-all"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Comments */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary-600" />
-              Commentaires
-            </h3>
-
-            <div className="space-y-3 mb-4">
-              {comments.map(comment => (
-                <div key={comment.id} className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-800">{comment.text}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(comment.createdAt).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-              ))}
+          <div className="bg-white rounded-xl border border-primary-200 shadow-sm overflow-hidden">
+            <div className={`px-5 py-3 ${theme.light} border-b ${theme.border}`}>
+              <h3 className="font-semibold text-primary-900 flex items-center gap-2">
+                <MessageSquare className={`h-5 w-5 ${theme.text}`} />
+                Commentaires
+              </h3>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Ajouter un commentaire..."
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && handleAddComment()}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
-              />
-              <button
-                onClick={handleAddComment}
-                disabled={!newComment.trim()}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+            <div className="p-5">
+              {comments.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {comments.map(comment => (
+                    <div key={comment.id} className="p-4 bg-primary-50 rounded-xl border border-primary-100">
+                      <p className="text-sm text-primary-800 leading-relaxed">{comment.text}</p>
+                      <p className="text-xs text-primary-400 mt-2">
+                        {new Date(comment.createdAt).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ajouter un commentaire..."
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && handleAddComment()}
+                  className={`flex-1 px-4 py-2.5 border border-primary-200 rounded-lg text-sm bg-white focus:ring-2 ${theme.ring} focus:border-transparent transition-all placeholder:text-primary-400`}
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className={`px-4 py-2.5 bg-gradient-to-r ${theme.gradient} text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-all`}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -670,7 +748,7 @@ export function ExternalUpdatePage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className={`w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 bg-gradient-to-r ${getEntityColor()} hover:opacity-90 transition-opacity disabled:opacity-50`}
+            className={`w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-3 bg-gradient-to-r ${theme.gradient} hover:opacity-90 transition-all disabled:opacity-50 shadow-lg hover:shadow-xl`}
           >
             {saving ? (
               <>
@@ -685,21 +763,18 @@ export function ExternalUpdatePage() {
             )}
           </button>
 
-          <p className="text-center text-sm text-gray-500">
-            Les modifications seront automatiquement synchronisees avec le Cockpit COSMOS ANGRE
-          </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-primary-500 bg-info-50 border border-info-200 rounded-xl px-4 py-3">
+            <span className="text-info-700">Les modifications seront automatiquement synchronisées avec le Cockpit</span>
+          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-sm text-gray-500 border-t bg-white">
-        <p
-          className="text-xl text-indigo-600 mb-1"
-          style={{ fontFamily: "'Grand Hotel', cursive" }}
-        >
-          COSMOS ANGRE Cockpit
+      <footer className="py-8 text-center border-t border-primary-200 bg-white">
+        <p className="text-2xl text-indigo-600 mb-2" style={{ fontFamily: "'Grand Hotel', cursive" }}>
+          Cockpit
         </p>
-        <p>Application de pilotage de projet</p>
+        <p className="text-sm text-primary-500">Application de pilotage de projet</p>
       </footer>
     </div>
   );

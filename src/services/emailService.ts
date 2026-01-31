@@ -790,31 +790,40 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           </div>
         </div>
 
-        <div class="cta-section">
-          <p class="cta-text">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
-          <a href="{{update_link}}" class="btn">Mettre a jour le jalon</a>
+        <div class="cta-section" style="text-align: center; padding: 30px 0;">
+          <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+            <tr>
+              <td style="border-radius: 10px; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); box-shadow: 0 4px 14px 0 rgba(22, 163, 74, 0.39);">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px;">Mettre a jour le jalon</a>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <div class="warning-box">
-          <span class="warning-icon"></span>
-          <span class="warning-text"><strong>Important :</strong> Ce lien expire le <strong>{{expiration_date}}</strong></span>
+        <div class="warning-box" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #f59e0b;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="color: #92400e; font-size: 14px;"><strong style="color: #78350f;">Important :</strong> Ce lien expire le <strong style="color: #78350f;">{{expiration_date}}</strong></td>
+            </tr>
+          </table>
         </div>
 
-        <div class="signature">
-          <p class="signature-text">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
-          <p class="signature-text">Cordialement,</p>
-          <p class="signature-name">L'equipe COSMOS ANGRE</p>
+        <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #dcfce7;">
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
 
-          <div class="contact-info">
-            <div class="contact-label">Votre contact</div>
-            <div class="contact-name">Pamela ATOKOUNA</div>
-            <div class="contact-role">Coordinatrice de projet</div>
+          <div style="margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px;">
+            <div style="font-size: 12px; color: #166534; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
+            <div style="font-weight: 600; color: #14532d; font-size: 15px;">Pamela ATOKOUNA</div>
+            <div style="color: #166534; font-size: 13px;">Coordinatrice de projet</div>
           </div>
         </div>
       </div>
-      <div class="footer">
-        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
-        <p class="footer-note">Merci de ne pas repondre directement a cet email.</p>
+      <div class="footer" style="background: #14532d; padding: 30px; text-align: center;">
+        <p style="color: #86efac; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #4ade80; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
   </div>
@@ -918,31 +927,40 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           </div>
         </div>
 
-        <div class="cta-section">
-          <p class="cta-text">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
-          <a href="{{update_link}}" class="btn">Mettre a jour le risque</a>
+        <div class="cta-section" style="text-align: center; padding: 30px 0;">
+          <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+            <tr>
+              <td style="border-radius: 10px; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.39);">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px;">Mettre a jour le risque</a>
+              </td>
+            </tr>
+          </table>
         </div>
 
-        <div class="warning-box">
-          <span class="warning-icon"></span>
-          <span class="warning-text"><strong>Important :</strong> Ce lien expire le <strong>{{expiration_date}}</strong></span>
+        <div class="warning-box" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #f59e0b;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="color: #92400e; font-size: 14px;"><strong style="color: #78350f;">Important :</strong> Ce lien expire le <strong style="color: #78350f;">{{expiration_date}}</strong></td>
+            </tr>
+          </table>
         </div>
 
-        <div class="signature">
-          <p class="signature-text">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
-          <p class="signature-text">Cordialement,</p>
-          <p class="signature-name">L'equipe COSMOS ANGRE</p>
+        <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #fee2e2;">
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
 
-          <div class="contact-info">
-            <div class="contact-label">Votre contact</div>
-            <div class="contact-name">Pamela ATOKOUNA</div>
-            <div class="contact-role">Coordinatrice de projet</div>
+          <div style="margin-top: 16px; padding: 16px; background: #fef2f2; border-radius: 8px;">
+            <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
+            <div style="font-weight: 600; color: #7f1d1d; font-size: 15px;">Pamela ATOKOUNA</div>
+            <div style="color: #991b1b; font-size: 13px;">Coordinatrice de projet</div>
           </div>
         </div>
       </div>
-      <div class="footer">
-        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
-        <p class="footer-note">Merci de ne pas repondre directement a cet email.</p>
+      <div class="footer" style="background: #7f1d1d; padding: 30px; text-align: center;">
+        <p style="color: #fca5a5; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #f87171; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
   </div>
