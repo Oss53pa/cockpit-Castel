@@ -15,13 +15,13 @@ import {
   RapportsPage,
   SettingsPage,
   SharedReportPage,
-  ExternalUpdatePage,
+  ExternalUpdateRouter,
   SynchronisationPage,
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { initializeDatabase } from '@/lib/initDatabase';
-import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite } from '@/hooks';
+import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite, useFirebaseRealtimeSync } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
 import { ToastProvider } from '@/components/ui/toast';
 
@@ -107,7 +107,7 @@ function AppContent() {
         <Route path="/reports/share/:shareId" element={<SharedReportPage />} />
 
         {/* External Update Page - Standalone without layout (public) */}
-        <Route path="/update/:type/:token" element={<ExternalUpdatePage />} />
+        <Route path="/update/:type/:token" element={<ExternalUpdateRouter />} />
 
         {/* Main App with Layout (protected) */}
         <Route
@@ -132,8 +132,26 @@ function AppContent() {
 
       {/* Proph3t AI Assistant - seulement si connecté */}
       {isAuthenticated && <ProphetChat />}
+
+      {/* Firebase Realtime Sync - seulement si connecté */}
+      {isAuthenticated && <FirebaseRealtimeSyncInitializer />}
     </>
   );
+}
+
+// Composant pour initialiser la synchronisation Firebase temps réel
+function FirebaseRealtimeSyncInitializer() {
+  const { isConnected, isListening } = useFirebaseRealtimeSync();
+
+  // Ce composant n'affiche rien, il initialise juste le hook
+  // Les notifications sont gérées par le hook via useToast
+  useEffect(() => {
+    if (isConnected && isListening) {
+      console.log('Firebase realtime sync active');
+    }
+  }, [isConnected, isListening]);
+
+  return null;
 }
 
 export default function App() {

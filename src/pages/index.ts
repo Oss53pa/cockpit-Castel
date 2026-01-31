@@ -10,5 +10,7 @@ export * from './RapportsPage';
 export * from './SettingsPage';
 export * from './SharedReportPage';
 export * from './ExternalUpdatePage';
+export * from './ExternalUpdateFirebasePage';
+export * from './ExternalUpdateRouter';
 export * from './JournalPage';
 export * from './SynchronisationPage';

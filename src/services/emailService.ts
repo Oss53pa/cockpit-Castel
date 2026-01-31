@@ -12,6 +12,15 @@
 import { db, type UpdateLink, type EmailNotification, type EmailTemplate } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
 import emailjs from '@emailjs/browser';
+import {
+  createUpdateLinkInFirebase,
+  markLinkAccessedInFirebase,
+  isFirebaseConfigured,
+  getFirebaseConfig,
+} from './firebaseConfigService';
+import {
+  createUpdateLinkInFirebase as createRealtimeLink,
+} from './firebaseRealtimeSync';
 
 // ============================================
 // TYPES
@@ -288,7 +297,8 @@ export async function createUpdateLink(
   entityId: number,
   recipientEmail: string,
   recipientName: string,
-  durationHours?: number
+  durationHours?: number,
+  entity?: Action | Jalon | Risque
 ): Promise<UpdateLink> {
   const config = getEmailConfig();
   const duration = durationHours || config.defaultLinkDuration;
@@ -308,11 +318,33 @@ export async function createUpdateLink(
     isExpired: false,
   };
 
+  // Sauvegarder localement (IndexedDB) pour compatibilité
   const id = await db.updateLinks.add(link);
+
+  // Sauvegarder dans Firebase si configuré (pour synchronisation temps réel)
+  const firebaseConfig = getFirebaseConfig();
+  if (firebaseConfig.enabled && isFirebaseConfigured() && entity) {
+    try {
+      await createRealtimeLink(
+        link.token,
+        entityType,
+        entityId,
+        entity,
+        recipientEmail,
+        recipientName,
+        expiresAt.toISOString()
+      );
+      console.log('Lien sauvegardé dans Firebase (temps réel):', link.token);
+    } catch (error) {
+      console.error('Erreur Firebase (fallback sur IndexedDB):', error);
+    }
+  }
+
   return { ...link, id };
 }
 
 export async function getUpdateLink(token: string): Promise<UpdateLink | null> {
+  // Récupérer depuis IndexedDB local
   const link = await db.updateLinks.where('token').equals(token).first();
   if (!link) return null;
 
@@ -337,6 +369,7 @@ export async function getUpdateLink(token: string): Promise<UpdateLink | null> {
 }
 
 export async function markLinkAccessed(token: string): Promise<void> {
+  // Mettre à jour dans IndexedDB local
   const link = await db.updateLinks.where('token').equals(token).first();
   if (link && !link.accessedAt) {
     await db.updateLinks.update(link.id!, {
@@ -355,6 +388,7 @@ export async function markLinkAccessed(token: string): Promise<void> {
 }
 
 export async function markLinkUpdated(token: string): Promise<void> {
+  // Mettre à jour dans IndexedDB local
   const link = await db.updateLinks.where('token').equals(token).first();
   if (link) {
     await db.updateLinks.update(link.id!, {
@@ -1059,8 +1093,8 @@ export async function sendReminderEmail(
 ): Promise<{ link: UpdateLink; emailResult: EmailResult }> {
   const config = getEmailConfig();
 
-  // Create update link
-  const link = await createUpdateLink(entityType, entityId, recipientEmail, recipientName, durationHours);
+  // Create update link (avec données de l'entité pour Firebase)
+  const link = await createUpdateLink(entityType, entityId, recipientEmail, recipientName, durationHours, entity);
 
   // Get template
   const template = await getTemplateByType(entityType);
@@ -1068,8 +1102,9 @@ export async function sendReminderEmail(
     throw new Error(`Aucun template trouvé pour ${entityType}`);
   }
 
-  // Build update URL
-  const updateUrl = `${config.baseUrl}/update/${entityType}/${link.token}`;
+  // Build update URL - s'assurer que baseUrl est toujours défini
+  const baseUrl = config.baseUrl || window.location.origin;
+  const updateUrl = `${baseUrl}/update/${entityType}/${link.token}`;
 
   // Replace placeholders in template
   let html = template.bodyHtml;
@@ -1098,7 +1133,10 @@ export async function sendReminderEmail(
     replacements.jalon_titre = entity.titre || '';
     replacements.jalon_statut = entity.statut || '';
     replacements.jalon_date = entity.date_prevue || '';
-    replacements.jalon_livrables = entity.livrables || '';
+    // Formater les livrables en liste de noms (évite [object Object])
+    replacements.jalon_livrables = Array.isArray(entity.livrables) && entity.livrables.length > 0
+      ? entity.livrables.map((l: { nom: string }) => l.nom).join(', ')
+      : 'Aucun livrable défini';
   } else if (entityType === 'risque') {
     replacements.risque_titre = entity.titre || '';
     replacements.risque_categorie = entity.categorie || '';
@@ -1212,7 +1250,8 @@ export function getSentEmails(): SentEmail[] {
 
 export function getUpdateLinkUrl(token: string, entityType: 'action' | 'jalon' | 'risque'): string {
   const config = getEmailConfig();
-  return `${config.baseUrl}/update/${entityType}/${token}`;
+  const baseUrl = config.baseUrl || window.location.origin;
+  return `${baseUrl}/update/${entityType}/${token}`;
 }
 
 export function copyLinkToClipboard(token: string, entityType: 'action' | 'jalon' | 'risque'): void {

@@ -19,3 +19,4 @@ export * from './useDeepDives';
 export * from './useInterdependency';
 export * from './useSeedData';
 export * from './useSousTachesPreuvesNotes';
+export * from './useFirebaseRealtimeSync';

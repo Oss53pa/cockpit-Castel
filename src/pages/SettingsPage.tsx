@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
 import { generateAlertesAutomatiques } from '@/hooks';
@@ -14,14 +14,33 @@ import { SharePointSync } from '@/components/settings/SharePointSync';
 import { SiteManagement } from '@/components/settings/SiteManagement';
 import { BackupManagement } from '@/components/settings/BackupManagement';
 import { DataInitialization } from '@/components/settings/DataInitialization';
+import { FirebaseSyncSettings } from '@/components/settings/FirebaseSyncSettings';
+
+const SETTINGS_PASSWORD = 'Atokp0879*';
 
 export function SettingsPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('settings_authenticated') === 'true';
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params for tab
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'sites';
   });
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === SETTINGS_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('settings_authenticated', 'true');
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+    }
+  };
 
   const handleClearDatabase = async () => {
     if (
@@ -72,6 +91,50 @@ export function SettingsPage() {
     }
   };
 
+  // Password protection screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Card padding="lg" className="w-full max-w-md">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mb-4">
+              <Lock className="h-8 w-8 text-primary-600" />
+            </div>
+            <h2 className="text-xl font-bold text-primary-900">Accès protégé</h2>
+            <p className="text-sm text-primary-500 mt-1">
+              Entrez le mot de passe pour accéder aux paramètres
+            </p>
+          </div>
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => {
+                  setPasswordInput(e.target.value);
+                  setPasswordError(false);
+                }}
+                placeholder="Mot de passe"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  passwordError ? 'border-error-500 bg-error-50' : 'border-primary-200'
+                }`}
+                autoFocus
+              />
+              {passwordError && (
+                <p className="text-error-600 text-sm mt-2">Mot de passe incorrect</p>
+              )}
+            </div>
+            <Button type="submit" className="w-full">
+              <Lock className="h-4 w-4 mr-2" />
+              Accéder aux paramètres
+            </Button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -121,6 +184,10 @@ export function SettingsPage() {
           <TabsTrigger value="email" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Emails
+          </TabsTrigger>
+          <TabsTrigger value="firebase" className="flex items-center gap-2">
+            <Flame className="h-4 w-4" />
+            Firebase
           </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -174,6 +241,11 @@ export function SettingsPage() {
         {/* Email Tab */}
         <TabsContent value="email">
           <EmailSettings />
+        </TabsContent>
+
+        {/* Firebase Tab */}
+        <TabsContent value="firebase">
+          <FirebaseSyncSettings />
         </TabsContent>
 
         {/* Data Tab */}
