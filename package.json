@@ -25,6 +25,7 @@
     "dexie-react-hooks": "^4.2.0",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "firebase": "^12.8.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "jszip": "^3.10.1",

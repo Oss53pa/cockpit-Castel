@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/db';
 import { getUpdateLink, markLinkAccessed, markLinkUpdated } from '@/services/emailService';
+import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase';
 import type { UpdateLink } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
 
@@ -67,8 +68,9 @@ export function ExternalUpdatePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [link, setLink] = useState<UpdateLink | null>(null);
+  const [link, setLink] = useState<(UpdateLink & { entityData?: FirebaseUpdateLink['entityData'] }) | null>(null);
   const [entity, setEntity] = useState<ExtendedEntity | null>(null);
+  const [isFirebaseMode, setIsFirebaseMode] = useState(false); // Mode Firebase (données depuis le cloud)
 
   // Form state
   const [formData, setFormData] = useState<FormDataType>({});
@@ -120,7 +122,7 @@ export function ExternalUpdatePage() {
       // Mark as accessed
       await markLinkAccessed(token);
 
-      // Load entity
+      // Load entity - d'abord essayer IndexedDB local, sinon utiliser les données Firebase
       let entityData: ExtendedEntity | undefined = undefined;
 
       if (type === 'action') {
@@ -131,8 +133,28 @@ export function ExternalUpdatePage() {
         entityData = await db.risques.get(updateLink.entityId);
       }
 
+      // Si entité non trouvée localement, utiliser les données Firebase
+      if (!entityData && updateLink.entityData) {
+        console.log('Utilisation des données Firebase pour afficher le formulaire');
+        setIsFirebaseMode(true);
+
+        // Créer une entité virtuelle depuis les données Firebase
+        entityData = {
+          id: updateLink.entityId,
+          titre: updateLink.entityData.titre || 'Sans titre',
+          statut: updateLink.entityData.statut || '',
+          date_prevue: updateLink.entityData.date_prevue,
+          date_fin_prevue: updateLink.entityData.date_fin_prevue,
+          avancement: updateLink.entityData.avancement,
+          categorie: updateLink.entityData.categorie,
+          score: updateLink.entityData.score,
+          probabilite: updateLink.entityData.probabilite,
+          impact: updateLink.entityData.impact,
+        } as ExtendedEntity;
+      }
+
       if (!entityData) {
-        setError('Entite non trouvee.');
+        setError('Entite non trouvee. Les donnees n\'ont pas pu etre chargees.');
         setLoading(false);
         return;
       }
@@ -212,41 +234,67 @@ export function ExternalUpdatePage() {
         derniere_mise_a_jour_externe: new Date().toISOString(),
       };
 
-      if (type === 'action') {
-        await db.actions.update(link.entityId, updateData);
-      } else if (type === 'jalon') {
-        await db.jalons.update(link.entityId, updateData);
-      } else if (type === 'risque') {
-        await db.risques.update(link.entityId, updateData);
+      // TOUJOURS sauvegarder dans Firebase pour synchronisation
+      await saveExternalUpdate({
+        token: token!,
+        entityType: type,
+        entityId: link.entityId,
+        recipientEmail: link.recipientEmail,
+        recipientName: link.recipientName,
+        createdAt: new Date().toISOString(),
+        updates: {
+          statut: formData.statut,
+          avancement: formData.avancement,
+          probabilite: formData.probabilite,
+          impact: formData.impact,
+          score: formData.score,
+          notes_mise_a_jour: formData.notes_mise_a_jour,
+          liens_documents: JSON.stringify(newLinks),
+          commentaires_externes: JSON.stringify(comments),
+        },
+        isSynced: false,
+      });
+
+      console.log('Mise à jour sauvegardée dans Firebase');
+
+      // Si on a accès à IndexedDB local, mettre aussi à jour localement
+      if (!isFirebaseMode) {
+        if (type === 'action') {
+          await db.actions.update(link.entityId, updateData);
+        } else if (type === 'jalon') {
+          await db.jalons.update(link.entityId, updateData);
+        } else if (type === 'risque') {
+          await db.risques.update(link.entityId, updateData);
+        }
+
+        // Add to history
+        await db.historique.add({
+          timestamp: new Date().toISOString(),
+          entiteType: type,
+          entiteId: link.entityId,
+          champModifie: 'update_externe',
+          ancienneValeur: '',
+          nouvelleValeur: `Mise a jour externe par ${link.recipientName} (${link.recipientEmail})`,
+          auteurId: 0,
+        });
+
+        // Create an alert notification for the team
+        const entityTypeLabel = type === 'action' ? 'Action' : type === 'jalon' ? 'Jalon' : 'Risque';
+        await db.alertes.add({
+          type: 'info' as const,
+          titre: `Mise a jour recue de ${link.recipientName}`,
+          message: `${entityTypeLabel} "${entity?.titre}" a ete mis(e) a jour par ${link.recipientName} (${link.recipientEmail}). Statut: ${formData.statut || 'N/A'}${type === 'action' ? `, Avancement: ${formData.avancement || 0}%` : ''}`,
+          criticite: 'medium',
+          entiteType: type,
+          entiteId: link.entityId,
+          lu: false,
+          traitee: false,
+          createdAt: new Date().toISOString(),
+        });
       }
 
       // Mark link as updated
       await markLinkUpdated(token!);
-
-      // Add to history
-      await db.historique.add({
-        timestamp: new Date().toISOString(),
-        entiteType: type,
-        entiteId: link.entityId,
-        champModifie: 'update_externe',
-        ancienneValeur: '',
-        nouvelleValeur: `Mise a jour externe par ${link.recipientName} (${link.recipientEmail})`,
-        auteurId: 0,
-      });
-
-      // Create an alert notification for the team
-      const entityTypeLabel = type === 'action' ? 'Action' : type === 'jalon' ? 'Jalon' : 'Risque';
-      await db.alertes.add({
-        type: 'info' as const,
-        titre: `Mise a jour recue de ${link.recipientName}`,
-        message: `${entityTypeLabel} "${entity?.titre}" a ete mis(e) a jour par ${link.recipientName} (${link.recipientEmail}). Statut: ${formData.statut || 'N/A'}${type === 'action' ? `, Avancement: ${formData.avancement || 0}%` : ''}`,
-        criticite: 'medium',
-        entiteType: type,
-        entiteId: link.entityId,
-        lu: false,
-        traitee: false,
-        createdAt: new Date().toISOString(),
-      });
 
       setSuccess(true);
     } catch (e) {

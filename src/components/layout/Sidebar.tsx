@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
+import { FirebaseSyncIndicator } from '@/components/shared/FirebaseSyncIndicator';
 
 interface NavItemProps {
   to: string;
@@ -105,6 +106,13 @@ export function Sidebar() {
 
       {/* Bottom section */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-primary-200 p-3">
+        {/* Firebase Sync Indicator */}
+        {!sidebarCollapsed && (
+          <div className="mb-3">
+            <FirebaseSyncIndicator />
+          </div>
+        )}
+
         <NavItem
           to="/settings"
           icon={<Settings className="h-5 w-5" />}
