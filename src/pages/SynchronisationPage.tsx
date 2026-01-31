@@ -27,8 +27,9 @@ import {
   GitBranch,
   AlertCircle,
   Layers,
+  CalendarRange,
 } from 'lucide-react';
-import { SyncDashboard } from '@/components/sync';
+import { SyncDashboard, ConstructionCCView, TimelineSynchronisee } from '@/components/sync';
 import { cn } from '@/lib/utils';
 import {
   Card,
@@ -77,6 +78,7 @@ import {
   type Action,
   type PropagationRetard,
 } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 import {
   BarChart,
   Bar,
@@ -173,8 +175,8 @@ function KPICard({
 // ============================================================================
 
 export function SynchronisationPage() {
-  // Mode: 'projet' = nouveau dashboard Projet vs Mobilisation, 'actions' = ancien module liens/propagation
-  const [viewMode, setViewMode] = useState<'projet' | 'actions'>('projet');
+  // Mode: 'projet' = dashboard Projet vs Mobilisation, 'construction' = vue CC, 'timeline' = timeline synchronisée, 'actions' = module liens/propagation
+  const [viewMode, setViewMode] = useState<'projet' | 'construction' | 'timeline' | 'actions'>('projet');
   const [activeTab, setActiveTab] = useState<'overview' | 'liens' | 'propagation' | 'timeline' | 'config'>('overview');
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showPropagationModal, setShowPropagationModal] = useState(false);
@@ -329,6 +331,106 @@ export function SynchronisationPage() {
     }
   };
 
+  // Composant de toggle réutilisable
+  const ViewModeToggle = () => (
+    <div className="flex items-center bg-neutral-100 rounded-lg p-1">
+      <button
+        onClick={() => setViewMode('projet')}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+          viewMode === 'projet'
+            ? 'bg-white shadow text-blue-600'
+            : 'text-neutral-500 hover:text-neutral-700'
+        )}
+      >
+        <Layers className="w-4 h-4" />
+        Projet vs Mobilisation
+      </button>
+      <button
+        onClick={() => setViewMode('construction')}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+          viewMode === 'construction'
+            ? 'bg-white shadow text-red-600'
+            : 'text-neutral-500 hover:text-neutral-700'
+        )}
+      >
+        <Building2 className="w-4 h-4" />
+        Construction CC
+      </button>
+      <button
+        onClick={() => setViewMode('timeline')}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+          viewMode === 'timeline'
+            ? 'bg-white shadow text-indigo-600'
+            : 'text-neutral-500 hover:text-neutral-700'
+        )}
+      >
+        <CalendarRange className="w-4 h-4" />
+        Timeline 2026
+      </button>
+      <button
+        onClick={() => setViewMode('actions')}
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+          viewMode === 'actions'
+            ? 'bg-white shadow text-blue-600'
+            : 'text-neutral-500 hover:text-neutral-700'
+        )}
+      >
+        <Link2 className="w-4 h-4" />
+        Liens Actions
+      </button>
+    </div>
+  );
+
+  // Si mode "construction", afficher la vue Centre Commercial
+  if (viewMode === 'construction') {
+    return (
+      <div className="space-y-6">
+        {/* Header avec toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900">
+              Construction — Centre Commercial
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1">
+              Avancement des phases du CC et déclenchements vers la Mobilisation
+            </p>
+          </div>
+          <ViewModeToggle />
+        </div>
+
+        {/* Vue Construction CC */}
+        <ConstructionCCView />
+      </div>
+    );
+  }
+
+  // Si mode "timeline", afficher la Timeline Synchronisée 2026
+  if (viewMode === 'timeline') {
+    return (
+      <div className="space-y-6">
+        {/* Header avec toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900">
+              Timeline Synchronisée 2026
+            </h2>
+            <p className="text-sm text-neutral-500 mt-1">
+              Vue consolidée Construction + Mobilisation avec jalons critiques
+            </p>
+          </div>
+          <ViewModeToggle />
+        </div>
+
+        {/* Timeline Synchronisée */}
+        <TimelineSynchronisee />
+      </div>
+    );
+  }
+
   // Si mode "projet", afficher le nouveau SyncDashboard
   if (viewMode === 'projet') {
     return (
@@ -343,39 +445,11 @@ export function SynchronisationPage() {
               Suivez l'alignement entre l'avancement du projet de construction et la mobilisation opérationnelle
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Toggle entre les deux modes */}
-            <div className="flex items-center bg-neutral-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('projet')}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                  viewMode === 'projet'
-                    ? 'bg-white shadow text-blue-600'
-                    : 'text-neutral-500 hover:text-neutral-700'
-                )}
-              >
-                <Layers className="w-4 h-4" />
-                Projet vs Mobilisation
-              </button>
-              <button
-                onClick={() => setViewMode('actions')}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                  viewMode === 'actions'
-                    ? 'bg-white shadow text-blue-600'
-                    : 'text-neutral-500 hover:text-neutral-700'
-                )}
-              >
-                <Link2 className="w-4 h-4" />
-                Liens Actions
-              </button>
-            </div>
-          </div>
+          <ViewModeToggle />
         </div>
 
         {/* Nouveau SyncDashboard */}
-        <SyncDashboard projectId="cosmos-angre" />
+        <SyncDashboard projectId={PROJET_CONFIG.projectId} />
       </div>
     );
   }
@@ -394,33 +468,7 @@ export function SynchronisationPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Toggle entre les deux modes */}
-          <div className="flex items-center bg-neutral-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('projet')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                viewMode === 'projet'
-                  ? 'bg-white shadow text-blue-600'
-                  : 'text-neutral-500 hover:text-neutral-700'
-              )}
-            >
-              <Layers className="w-4 h-4" />
-              Projet vs Mobilisation
-            </button>
-            <button
-              onClick={() => setViewMode('actions')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
-                viewMode === 'actions'
-                  ? 'bg-white shadow text-blue-600'
-                  : 'text-neutral-500 hover:text-neutral-700'
-              )}
-            >
-              <Link2 className="w-4 h-4" />
-              Liens Actions
-            </button>
-          </div>
+          <ViewModeToggle />
           <SyncStatusBadge status={metrics.sync_status} size="lg" />
         </div>
       </div>
