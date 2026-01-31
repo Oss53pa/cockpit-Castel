@@ -6,6 +6,7 @@ import { ProphetChat } from '@/components/prophet';
 import {
   LoginPage,
   DashboardPage,
+  AxesPage,
   ActionsPage,
   JalonsPage,
   BudgetPage,
@@ -19,8 +20,10 @@ import {
 } from '@/pages';
 import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
+import { initializeDatabase } from '@/lib/initDatabase';
 import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
+import { ToastProvider } from '@/components/ui/toast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,7 +54,17 @@ function AppContent() {
       try {
         // Initialize default site if none exists
         await initializeDefaultSite();
+
+        // Initialiser la base avec les données v2.0 (si vide)
+        const initResult = await initializeDatabase();
+        if (initResult.seeded) {
+          console.log('[App] Base de données seedée avec données v2.0:', initResult.result);
+        }
+
+        // Fallback: seed avec cosmosAngre si initializeDatabase n'a pas seedé
+        // (pour compatibilité avec les données existantes)
         await seedDatabase();
+
         // Nettoyer les alertes en double avant d'en generer de nouvelles
         await cleanupDuplicateAlertes();
         await generateAlertesAutomatiques();
@@ -105,8 +118,9 @@ function AppContent() {
           }
         >
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/actions" element={<ActionsPage />} />
+          <Route path="/axes" element={<AxesPage />} />
           <Route path="/jalons" element={<JalonsPage />} />
+          <Route path="/actions" element={<ActionsPage />} />
           <Route path="/synchronisation" element={<SynchronisationPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/risques" element={<RisquesPage />} />
@@ -125,9 +139,11 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

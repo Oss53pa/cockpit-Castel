@@ -23,6 +23,7 @@ import {
   Select,
   SelectOption,
   Label,
+  useToast,
 } from '@/components/ui';
 import { useUsers, useJalons } from '@/hooks';
 import { createAction } from '@/hooks/useActions';
@@ -40,7 +41,7 @@ const quickAddSchema = z.object({
   responsableId: z.number({ required_error: 'Veuillez sélectionner un responsable' }),
   date_fin_prevue: z.string().min(1, 'La date d\'échéance est obligatoire'),
   jalonId: z.number().nullable(),
-  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation']).nullable(),
+  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction'] as const).nullable(),
 });
 
 type QuickAddFormData = z.infer<typeof quickAddSchema>;
@@ -60,6 +61,7 @@ const AXE_PREFIXES: Record<string, string> = {
   'axe4_budget': 'BUD',
   'axe5_marketing': 'MKT',
   'axe6_exploitation': 'EXP',
+  'axe7_construction': 'CON',
 };
 
 export function QuickAddAction({
@@ -71,6 +73,7 @@ export function QuickAddAction({
 }: QuickAddActionProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const toast = useToast();
 
   const users = useUsers();
   const jalons = useJalons();
@@ -258,10 +261,12 @@ export function QuickAddAction({
         source: 'quick_add',
       });
 
+      toast.success('Action creee', `"${data.titre}" a ete ajoutee`);
       onSuccess?.(actionId);
       onClose();
     } catch (error) {
       console.error('Erreur lors de la création rapide:', error);
+      toast.error('Erreur', 'Impossible de creer l\'action');
     } finally {
       setIsSubmitting(false);
     }

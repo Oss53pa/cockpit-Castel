@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Grid3X3, Warehouse, Globe } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
 import { generateAlertesAutomatiques } from '@/hooks';
@@ -11,9 +11,9 @@ import { EmailSettings } from '@/components/settings/EmailSettings';
 import { ProjectSettings } from '@/components/settings/ProjectSettings';
 import { BuildingsSettings } from '@/components/settings/BuildingsSettings';
 import { SharePointSync } from '@/components/settings/SharePointSync';
-import { RACISettings } from '@/components/settings/RACISettings';
 import { SiteManagement } from '@/components/settings/SiteManagement';
 import { BackupManagement } from '@/components/settings/BackupManagement';
+import { DataInitialization } from '@/components/settings/DataInitialization';
 
 export function SettingsPage() {
   const [resetting, setResetting] = useState(false);
@@ -42,13 +42,26 @@ export function SettingsPage() {
   const handleResetDatabase = async () => {
     if (
       confirm(
-        'Attention: Cette action va réinitialiser toutes les données avec les données de démonstration COSMOS ANGRÉ (3 bâtiments, jalons, actions, risques). Toutes vos modifications seront perdues. Continuer ?'
+        'Cette action va COMPLÉTER les données avec les éléments COSMOS ANGRÉ manquants.\n\n' +
+        '✅ Données existantes : CONSERVÉES\n' +
+        '✅ Modifications des collaborateurs : CONSERVÉES\n' +
+        '✅ Imports manuels : CONSERVÉS\n' +
+        '➕ Seuls les éléments manquants seront ajoutés.\n\n' +
+        'Continuer ?'
       )
     ) {
       setResetting(true);
       try {
-        await resetAndSeedDatabase();
-        alert('Données réinitialisées avec succès ! La page va se recharger.');
+        const result = await resetAndSeedDatabase();
+        const message = [
+          '✅ Seed terminé avec succès !\n',
+          `👤 Utilisateurs: ${result.usersCreated} ajoutés, ${result.usersSkipped} déjà existants`,
+          `🎯 Jalons: ${result.jalonsCreated} ajoutés, ${result.jalonsSkipped} déjà existants`,
+          `📋 Actions: ${result.actionsCreated} ajoutées, ${result.actionsSkipped} déjà existantes`,
+          `💰 Budget: ${result.budgetCreated} ajoutés, ${result.budgetSkipped} déjà existants`,
+          '\nLa page va se recharger.'
+        ].join('\n');
+        alert(message);
         window.location.reload();
       } catch (error) {
         console.error('Reset error:', error);
@@ -76,7 +89,7 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-11 mb-6">
+        <TabsList className="flex flex-wrap gap-1 mb-6">
           <TabsTrigger value="sites" className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
             Sites
@@ -88,10 +101,6 @@ export function SettingsPage() {
           <TabsTrigger value="buildings" className="flex items-center gap-2">
             <Warehouse className="h-4 w-4" />
             Bâtiments
-          </TabsTrigger>
-          <TabsTrigger value="raci" className="flex items-center gap-2">
-            <Grid3X3 className="h-4 w-4" />
-            RACI
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -117,6 +126,10 @@ export function SettingsPage() {
             <Database className="h-4 w-4" />
             Sauvegardes
           </TabsTrigger>
+          <TabsTrigger value="init" className="flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Données v2
+          </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
             Systeme
@@ -136,11 +149,6 @@ export function SettingsPage() {
         {/* Buildings Tab */}
         <TabsContent value="buildings">
           <BuildingsSettings />
-        </TabsContent>
-
-        {/* RACI Tab */}
-        <TabsContent value="raci">
-          <RACISettings />
         </TabsContent>
 
         {/* Users Tab */}
@@ -171,6 +179,11 @@ export function SettingsPage() {
         {/* Data Tab */}
         <TabsContent value="data">
           <BackupManagement />
+        </TabsContent>
+
+        {/* Data Initialization Tab */}
+        <TabsContent value="init">
+          <DataInitialization />
         </TabsContent>
 
         {/* System Tab */}

@@ -8558,10 +8558,22 @@ export async function migrateToV21(): Promise<{ success: boolean; message: strin
   }
 }
 
-export async function resetAndSeedDatabase(): Promise<void> {
-  await db.delete();
-  await db.open();
-  await seedDatabase();
+/**
+ * Seed non-destructif - Ajoute uniquement les données manquantes
+ * N'efface JAMAIS les données existantes (manuelles ou importées)
+ */
+export async function resetAndSeedDatabase(): Promise<{
+  usersCreated: number;
+  usersSkipped: number;
+  jalonsCreated: number;
+  jalonsSkipped: number;
+  actionsCreated: number;
+  actionsSkipped: number;
+  budgetCreated: number;
+  budgetSkipped: number;
+}> {
+  const { seedDatabaseV2 } = await import('./seedDataV2');
+  return seedDatabaseV2();
 }
 
 /**

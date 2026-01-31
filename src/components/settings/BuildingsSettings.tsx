@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2,
   Edit2,
@@ -18,153 +18,204 @@ import {
   CheckCircle,
   Clock,
   Car,
+  LayoutGrid,
+  Table,
+  RefreshCw,
+  Calculator,
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { db } from '@/db';
-import type { Building, BuildingType, BuildingStatus } from '@/types';
+import { useLiveQuery } from 'dexie-react-hooks';
+import type { Building, BuildingType, BuildingStatus, Action, BuildingCode } from '@/types';
 import {
   BUILDING_TYPE_LABELS,
   BUILDING_STATUS_LABELS,
   BUILDING_STATUS_COLORS,
 } from '@/types';
 
-// Données par défaut des 8 bâtiments COSMOS ANGRÉ
+// ============================================================================
+// CALCUL AUTOMATIQUE - Avancement et Statut des bâtiments
+// ============================================================================
+
+interface BuildingProgress {
+  avancement: number;
+  status: BuildingStatus;
+  actionsCount: number;
+  actionsTerminees: number;
+}
+
+/**
+ * Calcule l'avancement et le statut d'un bâtiment à partir de ses actions
+ */
+function calculateBuildingProgress(
+  buildingCode: string,
+  actions: Action[],
+  currentStatus: BuildingStatus,
+  hasReserves: boolean
+): BuildingProgress {
+  // Filtrer les actions liées à ce bâtiment
+  const buildingActions = actions.filter(
+    (a) => a.buildingCode === buildingCode && a.statut !== 'annule'
+  );
+
+  if (buildingActions.length === 0) {
+    return {
+      avancement: 0,
+      status: 'non_demarre',
+      actionsCount: 0,
+      actionsTerminees: 0,
+    };
+  }
+
+  // Calculer l'avancement moyen pondéré
+  const totalAvancement = buildingActions.reduce((sum, a) => sum + a.avancement, 0);
+  const avancement = Math.round(totalAvancement / buildingActions.length);
+  const actionsTerminees = buildingActions.filter((a) => a.statut === 'termine').length;
+
+  // Déterminer le statut automatiquement
+  let status: BuildingStatus;
+  if (avancement === 0) {
+    status = 'non_demarre';
+  } else if (avancement === 100) {
+    status = hasReserves ? 'livre_avec_reserves' : 'livre';
+  } else {
+    status = 'en_cours';
+  }
+
+  // Si déjà en exploitation, ne pas rétrograder
+  if (currentStatus === 'en_exploitation') {
+    status = 'en_exploitation';
+  }
+
+  return {
+    avancement,
+    status,
+    actionsCount: buildingActions.length,
+    actionsTerminees,
+  };
+}
+
+// ============================================================================
+// DONNÉES PAR DÉFAUT - 6 BÂTIMENTS COSMOS ANGRÉ (spécifications v2.0)
+// ============================================================================
+// CC = Centre Commercial (PILOTE - synchronisation avec mobilisation)
+// MKT = Market (hypermarché)
+// BB1, BB2, BB3, BB4 = Big Boxes
+// Total GLA: ~45,000 m²
+// ============================================================================
+
 const DEFAULT_BUILDINGS: Building[] = [
   {
-    id: 'BAT-CC',
+    id: 'BAT-1',
     nom: 'Centre Commercial',
     code: 'CC',
     type: 'centre_commercial',
-    description: 'Mall principal avec boutiques, Food Court et espaces de loisirs. Surface commerciale de ~10,000 m².',
-    niveaux: 2,
-    surface: 10000,
+    description: 'Bâtiment principal R+4 du centre commercial COSMOS ANGRÉ. Comprend les galeries commerciales (100-120 boutiques), le food court, les espaces de loisirs et la terrasse rooftop. Bâtiment PILOTE pour la synchronisation Construction/Mobilisation.',
+    niveaux: 4,
+    surface: 25000,
     status: 'en_cours',
-    dateDebutTravaux: '2024-06-01',
+    dateDebutTravaux: '2024-01-15',
     dateLivraisonPrevue: '2026-09-30',
     avancement: 45,
     reserves: [],
     zones: [
-      { id: 'Z-CC-01', nom: 'Supermarché', type: 'supermarche', surface: 3000, niveau: 0, status: 'livre_avec_reserves', locataire: 'Carrefour' },
-      { id: 'Z-CC-02', nom: 'Galerie RDC', type: 'boutique', surface: 2500, niveau: 0, status: 'en_cours' },
-      { id: 'Z-CC-03', nom: 'Galerie R+1', type: 'boutique', surface: 2500, niveau: 1, status: 'en_cours' },
-      { id: 'Z-CC-04', nom: 'Food Court', type: 'restauration', surface: 1500, niveau: 2, status: 'non_demarre' },
-      { id: 'Z-CC-05', nom: 'Loisirs', type: 'loisirs', surface: 500, niveau: 2, status: 'non_demarre' },
+      { id: 'Z-CC-01', nom: 'Galerie RDC', type: 'boutique', surface: 6000, niveau: 0, status: 'en_cours' },
+      { id: 'Z-CC-02', nom: 'Galerie R+1', type: 'boutique', surface: 5500, niveau: 1, status: 'en_cours' },
+      { id: 'Z-CC-03', nom: 'Galerie R+2', type: 'boutique', surface: 5000, niveau: 2, status: 'non_demarre' },
+      { id: 'Z-CC-04', nom: 'Food Court', type: 'restauration', surface: 3000, niveau: 3, status: 'non_demarre' },
+      { id: 'Z-CC-05', nom: 'Espace Loisirs', type: 'loisirs', surface: 3500, niveau: 3, status: 'non_demarre' },
+      { id: 'Z-CC-06', nom: 'Terrasse Rooftop', type: 'commun', surface: 2000, niveau: 4, status: 'non_demarre' },
     ],
   },
   {
-    id: 'BAT-BB1',
-    nom: 'Big Box 1',
-    code: 'BB1',
+    id: 'BAT-2',
+    nom: 'Market',
+    code: 'MKT',
     type: 'big_box',
-    description: 'Grande surface alimentaire (~1,500 m²).',
-    niveaux: 0,
-    surface: 1500,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-BB1-01', nom: 'Cellule Principale', type: 'supermarche', surface: 1500, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-BB2',
-    nom: 'Big Box 2',
-    code: 'BB2',
-    type: 'big_box',
-    description: 'Ameublement / Décoration (~1,500 m²).',
-    niveaux: 0,
-    surface: 1500,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-BB2-01', nom: 'Cellule Principale', type: 'boutique', surface: 1500, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-BB3',
-    nom: 'Big Box 3',
-    code: 'BB3',
-    type: 'big_box',
-    description: 'Électronique / High-Tech (~1,500 m²).',
-    niveaux: 0,
-    surface: 1500,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-BB3-01', nom: 'Cellule Principale', type: 'boutique', surface: 1500, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-BB4',
-    nom: 'Big Box 4',
-    code: 'BB4',
-    type: 'big_box',
-    description: 'Sport / Loisirs (~1,500 m²).',
-    niveaux: 0,
-    surface: 1500,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-BB4-01', nom: 'Cellule Principale', type: 'boutique', surface: 1500, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-ZE',
-    nom: 'Zone Expo',
-    code: 'ZE',
-    type: 'zone_exposition',
-    description: 'Espace événementiel (~800 m²).',
-    niveaux: 0,
-    surface: 800,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-ZE-01', nom: 'Hall Principal', type: 'exposition', surface: 600, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-ZE-02', nom: 'Espace Technique', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-MA',
-    nom: 'Marché Artisanal',
-    code: 'MA',
-    type: 'autre',
-    description: 'Artisanat local (~600 m²).',
-    niveaux: 0,
-    surface: 600,
-    status: 'non_demarre',
-    dateLivraisonPrevue: '2026-10-15',
-    avancement: 0,
-    reserves: [],
-    zones: [
-      { id: 'Z-MA-01', nom: 'Stands Artisans', type: 'boutique', surface: 450, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-MA-02', nom: 'Espace Démo', type: 'commun', surface: 150, niveau: 0, status: 'non_demarre' },
-    ],
-  },
-  {
-    id: 'BAT-PK',
-    nom: 'Parking',
-    code: 'PK',
-    type: 'parking',
-    description: '523 places de stationnement.',
+    description: 'Hypermarché Carrefour R+1 de 8,000 m². Ancre alimentaire principale du centre commercial avec parking dédié.',
     niveaux: 1,
-    surface: 15000,
+    surface: 8000,
     status: 'en_cours',
-    dateDebutTravaux: '2024-06-01',
+    dateDebutTravaux: '2024-03-01',
     dateLivraisonPrevue: '2026-08-31',
     avancement: 35,
     reserves: [],
     zones: [
-      { id: 'Z-PK-01', nom: 'Parking Surface', type: 'parking', surface: 8000, niveau: 0, status: 'en_cours' },
-      { id: 'Z-PK-02', nom: 'Parking Sous-sol', type: 'parking', surface: 7000, niveau: -1, status: 'en_cours' },
+      { id: 'Z-MKT-01', nom: 'Surface de vente RDC', type: 'supermarche', surface: 5000, niveau: 0, status: 'en_cours', locataire: 'Carrefour' },
+      { id: 'Z-MKT-02', nom: 'Surface de vente R+1', type: 'supermarche', surface: 2500, niveau: 1, status: 'non_demarre', locataire: 'Carrefour' },
+      { id: 'Z-MKT-03', nom: 'Réserves & Logistique', type: 'technique', surface: 500, niveau: 0, status: 'en_cours' },
+    ],
+  },
+  {
+    id: 'BAT-3',
+    nom: 'Big Box 1',
+    code: 'BB1',
+    type: 'big_box',
+    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Ameublement & Décoration.',
+    niveaux: 1,
+    surface: 6000,
+    status: 'non_demarre',
+    dateLivraisonPrevue: '2026-10-15',
+    avancement: 0,
+    reserves: [],
+    zones: [
+      { id: 'Z-BB1-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
+      { id: 'Z-BB1-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
+      { id: 'Z-BB1-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
+    ],
+  },
+  {
+    id: 'BAT-4',
+    nom: 'Big Box 2',
+    code: 'BB2',
+    type: 'big_box',
+    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Électronique & High-Tech.',
+    niveaux: 1,
+    surface: 6000,
+    status: 'non_demarre',
+    dateLivraisonPrevue: '2026-10-15',
+    avancement: 0,
+    reserves: [],
+    zones: [
+      { id: 'Z-BB2-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
+      { id: 'Z-BB2-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
+      { id: 'Z-BB2-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
+    ],
+  },
+  {
+    id: 'BAT-5',
+    nom: 'Big Box 3',
+    code: 'BB3',
+    type: 'big_box',
+    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Sport & Loisirs.',
+    niveaux: 1,
+    surface: 6000,
+    status: 'non_demarre',
+    dateLivraisonPrevue: '2026-10-15',
+    avancement: 0,
+    reserves: [],
+    zones: [
+      { id: 'Z-BB3-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
+      { id: 'Z-BB3-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
+      { id: 'Z-BB3-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
+    ],
+  },
+  {
+    id: 'BAT-6',
+    nom: 'Big Box 4',
+    code: 'BB4',
+    type: 'big_box',
+    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Bricolage & Jardin.',
+    niveaux: 1,
+    surface: 6000,
+    status: 'non_demarre',
+    dateLivraisonPrevue: '2026-10-15',
+    avancement: 0,
+    reserves: [],
+    zones: [
+      { id: 'Z-BB4-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
+      { id: 'Z-BB4-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
+      { id: 'Z-BB4-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
     ],
   },
 ];
@@ -204,10 +255,14 @@ interface BuildingCardProps {
   onToggle: () => void;
   onEdit: (building: Building) => void;
   onDelete: (id: string) => void;
+  onQuickUpdate: (id: string, field: 'avancement' | 'status', value: number | BuildingStatus) => void;
+  progress?: BuildingProgress;
+  autoCalcEnabled?: boolean;
 }
 
-function BuildingCard({ building, isExpanded, onToggle, onEdit, onDelete }: BuildingCardProps) {
+function BuildingCard({ building, isExpanded, onToggle, onEdit, onDelete, onQuickUpdate, progress, autoCalcEnabled }: BuildingCardProps) {
   const statusColor = BUILDING_STATUS_COLORS[building.status] || '#6B7280';
+  const isAutoCalc = autoCalcEnabled && progress && progress.actionsCount > 0;
 
   return (
     <div className="border rounded-lg overflow-hidden bg-white">
@@ -227,6 +282,9 @@ function BuildingCard({ building, isExpanded, onToggle, onEdit, onDelete }: Buil
             <div className="flex items-center gap-2">
               <span className="font-semibold text-primary-900">{building.nom}</span>
               <Badge variant="secondary" className="text-xs">{building.code}</Badge>
+              {building.code === 'CC' && (
+                <Badge variant="info" className="text-xs">PILOTE</Badge>
+              )}
             </div>
             <p className="text-sm text-primary-500">{BUILDING_TYPE_LABELS[building.type]}</p>
           </div>
@@ -245,23 +303,73 @@ function BuildingCard({ building, isExpanded, onToggle, onEdit, onDelete }: Buil
             </div>
           </div>
 
-          {/* Progress */}
-          <div className="flex items-center gap-2">
-            <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${building.avancement}%`, backgroundColor: statusColor }}
-              />
-            </div>
-            <span className="text-sm font-medium" style={{ color: statusColor }}>
-              {building.avancement}%
-            </span>
+          {/* Progress Display */}
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {isAutoCalc ? (
+              <>
+                <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${building.avancement}%`, backgroundColor: statusColor }}
+                  />
+                </div>
+                <span className="text-sm font-medium" style={{ color: statusColor }}>
+                  {building.avancement}%
+                </span>
+                <span
+                  className="text-xs text-gray-500"
+                  title={`${progress.actionsTerminees}/${progress.actionsCount} actions terminées`}
+                >
+                  ({progress.actionsTerminees}/{progress.actionsCount})
+                </span>
+              </>
+            ) : (
+              <>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={building.avancement}
+                  onChange={(e) => onQuickUpdate(building.id, 'avancement', parseInt(e.target.value))}
+                  className="w-16 h-2 accent-primary-500 cursor-pointer"
+                  title="Modifier l'avancement"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={building.avancement}
+                  onChange={(e) => onQuickUpdate(building.id, 'avancement', Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-12 px-1 py-0.5 text-sm text-center border rounded focus:ring-1 focus:ring-primary-500"
+                  style={{ color: statusColor }}
+                />
+                <span className="text-sm" style={{ color: statusColor }}>%</span>
+              </>
+            )}
           </div>
 
-          {/* Status */}
-          <div className="flex items-center gap-1">
-            {getStatusIcon(building.status)}
-            <span className="text-sm text-primary-600">{BUILDING_STATUS_LABELS[building.status]}</span>
+          {/* Status Display */}
+          <div onClick={(e) => e.stopPropagation()}>
+            {isAutoCalc ? (
+              <Badge
+                variant="secondary"
+                className="text-xs"
+                style={{ color: statusColor, backgroundColor: `${statusColor}20` }}
+              >
+                {BUILDING_STATUS_LABELS[building.status]}
+              </Badge>
+            ) : (
+              <select
+                value={building.status}
+                onChange={(e) => onQuickUpdate(building.id, 'status', e.target.value as BuildingStatus)}
+                className="text-sm px-2 py-1 border rounded focus:ring-1 focus:ring-primary-500 cursor-pointer"
+                style={{ color: statusColor }}
+              >
+                {Object.entries(BUILDING_STATUS_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Chevron */}
@@ -525,12 +633,260 @@ function BuildingEditModal({ building, onSave, onClose }: BuildingEditModalProps
   );
 }
 
+// ============================================================================
+// Vue Tableau Compacte
+// ============================================================================
+interface BuildingsTableProps {
+  buildings: Building[];
+  onQuickUpdate: (id: string, field: keyof Building, value: unknown) => void;
+  onEdit: (building: Building) => void;
+  onDelete: (id: string) => void;
+  progressMap?: Record<string, BuildingProgress>;
+  autoCalcEnabled?: boolean;
+}
+
+function BuildingsTable({ buildings, onQuickUpdate, onEdit, onDelete, progressMap, autoCalcEnabled }: BuildingsTableProps) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50 border-b">
+            <th className="text-left p-3 font-medium text-primary-700">Bâtiment</th>
+            <th className="text-left p-3 font-medium text-primary-700">Type</th>
+            <th className="text-right p-3 font-medium text-primary-700">Surface</th>
+            <th className="text-center p-3 font-medium text-primary-700">Niveaux</th>
+            <th className="text-center p-3 font-medium text-primary-700 w-48">Avancement</th>
+            <th className="text-center p-3 font-medium text-primary-700">Statut</th>
+            <th className="text-center p-3 font-medium text-primary-700">Début</th>
+            <th className="text-center p-3 font-medium text-primary-700">Livraison</th>
+            <th className="text-center p-3 font-medium text-primary-700 w-20">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {buildings.map((building) => {
+            const statusColor = BUILDING_STATUS_COLORS[building.status] || '#6B7280';
+            return (
+              <tr key={building.id} className="border-b hover:bg-gray-50">
+                {/* Nom & Code */}
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${statusColor}20`, color: statusColor }}
+                    >
+                      {getBuildingIcon(building.type)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-primary-900">{building.nom}</div>
+                      <div className="text-xs text-primary-500">{building.code}</div>
+                    </div>
+                  </div>
+                </td>
+
+                {/* Type */}
+                <td className="p-3">
+                  <select
+                    value={building.type}
+                    onChange={(e) => onQuickUpdate(building.id, 'type', e.target.value)}
+                    className="text-xs px-2 py-1 border rounded w-full focus:ring-1 focus:ring-primary-500"
+                  >
+                    {Object.entries(BUILDING_TYPE_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </td>
+
+                {/* Surface */}
+                <td className="p-3 text-right">
+                  <input
+                    type="number"
+                    value={building.surface || 0}
+                    onChange={(e) => onQuickUpdate(building.id, 'surface', parseInt(e.target.value) || 0)}
+                    className="w-20 px-2 py-1 text-right text-xs border rounded focus:ring-1 focus:ring-primary-500"
+                  />
+                  <span className="text-xs text-primary-500 ml-1">m²</span>
+                </td>
+
+                {/* Niveaux */}
+                <td className="p-3 text-center">
+                  <input
+                    type="number"
+                    min={0}
+                    value={building.niveaux}
+                    onChange={(e) => onQuickUpdate(building.id, 'niveaux', parseInt(e.target.value) || 0)}
+                    className="w-12 px-2 py-1 text-center text-xs border rounded focus:ring-1 focus:ring-primary-500"
+                  />
+                </td>
+
+                {/* Avancement */}
+                <td className="p-3">
+                  {(() => {
+                    const progress = progressMap?.[building.code];
+                    const isAutoCalc = autoCalcEnabled && progress && progress.actionsCount > 0;
+
+                    return (
+                      <div className="flex items-center gap-2">
+                        {isAutoCalc ? (
+                          <>
+                            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary-500 rounded-full transition-all"
+                                style={{ width: `${building.avancement}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium w-10 text-right">{building.avancement}%</span>
+                            <span className="text-xs text-gray-500" title={`${progress.actionsTerminees}/${progress.actionsCount} actions terminées`}>
+                              ({progress.actionsTerminees}/{progress.actionsCount})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              value={building.avancement}
+                              onChange={(e) => onQuickUpdate(building.id, 'avancement', parseInt(e.target.value))}
+                              className="flex-1 h-2 accent-primary-500"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={building.avancement}
+                              onChange={(e) => onQuickUpdate(building.id, 'avancement', Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                              className="w-12 px-1 py-1 text-center text-xs border rounded focus:ring-1 focus:ring-primary-500"
+                            />
+                            <span className="text-xs">%</span>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </td>
+
+                {/* Statut */}
+                <td className="p-3 text-center">
+                  {(() => {
+                    const progress = progressMap?.[building.code];
+                    const isAutoCalc = autoCalcEnabled && progress && progress.actionsCount > 0;
+
+                    return isAutoCalc ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs"
+                        style={{ color: statusColor, backgroundColor: `${statusColor}20` }}
+                      >
+                        {BUILDING_STATUS_LABELS[building.status]}
+                      </Badge>
+                    ) : (
+                      <select
+                        value={building.status}
+                        onChange={(e) => onQuickUpdate(building.id, 'status', e.target.value)}
+                        className="text-xs px-2 py-1 border rounded focus:ring-1 focus:ring-primary-500"
+                        style={{ color: statusColor }}
+                      >
+                        {Object.entries(BUILDING_STATUS_LABELS).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                </td>
+
+                {/* Date début */}
+                <td className="p-3 text-center">
+                  <input
+                    type="date"
+                    value={building.dateDebutTravaux || ''}
+                    onChange={(e) => onQuickUpdate(building.id, 'dateDebutTravaux', e.target.value || undefined)}
+                    className="text-xs px-1 py-1 border rounded focus:ring-1 focus:ring-primary-500"
+                  />
+                </td>
+
+                {/* Date livraison */}
+                <td className="p-3 text-center">
+                  <input
+                    type="date"
+                    value={building.dateLivraisonPrevue || ''}
+                    onChange={(e) => onQuickUpdate(building.id, 'dateLivraisonPrevue', e.target.value || undefined)}
+                    className="text-xs px-1 py-1 border rounded focus:ring-1 focus:ring-primary-500"
+                  />
+                </td>
+
+                {/* Actions */}
+                <td className="p-3 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      onClick={() => onEdit(building)}
+                      className="p-1 text-primary-500 hover:text-primary-700 hover:bg-primary-50 rounded"
+                      title="Modifier les détails"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Supprimer "${building.nom}" ?`)) {
+                          onDelete(building.id);
+                        }
+                      }}
+                      className="p-1 text-danger-500 hover:text-danger-700 hover:bg-danger-50 rounded"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function BuildingsSettings() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingBuilding, setEditingBuilding] = useState<Building | null | 'new'>(null);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [autoCalcEnabled, setAutoCalcEnabled] = useState(true);
+
+  // Récupérer toutes les actions en temps réel
+  const actions = useLiveQuery(() => db.actions.toArray(), []) || [];
+
+  // Calculer les avancements pour chaque bâtiment
+  const buildingsProgress = useMemo(() => {
+    const progressMap: Record<string, BuildingProgress> = {};
+    buildings.forEach((building) => {
+      progressMap[building.code] = calculateBuildingProgress(
+        building.code,
+        actions,
+        building.status,
+        (building.reserves?.length || 0) > 0
+      );
+    });
+    return progressMap;
+  }, [buildings, actions]);
+
+  // Bâtiments avec avancement calculé
+  const buildingsWithCalculatedProgress = useMemo(() => {
+    if (!autoCalcEnabled) return buildings;
+
+    return buildings.map((building) => {
+      const progress = buildingsProgress[building.code];
+      if (!progress || progress.actionsCount === 0) return building;
+
+      return {
+        ...building,
+        avancement: progress.avancement,
+        status: progress.status,
+      };
+    });
+  }, [buildings, buildingsProgress, autoCalcEnabled]);
 
   // Load buildings from project
   useEffect(() => {
@@ -599,12 +955,69 @@ export function BuildingsSettings() {
     }
   };
 
-  // Stats
-  const totalSurface = buildings.reduce((sum, b) => sum + (b.surface || 0), 0);
-  const avgProgress = buildings.length > 0
-    ? Math.round(buildings.reduce((sum, b) => sum + b.avancement, 0) / buildings.length)
+  // Synchroniser les avancements calculés vers la base de données
+  const handleSyncProgress = async () => {
+    if (!confirm('Synchroniser l\'avancement de tous les bâtiments avec les actions ?')) return;
+
+    setSaving(true);
+    try {
+      const updatedBuildings = buildings.map((building) => {
+        const progress = buildingsProgress[building.code];
+        if (!progress || progress.actionsCount === 0) return building;
+
+        return {
+          ...building,
+          avancement: progress.avancement,
+          status: progress.status,
+        };
+      });
+
+      await saveBuildings(updatedBuildings);
+    } catch (error) {
+      console.error('Error syncing progress:', error);
+      alert('Erreur lors de la synchronisation');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Quick update for inline editing (with debounce)
+  const handleQuickUpdate = useCallback(async (id: string, field: keyof Building, value: unknown) => {
+    const buildingIndex = buildings.findIndex((b) => b.id === id);
+    if (buildingIndex < 0) return;
+
+    const updatedBuilding = { ...buildings[buildingIndex], [field]: value };
+    const newBuildings = [...buildings];
+    newBuildings[buildingIndex] = updatedBuilding;
+
+    // Update local state immediately for responsiveness
+    setBuildings(newBuildings);
+
+    // Debounce save to database
+    clearTimeout((window as unknown as { _buildingSaveTimeout?: ReturnType<typeof setTimeout> })._buildingSaveTimeout);
+    (window as unknown as { _buildingSaveTimeout?: ReturnType<typeof setTimeout> })._buildingSaveTimeout = setTimeout(async () => {
+      try {
+        const project = await db.project.toCollection().first();
+        if (project?.id) {
+          await db.project.update(project.id, {
+            buildings: newBuildings,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        console.error('Error saving building update:', error);
+      }
+    }, 500);
+  }, [buildings]);
+
+  // Stats (basées sur les données affichées)
+  const displayedBuildings = buildingsWithCalculatedProgress;
+  const totalSurface = displayedBuildings.reduce((sum, b) => sum + (b.surface || 0), 0);
+  const avgProgress = displayedBuildings.length > 0
+    ? Math.round(displayedBuildings.reduce((sum, b) => sum + b.avancement, 0) / displayedBuildings.length)
     : 0;
-  const completedCount = buildings.filter((b) => b.status === 'livre' || b.status === 'en_exploitation').length;
+  const completedCount = displayedBuildings.filter((b) => b.status === 'livre' || b.status === 'en_exploitation').length;
+  const totalActions = Object.values(buildingsProgress).reduce((sum, p) => sum + p.actionsCount, 0);
 
   if (loading) {
     return (
@@ -627,10 +1040,50 @@ export function BuildingsSettings() {
               Bâtiments du Projet
             </h3>
             <p className="text-sm text-primary-500">
-              Gérez les 8 structures du complexe COSMOS ANGRÉ
+              Gérez les 6 bâtiments du complexe COSMOS ANGRÉ (GLA: 45,000 m²)
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Auto-calc Toggle */}
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200">
+              <input
+                type="checkbox"
+                checked={autoCalcEnabled}
+                onChange={(e) => setAutoCalcEnabled(e.target.checked)}
+                className="rounded text-primary-600 focus:ring-primary-500"
+              />
+              <Calculator className="h-4 w-4 text-primary-600" />
+              <span className="text-xs text-primary-700">Auto</span>
+            </label>
+
+            {/* Sync Button */}
+            <Button
+              variant="secondary"
+              onClick={handleSyncProgress}
+              disabled={saving || !autoCalcEnabled}
+              title="Synchroniser les avancements avec les actions"
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${saving ? 'animate-spin' : ''}`} />
+              Sync
+            </Button>
+
+            {/* View Toggle */}
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 ${viewMode === 'cards' ? 'bg-primary-100 text-primary-700' : 'text-primary-500 hover:bg-gray-50'}`}
+                title="Vue cartes"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 ${viewMode === 'table' ? 'bg-primary-100 text-primary-700' : 'text-primary-500 hover:bg-gray-50'}`}
+                title="Vue tableau"
+              >
+                <Table className="h-4 w-4" />
+              </button>
+            </div>
             <Button variant="secondary" onClick={handleResetToDefault} disabled={saving}>
               Réinitialiser
             </Button>
@@ -642,9 +1095,9 @@ export function BuildingsSettings() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-5 gap-4 mb-6">
           <div className="bg-primary-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-primary-900">{buildings.length}</div>
+            <div className="text-2xl font-bold text-primary-900">{displayedBuildings.length}</div>
             <div className="text-sm text-primary-600">Bâtiments</div>
           </div>
           <div className="bg-info-50 rounded-lg p-4 text-center">
@@ -656,24 +1109,53 @@ export function BuildingsSettings() {
             <div className="text-sm text-success-600">Avancement moyen</div>
           </div>
           <div className="bg-warning-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-warning-700">{completedCount}/{buildings.length}</div>
+            <div className="text-2xl font-bold text-warning-700">{completedCount}/{displayedBuildings.length}</div>
             <div className="text-sm text-warning-600">Livrés</div>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4 text-center">
+            <div className="text-2xl font-bold text-purple-700">{totalActions}</div>
+            <div className="text-sm text-purple-600">Actions liées</div>
           </div>
         </div>
 
+        {/* Info calcul automatique */}
+        {autoCalcEnabled && totalActions > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2 text-sm text-blue-700">
+            <Calculator className="h-4 w-4" />
+            <span>
+              L'avancement et le statut sont calculés automatiquement à partir des {totalActions} actions liées aux bâtiments.
+              Cliquez sur <strong>Sync</strong> pour enregistrer les valeurs calculées.
+            </span>
+          </div>
+        )}
+
         {/* Buildings list */}
-        <div className="space-y-3">
-          {buildings.map((building) => (
-            <BuildingCard
-              key={building.id}
-              building={building}
-              isExpanded={expandedId === building.id}
-              onToggle={() => setExpandedId(expandedId === building.id ? null : building.id)}
-              onEdit={setEditingBuilding}
-              onDelete={handleDeleteBuilding}
-            />
-          ))}
-        </div>
+        {viewMode === 'cards' ? (
+          <div className="space-y-3">
+            {displayedBuildings.map((building) => (
+              <BuildingCard
+                key={building.id}
+                building={building}
+                isExpanded={expandedId === building.id}
+                onToggle={() => setExpandedId(expandedId === building.id ? null : building.id)}
+                onEdit={setEditingBuilding}
+                onDelete={handleDeleteBuilding}
+                onQuickUpdate={handleQuickUpdate}
+                progress={buildingsProgress[building.code]}
+                autoCalcEnabled={autoCalcEnabled}
+              />
+            ))}
+          </div>
+        ) : (
+          <BuildingsTable
+            buildings={displayedBuildings}
+            onQuickUpdate={handleQuickUpdate}
+            onEdit={setEditingBuilding}
+            onDelete={handleDeleteBuilding}
+            progressMap={buildingsProgress}
+            autoCalcEnabled={autoCalcEnabled}
+          />
+        )}
       </Card>
 
       {/* Edit Modal */}

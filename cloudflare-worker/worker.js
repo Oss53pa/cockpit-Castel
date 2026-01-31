@@ -45,14 +45,6 @@ export default {
         return await proxyOpenRouter(request, env, path);
       }
 
-      if (path.startsWith('/api/sendgrid')) {
-        return await proxySendGrid(request, env, path);
-      }
-
-      if (path.startsWith('/api/resend')) {
-        return await proxyResend(request, env, path);
-      }
-
       // Health check
       if (path === '/health') {
         return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() }, env);
@@ -150,64 +142,3 @@ async function proxyOpenRouter(request, env, path) {
   });
 }
 
-async function proxySendGrid(request, env, path) {
-  const apiKey = env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    return jsonResponse({ error: 'SENDGRID_API_KEY not configured' }, env, 500);
-  }
-
-  const targetPath = path.replace('/api/sendgrid', '');
-  const targetUrl = `https://api.sendgrid.com${targetPath}`;
-
-  const body = await request.text();
-
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: request.method !== 'GET' ? body : undefined,
-  });
-
-  const responseData = await response.text();
-
-  return new Response(responseData, {
-    status: response.status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getCorsHeaders(env),
-    },
-  });
-}
-
-async function proxyResend(request, env, path) {
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) {
-    return jsonResponse({ error: 'RESEND_API_KEY not configured' }, env, 500);
-  }
-
-  const targetPath = path.replace('/api/resend', '');
-  const targetUrl = `https://api.resend.com${targetPath}`;
-
-  const body = await request.text();
-
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: request.method !== 'GET' ? body : undefined,
-  });
-
-  const responseData = await response.text();
-
-  return new Response(responseData, {
-    status: response.status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getCorsHeaders(env),
-    },
-  });
-}

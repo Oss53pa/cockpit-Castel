@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { List, LayoutGrid, Columns, GanttChart, Network, Plus } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { List, LayoutGrid, Columns, GanttChart, Network, Plus, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
 import { Button, Select, SelectOption, Tooltip } from '@/components/ui';
+import { excelService } from '@/services/excelService';
+import { useJalons, createJalon, updateJalon } from '@/hooks';
 import {
   JalonsList,
   JalonsCards,
@@ -27,6 +29,9 @@ export function JalonsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [formOpen, setFormOpen] = useState(false);
   const [selectedJalon, setSelectedJalon] = useState<Jalon | undefined>();
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const jalons = useJalons(jalonFilters);
 
   const handleEdit = (jalon: Jalon) => {
     setSelectedJalon(jalon);
@@ -46,6 +51,59 @@ export function JalonsPage() {
   const handleFormClose = () => {
     setFormOpen(false);
     setSelectedJalon(undefined);
+  };
+
+  // === EXCEL IMPORT/EXPORT ===
+  const handleExportExcel = () => {
+    excelService.exportJalons(jalons);
+  };
+
+  const handleDownloadTemplate = () => {
+    excelService.downloadTemplate('jalons');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const result = await excelService.importJalons(file);
+
+      if (result.errors.length > 0) {
+        const errorMessages = result.errors.map(err => `Ligne ${err.row}: ${err.message}`).join('\n');
+        alert(`Erreurs d'import:\n${errorMessages}`);
+      }
+
+      // Importer les données valides
+      for (const jalonData of result.data) {
+        // Vérifier si le jalon existe déjà (par id_jalon)
+        const existingJalon = jalons.find(j => j.id_jalon === jalonData.id_jalon);
+
+        if (existingJalon && existingJalon.id) {
+          await updateJalon(existingJalon.id, jalonData);
+        } else {
+          await createJalon(jalonData as Parameters<typeof createJalon>[0]);
+        }
+      }
+
+      if (result.data.length > 0) {
+        alert(`Import réussi: ${result.data.length} jalon(s) importé(s)`);
+      }
+    } catch (error) {
+      console.error('Erreur import Excel:', error);
+      alert('Erreur lors de l\'import du fichier Excel');
+    } finally {
+      setImporting(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const renderContent = () => {
@@ -106,10 +164,38 @@ export function JalonsPage() {
           </p>
         </div>
 
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau jalon
-        </Button>
+        {/* Boutons Excel Import/Export */}
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <Tooltip content="Importer depuis Excel">
+            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+              <Upload className="h-4 w-4 mr-2" />
+              {importing ? 'Import...' : 'Importer'}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Exporter vers Excel">
+            <Button variant="outline" onClick={handleExportExcel}>
+              <Download className="h-4 w-4 mr-2" />
+              Exporter
+            </Button>
+          </Tooltip>
+          <Tooltip content="Télécharger le modèle Excel">
+            <Button variant="ghost" onClick={handleDownloadTemplate}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Template
+            </Button>
+          </Tooltip>
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau jalon
+          </Button>
+        </div>
       </div>
 
       {/* Filters and view toggle */}
@@ -216,7 +302,7 @@ export function JalonsPage() {
       {/* Content */}
       {renderContent()}
 
-      {/* Form */}
+      {/* Formulaire v2.0 (création et édition) */}
       <JalonForm
         jalon={selectedJalon}
         open={formOpen}

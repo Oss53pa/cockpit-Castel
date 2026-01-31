@@ -17,3 +17,5 @@ export * from './useProjectConfig';
 export * from './useCatalogueData';
 export * from './useDeepDives';
 export * from './useInterdependency';
+export * from './useSeedData';
+export * from './useSousTachesPreuvesNotes';

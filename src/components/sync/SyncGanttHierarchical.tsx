@@ -54,7 +54,7 @@ import {
 
 type ZoomLevel = 'day' | 'week' | 'month';
 
-// Couleurs par axe
+// Couleurs par axe (7 axes)
 const axeColors: Record<Axe, { bg: string; border: string; text: string; light: string }> = {
   axe1_rh: { bg: 'bg-blue-600', border: 'border-blue-700', text: 'text-blue-700', light: 'bg-blue-100' },
   axe2_commercial: { bg: 'bg-emerald-600', border: 'border-emerald-700', text: 'text-emerald-700', light: 'bg-emerald-100' },
@@ -62,6 +62,7 @@ const axeColors: Record<Axe, { bg: string; border: string; text: string; light: 
   axe4_budget: { bg: 'bg-purple-600', border: 'border-purple-700', text: 'text-purple-700', light: 'bg-purple-100' },
   axe5_marketing: { bg: 'bg-pink-600', border: 'border-pink-700', text: 'text-pink-700', light: 'bg-pink-100' },
   axe6_exploitation: { bg: 'bg-cyan-600', border: 'border-cyan-700', text: 'text-cyan-700', light: 'bg-cyan-100' },
+  axe7_construction: { bg: 'bg-amber-600', border: 'border-amber-700', text: 'text-amber-700', light: 'bg-amber-100' },
 };
 
 const jalonStatusColors: Record<JalonStatus, { bg: string; border: string }> = {

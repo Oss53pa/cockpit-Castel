@@ -9,13 +9,18 @@ import type {
   Risque,
   BudgetItem,
   Alerte,
+  AlerteEmailHistorique,
   Historique,
   LienChantierMobilisation,
   IAImport,
   IAExtraction,
   IAIntegration,
   IAFile,
+  SousTache,
+  Preuve,
+  NoteAction,
 } from '@/types';
+import type { LigneBudgetExploitation, BudgetConfiguration } from '@/types/budgetExploitation.types';
 import type { Site } from '@/types/site';
 import type {
   StudioReport,
@@ -190,6 +195,18 @@ class CockpitDatabase extends Dexie {
 
   // Project Settings table
   projectSettings!: EntityTable<ProjectSettings, 'id'>;
+
+  // Sous-tâches, Preuves, Notes (spécifications v2.0)
+  sousTaches!: EntityTable<SousTache, 'id'>;
+  preuves!: EntityTable<Preuve, 'id'>;
+  notesAction!: EntityTable<NoteAction, 'id'>;
+
+  // Historique des emails d'alertes
+  alerteEmailHistorique!: EntityTable<AlerteEmailHistorique, 'id'>;
+
+  // Budget Exploitation (modifiable)
+  budgetExploitation!: EntityTable<LigneBudgetExploitation, 'id'>;
+  budgetConfigurations!: EntityTable<BudgetConfiguration, 'id'>;
 
   constructor() {
     super('CockpitCosmosAngre');
@@ -743,6 +760,150 @@ class CockpitDatabase extends Dexie {
         }
       }
     });
+
+    // Version 14: Add SousTaches, Preuves, NotesAction tables (spécifications v2.0)
+    this.version(14).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+      // NEW: Sous-tâches, Preuves, Notes (spécifications v2.0)
+      sousTaches: '++id, actionId, ordre',
+      preuves: '++id, actionId, type, createdAt',
+      notesAction: '++id, actionId, createdAt',
+    });
+
+    // Version 15: Enhanced Alertes with responsable + email history
+    this.version(15).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      // UPDATED: Alertes with responsable and email tracking
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId, responsableId, emailEnvoye',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+      sousTaches: '++id, actionId, ordre',
+      preuves: '++id, actionId, type, createdAt',
+      notesAction: '++id, actionId, createdAt',
+      // NEW: Historique des emails d'alertes
+      alerteEmailHistorique: '++id, alerteId, type, destinataireEmail, envoyeAt, statut',
+    }).upgrade(async (tx) => {
+      // Migration: Initialize new fields on existing alertes
+      const alertes = tx.table('alertes');
+      const allAlertes = await alertes.toArray();
+      for (const alerte of allAlertes) {
+        await alertes.update(alerte.id, {
+          emailEnvoye: false,
+          emailRelanceCount: 0,
+        });
+      }
+    });
+
+    // Version 16: Add Budget Exploitation tables (modifiable)
+    this.version(16).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId, responsableId, emailEnvoye',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+      sousTaches: '++id, actionId, ordre',
+      preuves: '++id, actionId, type, createdAt',
+      notesAction: '++id, actionId, createdAt',
+      alerteEmailHistorique: '++id, alerteId, type, destinataireEmail, envoyeAt, statut',
+      // NEW: Budget Exploitation tables (modifiable)
+      budgetExploitation: '++id, siteId, budgetType, annee, ordre, categorie',
+      budgetConfigurations: '++id, siteId, budgetType, annee',
+    });
   }
 }
 
@@ -797,6 +958,10 @@ export async function exportDatabase(): Promise<string> {
     syncItems: await db.syncItems.toArray(),
     syncSnapshots: await db.syncSnapshots.toArray(),
     syncAlerts: await db.syncAlerts.toArray(),
+    // Sous-tâches, Preuves, Notes (spécifications v2.0)
+    sousTaches: await db.sousTaches.toArray(),
+    preuves: await db.preuves.toArray(),
+    notesAction: await db.notesAction.toArray(),
     syncActions: await db.syncActions.toArray(),
   };
   return JSON.stringify(data, null, 2);
@@ -855,5 +1020,10 @@ export async function importDatabase(jsonData: string): Promise<void> {
     if (data.syncSnapshots?.length) await db.syncSnapshots.bulkAdd(data.syncSnapshots);
     if (data.syncAlerts?.length) await db.syncAlerts.bulkAdd(data.syncAlerts);
     if (data.syncActions?.length) await db.syncActions.bulkAdd(data.syncActions);
+
+    // Import Sous-tâches, Preuves, Notes (spécifications v2.0)
+    if (data.sousTaches?.length) await db.sousTaches.bulkAdd(data.sousTaches);
+    if (data.preuves?.length) await db.preuves.bulkAdd(data.preuves);
+    if (data.notesAction?.length) await db.notesAction.bulkAdd(data.notesAction);
   });
 }

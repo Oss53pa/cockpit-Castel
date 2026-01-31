@@ -21,6 +21,8 @@ import {
   Clock,
   CheckCircle2,
   Circle,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -59,6 +61,10 @@ import {
   ConfirmDeleteModal,
   type LigneBudgetaireComplete,
 } from './LigneBudgetaireModal';
+import { BudgetImportExport } from './BudgetImportExport';
+import { BudgetEditModal } from './BudgetEditModal';
+import { useBudgetExploitation } from '@/hooks/useBudgetExploitation';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // Types pour le budget mobilisation
 interface PosteBudgetaire {
@@ -1321,29 +1327,365 @@ function VueParPhase() {
   );
 }
 
-// Composant principal Budget Mobilisation
-export function BudgetMobilisation() {
-  const [activeTab, setActiveTab] = useState('synthese');
+// Vue Synthèse Éditable (avec données du hook)
+function VueSyntheseEditable({
+  lignes,
+  totaux,
+  onEdit,
+  isLoading,
+}: {
+  lignes: LigneBudgetExploitation[];
+  totaux: { prevu: number; engage: number; consomme: number; reste: number };
+  onEdit: (ligne: LigneBudgetExploitation) => void;
+  isLoading?: boolean;
+}) {
+  // Afficher un message de chargement si les données sont en cours d'initialisation
+  if (isLoading || lignes.length === 0) {
+    return (
+      <Card padding="md">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-500 mb-4" />
+          <p className="text-primary-600">Initialisation des données budgétaires...</p>
+          <p className="text-sm text-primary-400 mt-2">
+            Les lignes budgétaires seront créées automatiquement.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
-  const provisions = POSTES_BUDGET_MOBILISATION.find((p) => p.id === 'provisions');
-  const tauxProvisions = provisions ? (provisions.budgetPrevu / TOTAUX_MOBILISATION.budgetPrevu) * 100 : 0;
-  const tauxEngagement = (TOTAUX_MOBILISATION.engage / TOTAUX_MOBILISATION.budgetPrevu) * 100;
-  const tauxConsommation = (TOTAUX_MOBILISATION.consomme / TOTAUX_MOBILISATION.budgetPrevu) * 100;
-  const ecart = TOTAUX_MOBILISATION.engage - TOTAUX_MOBILISATION.consomme;
+  const tauxEngagement = totaux.prevu > 0 ? (totaux.engage / totaux.prevu) * 100 : 0;
+  const tauxConsommation = totaux.prevu > 0 ? (totaux.consomme / totaux.prevu) * 100 : 0;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-primary-900">Budget Mobilisation</h2>
-        <p className="text-sm text-primary-500">Budget de lancement et démarrage (hors construction)</p>
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-primary-900">Synthèse Budget Mobilisation</h3>
+            <p className="text-sm text-primary-500">Cliquez sur une ligne pour modifier les montants</p>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Poste</TableHead>
+              <TableHead className="text-right">Budget Prévu</TableHead>
+              <TableHead className="text-right">Engagé</TableHead>
+              <TableHead className="text-right">Consommé</TableHead>
+              <TableHead className="text-right">Disponible</TableHead>
+              <TableHead className="w-32">% Conso.</TableHead>
+              <TableHead className="w-16"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {lignes.map((ligne) => {
+              const tauxConso = ligne.montantPrevu > 0 ? (ligne.montantConsomme / ligne.montantPrevu) * 100 : 0;
+              const disponible = ligne.montantPrevu - ligne.montantConsomme;
+              return (
+                <TableRow
+                  key={ligne.id}
+                  className="hover:bg-primary-50 cursor-pointer transition-colors"
+                  onClick={() => onEdit(ligne)}
+                >
+                  <TableCell className="font-medium">{ligne.poste}</TableCell>
+                  <TableCell className="text-right">{formatMontant(ligne.montantPrevu)}</TableCell>
+                  <TableCell className="text-right text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
+                  <TableCell className="text-right text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
+                  <TableCell className="text-right text-orange-600">{formatMontant(disponible)}</TableCell>
+                  <TableCell><ProgressBar value={Math.round(tauxConso)} /></TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(ligne);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-primary-600" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary-100">
+              <TableCell className="font-bold">TOTAL</TableCell>
+              <TableCell className="text-right font-bold">{formatMontant(totaux.prevu)}</TableCell>
+              <TableCell className="text-right font-bold text-blue-700">{formatMontant(totaux.engage)}</TableCell>
+              <TableCell className="text-right font-bold text-green-700">{formatMontant(totaux.consomme)}</TableCell>
+              <TableCell className="text-right font-bold text-orange-700">{formatMontant(totaux.reste)}</TableCell>
+              <TableCell className="font-bold"><ProgressBar value={Math.round(tauxConsommation)} /></TableCell>
+              <TableCell></TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+        <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t">
+          <div>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-primary-600">Taux d'engagement</span>
+              <span className="font-semibold">{tauxEngagement.toFixed(1)}%</span>
+            </div>
+            <Progress value={tauxEngagement} variant="default" size="md" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-primary-600">Taux de consommation</span>
+              <span className="font-semibold">{tauxConsommation.toFixed(1)}%</span>
+            </div>
+            <Progress value={tauxConsommation} variant="success" size="md" />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// Vue Détail Éditable (avec données du hook)
+function VueDetailEditable({
+  lignes,
+  totaux,
+  onEdit,
+  isLoading,
+}: {
+  lignes: LigneBudgetExploitation[];
+  totaux: { prevu: number; engage: number; consomme: number; reste: number };
+  onEdit: (ligne: LigneBudgetExploitation) => void;
+  isLoading?: boolean;
+}) {
+  const [filterCategorie, setFilterCategorie] = useState<string>('all');
+
+  if (isLoading || lignes.length === 0) {
+    return (
+      <Card padding="md">
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-500 mb-4" />
+          <p className="text-primary-600">Chargement des lignes budgétaires...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  const categories = ['all', ...new Set(lignes.map(l => l.categorie))];
+  const lignesFiltrees = filterCategorie === 'all'
+    ? lignes
+    : lignes.filter(l => l.categorie === filterCategorie);
+
+  return (
+    <div className="space-y-6">
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold text-primary-900">Détail des lignes budgétaires</h3>
+            <p className="text-sm text-primary-500">Cliquez sur une ligne ou le bouton modifier pour éditer</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-primary-400" />
+              <select
+                value={filterCategorie}
+                onChange={(e) => setFilterCategorie(e.target.value)}
+                className="text-sm border border-primary-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">Toutes les catégories</option>
+                {categories.filter(c => c !== 'all').map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[150px]">Poste</TableHead>
+                <TableHead className="min-w-[200px]">Description</TableHead>
+                <TableHead className="text-right">Prévu</TableHead>
+                <TableHead className="text-right">Engagé</TableHead>
+                <TableHead className="text-right">Consommé</TableHead>
+                <TableHead className="text-right">Reste</TableHead>
+                <TableHead className="w-[120px]">Avancement</TableHead>
+                <TableHead className="w-[80px] text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lignesFiltrees.map((ligne) => {
+                const disponible = ligne.montantPrevu - ligne.montantConsomme;
+                const tauxConso = ligne.montantPrevu > 0
+                  ? Math.round((ligne.montantConsomme / ligne.montantPrevu) * 100)
+                  : 0;
+
+                return (
+                  <TableRow
+                    key={ligne.id}
+                    className="hover:bg-primary-50 cursor-pointer transition-colors"
+                    onClick={() => onEdit(ligne)}
+                  >
+                    <TableCell>
+                      <Badge
+                        className="text-xs"
+                        style={{ backgroundColor: ligne.couleur || '#6B7280', color: 'white' }}
+                      >
+                        {ligne.poste}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-primary-900">{ligne.description || ligne.poste}</p>
+                        {ligne.note && <p className="text-xs text-primary-500 mt-1">{ligne.note}</p>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{formatMontant(ligne.montantPrevu)}</TableCell>
+                    <TableCell className="text-right text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
+                    <TableCell className="text-right text-orange-600">{formatMontant(disponible)}</TableCell>
+                    <TableCell><ProgressBar value={tauxConso} /></TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(ligne);
+                          }}
+                          title="Modifier"
+                        >
+                          <Pencil className="h-4 w-4 text-primary-600" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+            <TableFooter>
+              <TableRow className="bg-primary-100">
+                <TableCell className="font-bold" colSpan={2}>Total</TableCell>
+                <TableCell className="text-right font-bold">{formatMontant(totaux.prevu)}</TableCell>
+                <TableCell className="text-right font-bold text-blue-700">{formatMontant(totaux.engage)}</TableCell>
+                <TableCell className="text-right font-bold text-green-700">{formatMontant(totaux.consomme)}</TableCell>
+                <TableCell className="text-right font-bold text-orange-700">{formatMontant(totaux.reste)}</TableCell>
+                <TableCell colSpan={2}></TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// Composant principal Budget Mobilisation
+export function BudgetMobilisation() {
+  const [activeTab, setActiveTab] = useState('synthese');
+  const [editingLigne, setEditingLigne] = useState<LigneBudgetExploitation | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Hook pour les données persistées
+  const {
+    lignes,
+    isLoading,
+    error,
+    totaux,
+    updateLigne,
+    resetToDefaults,
+  } = useBudgetExploitation({
+    budgetType: 'mobilisation',
+    annee: 2026,
+  });
+
+  // Handler de sauvegarde
+  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string) => {
+    await updateLigne(id, {
+      montantPrevu: prevu,
+      montantEngage: engage,
+      montantConsomme: consomme,
+      note,
+    });
+  };
+
+  // Handler de reset
+  const handleReset = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir réinitialiser tous les montants aux valeurs par défaut ?')) {
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await resetToDefaults();
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="ml-2 text-primary-600">Chargement du budget...</span>
+      </div>
+    );
+  }
+
+  // Use hook data if available, otherwise fallback to static data
+  const useHookData = lignes.length > 0;
+
+  const provisions = useHookData
+    ? lignes.find((l) => l.categorie === 'provisions')
+    : POSTES_BUDGET_MOBILISATION.find((p) => p.id === 'provisions');
+
+  const budgetTotal = useHookData ? totaux.prevu : TOTAUX_MOBILISATION.budgetPrevu;
+  const budgetEngage = useHookData ? totaux.engage : TOTAUX_MOBILISATION.engage;
+  const budgetConsomme = useHookData ? totaux.consomme : TOTAUX_MOBILISATION.consomme;
+  const budgetDisponible = useHookData ? totaux.reste : TOTAUX_MOBILISATION.disponible;
+  const provisionsValue = useHookData
+    ? (provisions as LigneBudgetExploitation)?.montantPrevu || 0
+    : (provisions as PosteBudgetaire)?.budgetPrevu || 0;
+
+  const tauxProvisions = budgetTotal > 0 ? (provisionsValue / budgetTotal) * 100 : 0;
+  const tauxEngagement = budgetTotal > 0 ? (budgetEngage / budgetTotal) * 100 : 0;
+  const tauxConsommation = budgetTotal > 0 ? (budgetConsomme / budgetTotal) * 100 : 0;
+  const ecart = budgetEngage - budgetConsomme;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-primary-900">Budget Mobilisation</h2>
+          <p className="text-sm text-primary-500">Budget de lancement et demarrage (hors construction) - Éditable</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isResetting}
+          >
+            <RotateCcw className={cn('h-4 w-4 mr-2', isResetting && 'animate-spin')} />
+            {isResetting ? 'Réinitialisation...' : 'Réinitialiser'}
+          </Button>
+          <BudgetImportExport budgetType="mobilisation" />
+        </div>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <Card padding="md" className="bg-error-50 border-error-200">
+          <p className="text-error-700">{error}</p>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <KPICard label="Budget total" value={formatMontant(TOTAUX_MOBILISATION.budgetPrevu)} subValue="FCFA" icon={Wallet} color="text-primary-600" bgColor="bg-primary-100" />
-        <KPICard label="Engagé" value={formatMontant(TOTAUX_MOBILISATION.engage)} subValue={`${tauxEngagement.toFixed(1)}%`} icon={ArrowDownLeft} color="text-blue-600" bgColor="bg-blue-100" />
-        <KPICard label="Consommé" value={formatMontant(TOTAUX_MOBILISATION.consomme)} subValue={`${tauxConsommation.toFixed(1)}%`} icon={CheckCircle} color="text-green-600" bgColor="bg-green-100" />
-        <KPICard label="Restant" value={formatMontant(TOTAUX_MOBILISATION.disponible)} subValue="" icon={TrendingDown} color="text-orange-600" bgColor="bg-orange-100" />
-        <KPICard label="Provisions" value={formatMontant(provisions?.budgetPrevu ?? 0)} subValue={`${tauxProvisions.toFixed(1)}%`} icon={PiggyBank} color="text-purple-600" bgColor="bg-purple-100" />
+        <KPICard label="Budget total" value={formatMontant(budgetTotal)} subValue="FCFA" icon={Wallet} color="text-primary-600" bgColor="bg-primary-100" />
+        <KPICard label="Engagé" value={formatMontant(budgetEngage)} subValue={`${tauxEngagement.toFixed(1)}%`} icon={ArrowDownLeft} color="text-blue-600" bgColor="bg-blue-100" />
+        <KPICard label="Consommé" value={formatMontant(budgetConsomme)} subValue={`${tauxConsommation.toFixed(1)}%`} icon={CheckCircle} color="text-green-600" bgColor="bg-green-100" />
+        <KPICard label="Restant" value={formatMontant(budgetDisponible)} subValue="" icon={TrendingDown} color="text-orange-600" bgColor="bg-orange-100" />
+        <KPICard label="Provisions" value={formatMontant(provisionsValue)} subValue={`${tauxProvisions.toFixed(1)}%`} icon={PiggyBank} color="text-purple-600" bgColor="bg-purple-100" />
         <KPICard label="Écart" value={ecart >= 0 ? `+${formatMontant(ecart)}` : `-${formatMontant(Math.abs(ecart))}`} subValue="Engagé - Consommé" icon={AlertTriangle} color={ecart >= 0 ? 'text-success-600' : 'text-error-600'} bgColor={ecart >= 0 ? 'bg-success-100' : 'bg-error-100'} />
       </div>
 
@@ -1354,11 +1696,23 @@ export function BudgetMobilisation() {
           <TabsTrigger value="graphiques">Graphiques</TabsTrigger>
           <TabsTrigger value="par-phase">Par phase</TabsTrigger>
         </TabsList>
-        <TabsContent value="synthese"><VueSynthese /></TabsContent>
-        <TabsContent value="detail"><VueDetail /></TabsContent>
+        <TabsContent value="synthese">
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} isLoading={isLoading} />
+        </TabsContent>
+        <TabsContent value="detail">
+          <VueDetailEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} isLoading={isLoading} />
+        </TabsContent>
         <TabsContent value="graphiques"><VueGraphiques /></TabsContent>
         <TabsContent value="par-phase"><VueParPhase /></TabsContent>
       </Tabs>
+
+      {/* Modal d'édition */}
+      <BudgetEditModal
+        ligne={editingLigne}
+        open={!!editingLigne}
+        onClose={() => setEditingLigne(null)}
+        onSave={handleSave}
+      />
     </div>
   );
 }

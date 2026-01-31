@@ -61,6 +61,10 @@ import {
   Edit2,
   MoreVertical,
   Copy,
+  Globe,
+  Printer,
+  ExternalLink,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -85,6 +89,7 @@ import { SYNC_CONFIG } from '@/config/syncConfig';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
 import { DeepDiveMensuel } from './DeepDiveMensuel';
 import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -568,6 +573,10 @@ export function DeepDive() {
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+
+  // Navigation de slides (comme DeepDiveLancement)
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // DnD sensors
   const sensors = useSensors(
@@ -1746,7 +1755,7 @@ export function DeepDive() {
         // Page de garde
         return (
           <div style={{ ...baseStyles, backgroundColor: primaryColor }} className="h-full flex flex-col items-center justify-center text-white p-8">
-            <h1 className="text-4xl font-bold mb-2">COSMOS ANGRÉ</h1>
+            <h1 className="text-4xl font-bold mb-2">{PROJET_CONFIG.nom}</h1>
             <div className="w-24 h-1 mb-6" style={{ backgroundColor: accentColor }} />
             <h2 className="text-2xl mb-2" style={{ color: accentColor }}>Deep Dive</h2>
             <p className="text-lg opacity-80">Présentation Direction Générale</p>
@@ -2963,7 +2972,7 @@ export function DeepDive() {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
-                      Occupation: {kpiValues.occupation}% (cible 85%)
+                      Occupation: {kpiValues.occupation}% (cible {PROJET_CONFIG.occupationCible}%)
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
@@ -3002,7 +3011,7 @@ export function DeepDive() {
             <h1 className="text-3xl font-bold mb-4">Merci de votre attention</h1>
             <div className="w-16 h-1 mb-6" style={{ backgroundColor: accentColor }} />
             <p className="text-xl opacity-80 mb-8">Questions ?</p>
-            <p className="text-sm" style={{ color: accentColor }}>COSMOS ANGRÉ</p>
+            <p className="text-sm" style={{ color: accentColor }}>{PROJET_CONFIG.nom}</p>
           </div>
         );
 
@@ -4003,6 +4012,131 @@ export function DeepDive() {
     );
   };
 
+  // Générer le HTML de la présentation
+  const generateHtmlContent = () => {
+    const dateFormatted = new Date(presentationDate).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    return `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Dive Mensuel - Cosmos Angré - ${dateFormatted}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: ${designSettings.fontFamily}, Arial, sans-serif; background: #f8f9fa; color: #1f2937; line-height: 1.5; }
+    .slide { width: 100%; max-width: 1200px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); page-break-after: always; }
+    .header { background: ${designSettings.primaryColor}; color: white; padding: 1.5rem 2rem; border-radius: 8px; margin-bottom: 1.5rem; }
+    .header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .header p { opacity: 0.8; font-size: 0.9rem; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi-card { background: #f9fafb; padding: 1rem; border-radius: 8px; text-align: center; }
+    .kpi-value { font-size: 2rem; font-weight: 700; color: ${designSettings.primaryColor}; }
+    .kpi-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; }
+    .section { margin-bottom: 2rem; }
+    .section-title { font-size: 1.1rem; font-weight: 600; color: ${designSettings.primaryColor}; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid ${designSettings.accentColor}; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.85rem; }
+    th { background: ${designSettings.primaryColor}; color: white; padding: 0.75rem; text-align: left; }
+    td { padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
+    tr:hover { background: #f9fafb; }
+    .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+    .badge-success { background: #d1fae5; color: #059669; }
+    .badge-warning { background: #fef3c7; color: #d97706; }
+    .badge-danger { background: #fee2e2; color: #dc2626; }
+    .badge-info { background: #dbeafe; color: #2563eb; }
+    .footer { text-align: center; padding: 1rem; color: #9ca3af; font-size: 0.75rem; }
+    @media print {
+      body { background: white; }
+      .slide { box-shadow: none; margin: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <div class="header">
+      <h1>🏢 Deep Dive Mensuel - Cosmos Angré</h1>
+      <p>${reportPeriod?.displayText || dateFormatted} | Présentation Direction Générale</p>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-value">${kpiValues.occupation}%</div>
+        <div class="kpi-label">Occupation</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${kpiValues.budgetConsumed}%</div>
+        <div class="kpi-label">Budget Consommé</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${kpiValues.milestonesAchieved}</div>
+        <div class="kpi-label">Jalons Atteints</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${kpiValues.teamRecruited}</div>
+        <div class="kpi-label">Équipe Recrutée</div>
+      </div>
+    </div>
+    <div class="section">
+      <h3 class="section-title">📊 Slides incluses (${activeSlides.length})</h3>
+      <table>
+        <tr><th>#</th><th>Titre</th><th>Description</th></tr>
+        ${activeSlides.map((s, i) => `<tr><td>${i + 1}</td><td>${s.title}</td><td>${s.description}</td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="footer">
+      Deep Dive Mensuel - Cosmos Angré - Généré le ${new Date().toLocaleDateString('fr-FR')}
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  // Ouvrir l'aperçu HTML dans une nouvelle fenêtre
+  const openHtmlPreview = () => {
+    const htmlContent = generateHtmlContent();
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
+  // Télécharger le fichier HTML
+  const downloadHtml = () => {
+    const htmlContent = generateHtmlContent();
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `deep-dive-mensuel-${presentationDate}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Imprimer la présentation
+  const handlePrint = () => {
+    const htmlContent = generateHtmlContent();
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  // Navigation des slides
+  const navigateSlide = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && activeSlideIndex > 0) {
+      setActiveSlideIndex(activeSlideIndex - 1);
+    } else if (direction === 'next' && activeSlideIndex < activeSlides.length - 1) {
+      setActiveSlideIndex(activeSlideIndex + 1);
+    }
+  };
+
   // Generate PowerPoint
   const generatePowerPoint = async () => {
     setGenerating(true);
@@ -4063,7 +4197,7 @@ export function DeepDive() {
           color: textColor,
           bold: true,
         });
-        slide.addText('COSMOS ANGRÉ', {
+        slide.addText('{PROJET_CONFIG.nom}', {
           x: 7.5,
           y: 0.2,
           w: 2,
@@ -4271,7 +4405,7 @@ export function DeepDive() {
           case '1': {
             slide.addShape('rect', { x: 0, y: 0, w: '100%', h: '100%', fill: { color: primaryHex } });
             slide.addShape('rect', { x: 0, y: 2.5, w: '100%', h: 0.1, fill: { color: accentHex } });
-            slide.addText('COSMOS ANGRÉ', { x: 0, y: 1.3, w: '100%', h: 0.8, fontSize: 48, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
+            slide.addText('{PROJET_CONFIG.nom}', { x: 0, y: 1.3, w: '100%', h: 0.8, fontSize: 48, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
             slide.addText('Deep Dive', { x: 0, y: 2.6, w: '100%', h: 0.6, fontSize: 32, fontFace: fontFamily, color: accentHex, align: 'center' });
             // Période du rapport
             slide.addText(periodText, { x: 0, y: 3.3, w: '100%', h: 0.5, fontSize: 24, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
@@ -4724,7 +4858,7 @@ export function DeepDive() {
             slide.addText('Points clés', { x: 0.5, y: 1.1, w: 4, h: 0.4, fontSize: 14, fontFace: fontFamily, color: primaryHex, bold: true });
             const keyPoints = [
               `Météo projet: ${weatherConfig[projectWeather].label.split(' ')[0]}`,
-              `Occupation: ${kpiValues.occupation}% (cible 85%)`,
+              `Occupation: ${kpiValues.occupation}% (cible ${PROJET_CONFIG.occupationCible}%)`,
               `Budget: ${kpiValues.budgetConsumed}% consommé`,
               `${decisionPoints.length} décision(s) en attente DG`,
             ];
@@ -4745,7 +4879,7 @@ export function DeepDive() {
             slide.addText('Merci de votre attention', { x: 0, y: 2, w: '100%', h: 0.8, fontSize: 36, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
             slide.addShape('rect', { x: 3.5, y: 2.9, w: 3, h: 0.05, fill: { color: accentHex } });
             slide.addText('Questions ?', { x: 0, y: 3.2, w: '100%', h: 0.5, fontSize: 18, fontFace: fontFamily, color: 'CCCCCC', align: 'center' });
-            slide.addText('COSMOS ANGRÉ', { x: 0, y: 4.5, w: '100%', h: 0.4, fontSize: 14, fontFace: fontFamily, color: accentHex, align: 'center' });
+            slide.addText('{PROJET_CONFIG.nom}', { x: 0, y: 4.5, w: '100%', h: 0.4, fontSize: 14, fontFace: fontFamily, color: accentHex, align: 'center' });
             break;
           }
         }
@@ -4814,34 +4948,46 @@ export function DeepDive() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-100 rounded-lg">
-            <Presentation className="h-6 w-6 text-primary-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-primary-900">
-              Deep Dive Cosmos Angré — Générateur PowerPoint
-            </h3>
-            <p className="text-sm text-primary-500">
-              Préparez votre présentation Direction Générale
-            </p>
-          </div>
+    <div className="space-y-4">
+      {/* Header avec actions - Style DeepDiveLancement */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-lg border">
+        <div>
+          <h3 className="text-lg font-bold text-primary-900 flex items-center gap-2">
+            <Presentation className="h-5 w-5 text-primary-600" />
+            Deep Dive Mensuel — Cosmos Angré
+          </h3>
+          <p className="text-xs text-primary-400">
+            Présenté par : Pamela Atokouna, DGA | Destinataires : PDG, Actionnaires
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select
-            value={templateType}
-            onChange={(e) => setTemplateType(e.target.value as typeof templateType)}
-            className="w-48"
-          >
-            <SelectOption value="monthly_v2">Mensuel V2 (COPIL)</SelectOption>
-            <SelectOption value="monthly">Mensuel (Classique)</SelectOption>
-            <SelectOption value="launch">Lancement</SelectOption>
-          </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary-400" />
+            <input
+              type="date"
+              value={presentationDate}
+              onChange={(e) => setPresentationDate(e.target.value)}
+              className="text-sm border rounded px-2 py-1"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview
+          </Button>
+          <Button variant="outline" size="sm" onClick={openHtmlPreview}>
+            <Globe className="h-4 w-4 mr-2" />
+            Voir HTML
+          </Button>
+          <Button variant="outline" size="sm" onClick={downloadHtml}>
+            <Download className="h-4 w-4 mr-2" />
+            Télécharger HTML
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Imprimer
+          </Button>
           <Button
-            variant="primary"
+            size="sm"
             onClick={generatePowerPoint}
             disabled={generating || activeSlides.length === 0}
           >
@@ -4853,37 +4999,228 @@ export function DeepDive() {
             ) : (
               <>
                 <Download className="h-4 w-4 mr-2" />
-                Générer PowerPoint
+                Exporter PPTX
               </>
             )}
           </Button>
         </div>
       </div>
 
-      {/* Main Tabs */}
-      <div className="flex gap-2 border-b">
-        {[
-          { id: 'config', label: 'Configuration', icon: Settings },
-          { id: 'preview', label: 'Aperçu HTML', icon: Eye },
-          { id: 'design', label: 'Design', icon: Palette },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as ViewTab)}
-            className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Navigation des slides - Style DeepDiveLancement */}
+      <Card padding="sm">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          {activeSlides.map((slide, index) => (
+            <button
+              key={slide.id}
+              onClick={() => setActiveSlideIndex(index)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeSlideIndex === index
+                  ? 'bg-primary-100 text-primary-900'
+                  : 'text-primary-500 hover:bg-primary-50'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-primary-200 flex items-center justify-center text-xs font-bold">
+                {index + 1}
+              </span>
+              <span className="hidden md:inline truncate max-w-[150px]">{slide.title}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
 
-      {/* Configuration Tab */}
-      {activeTab === 'config' && (
+      {/* Contenu de la slide active */}
+      <Card padding="lg">
+        <div className="mb-4 pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-primary-900">
+              SLIDE {activeSlideIndex + 1} - {activeSlides[activeSlideIndex]?.title.toUpperCase()}
+            </h2>
+            <Badge variant="outline">
+              {activeSlideIndex + 1} / {activeSlides.length}
+            </Badge>
+          </div>
+          <p className="text-sm text-primary-500 mt-1">
+            {activeSlides[activeSlideIndex]?.description}
+          </p>
+        </div>
+
+        {/* Rendu de la slide active */}
+        {activeSlides[activeSlideIndex] && renderSlidePreview(activeSlides[activeSlideIndex])}
+
+        {/* Navigation bas */}
+        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => navigateSlide('prev')}
+            disabled={activeSlideIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Précédent
+          </Button>
+          <span className="text-sm text-primary-500">
+            Deep Dive Mensuel - Cosmos Angré - CRMC / New Heaven SA
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => navigateSlide('next')}
+            disabled={activeSlideIndex === activeSlides.length - 1}
+          >
+            Suivant
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      </Card>
+
+      {/* Configuration collapsible */}
+      <details className="bg-white rounded-lg border">
+        <summary className="flex items-center gap-2 p-4 cursor-pointer font-semibold text-primary-900">
+          <Settings className="h-5 w-5 text-primary-500" />
+          Configuration avancée
+          <Badge variant="secondary" className="ml-auto">{activeSlides.length} slides</Badge>
+        </summary>
+        <div className="p-4 border-t space-y-4">
+          {/* Informations générales */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">Météo projet</label>
+              <Select value={projectWeather} onChange={(e) => setProjectWeather(e.target.value as ProjectWeather)}>
+                {Object.entries(weatherConfig).map(([key, config]) => (
+                  <SelectOption key={key} value={key}>{config.emoji} {config.label}</SelectOption>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">Template</label>
+              <Select
+                value={templateType}
+                onChange={(e) => setTemplateType(e.target.value as typeof templateType)}
+              >
+                <SelectOption value="monthly_v2">Mensuel V2 (COPIL)</SelectOption>
+                <SelectOption value="monthly">Mensuel (Classique)</SelectOption>
+                <SelectOption value="launch">Lancement</SelectOption>
+              </Select>
+            </div>
+          </div>
+
+          {/* KPIs */}
+          <div>
+            <h4 className="font-semibold text-primary-900 mb-2 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary-500" />
+              KPIs principaux
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Occupation (%)</label>
+                <Input type="number" min="0" max="100" value={kpiValues.occupation} onChange={(e) => setKpiValues((prev) => ({ ...prev, occupation: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Budget consommé (%)</label>
+                <Input type="number" min="0" max="100" value={kpiValues.budgetConsumed} onChange={(e) => setKpiValues((prev) => ({ ...prev, budgetConsumed: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Jalons atteints</label>
+                <Input type="number" min="0" value={kpiValues.milestonesAchieved} onChange={(e) => setKpiValues((prev) => ({ ...prev, milestonesAchieved: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Équipe recrutée</label>
+                <Input type="number" min="0" value={kpiValues.teamRecruited} onChange={(e) => setKpiValues((prev) => ({ ...prev, teamRecruited: parseInt(e.target.value) || 0 }))} />
+              </div>
+            </div>
+          </div>
+
+          {/* Liste des slides avec toggle */}
+          <div>
+            <h4 className="font-semibold text-primary-900 mb-2 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary-500" />
+              Slides ({activeSlides.length} actives)
+            </h4>
+            <div className="max-h-[300px] overflow-y-auto space-y-1">
+              {slides.map((slide, index) => (
+                <div
+                  key={slide.id}
+                  className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${slide.included ? 'bg-primary-50 border-primary-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={slide.included}
+                    onChange={() => toggleSlide(slide.id)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-medium ${slide.included ? 'bg-primary-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                    {slide.included ? activeSlides.findIndex((s) => s.id === slide.id) + 1 : '-'}
+                  </span>
+                  <slide.icon className="h-4 w-4 text-primary-500" />
+                  <span className="flex-1 text-sm">{slide.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      {/* Modal Preview - Une slide à la fois avec navigation */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-bold text-primary-900">
+                Preview - Slide {previewSlideIndex + 1} / {activeSlides.length}
+              </h3>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setPreviewSlideIndex(Math.max(0, previewSlideIndex - 1))} disabled={previewSlideIndex === 0}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setPreviewSlideIndex(Math.min(activeSlides.length - 1, previewSlideIndex + 1))} disabled={previewSlideIndex === activeSlides.length - 1}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={openHtmlPreview}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ouvrir
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadHtml}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowPreviewModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-gray-100">
+              {activeSlides[previewSlideIndex] && renderSlidePreview(activeSlides[previewSlideIndex])}
+            </div>
+            <div className="flex items-center justify-between p-3 border-t bg-gray-50">
+              <div className="flex gap-1 overflow-x-auto">
+                {activeSlides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => setPreviewSlideIndex(index)}
+                    className={`w-8 h-8 rounded flex items-center justify-center text-xs font-medium transition-colors ${
+                      previewSlideIndex === index
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-white border hover:bg-primary-50'
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-primary-500">
+                  {activeSlides.length} slides • {new Date(presentationDate).toLocaleDateString('fr-FR')}
+                </span>
+                <Button size="sm" variant="outline" onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimer
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ancien onglet Configuration - masqué, remplacé par l'interface ci-dessus */}
+      {false && activeTab === 'config' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             {/* Informations générales */}
@@ -5139,8 +5476,8 @@ export function DeepDive() {
         </div>
       )}
 
-      {/* Preview Tab */}
-      {activeTab === 'preview' && (
+      {/* Ancien onglet Preview - masqué, remplacé par l'interface ci-dessus */}
+      {false && activeTab === 'preview' && (
         <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-gray-900 p-4' : ''}`}>
           <Card padding="md" className={isFullscreen ? 'h-full flex flex-col' : ''}>
             <div className="flex items-center justify-between mb-4">
@@ -5211,8 +5548,8 @@ export function DeepDive() {
         </div>
       )}
 
-      {/* Design Tab */}
-      {activeTab === 'design' && (
+      {/* Ancien onglet Design - masqué, remplacé par l'interface ci-dessus */}
+      {false && activeTab === 'design' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card padding="md">
             <h4 className="font-semibold text-primary-900 mb-4 flex items-center gap-2">

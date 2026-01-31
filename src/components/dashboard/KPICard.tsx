@@ -1,6 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui';
+import { useEffect, useState, useRef } from 'react';
 
 interface KPICardProps {
   title: string;
@@ -13,6 +14,39 @@ interface KPICardProps {
   };
   progress?: number;
   variant?: 'default' | 'success' | 'warning' | 'error';
+  animationDelay?: number;
+}
+
+// Animated counter hook
+function useAnimatedValue(target: number, duration: number = 1000) {
+  const [value, setValue] = useState(0);
+  const startTime = useRef<number | null>(null);
+  const frameRef = useRef<number>();
+
+  useEffect(() => {
+    startTime.current = null;
+
+    const animate = (timestamp: number) => {
+      if (startTime.current === null) startTime.current = timestamp;
+      const progress = Math.min((timestamp - startTime.current) / duration, 1);
+
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      setValue(Math.round(target * easeOutQuart));
+
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    frameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, duration]);
+
+  return value;
 }
 
 export function KPICard({
@@ -23,7 +57,32 @@ export function KPICard({
   trend,
   progress,
   variant = 'default',
+  animationDelay = 0,
 }: KPICardProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Animated progress value
+  const animatedProgress = useAnimatedValue(
+    isVisible && progress !== undefined ? progress : 0,
+    800
+  );
+
+  // Intersection observer for entrance animation
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setIsVisible(true), animationDelay);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (cardRef.current) observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [animationDelay]);
+
   const variantColors = {
     default: 'text-primary-600',
     success: 'text-success-600',
@@ -45,46 +104,109 @@ export function KPICard({
     error: 'bg-error-500',
   };
 
-  return (
-    <Card className="card-hover overflow-hidden" padding="none">
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-primary-500">{title}</p>
-          <div className={cn('rounded-lg p-2', variantBg[variant])}>
-            <Icon className={cn('h-4 w-4', variantColors[variant])} />
-          </div>
-        </div>
+  const glowClasses = {
+    default: '',
+    success: 'hover:glow-success',
+    warning: 'hover:glow-warning',
+    error: 'hover:glow-error',
+  };
 
-        <div className="flex items-baseline gap-2">
-          <p className="text-2xl font-bold text-primary-900">{value}</p>
-          {trend && (
-            <span
+  const gradientBorder = {
+    default: 'hover:border-primary-300',
+    success: 'hover:border-success-300',
+    warning: 'hover:border-warning-300',
+    error: 'hover:border-error-300',
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className={cn(
+        'opacity-0 translate-y-4',
+        isVisible && 'animate-fade-slide-in'
+      )}
+      style={{ animationDelay: `${animationDelay}ms` }}
+    >
+      <Card
+        className={cn(
+          'overflow-hidden shimmer transition-all duration-300',
+          'hover:shadow-lg hover:-translate-y-1',
+          'border border-transparent',
+          glowClasses[variant],
+          gradientBorder[variant]
+        )}
+        padding="none"
+      >
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <p className="text-sm font-medium text-primary-500">{title}</p>
+            <div
               className={cn(
-                'text-xs font-medium px-1.5 py-0.5 rounded',
-                trend.isPositive
-                  ? 'bg-success-100 text-success-700'
-                  : 'bg-error-100 text-error-700'
+                'rounded-lg p-2 transition-transform duration-300',
+                'group-hover:scale-110 group-hover:rotate-3',
+                variantBg[variant]
               )}
             >
-              {trend.isPositive ? '+' : ''}
-              {trend.value}%
-            </span>
+              <Icon
+                className={cn(
+                  'h-4 w-4 transition-all duration-300',
+                  variantColors[variant]
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <p
+              className={cn(
+                'text-2xl font-bold text-primary-900 transition-all',
+                isVisible && 'animate-count-up'
+              )}
+            >
+              {value}
+            </p>
+            {trend && (
+              <span
+                className={cn(
+                  'text-xs font-medium px-1.5 py-0.5 rounded transition-all',
+                  trend.isPositive
+                    ? 'bg-success-100 text-success-700'
+                    : 'bg-error-100 text-error-700'
+                )}
+              >
+                {trend.isPositive ? '+' : ''}
+                {trend.value}%
+              </span>
+            )}
+          </div>
+
+          {subtitle && (
+            <p className="mt-1 text-xs text-primary-400">{subtitle}</p>
           )}
         </div>
 
-        {subtitle && (
-          <p className="mt-1 text-xs text-primary-400">{subtitle}</p>
+        {progress !== undefined && (
+          <div className="h-1.5 bg-gray-100 relative overflow-hidden">
+            <div
+              className={cn(
+                'h-full transition-all duration-700 ease-out',
+                progressBarColors[variant]
+              )}
+              style={{ width: `${Math.min(animatedProgress, 100)}%` }}
+            />
+            {/* Shimmer overlay on progress bar */}
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              style={{
+                transform: 'translateX(-100%)',
+                animation: isVisible
+                  ? 'shimmerMove 2s ease-in-out infinite 1s'
+                  : 'none',
+              }}
+            />
+          </div>
         )}
-      </div>
-
-      {progress !== undefined && (
-        <div className="h-1.5 bg-gray-100">
-          <div
-            className={cn('h-full transition-all duration-500', progressBarColors[variant])}
-            style={{ width: `${Math.min(progress, 100)}%` }}
-          />
-        </div>
-      )}
-    </Card>
+      </Card>
+    </div>
   );
 }

@@ -1,7 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import type { Alerte, AlerteFilters, AlerteType, Criticite } from '@/types';
+import type { Alerte, AlerteFilters, AlerteType, Criticite, AlerteEmailHistorique } from '@/types';
 import { getDaysUntil } from '@/lib/utils';
+import {
+  sendAlerteEmailSimple as sendAlerteEmail,
+  getAlerteResponsableByEntity as getAlerteResponsable,
+} from '@/services/alerteEmailService';
 
 export function useAlertes(filters?: AlerteFilters) {
   const alertes = useLiveQuery(async () => {
@@ -62,22 +66,55 @@ export function useAlertesCritiques() {
 }
 
 export async function createAlerte(
-  alerte: Omit<Alerte, 'id' | 'createdAt'>
+  alerte: Omit<Alerte, 'id' | 'createdAt'>,
+  options?: { sendEmail?: boolean }
 ): Promise<number> {
-  return db.alertes.add({
+  // Récupérer le responsable automatiquement si non fourni
+  let responsableInfo = {
+    responsableId: alerte.responsableId,
+    responsableNom: alerte.responsableNom,
+    responsableEmail: alerte.responsableEmail,
+  };
+
+  if (!responsableInfo.responsableId && alerte.entiteType && alerte.entiteId) {
+    const resp = await getAlerteResponsable(alerte.entiteType, alerte.entiteId);
+    if (resp) {
+      responsableInfo = resp;
+    }
+  }
+
+  const alerteId = await db.alertes.add({
     ...alerte,
+    ...responsableInfo,
+    emailEnvoye: false,
+    emailRelanceCount: 0,
     createdAt: new Date().toISOString(),
   } as Alerte);
+
+  // Envoyer email automatiquement si demandé et si responsable avec email
+  if (options?.sendEmail && responsableInfo.responsableEmail) {
+    const alerteComplete = await db.alertes.get(alerteId);
+    if (alerteComplete) {
+      await sendAlerteEmail(alerteComplete, 'initial');
+    }
+  }
+
+  return alerteId;
 }
 
 export async function markAlerteLue(id: number): Promise<void> {
   await db.alertes.update(id, { lu: true });
 }
 
-export async function markAlerteTraitee(id: number): Promise<void> {
+export async function markAlerteTraitee(
+  id: number,
+  traiteePar?: { id: number; nom: string }
+): Promise<void> {
   await db.alertes.update(id, {
     traitee: true,
     traiteeAt: new Date().toISOString(),
+    traiteeParId: traiteePar?.id,
+    traiteeParNom: traiteePar?.nom,
   });
 }
 
@@ -381,4 +418,96 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       });
     }
   }
+}
+
+// ============================================================================
+// FONCTIONS EMAIL
+// ============================================================================
+
+// Envoyer un email pour une alerte spécifique
+export async function envoyerEmailAlerte(
+  alerteId: number,
+  type: 'initial' | 'relance' | 'escalade' = 'initial'
+): Promise<boolean> {
+  const alerte = await db.alertes.get(alerteId);
+  if (!alerte) return false;
+
+  const success = await sendAlerteEmail(alerte, type);
+  return success;
+}
+
+// Hook pour l'historique des emails
+export function useAlerteEmailHistorique(alerteId?: number) {
+  return useLiveQuery(async () => {
+    if (alerteId) {
+      return db.alerteEmailHistorique
+        .where('alerteId')
+        .equals(alerteId)
+        .reverse()
+        .toArray();
+    }
+    return db.alerteEmailHistorique.orderBy('envoyeAt').reverse().limit(100).toArray();
+  }, [alerteId]) ?? [];
+}
+
+// Stats des emails
+export function useAlerteEmailStats() {
+  return useLiveQuery(async () => {
+    const historique = await db.alerteEmailHistorique.toArray();
+    return {
+      total: historique.length,
+      envoyes: historique.filter(h => h.statut === 'envoye').length,
+      ouverts: historique.filter(h => h.statut === 'ouvert' || h.statut === 'clique').length,
+      echecs: historique.filter(h => h.statut === 'echec').length,
+    };
+  }) ?? { total: 0, envoyes: 0, ouverts: 0, echecs: 0 };
+}
+
+// Envoyer emails pour toutes les alertes non traitées
+export async function envoyerTousEmailsAlertes(): Promise<{ success: number; failed: number }> {
+  const alertes = await db.alertes
+    .filter(a => !a.traitee && !a.emailEnvoye && !!a.responsableEmail)
+    .toArray();
+
+  let success = 0;
+  let failed = 0;
+
+  for (const alerte of alertes) {
+    const sent = await sendAlerteEmail(alerte, 'initial');
+    if (sent) success++;
+    else failed++;
+  }
+
+  return { success, failed };
+}
+
+// Envoyer relances pour alertes non traitées
+export async function envoyerRelancesAlertes(joursDepuisCreation: number = 3): Promise<number> {
+  const now = Date.now();
+  const seuil = joursDepuisCreation * 24 * 60 * 60 * 1000;
+
+  const alertes = await db.alertes
+    .filter(a => {
+      if (a.traitee || !a.emailEnvoye || !a.responsableEmail) return false;
+      const age = now - new Date(a.createdAt).getTime();
+      return age >= seuil;
+    })
+    .toArray();
+
+  let count = 0;
+  for (const alerte of alertes) {
+    // Ne pas relancer plus de 3 fois
+    if ((alerte.emailRelanceCount || 0) >= 3) continue;
+
+    // Vérifier dernier relance
+    if (alerte.dernierRelanceAt) {
+      const depuisRelance = now - new Date(alerte.dernierRelanceAt).getTime();
+      if (depuisRelance < seuil) continue;
+    }
+
+    const sent = await sendAlerteEmail(alerte, 'relance');
+    if (sent) count++;
+  }
+
+  return count;
 }

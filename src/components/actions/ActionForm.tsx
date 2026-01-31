@@ -1,32 +1,37 @@
-import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+// ============================================================================
+// FORMULAIRE ACTION v2.0 - Vue et Modification avec ONGLETS
+// Selon spécifications: 4 champs obligatoires, 6 auto-calculés, 4 complémentaires
+// + Sections Sous-tâches et Preuves
+// ============================================================================
+
+import { useState, useEffect, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import {
   Target,
   Calendar,
-  Users,
-  GitBranch,
-  DollarSign,
-  FileCheck,
-  FileText,
-  Activity,
+  User,
+  Check,
   X,
   Plus,
-  CheckCircle,
-  ChevronDown,
-  ChevronRight,
-  Info,
   Trash2,
-  Mail,
   Link2,
-  ArrowLeftRight,
-  Lock,
-  Unlock,
+  FileText,
+  Upload,
+  LinkIcon,
+  ListTodo,
   Clock,
+  FileIcon,
   Sparkles,
-  AlertCircle,
+  Save,
+  Eye,
+  Edit3,
+  CheckCircle,
+  XCircle,
+  ListChecks,
+  Paperclip,
+  MessageSquare,
 } from 'lucide-react';
 import {
   Dialog,
@@ -36,222 +41,88 @@ import {
   DialogFooter,
   Button,
   Input,
-  Textarea,
   Select,
   SelectOption,
   Label,
-  Checkbox,
   Badge,
+  useToast,
 } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { SendReminderModal } from '@/components/shared';
 import { useUsers, useJalons } from '@/hooks';
-import { createAction, updateAction } from '@/hooks/useActions';
-import {
-  computeDateFromPhase,
-  computeEcheance,
-  formatDelaiComplet,
-} from '@/lib/dateCalculations';
-import { getProjectConfig, type ProjectConfig } from '@/components/settings/ProjectSettings';
-import {
-  PHASE_REFERENCE_LABELS,
-  type PhaseReference,
-} from '@/types';
-import { detectPhaseForAction, calculateDureeEstimee } from '@/lib/phaseAutoDetect';
+import { updateAction } from '@/hooks/useActions';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Flag } from 'lucide-react';
 import { db } from '@/db';
 import {
-  AXES,
   AXE_LABELS,
-  PHASES,
-  PHASE_LABELS,
-  ACTION_CATEGORIES,
-  ACTION_CATEGORY_LABELS,
-  ACTION_TYPES,
-  ACTION_TYPE_LABELS,
-  ACTION_STATUSES,
-  ACTION_STATUS_LABELS,
-  ACTION_SANTE,
-  ACTION_SANTE_LABELS,
-  PRIORITES,
-  PRIORITE_LABELS,
-  TENDANCES,
-  TENDANCE_LABELS,
-  FLEXIBILITES,
-  FLEXIBILITE_LABELS,
-  METHODES_AVANCEMENT,
-  METHODE_AVANCEMENT_LABELS,
-  VISIBILITES_REPORTING,
-  VISIBILITE_REPORTING_LABELS,
-  TYPES_LIEN,
-  NIVEAUX_IMPACT,
-  NIVEAU_IMPACT_LABELS,
-  TYPES_DOCUMENT,
-  TYPE_DOCUMENT_LABELS,
-  STATUTS_LIVRABLE,
-  STATUT_LIVRABLE_LABELS,
   type Action,
-  type Livrable,
-  type CritereAcceptation,
-  type Document as DocType,
-  type Dependance,
-  type TypeLien,
-  type StatutLivrable,
-  type TypeDocument,
-  type VisibiliteReporting,
+  type Axe,
 } from '@/types';
+import { calculerPourcentageAction } from '@/lib/calculations';
 
 // ============================================================================
-// SCHEMA DE VALIDATION ZOD
+// TYPES & SCHEMAS
 // ============================================================================
 
-const actionSchema = z.object({
-  // Identification
-  id_action: z.string().min(1, "L'ID est requis"),
-  code_wbs: z.string().min(1, 'Le code WBS est requis'),
-  titre: z.string().min(1, 'Le titre est requis').max(100),
-  description: z.string().min(1, 'La description est requise').max(500),
-
-  // Classification
-  axe: z.enum(AXES),
-  phase: z.enum(PHASES),
-  categorie: z.enum(ACTION_CATEGORIES),
-  type_action: z.enum(ACTION_TYPES),
-
-  // Planification
-  date_debut_prevue: z.string().min(1, 'La date de début est requise'),
-  date_fin_prevue: z.string().min(1, 'La date de fin est requise'),
-  date_debut_reelle: z.string().nullable(),
-  date_fin_reelle: z.string().nullable(),
-  duree_prevue_jours: z.number().min(0),
-  duree_reelle_jours: z.number().nullable(),
-  date_butoir: z.string().nullable(),
-  flexibilite: z.enum(FLEXIBILITES),
-
-  // RACI
-  responsable: z.string().min(1, 'Le responsable est requis'),
-  approbateur: z.string().min(1, "L'approbateur est requis"),
-  delegue: z.string().nullable(),
-  escalade_niveau1: z.string().optional(),
-
-  // Dépendances
-  contraintes_externes: z.string().nullable(),
-  chemin_critique: z.boolean(),
-
-  // Ressources & Budget
-  charge_homme_jour: z.number().nullable(),
-  budget_prevu: z.number().nullable(),
-  budget_engage: z.number().nullable(),
-  budget_realise: z.number().nullable(),
-  ligne_budgetaire: z.string().nullable(),
-
-  // Livrables
-  validateur_qualite: z.string().nullable(),
-
-  // Documents
-  lien_sharepoint: z.string().nullable(),
-  modele_document: z.string().nullable(),
-
-  // Suivi
-  statut: z.enum(ACTION_STATUSES),
-  avancement: z.number().min(0).max(100),
-  methode_avancement: z.enum(METHODES_AVANCEMENT),
-  tendance: z.enum(TENDANCES),
-  sante: z.enum(ACTION_SANTE),
-  notes_internes: z.string().nullable(),
-  commentaire_reporting: z.string().max(200).nullable(),
-  points_blocage: z.string().nullable(),
-  escalade_requise: z.boolean(),
-  niveau_escalade: z.string().nullable(),
-  priorite: z.enum(PRIORITES),
-  impact_si_retard: z.enum(NIVEAUX_IMPACT),
+const actionFormSchema = z.object({
+  jalonId: z.number({ required_error: 'Le jalon est obligatoire' }),
+  titre: z.string().min(3, 'Le libellé doit contenir au moins 3 caractères').max(150, 'Maximum 150 caractères'),
+  date_fin_prevue: z.string().min(1, 'L\'échéance est obligatoire'),
+  responsableId: z.number({ required_error: 'Le responsable est obligatoire' }),
+  dependances: z.array(z.number()).default([]),
+  livrable: z.string().max(200).optional(),
+  format: z.string().optional(),
+  statut: z.enum(['a_faire', 'en_cours', 'fait', 'bloque']).default('a_faire'),
 });
 
-type ActionFormData = z.infer<typeof actionSchema>;
+type ActionFormData = z.infer<typeof actionFormSchema>;
 
-// ============================================================================
-// TABS CONFIGURATION
-// ============================================================================
-
-const TABS = [
-  { id: 'general', label: 'Général', icon: Target },
-  { id: 'planning', label: 'Planning', icon: Calendar },
-  { id: 'responsabilites', label: 'RACI', icon: Users },
-  { id: 'dependances', label: 'Dépendances', icon: GitBranch },
-  { id: 'ressources', label: 'Ressources', icon: DollarSign },
-  { id: 'livrables', label: 'Livrables', icon: FileCheck },
-  { id: 'documents', label: 'Documents', icon: FileText },
-  { id: 'suivi', label: 'Suivi', icon: Activity },
-  { id: 'sync', label: 'Sync', icon: ArrowLeftRight },
+// Formats de livrables
+const FORMATS_LIVRABLE = [
+  { value: '', label: 'Non spécifié' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'excel', label: 'Excel' },
+  { value: 'word', label: 'Word' },
+  { value: 'powerpoint', label: 'PowerPoint' },
+  { value: 'image', label: 'Image' },
+  { value: 'autre', label: 'Autre' },
 ];
 
+// Statuts avec icônes
+const STATUT_CONFIG = {
+  a_faire: { label: 'À faire', color: 'bg-gray-100 text-gray-700 border-gray-300', icon: Clock },
+  en_cours: { label: 'En cours', color: 'bg-blue-100 text-blue-700 border-blue-300', icon: Edit3 },
+  fait: { label: 'Fait', color: 'bg-green-100 text-green-700 border-green-300', icon: CheckCircle },
+  bloque: { label: 'Bloqué', color: 'bg-red-100 text-red-700 border-red-300', icon: XCircle },
+};
+
 // ============================================================================
-// SECTION COLLAPSIBLE COMPONENT
+// INTERFACES
 // ============================================================================
 
-interface SectionProps {
-  title: string;
-  icon?: React.ReactNode;
-  badge?: string;
-  defaultExpanded?: boolean;
-  children: React.ReactNode;
+interface SousTache {
+  id: string;
+  libelle: string;
+  responsableId: number | null;
+  echeance: string | null;
+  fait: boolean;
 }
 
-function Section({ title, icon, badge, defaultExpanded = true, children }: SectionProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-
-  return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden mb-4">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between text-left transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          {icon}
-          <span className="font-medium text-neutral-900">{title}</span>
-        </div>
-        {badge && (
-          <Badge variant="secondary" className="text-xs">
-            {badge}
-          </Badge>
-        )}
-      </button>
-      {expanded && <div className="p-4 bg-white">{children}</div>}
-    </div>
-  );
+interface Preuve {
+  id: string;
+  type: 'fichier' | 'lien';
+  nom: string;
+  url?: string;
+  format?: string;
+  taille?: number;
+  dateAjout: string;
 }
 
-// ============================================================================
-// FIELD COMPONENT
-// ============================================================================
-
-interface FieldProps {
-  label: string;
-  required?: boolean;
-  hint?: string;
-  span?: 1 | 2;
-  children: React.ReactNode;
+interface Note {
+  id: string;
+  texte: string;
+  auteur: string;
+  date: string;
 }
-
-function Field({ label, required = false, hint, span = 1, children }: FieldProps) {
-  return (
-    <div className={span === 2 ? 'col-span-2' : ''}>
-      <Label className="text-sm font-medium text-neutral-700 mb-1.5 block">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </Label>
-      {children}
-      {hint && <p className="text-xs text-neutral-500 mt-1">{hint}</p>}
-    </div>
-  );
-}
-
-// ============================================================================
-// PROPS
-// ============================================================================
 
 interface ActionFormProps {
   action?: Action;
@@ -261,2072 +132,719 @@ interface ActionFormProps {
 }
 
 // ============================================================================
+// TABS CONFIGURATION
+// ============================================================================
+
+const FORM_TABS = [
+  { id: 'general', label: 'Général', icon: Target },
+  { id: 'sousTaches', label: 'Sous-tâches', icon: ListChecks },
+  { id: 'complements', label: 'Compléments', icon: ListTodo },
+  { id: 'preuves', label: 'Preuves', icon: Paperclip },
+];
+
+// ============================================================================
 // COMPONENT
 // ============================================================================
 
 export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(!action);
+  const [activeTab, setActiveTab] = useState('general');
+  const [newNote, setNewNote] = useState('');
+
+  // Données locales
+  const [sousTaches, setSousTaches] = useState<SousTache[]>([]);
+  const [preuves, setPreuves] = useState<Preuve[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+
   const users = useUsers();
   const jalons = useJalons();
-  const isEditing = !!action;
-  const [activeTab, setActiveTab] = useState('general');
-  const [reminderModalOpen, setReminderModalOpen] = useState(false);
-  const [selectedJalonId, setSelectedJalonId] = useState<number | null>(action?.jalonId ?? null);
-
-  const today = new Date().toISOString().split('T')[0];
-
-  // State for dynamic lists
-  const [consultes, setConsultes] = useState<string[]>(action?.consultes || []);
-  const [informes, setInformes] = useState<string[]>(action?.informes || []);
-  const [ressourcesHumaines, setRessourcesHumaines] = useState<string[]>(action?.ressources_humaines || []);
-  const [predecesseurs, setPredecesseurs] = useState<Dependance[]>(action?.predecesseurs || []);
-  const [successeurs, setSuccesseurs] = useState<Dependance[]>(action?.successeurs || []);
-  const [livrables, setLivrables] = useState<Livrable[]>(action?.livrables || []);
-  const [criteres, setCriteres] = useState<CritereAcceptation[]>(action?.criteres_acceptation || []);
-  const [documents, setDocuments] = useState<DocType[]>(action?.documents || []);
-  const [risquesAssocies, setRisquesAssocies] = useState<string[]>(action?.risques_associes || []);
-  const [visibiliteReporting, setVisibiliteReporting] = useState<string[]>(
-    action?.visibilite_reporting || ['interne_equipe']
-  );
-
-  // Phase reference & verrouillage state
-  const [actionPhaseRef, setActionPhaseRef] = useState<PhaseReference | ''>(
-    (action as Action & { jalon_reference?: PhaseReference } | undefined)?.jalon_reference || ''
-  );
-  const [actionDelai, setActionDelai] = useState<number | null>(
-    (action as Action & { delai_declenchement?: number } | undefined)?.delai_declenchement ?? -30
-  );
-  const [dateVerrouillageAction, setDateVerrouillageAction] = useState(
-    !!(action as Action & { date_verrouillage_manuel?: boolean } | undefined)?.date_verrouillage_manuel
-  );
-  const [projectConfig, setProjectConfig] = useState<ProjectConfig | null>(null);
-
-  // Load project config on mount
-  useEffect(() => {
-    getProjectConfig().then(setProjectConfig);
-  }, []);
-
-  // State for sync links
-  const [actionsLiees, setActionsLiees] = useState<string[]>([]);
-  const [propagationRetard, setPropagationRetard] = useState(true);
-
-  // Get available actions for linking
-  const allActions = useLiveQuery(async () => {
-    return db.actions.toArray();
-  }) ?? [];
+  const toast = useToast();
+  const allActions = useLiveQuery(() => db.actions.toArray()) ?? [];
 
   const {
     register,
     handleSubmit,
-    control,
-    formState: { isSubmitting },
-    reset,
     watch,
     setValue,
+    reset,
+    formState: { errors },
   } = useForm<ActionFormData>({
-    resolver: zodResolver(actionSchema),
-    defaultValues: action
-      ? {
-          id_action: action.id_action,
-          code_wbs: action.code_wbs,
-          titre: action.titre,
-          description: action.description,
-          axe: action.axe,
-          phase: action.phase,
-          categorie: action.categorie,
-          type_action: action.type_action,
-          date_debut_prevue: action.date_debut_prevue,
-          date_fin_prevue: action.date_fin_prevue,
-          date_debut_reelle: action.date_debut_reelle,
-          date_fin_reelle: action.date_fin_reelle,
-          duree_prevue_jours: action.duree_prevue_jours,
-          duree_reelle_jours: action.duree_reelle_jours,
-          date_butoir: action.date_butoir,
-          flexibilite: action.flexibilite,
-          responsable: action.responsable,
-          approbateur: action.approbateur,
-          delegue: action.delegue,
-          escalade_niveau1: action.escalade_niveau1 || '',
-          contraintes_externes: action.contraintes_externes,
-          chemin_critique: action.chemin_critique,
-          charge_homme_jour: action.charge_homme_jour,
-          budget_prevu: action.budget_prevu,
-          budget_engage: action.budget_engage,
-          budget_realise: action.budget_realise,
-          ligne_budgetaire: action.ligne_budgetaire,
-          validateur_qualite: action.validateur_qualite,
-          lien_sharepoint: action.lien_sharepoint,
-          modele_document: action.modele_document,
-          statut: action.statut,
-          avancement: action.avancement,
-          methode_avancement: action.methode_avancement,
-          tendance: action.tendance,
-          sante: action.sante,
-          notes_internes: action.notes_internes,
-          commentaire_reporting: action.commentaire_reporting,
-          points_blocage: action.points_blocage,
-          escalade_requise: action.escalade_requise,
-          niveau_escalade: action.niveau_escalade,
-          priorite: action.priorite,
-          impact_si_retard: action.impact_si_retard,
-        }
-      : {
-          id_action: '',
-          code_wbs: '',
-          titre: '',
-          description: '',
-          axe: 'axe2_commercial',
-          phase: 'execution',
-          categorie: 'negociation',
-          type_action: 'tache',
-          date_debut_prevue: today,
-          date_fin_prevue: today,
-          date_debut_reelle: null,
-          date_fin_reelle: null,
-          duree_prevue_jours: 1,
-          duree_reelle_jours: null,
-          date_butoir: null,
-          flexibilite: 'moyenne',
-          responsable: '',
-          approbateur: '',
-          delegue: null,
-          escalade_niveau1: '',
-          contraintes_externes: null,
-          chemin_critique: false,
-          charge_homme_jour: null,
-          budget_prevu: null,
-          budget_engage: null,
-          budget_realise: null,
-          ligne_budgetaire: null,
-          validateur_qualite: null,
-          lien_sharepoint: null,
-          modele_document: null,
-          statut: 'a_planifier',
-          avancement: 0,
-          methode_avancement: 'manuel',
-          tendance: 'stable',
-          sante: 'gris',
-          notes_internes: null,
-          commentaire_reporting: null,
-          points_blocage: null,
-          escalade_requise: false,
-          niveau_escalade: null,
-          priorite: 'moyenne',
-          impact_si_retard: 'modere',
-        },
+    resolver: zodResolver(actionFormSchema),
+    defaultValues: {
+      jalonId: action?.jalonId ?? undefined,
+      titre: action?.titre ?? '',
+      date_fin_prevue: action?.date_fin_prevue ?? '',
+      responsableId: action?.responsableId ?? undefined,
+      dependances: [],
+      livrable: action?.livrables?.[0]?.nom ?? '',
+      format: action?.livrables?.[0]?.format ?? '',
+      statut: (action?.statut as 'a_faire' | 'en_cours' | 'fait' | 'bloque') ?? 'a_faire',
+    },
   });
 
-  // Reset form when modal opens with new action data
-  useEffect(() => {
-    if (open) {
-      setActiveTab('general');
-      if (action) {
-        reset({
-          id_action: action.id_action,
-          code_wbs: action.code_wbs,
-          titre: action.titre,
-          description: action.description,
-          axe: action.axe,
-          phase: action.phase,
-          categorie: action.categorie,
-          type_action: action.type_action,
-          date_debut_prevue: action.date_debut_prevue,
-          date_fin_prevue: action.date_fin_prevue,
-          date_debut_reelle: action.date_debut_reelle,
-          date_fin_reelle: action.date_fin_reelle,
-          duree_prevue_jours: action.duree_prevue_jours,
-          duree_reelle_jours: action.duree_reelle_jours,
-          date_butoir: action.date_butoir,
-          flexibilite: action.flexibilite,
-          responsable: action.responsable,
-          approbateur: action.approbateur,
-          delegue: action.delegue,
-          escalade_niveau1: action.escalade_niveau1 || '',
-          contraintes_externes: action.contraintes_externes,
-          chemin_critique: action.chemin_critique,
-          charge_homme_jour: action.charge_homme_jour,
-          budget_prevu: action.budget_prevu,
-          budget_engage: action.budget_engage,
-          budget_realise: action.budget_realise,
-          ligne_budgetaire: action.ligne_budgetaire,
-          validateur_qualite: action.validateur_qualite,
-          lien_sharepoint: action.lien_sharepoint,
-          modele_document: action.modele_document,
-          statut: action.statut,
-          avancement: action.avancement,
-          methode_avancement: action.methode_avancement,
-          tendance: action.tendance,
-          sante: action.sante,
-          notes_internes: action.notes_internes,
-          commentaire_reporting: action.commentaire_reporting,
-          points_blocage: action.points_blocage,
-          escalade_requise: action.escalade_requise,
-          niveau_escalade: action.niveau_escalade,
-          priorite: action.priorite,
-          impact_si_retard: action.impact_si_retard,
-        });
-        // Reset dynamic lists with action data
-        setConsultes(action.consultes || []);
-        setInformes(action.informes || []);
-        setRessourcesHumaines(action.ressources_humaines || []);
-        setPredecesseurs(action.predecesseurs || []);
-        setSuccesseurs(action.successeurs || []);
-        setLivrables(action.livrables || []);
-        setCriteres(action.criteres_acceptation || []);
-        setDocuments(action.documents || []);
-        setRisquesAssocies(action.risques_associes || []);
-        setVisibiliteReporting(action.visibilite_reporting || ['interne_equipe']);
-        setSelectedJalonId(action.jalonId ?? null);
-        setActionPhaseRef((action as Action & { jalon_reference?: PhaseReference }).jalon_reference || '');
-        setActionDelai((action as Action & { delai_declenchement?: number }).delai_declenchement ?? -30);
-        setDateVerrouillageAction(!!(action as Action & { date_verrouillage_manuel?: boolean }).date_verrouillage_manuel);
-      } else {
-        // Reset to empty form for new action
-        reset({
-          id_action: '',
-          code_wbs: '',
-          titre: '',
-          description: '',
-          axe: 'axe2_commercial',
-          phase: 'execution',
-          categorie: 'negociation',
-          type_action: 'tache',
-          date_debut_prevue: today,
-          date_fin_prevue: today,
-          date_debut_reelle: null,
-          date_fin_reelle: null,
-          duree_prevue_jours: 1,
-          duree_reelle_jours: null,
-          date_butoir: null,
-          flexibilite: 'moyenne',
-          responsable: '',
-          approbateur: '',
-          delegue: null,
-          escalade_niveau1: '',
-          contraintes_externes: null,
-          chemin_critique: false,
-          charge_homme_jour: null,
-          budget_prevu: null,
-          budget_engage: null,
-          budget_realise: null,
-          ligne_budgetaire: null,
-          validateur_qualite: null,
-          lien_sharepoint: null,
-          modele_document: null,
-          statut: 'a_planifier',
-          avancement: 0,
-          methode_avancement: 'manuel',
-          tendance: 'stable',
-          sante: 'gris',
-          notes_internes: null,
-          commentaire_reporting: null,
-          points_blocage: null,
-          escalade_requise: false,
-          niveau_escalade: null,
-          priorite: 'moyenne',
-          impact_si_retard: 'modere',
-        });
-        // Reset dynamic lists to empty
-        setConsultes([]);
-        setInformes([]);
-        setRessourcesHumaines([]);
-        setPredecesseurs([]);
-        setSuccesseurs([]);
-        setLivrables([]);
-        setCriteres([]);
-        setDocuments([]);
-        setRisquesAssocies([]);
-        setVisibiliteReporting(['interne_equipe']);
-        setSelectedJalonId(null);
-        setActionPhaseRef('');
-        setActionDelai(-30);
-        setDateVerrouillageAction(false);
-      }
-    }
-  }, [open, action, reset, today]);
-
+  const watchJalonId = watch('jalonId');
+  const watchEcheance = watch('date_fin_prevue');
   const watchStatut = watch('statut');
-  const watchAvancement = watch('avancement');
-  const watchEscaladeRequise = watch('escalade_requise');
-  const watchTitre = watch('titre');
-  const watchAxe = watch('axe');
 
-  // Auto-detect phase from titre + axe
-  useEffect(() => {
-    if (!dateVerrouillageAction && watchTitre) {
-      const detected = detectPhaseForAction({ titre: watchTitre, axe: watchAxe });
-      if (detected) {
-        setActionPhaseRef(detected);
-      }
-    }
-  }, [watchTitre, watchAxe, dateVerrouillageAction]);
+  const selectedJalon = watchJalonId ? jalons.find(j => j.id === watchJalonId) : null;
+  const axeHerite = selectedJalon?.axe || action?.axe || null;
 
-  // Auto-calculate duration from titre keywords
-  const [autoCalcDuree, setAutoCalcDuree] = useState<number>(
-    action?.duree_prevue_jours || calculateDureeEstimee({ titre: action?.titre })
+  // Calculs auto
+  const calculerPriorite = useCallback((echeance: string): 'haute' | 'moyenne' | 'basse' => {
+    if (!echeance) return 'moyenne';
+    const joursRestants = Math.ceil((new Date(echeance).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (joursRestants <= 7) return 'haute';
+    if (joursRestants <= 30) return 'moyenne';
+    return 'basse';
+  }, []);
+
+  const prioriteCalculee = calculerPriorite(watchEcheance);
+  const joursRestants = watchEcheance
+    ? Math.ceil((new Date(watchEcheance).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  // Calcul de l'avancement selon les spécifications v2.0
+  // - A_FAIRE → 0%, FAIT → 100%, BLOQUE → garde la valeur
+  // - EN_COURS avec sous-tâches → basé sur les sous-tâches faites
+  // - EN_COURS sans sous-tâches → valeur manuelle ou 50% par défaut
+  const avancementCalcule = calculerPourcentageAction(
+    watchStatut,
+    sousTaches,
+    action?.avancement ?? 50
   );
+
+  // Charger les données
   useEffect(() => {
-    if (!dateVerrouillageAction && watchTitre) {
-      const duree = calculateDureeEstimee({ titre: watchTitre });
-      setAutoCalcDuree(duree);
+    if (open && action) {
+      reset({
+        jalonId: action.jalonId ?? undefined,
+        titre: action.titre,
+        date_fin_prevue: action.date_fin_prevue,
+        responsableId: action.responsableId ?? undefined,
+        dependances: action.predecesseurs?.map(p => typeof p === 'string' ? parseInt(p) : p.actionId).filter(Boolean) || [],
+        livrable: action.livrables?.[0]?.nom ?? '',
+        format: action.livrables?.[0]?.format ?? '',
+        statut: (action.statut as 'a_faire' | 'en_cours' | 'fait' | 'bloque') ?? 'a_faire',
+      });
+      setSousTaches((action as any).sous_taches || []);
+      setPreuves(action.documents?.map(d => ({
+        id: d.id || crypto.randomUUID(),
+        type: d.type?.includes('lien') ? 'lien' : 'fichier',
+        nom: d.nom,
+        url: d.url,
+        dateAjout: d.dateAjout || new Date().toISOString(),
+      })) || []);
+      setNotes(action.commentaires?.map(c => ({
+        id: c.id || crypto.randomUUID(),
+        texte: c.texte,
+        auteur: c.auteur,
+        date: c.date,
+      })) || []);
+      setIsEditing(false);
+      setActiveTab('general');
+    } else if (open && !action) {
+      reset({
+        jalonId: undefined,
+        titre: '',
+        date_fin_prevue: '',
+        responsableId: undefined,
+        dependances: [],
+        livrable: '',
+        format: '',
+        statut: 'a_faire',
+      });
+      setSousTaches([]);
+      setPreuves([]);
+      setNotes([]);
+      setIsEditing(true);
+      setActiveTab('general');
     }
-  }, [watchTitre, dateVerrouillageAction]);
+  }, [open, action, reset]);
 
-  // Auto-generate ID and WBS code based on axe and jalon
-  const AXE_PREFIXES: Record<string, string> = {
-    'axe1_rh': 'RH',
-    'axe2_commercial': 'COM',
-    'axe3_technique': 'TECH',
-    'axe4_budget': 'BUD',
-    'axe5_marketing': 'MKT',
-    'axe6_exploitation': 'EXP',
-  };
-
+  // Pré-remplissage jalon
   useEffect(() => {
-    if (!isEditing && watchAxe) {
-      const prefix = AXE_PREFIXES[watchAxe] || 'GEN';
-      // Generate action ID based on jalon or standalone
-      if (selectedJalonId) {
-        const linkedJalon = jalons.find(j => j.id === selectedJalonId);
-        const jalonActions = allActions.filter(a => a.jalonId === selectedJalonId);
-        const num = jalonActions.length + 1;
-        const jalonNum = linkedJalon?.id_jalon?.split('-').pop() || '001';
-        setValue('id_action', `${prefix}.${jalonNum}.${num}`);
-      } else {
-        const axeActions = allActions.filter(a => a.axe === watchAxe);
-        const num = String(axeActions.length + 1).padStart(3, '0');
-        setValue('id_action', `ACT-${prefix}-${num}`);
+    if (isEditing && watchJalonId && selectedJalon) {
+      if (selectedJalon.responsableId && !watch('responsableId')) {
+        setValue('responsableId', selectedJalon.responsableId);
       }
-      // Generate WBS code
-      const wbsNum = String(allActions.length + 1).padStart(3, '0');
-      setValue('code_wbs', `WBS-${prefix}-A${wbsNum}`);
-    }
-  }, [watchAxe, selectedJalonId, isEditing, jalons, allActions, setValue]);
-
-  // Pre-fill fields from selected Jalon
-  useEffect(() => {
-    if (selectedJalonId && !isEditing) {
-      const linkedJalon = jalons.find(j => j.id === selectedJalonId);
-      if (linkedJalon) {
-        // Inherit axe from jalon
-        setValue('axe', linkedJalon.axe);
-
-        // Inherit responsable if defined
-        if (linkedJalon.responsable) {
-          setValue('responsable', linkedJalon.responsable);
-        }
-
-        // Map importance to priority
-        const prioriteMap: Record<string, 'critique' | 'haute' | 'moyenne' | 'basse'> = {
-          'critique': 'critique',
-          'majeur': 'haute',
-          'standard': 'moyenne',
-          'mineur': 'basse',
-        };
-        if (linkedJalon.niveau_importance) {
-          setValue('priorite', prioriteMap[linkedJalon.niveau_importance] || 'moyenne');
-        }
-
-        // Set default date (J-30 before jalon)
-        if (linkedJalon.date_prevue && !dateVerrouillageAction) {
-          const jalonDate = new Date(linkedJalon.date_prevue);
-          const actionEndDate = new Date(jalonDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-          const actionStartDate = new Date(actionEndDate.getTime() - (autoCalcDuree || 7) * 24 * 60 * 60 * 1000);
-          setValue('date_debut_prevue', actionStartDate.toISOString().split('T')[0]);
-          setValue('date_fin_prevue', actionEndDate.toISOString().split('T')[0]);
-        }
+      if (selectedJalon.date_prevue && !watch('date_fin_prevue')) {
+        const jalonDate = new Date(selectedJalon.date_prevue);
+        const echeanceSuggeree = new Date(jalonDate.getTime() - 5 * 24 * 60 * 60 * 1000);
+        setValue('date_fin_prevue', echeanceSuggeree.toISOString().split('T')[0]);
       }
     }
-  }, [selectedJalonId, isEditing, jalons, setValue, dateVerrouillageAction, autoCalcDuree]);
+  }, [watchJalonId, selectedJalon, setValue, watch, isEditing]);
 
-  // Auto-calculate dates from phase + délai + config + duration
-  useEffect(() => {
-    if (projectConfig && actionPhaseRef && actionDelai != null && !dateVerrouillageAction) {
-      const dateDebut = computeDateFromPhase(projectConfig, actionPhaseRef as PhaseReference, actionDelai);
-      setValue('date_debut_prevue', dateDebut);
-      setValue('duree_prevue_jours', autoCalcDuree);
-      const dateFin = computeEcheance(dateDebut, autoCalcDuree);
-      setValue('date_fin_prevue', dateFin);
+  // Handlers sous-tâches
+  const handleAddSousTache = () => {
+    setSousTaches([...sousTaches, { id: crypto.randomUUID(), libelle: '', responsableId: null, echeance: null, fait: false }]);
+  };
+  const handleUpdateSousTache = (index: number, field: keyof SousTache, value: any) => {
+    const updated = [...sousTaches];
+    updated[index] = { ...updated[index], [field]: value };
+    setSousTaches(updated);
+  };
+  const handleRemoveSousTache = (index: number) => {
+    setSousTaches(sousTaches.filter((_, i) => i !== index));
+  };
+  const handleToggleSousTache = async (index: number) => {
+    const updated = [...sousTaches];
+    updated[index] = { ...updated[index], fait: !updated[index].fait };
+    setSousTaches(updated);
+    if (!isEditing && action?.id) {
+      // Utiliser la fonction centralisée pour calculer l'avancement
+      const newAvancement = calculerPourcentageAction(watchStatut, updated, action.avancement ?? 50);
+      await updateAction(action.id, { sous_taches: updated, avancement: newAvancement, derniere_mise_a_jour: new Date().toISOString().split('T')[0] });
     }
-  }, [projectConfig, actionPhaseRef, actionDelai, autoCalcDuree, dateVerrouillageAction, setValue]);
-
-  // Calculate alerts based on date_fin_prevue
-  const calculateAlerts = (dateFin: string) => {
-    if (!dateFin) return { j30: null, j15: null, j7: null, j3: null };
-    const date = new Date(dateFin);
-    return {
-      j30: new Date(date.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      j15: new Date(date.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      j7: new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      j3: new Date(date.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    };
   };
 
+  // Handlers preuves
+  const handleAddLien = () => {
+    const url = prompt('Entrez l\'URL du lien:');
+    if (url) {
+      const nom = prompt('Libellé du lien (optionnel):', url) || url;
+      setPreuves([...preuves, { id: crypto.randomUUID(), type: 'lien', nom, url, dateAjout: new Date().toISOString() }]);
+    }
+  };
+  const handleRemovePreuve = (index: number) => {
+    setPreuves(preuves.filter((_, i) => i !== index));
+  };
+
+  // Handlers notes
+  const handleAddNote = () => {
+    if (newNote.trim()) {
+      const currentUser = users[0];
+      setNotes([...notes, { id: crypto.randomUUID(), texte: newNote.trim(), auteur: currentUser ? `${currentUser.prenom} ${currentUser.nom}` : 'Utilisateur', date: new Date().toISOString() }]);
+      setNewNote('');
+    }
+  };
+  const handleRemoveNote = (index: number) => {
+    setNotes(notes.filter((_, i) => i !== index));
+  };
+
+  // Statut rapide - Met aussi à jour l'avancement automatiquement
+  const handleStatutChange = async (newStatut: 'a_faire' | 'en_cours' | 'fait' | 'bloque') => {
+    setValue('statut', newStatut);
+    if (!isEditing && action?.id) {
+      // Calculer le nouvel avancement selon le statut (spec v2.0)
+      const newAvancement = calculerPourcentageAction(newStatut, sousTaches, action.avancement ?? 50);
+      await updateAction(action.id, {
+        statut: newStatut,
+        avancement: newAvancement,
+        derniere_mise_a_jour: new Date().toISOString().split('T')[0]
+      });
+    }
+  };
+
+  const actionsDisponibles = allActions.filter(a => a.id !== action?.id);
+
+  // Soumission
   const onSubmit = async (data: ActionFormData) => {
+    if (!action?.id) return;
+    setIsSubmitting(true);
     try {
-      const alerts = calculateAlerts(data.date_fin_prevue);
+      const responsable = users.find(u => u.id === data.responsableId);
+      const responsableName = responsable ? `${responsable.prenom} ${responsable.nom}` : action.responsable;
+      const today = new Date().toISOString().split('T')[0];
 
-      // Trouver le responsableId à partir du nom
-      const responsableUser = users.find(u => `${u.prenom} ${u.nom}` === data.responsable);
-      const responsableId = responsableUser?.id ?? action?.responsableId ?? null;
-
-      const actionData: Partial<Action> & Record<string, unknown> = {
-        ...data,
-        responsableId,
-        consultes,
-        informes,
-        ressources_humaines: ressourcesHumaines,
-        predecesseurs,
-        successeurs,
-        livrables,
-        criteres_acceptation: criteres,
-        documents,
-        risques_associes: risquesAssocies,
-        problemes_ouverts: [],
-        visibilite_reporting: visibiliteReporting as VisibiliteReporting[],
-        historique_commentaires: action?.historique_commentaires || [],
-        alerte_j30: alerts.j30,
-        alerte_j15: alerts.j15,
-        alerte_j7: alerts.j7,
-        alerte_j3: alerts.j3,
-        date_creation: action?.date_creation || today,
-        date_modification: today,
-        modifie_par: data.responsable,
-        version: (action?.version || 0) + 1,
-        jalonId: selectedJalonId,
-        // Calcul automatique des echeances
-        jalon_reference: actionPhaseRef || undefined,
-        delai_declenchement: actionDelai ?? undefined,
-        date_verrouillage_manuel: dateVerrouillageAction,
-      };
-
-      if (isEditing && action?.id) {
-        await updateAction(action.id, actionData);
-      } else {
-        await createAction(actionData as Omit<Action, 'id' | 'createdAt' | 'updatedAt'>);
-      }
-      reset();
+      await updateAction(action.id, {
+        titre: data.titre,
+        date_fin_prevue: data.date_fin_prevue,
+        responsable: responsableName,
+        responsableId: data.responsableId,
+        jalonId: data.jalonId,
+        axe: axeHerite || action.axe,
+        predecesseurs: data.dependances.map(id => String(id)),
+        livrables: data.livrable ? [{ id: action.livrables?.[0]?.id || crypto.randomUUID(), nom: data.livrable, format: data.format || 'autre', statut: 'attendu' }] : [],
+        documents: preuves.map(p => ({ id: p.id, nom: p.nom, type: p.type, url: p.url || '', dateAjout: p.dateAjout })),
+        statut: data.statut,
+        avancement: avancementCalcule,
+        priorite: prioriteCalculee,
+        sante: joursRestants && joursRestants < 0 ? 'rouge' : joursRestants && joursRestants < 7 ? 'orange' : 'vert',
+        derniere_mise_a_jour: today,
+        sous_taches: sousTaches,
+        commentaires: notes.map(n => ({ id: n.id, auteur: n.auteur, date: n.date, texte: n.texte })),
+      });
+      toast.success('Action mise a jour', `L'action "${data.titre}" a ete enregistree`);
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Error saving action:', error);
+      console.error('Erreur lors de la mise à jour:', error);
+      toast.error('Erreur', 'Impossible de sauvegarder l\'action');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  // Helper to add/remove from arrays
-  const addToList = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
-    setter((prev) => [...prev, value]);
-  };
-
-  const removeFromList = (setter: React.Dispatch<React.SetStateAction<string[]>>, index: number) => {
-    setter((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Add livrable
-  const addLivrable = () => {
-    const newLivrable: Livrable = {
-      id: uuidv4(),
-      nom: '',
-      description: null,
-      statut: 'en_attente',
-      obligatoire: true,
-      date_prevue: null,
-      date_livraison: null,
-      validateur: null,
-    };
-    setLivrables([...livrables, newLivrable]);
-  };
-
-  // Add critere
-  const addCritere = () => {
-    const newCritere: CritereAcceptation = {
-      id: uuidv4(),
-      critere: '',
-      valide: false,
-      date_validation: null,
-      validateur: null,
-    };
-    setCriteres([...criteres, newCritere]);
-  };
-
-  // Add document
-  const addDocument = () => {
-    const newDoc: DocType = {
-      id: uuidv4(),
-      nom: '',
-      type: 'autre',
-      url: '',
-      date_ajout: today,
-      ajoute_par: '',
-    };
-    setDocuments([...documents, newDoc]);
-  };
-
-  // ============================================================================
-  // TAB: GÉNÉRAL
-  // ============================================================================
-
-  const renderGeneral = () => (
-    <div className="space-y-4">
-      <Section title="Identification" icon={<Target className="w-4 h-4" />}>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="ID Action" hint="Généré automatiquement">
-            <Input
-              {...register('id_action')}
-              placeholder="COM.001.1"
-              disabled
-              className="bg-neutral-100 font-mono"
-            />
-          </Field>
-          <Field label="Code WBS" hint="Généré automatiquement">
-            <Input
-              {...register('code_wbs')}
-              placeholder="WBS-COM-A001"
-              disabled
-              className="bg-neutral-100 font-mono"
-            />
-          </Field>
-          <Field label="Titre" required span={2}>
-            <Input
-              {...register('titre')}
-              placeholder="Finaliser négociation bail Carrefour"
-              maxLength={100}
-            />
-            {/* Suggestions intelligentes basées sur le titre */}
-            {watchTitre && watchTitre.length >= 5 && (
-              <div className="mt-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 text-blue-800 text-sm font-medium mb-2">
-                  <Info className="w-4 h-4" />
-                  Suggestions automatiques
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  {actionPhaseRef && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-3 h-3 text-blue-600" />
-                      <span className="text-neutral-600">Phase:</span>
-                      <span className="font-medium text-blue-700">
-                        {PHASE_REFERENCE_LABELS[actionPhaseRef as PhaseReference]}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3 text-green-600" />
-                    <span className="text-neutral-600">Durée:</span>
-                    <span className="font-medium text-green-700">{autoCalcDuree} jours</span>
-                  </div>
-                  {selectedJalonId && (
-                    <div className="flex items-center gap-2">
-                      <Target className="w-3 h-3 text-purple-600" />
-                      <span className="text-neutral-600">Échéance:</span>
-                      <span className="font-medium text-purple-700">
-                        J-30 du jalon
-                      </span>
-                    </div>
-                  )}
-                </div>
-                {!dateVerrouillageAction && (
-                  <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    Dates calculées automatiquement
-                  </p>
-                )}
-              </div>
-            )}
-          </Field>
-          <Field label="Description" required span={2}>
-            <Textarea
-              {...register('description')}
-              placeholder="Négocier et finaliser le contrat de bail avec Carrefour pour l'espace locomotive..."
-              rows={3}
-              maxLength={500}
-            />
-          </Field>
-          <Field label="Axe stratégique" required>
-            <Select {...register('axe')}>
-              {AXES.map((axe) => (
-                <SelectOption key={axe} value={axe}>
-                  {AXE_LABELS[axe]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Phase" required>
-            <Select {...register('phase')}>
-              {PHASES.map((phase) => (
-                <SelectOption key={phase} value={phase}>
-                  {PHASE_LABELS[phase]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Catégorie" required>
-            <Select {...register('categorie')}>
-              {ACTION_CATEGORIES.map((cat) => (
-                <SelectOption key={cat} value={cat}>
-                  {ACTION_CATEGORY_LABELS[cat]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
-        <div className="mt-4">
-          <Label className="text-sm font-medium text-neutral-700 mb-2 block">Type d'action *</Label>
-          <div className="flex flex-wrap gap-2">
-            {ACTION_TYPES.map((type) => (
-              <Controller
-                key={type}
-                name="type_action"
-                control={control}
-                render={({ field }) => (
-                  <button
-                    type="button"
-                    onClick={() => field.onChange(type)}
-                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      field.value === type
-                        ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400'
-                    }`}
-                  >
-                    {ACTION_TYPE_LABELS[type]}
-                  </button>
-                )}
-              />
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Statut & Avancement">
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium text-neutral-700 mb-2 block">Statut actuel *</Label>
-            <div className="flex flex-wrap gap-2">
-              {ACTION_STATUSES.map((status) => (
-                <Controller
-                  key={status}
-                  name="statut"
-                  control={control}
-                  render={({ field }) => (
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(status)}
-                      className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                        field.value === status
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400'
-                      }`}
-                    >
-                      {ACTION_STATUS_LABELS[status]}
-                    </button>
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Avancement" required>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  {...register('avancement', { valueAsNumber: true })}
-                  className="flex-1"
-                />
-                <span className="text-sm font-medium w-12 text-right">{watchAvancement}%</span>
-              </div>
-            </Field>
-            <Field label="Santé">
-              <Select {...register('sante')}>
-                {ACTION_SANTE.map((sante) => (
-                  <SelectOption key={sante} value={sante}>
-                    {ACTION_SANTE_LABELS[sante]}
-                  </SelectOption>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Tendance">
-              <Select {...register('tendance')}>
-                {TENDANCES.map((t) => (
-                  <SelectOption key={t} value={t}>
-                    {TENDANCE_LABELS[t]}
-                  </SelectOption>
-                ))}
-              </Select>
-            </Field>
-          </div>
-
-          {/* Alertes intelligentes basées sur l'avancement et le statut */}
-          {(() => {
-            const suggestions: { type: 'warning' | 'info' | 'success'; message: string }[] = [];
-
-            // Suggestion: avancement 100% mais statut pas terminé
-            if (watchAvancement === 100 && watchStatut !== 'termine') {
-              suggestions.push({
-                type: 'info',
-                message: `Avancement à 100% : pensez à passer le statut en "Terminé"`
-              });
-            }
-
-            // Suggestion: statut terminé mais avancement < 100
-            if (watchStatut === 'termine' && watchAvancement < 100) {
-              suggestions.push({
-                type: 'warning',
-                message: `Statut "Terminé" mais avancement à ${watchAvancement}% - mettre à jour l'avancement ?`
-              });
-            }
-
-            // Suggestion: statut en_cours mais avancement 0
-            if (watchStatut === 'en_cours' && watchAvancement === 0) {
-              suggestions.push({
-                type: 'info',
-                message: `Action "En cours" : pensez à mettre à jour l'avancement`
-              });
-            }
-
-            // Suggestion: avancement > 0 mais statut a_planifier
-            if (watchAvancement > 0 && (watchStatut === 'a_planifier' || watchStatut === 'planifie')) {
-              suggestions.push({
-                type: 'info',
-                message: `Avancement à ${watchAvancement}% : passer le statut en "En cours" ?`
-              });
-            }
-
-            if (suggestions.length === 0) return null;
-
-            return (
-              <div className="space-y-2 mt-2">
-                {suggestions.map((s, i) => (
-                  <div
-                    key={i}
-                    className={`p-2 rounded-lg flex items-center gap-2 text-sm ${
-                      s.type === 'warning' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
-                      s.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
-                      'bg-blue-50 text-blue-800 border border-blue-200'
-                    }`}
-                  >
-                    <Sparkles className="w-4 h-4 flex-shrink-0" />
-                    {s.message}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          <div>
-            <Label className="text-sm font-medium text-neutral-700 mb-2 block">Priorité *</Label>
-            <div className="flex gap-2">
-              {PRIORITES.map((p) => {
-                const colors: Record<string, string> = {
-                  critique: 'bg-red-500 text-white border-red-500',
-                  haute: 'bg-orange-500 text-white border-orange-500',
-                  moyenne: 'bg-blue-500 text-white border-blue-500',
-                  basse: 'bg-neutral-400 text-white border-neutral-400',
-                };
-                return (
-                  <Controller
-                    key={p}
-                    name="priorite"
-                    control={control}
-                    render={({ field }) => (
-                      <button
-                        type="button"
-                        onClick={() => field.onChange(p)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                          field.value === p
-                            ? colors[p]
-                            : 'bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400'
-                        }`}
-                      >
-                        {PRIORITE_LABELS[p]}
-                      </button>
-                    )}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </Section>
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: PLANNING
-  // ============================================================================
-
-  const renderPlanning = () => (
-    <div className="space-y-4">
-      <Section title="Dates & Échéances" icon={<Calendar className="w-4 h-4" />}>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label={`Date début prévue${!dateVerrouillageAction ? ' (auto)' : ''}`} required>
-            <Input
-              type="date"
-              {...register('date_debut_prevue')}
-              disabled={!dateVerrouillageAction && !!projectConfig && !!actionPhaseRef}
-              className={!dateVerrouillageAction && projectConfig && actionPhaseRef ? 'bg-neutral-100' : ''}
-            />
-          </Field>
-          <Field label={`Date fin prévue${!dateVerrouillageAction ? ' (auto)' : ''}`} required>
-            <Input
-              type="date"
-              {...register('date_fin_prevue')}
-              disabled={!dateVerrouillageAction && !!projectConfig && !!actionPhaseRef}
-              className={!dateVerrouillageAction && projectConfig && actionPhaseRef ? 'bg-neutral-100' : ''}
-            />
-          </Field>
-          <Field label="Date début réelle">
-            <Input type="date" {...register('date_debut_reelle')} />
-          </Field>
-          <Field label="Date fin réelle">
-            <Input type="date" {...register('date_fin_reelle')} />
-          </Field>
-          <Field label={`Durée prévue (jours)${!dateVerrouillageAction ? ' (auto)' : ''}`} hint="Auto-calculé depuis le titre">
-            <Input
-              type="number"
-              min="0"
-              {...register('duree_prevue_jours', { valueAsNumber: true })}
-              disabled={!dateVerrouillageAction}
-              className={!dateVerrouillageAction ? 'bg-neutral-100' : ''}
-            />
-          </Field>
-          <Field label="Durée réelle (jours)" hint="Auto-calculé">
-            <Input type="number" min="0" {...register('duree_reelle_jours', { valueAsNumber: true })} />
-          </Field>
-          <Field label="Date butoir" hint="Deadline impérative">
-            <Input type="date" {...register('date_butoir')} />
-          </Field>
-          <Field label="Flexibilité délai" hint="Marge de manoeuvre">
-            <Select {...register('flexibilite')}>
-              {FLEXIBILITES.map((f) => (
-                <SelectOption key={f} value={f}>
-                  {FLEXIBILITE_LABELS[f]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        {/* Alertes de validation des dates */}
-        {(() => {
-          const dateDebut = watch('date_debut_prevue');
-          const dateFin = watch('date_fin_prevue');
-          const dateButoir = watch('date_butoir');
-          const alerts: { type: 'error' | 'warning'; message: string }[] = [];
-
-          if (dateDebut && dateFin && new Date(dateFin) < new Date(dateDebut)) {
-            alerts.push({ type: 'error', message: 'La date de fin est antérieure à la date de début' });
-          }
-
-          if (dateButoir && dateFin && new Date(dateFin) > new Date(dateButoir)) {
-            alerts.push({ type: 'warning', message: 'La date de fin dépasse la date butoir' });
-          }
-
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (dateFin && new Date(dateFin) < today && watchStatut !== 'termine' && watchStatut !== 'annule') {
-            alerts.push({ type: 'warning', message: 'Échéance dépassée - action en retard' });
-          }
-
-          if (alerts.length === 0) return null;
-
-          return (
-            <div className="space-y-2 mt-3">
-              {alerts.map((a, i) => (
-                <div
-                  key={i}
-                  className={`p-2 rounded-lg flex items-center gap-2 text-sm ${
-                    a.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
-                    'bg-amber-50 text-amber-800 border border-amber-200'
-                  }`}
-                >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  {a.message}
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-      </Section>
-
-      <Section title="Alertes de rappel" icon={<Info className="w-4 h-4" />}>
-        <div className="grid grid-cols-4 gap-4">
-          <Field label="J-30">
-            <Input type="date" disabled value={calculateAlerts(watch('date_fin_prevue')).j30 || ''} className="bg-neutral-100" />
-          </Field>
-          <Field label="J-15">
-            <Input type="date" disabled value={calculateAlerts(watch('date_fin_prevue')).j15 || ''} className="bg-neutral-100" />
-          </Field>
-          <Field label="J-7">
-            <Input type="date" disabled value={calculateAlerts(watch('date_fin_prevue')).j7 || ''} className="bg-neutral-100" />
-          </Field>
-          <Field label="J-3">
-            <Input type="date" disabled value={calculateAlerts(watch('date_fin_prevue')).j3 || ''} className="bg-neutral-100" />
-          </Field>
-        </div>
-        <div className="mt-3 p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-          <Info className="w-4 h-4 text-primary-600 mt-0.5" />
-          <p className="text-sm text-blue-800">
-            Les alertes seront envoyées automatiquement aux personnes désignées dans l'onglet "RACI"
-          </p>
-        </div>
-      </Section>
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: RACI
-  // ============================================================================
-
-  const renderRACI = () => (
-    <div className="space-y-4">
-      <Section title="Matrice RACI" icon={<Users className="w-4 h-4" />}>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Responsable (R)" required hint="Qui exécute">
-            <Select {...register('responsable')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Approbateur (A)" required hint="Qui valide">
-            <Select {...register('approbateur')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        <div className="mt-4">
-          <Label className="text-sm font-medium text-neutral-700 mb-2 block">Consultés (C)</Label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {consultes.map((c, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-1 bg-neutral-100 rounded text-sm flex items-center gap-1"
-              >
-                {c}
-                <button type="button" onClick={() => removeFromList(setConsultes, idx)}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Select
-              value=""
-              onChange={(e) => {
-                if (e.target.value && !consultes.includes(e.target.value)) {
-                  addToList(setConsultes, e.target.value);
-                }
-              }}
-            >
-              <SelectOption value="">+ Ajouter</SelectOption>
-              {users
-                .filter((u) => !consultes.includes(`${u.prenom} ${u.nom}`))
-                .map((user) => (
-                  <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                    {user.prenom} {user.nom}
-                  </SelectOption>
-                ))}
-            </Select>
-          </div>
-          <p className="text-xs text-neutral-500 mt-1">Qui est consulté</p>
-        </div>
-
-        <div className="mt-4">
-          <Label className="text-sm font-medium text-neutral-700 mb-2 block">Informés (I)</Label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {informes.map((i, idx) => (
-              <span
-                key={idx}
-                className="px-2 py-1 bg-neutral-100 rounded text-sm flex items-center gap-1"
-              >
-                {i}
-                <button type="button" onClick={() => removeFromList(setInformes, idx)}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Select
-              value=""
-              onChange={(e) => {
-                if (e.target.value && !informes.includes(e.target.value)) {
-                  addToList(setInformes, e.target.value);
-                }
-              }}
-            >
-              <SelectOption value="">+ Ajouter</SelectOption>
-              {users
-                .filter((u) => !informes.includes(`${u.prenom} ${u.nom}`))
-                .map((user) => (
-                  <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                    {user.prenom} {user.nom}
-                  </SelectOption>
-                ))}
-            </Select>
-          </div>
-          <p className="text-xs text-neutral-500 mt-1">Qui est notifié</p>
-        </div>
-
-        <div className="mt-4">
-          <Field label="Délégué" hint="Backup si responsable absent">
-            <Select {...register('delegue')}>
-              <SelectOption value="">Sélectionner...</SelectOption>
-              {users.map((user) => (
-                <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                  {user.prenom} {user.nom}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Escalade" defaultExpanded={false}>
-        <Field label="Contact d'escalade" hint="Personne à contacter en cas de blocage">
-          <Select {...register('escalade_niveau1')}>
-            <SelectOption value="">Sélectionner...</SelectOption>
-            {users.map((user) => (
-              <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                {user.prenom} {user.nom}
-              </SelectOption>
-            ))}
-          </Select>
-        </Field>
-      </Section>
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: DÉPENDANCES
-  // ============================================================================
-
-  const renderDependances = () => (
-    <div className="space-y-4">
-      <Section title="Prédécesseurs (Actions préalables)" icon={<GitBranch className="w-4 h-4" />}>
-        <div className="space-y-2">
-          {predecesseurs.map((pred, idx) => (
-            <div key={pred.id} className="flex items-center gap-2 p-2 border border-neutral-200 rounded-lg">
-              <Input
-                value={pred.id}
-                onChange={(e) => {
-                  const updated = [...predecesseurs];
-                  updated[idx].id = e.target.value;
-                  setPredecesseurs(updated);
-                }}
-                placeholder="ID (ex: 2.1.1)"
-                className="w-24"
-              />
-              <Input
-                value={pred.titre}
-                onChange={(e) => {
-                  const updated = [...predecesseurs];
-                  updated[idx].titre = e.target.value;
-                  setPredecesseurs(updated);
-                }}
-                placeholder="Titre"
-                className="flex-1"
-              />
-              <Select
-                value={pred.type_lien}
-                onChange={(e) => {
-                  const updated = [...predecesseurs];
-                  updated[idx].type_lien = e.target.value as TypeLien;
-                  setPredecesseurs(updated);
-                }}
-                className="w-24"
-              >
-                {TYPES_LIEN.map((t) => (
-                  <SelectOption key={t} value={t}>
-                    {t}
-                  </SelectOption>
-                ))}
-              </Select>
-              <Badge variant={pred.statut === 'termine' ? 'success' : 'secondary'}>
-                {ACTION_STATUS_LABELS[pred.statut] || pred.statut}
-              </Badge>
-              <button
-                type="button"
-                onClick={() => setPredecesseurs(predecesseurs.filter((_, i) => i !== idx))}
-                className="text-red-500 hover:text-red-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() =>
-              setPredecesseurs([
-                ...predecesseurs,
-                { id: '', titre: '', type_lien: 'FS', decalage_jours: 0, statut: 'a_planifier' },
-              ])
-            }
-            className="w-full p-3 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter un prédécesseur
-          </button>
-        </div>
-      </Section>
-
-      <Section title="Successeurs (Actions dépendantes)">
-        <div className="space-y-2">
-          {successeurs.map((succ, idx) => (
-            <div key={succ.id} className="flex items-center gap-2 p-2 border border-neutral-200 rounded-lg">
-              <Input
-                value={succ.id}
-                onChange={(e) => {
-                  const updated = [...successeurs];
-                  updated[idx].id = e.target.value;
-                  setSuccesseurs(updated);
-                }}
-                placeholder="ID"
-                className="w-24"
-              />
-              <Input
-                value={succ.titre}
-                onChange={(e) => {
-                  const updated = [...successeurs];
-                  updated[idx].titre = e.target.value;
-                  setSuccesseurs(updated);
-                }}
-                placeholder="Titre"
-                className="flex-1"
-              />
-              <Badge variant="secondary">{ACTION_STATUS_LABELS[succ.statut] || 'À venir'}</Badge>
-              <button
-                type="button"
-                onClick={() => setSuccesseurs(successeurs.filter((_, i) => i !== idx))}
-                className="text-red-500 hover:text-red-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-          {successeurs.length > 0 && (
-            <div className="p-3 bg-orange-50 rounded-lg flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary-600 mt-0.5" />
-              <p className="text-sm text-orange-800">
-                Impact: Un retard sur cette action impactera directement {successeurs.length} action(s)
-                successeur(s).
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() =>
-              setSuccesseurs([
-                ...successeurs,
-                { id: '', titre: '', type_lien: 'FS', decalage_jours: 0, statut: 'a_planifier' },
-              ])
-            }
-            className="w-full p-3 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter un successeur
-          </button>
-        </div>
-      </Section>
-
-      <Section title="Jalon associé" icon={<Flag className="w-4 h-4" />}>
-        <div className="space-y-4">
-          <Field label="Jalon cible" hint="Le jalon que cette action contribue à atteindre">
-            <Select
-              value={selectedJalonId?.toString() ?? ''}
-              onChange={(e) => {
-                const newId = e.target.value ? Number(e.target.value) : null;
-                setSelectedJalonId(newId);
-                if (!newId) setDateVerrouillageAction(false);
-              }}
-            >
-              <SelectOption value="">Aucun jalon</SelectOption>
-              {jalons.map((jalon) => (
-                <SelectOption key={jalon.id} value={jalon.id?.toString() ?? ''}>
-                  {jalon.titre} ({jalon.date_prevue})
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          {selectedJalonId && (
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <p className="text-sm text-purple-800">
-                Cette action sera affichée dans le suivi du jalon sélectionné.
-              </p>
-            </div>
-          )}
-        </div>
-      </Section>
-
-      <Section title="Calcul automatique des échéances" icon={<Calendar className="w-4 h-4" />}>
-        <div className="space-y-4">
-          {projectConfig ? (
-            <>
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="Phase (auto-détectée)">
-                  <div className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-700 flex items-center gap-2">
-                    <Lock className="h-3 w-3 text-neutral-400" />
-                    {actionPhaseRef
-                      ? PHASE_REFERENCE_LABELS[actionPhaseRef as PhaseReference]
-                      : 'Non détectée'}
-                  </div>
-                </Field>
-                <Field label="Délai de déclenchement" hint="Seul champ éditable. Défaut : -30">
-                  <Input
-                    type="number"
-                    value={actionDelai ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                      setActionDelai(val);
-                    }}
-                    placeholder="ex: -30"
-                  />
-                </Field>
-                <Field label="Durée estimée (auto)">
-                  <div className="px-3 py-2 bg-neutral-100 border border-neutral-200 rounded-lg text-sm text-neutral-700 flex items-center gap-2">
-                    <Lock className="h-3 w-3 text-neutral-400" />
-                    {autoCalcDuree} jours
-                  </div>
-                </Field>
-              </div>
-
-              {actionPhaseRef && actionDelai != null && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="text-xs font-mono bg-white">
-                      {formatDelaiComplet(actionDelai, PHASE_REFERENCE_LABELS[actionPhaseRef])}
-                    </Badge>
-                  </div>
-                  <div className="flex gap-4 text-xs text-blue-600">
-                    <span>Date début: {computeDateFromPhase(projectConfig, actionPhaseRef, actionDelai)}</span>
-                    <span>Date fin: {computeEcheance(computeDateFromPhase(projectConfig, actionPhaseRef, actionDelai), autoCalcDuree)}</span>
-                  </div>
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  checked={dateVerrouillageAction}
-                  onChange={(e) => setDateVerrouillageAction(e.target.checked)}
-                  className="rounded border-neutral-300"
-                />
-                {dateVerrouillageAction ? (
-                  <Lock className="h-4 w-4 text-orange-600" />
-                ) : (
-                  <Unlock className="h-4 w-4 text-blue-600" />
-                )}
-                <span className="text-neutral-700">
-                  {dateVerrouillageAction ? 'Dates verrouillées (ignorées au recalcul)' : 'Recalcul automatique actif'}
-                </span>
-              </label>
-            </>
-          ) : (
-            <p className="text-sm text-neutral-500">
-              Chargement de la configuration du projet...
-            </p>
-          )}
-        </div>
-      </Section>
-
-      <Section title="Chemin critique">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Controller
-              name="chemin_critique"
-              control={control}
-              render={({ field }) => (
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  id="chemin_critique"
-                />
-              )}
-            />
-            <Label htmlFor="chemin_critique" className="cursor-pointer">
-              Sur le chemin critique
-            </Label>
-          </div>
-          <p className="text-xs text-neutral-500">
-            Tout retard impacte directement la date d'ouverture du centre
-          </p>
-          <Field label="Contraintes externes" span={2}>
-            <Textarea
-              {...register('contraintes_externes')}
-              placeholder="Validation du promoteur requise avant signature"
-              rows={2}
-            />
-          </Field>
-        </div>
-      </Section>
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: RESSOURCES
-  // ============================================================================
-
-  const renderRessources = () => {
-    const budgetPrevu = watch('budget_prevu') || 0;
-    const budgetRealise = watch('budget_realise') || 0;
-    const consommation = budgetPrevu > 0 ? Math.round((budgetRealise / budgetPrevu) * 100) : 0;
-
-    return (
-      <div className="space-y-4">
-        <Section title="Ressources Humaines" icon={<Users className="w-4 h-4" />}>
-          <div className="mb-4">
-            <Label className="text-sm font-medium text-neutral-700 mb-2 block">Personnes affectées</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {ressourcesHumaines.map((r, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 bg-neutral-100 rounded text-sm flex items-center gap-1"
-                >
-                  {r}
-                  <button type="button" onClick={() => removeFromList(setRessourcesHumaines, idx)}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <Select
-              value=""
-              onChange={(e) => {
-                if (e.target.value && !ressourcesHumaines.includes(e.target.value)) {
-                  addToList(setRessourcesHumaines, e.target.value);
-                }
-              }}
-            >
-              <SelectOption value="">+ Ajouter</SelectOption>
-              {users
-                .filter((u) => !ressourcesHumaines.includes(`${u.prenom} ${u.nom}`))
-                .map((user) => (
-                  <SelectOption key={user.id} value={`${user.prenom} ${user.nom}`}>
-                    {user.prenom} {user.nom}
-                  </SelectOption>
-                ))}
-            </Select>
-          </div>
-          <Field label="Charge de travail (homme-jours)">
-            <Input
-              type="number"
-              step="0.5"
-              min="0"
-              {...register('charge_homme_jour', { valueAsNumber: true })}
-            />
-          </Field>
-        </Section>
-
-        <Section title="Budget" icon={<DollarSign className="w-4 h-4" />}>
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Budget prévu (FCFA)">
-              <Input type="number" min="0" {...register('budget_prevu', { valueAsNumber: true })} />
-            </Field>
-            <Field label="Budget engagé (FCFA)">
-              <Input type="number" min="0" {...register('budget_engage', { valueAsNumber: true })} />
-            </Field>
-            <Field label="Budget réalisé (FCFA)">
-              <Input type="number" min="0" {...register('budget_realise', { valueAsNumber: true })} />
-            </Field>
-          </div>
-          {budgetPrevu > 0 && (
-            <div className="mt-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span>Consommation</span>
-                <span>{consommation}%</span>
-              </div>
-              <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all ${
-                    consommation > 100 ? 'bg-red-500' : consommation > 80 ? 'bg-orange-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(consommation, 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
-          <div className="mt-4">
-            <Field label="Ligne budgétaire">
-              <Input {...register('ligne_budgetaire')} placeholder="COMM-2026-003" />
-            </Field>
-          </div>
-        </Section>
-      </div>
-    );
-  };
-
-  // ============================================================================
-  // TAB: LIVRABLES
-  // ============================================================================
-
-  const renderLivrables = () => {
-    const criteresValides = criteres.filter((c) => c.valide).length;
-
-    return (
-      <div className="space-y-4">
-        <Section title="Livrables attendus" icon={<FileCheck className="w-4 h-4" />}>
-          <div className="space-y-2">
-            {livrables.map((liv, idx) => (
-              <div key={liv.id} className="p-3 border border-neutral-200 rounded-lg space-y-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={liv.statut === 'valide'}
-                    onCheckedChange={(checked) => {
-                      const updated = [...livrables];
-                      updated[idx].statut = checked ? 'valide' : 'en_attente';
-                      setLivrables(updated);
-                    }}
-                  />
-                  <Input
-                    value={liv.nom}
-                    onChange={(e) => {
-                      const updated = [...livrables];
-                      updated[idx].nom = e.target.value;
-                      setLivrables(updated);
-                    }}
-                    placeholder="Nom du livrable"
-                    className="flex-1"
-                  />
-                  {liv.obligatoire && (
-                    <Badge variant="secondary" className="text-xs">
-                      Obligatoire
-                    </Badge>
-                  )}
-                  <Select
-                    value={liv.statut}
-                    onChange={(e) => {
-                      const updated = [...livrables];
-                      updated[idx].statut = e.target.value as StatutLivrable;
-                      setLivrables(updated);
-                    }}
-                    className="w-32"
-                  >
-                    {STATUTS_LIVRABLE.map((s) => (
-                      <SelectOption key={s} value={s}>
-                        {STATUT_LIVRABLE_LABELS[s]}
-                      </SelectOption>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => setLivrables(livrables.filter((_, i) => i !== idx))}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addLivrable}
-              className="w-full p-3 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter un livrable
-            </button>
-          </div>
-        </Section>
-
-        <Section title="Critères d'acceptation">
-          <div className="space-y-2">
-            {criteres.map((crit, idx) => (
-              <div key={crit.id} className="flex items-center gap-2 p-2 border border-neutral-200 rounded-lg">
-                <Checkbox
-                  checked={crit.valide}
-                  onCheckedChange={(checked) => {
-                    const updated = [...criteres];
-                    updated[idx].valide = !!checked;
-                    updated[idx].date_validation = checked ? today : null;
-                    setCriteres(updated);
-                  }}
-                />
-                <Input
-                  value={crit.critere}
-                  onChange={(e) => {
-                    const updated = [...criteres];
-                    updated[idx].critere = e.target.value;
-                    setCriteres(updated);
-                  }}
-                  placeholder="Critère d'acceptation"
-                  className="flex-1"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCriteres(criteres.filter((_, i) => i !== idx))}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-            {criteres.length > 0 && (
-              <div className="mt-2">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Progression</span>
-                  <span>
-                    {criteresValides}/{criteres.length} ({Math.round((criteresValides / criteres.length) * 100)}
-                    %)
-                  </span>
-                </div>
-                <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-500 transition-all"
-                    style={{ width: `${(criteresValides / criteres.length) * 100}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={addCritere}
-              className="w-full p-3 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter un critère
-            </button>
-          </div>
-        </Section>
-      </div>
-    );
-  };
-
-  // ============================================================================
-  // TAB: DOCUMENTS
-  // ============================================================================
-
-  const renderDocuments = () => (
-    <div className="space-y-4">
-      <Section title="Documents associés" icon={<FileText className="w-4 h-4" />}>
-        <div className="space-y-2">
-          {documents.map((doc, idx) => (
-            <div key={doc.id} className="flex items-center gap-2 p-2 border border-neutral-200 rounded-lg">
-              <Input
-                value={doc.nom}
-                onChange={(e) => {
-                  const updated = [...documents];
-                  updated[idx].nom = e.target.value;
-                  setDocuments(updated);
-                }}
-                placeholder="Nom du document"
-                className="flex-1"
-              />
-              <Select
-                value={doc.type}
-                onChange={(e) => {
-                  const updated = [...documents];
-                  updated[idx].type = e.target.value as TypeDocument;
-                  setDocuments(updated);
-                }}
-                className="w-32"
-              >
-                {TYPES_DOCUMENT.map((t) => (
-                  <SelectOption key={t} value={t}>
-                    {TYPE_DOCUMENT_LABELS[t]}
-                  </SelectOption>
-                ))}
-              </Select>
-              <Input
-                value={doc.url}
-                onChange={(e) => {
-                  const updated = [...documents];
-                  updated[idx].url = e.target.value;
-                  setDocuments(updated);
-                }}
-                placeholder="URL"
-                className="flex-1"
-              />
-              <button
-                type="button"
-                onClick={() => setDocuments(documents.filter((_, i) => i !== idx))}
-                className="text-red-500 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addDocument}
-            className="w-full p-3 border-2 border-dashed border-neutral-300 rounded-lg text-neutral-500 hover:border-neutral-400 hover:text-neutral-600 flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter un document
-          </button>
-        </div>
-      </Section>
-
-      <Section title="Références">
-        <div className="grid grid-cols-1 gap-4">
-          <Field label="Lien SharePoint">
-            <Input {...register('lien_sharepoint')} placeholder="/Projet/Commercial/Baux" />
-          </Field>
-          <Field label="Modèle/Template à utiliser">
-            <Input {...register('modele_document')} placeholder="URL du template" />
-          </Field>
-        </div>
-      </Section>
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: SUIVI
-  // ============================================================================
-
-  const renderSuivi = () => (
-    <div className="space-y-4">
-      <Section title="Communication" icon={<Activity className="w-4 h-4" />}>
-        <div className="space-y-4">
-          <Field label="Notes internes" span={2}>
-            <Textarea {...register('notes_internes')} placeholder="Notes de travail..." rows={3} />
-          </Field>
-          <Field label="Commentaire reporting" hint="Max 200 caractères" span={2}>
-            <Textarea
-              {...register('commentaire_reporting')}
-              placeholder="Message pour le reporting..."
-              rows={2}
-              maxLength={200}
-            />
-          </Field>
-          <div>
-            <Label className="text-sm font-medium text-neutral-700 mb-2 block">Visibilité reporting</Label>
-            <div className="flex flex-wrap gap-2">
-              {VISIBILITES_REPORTING.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => {
-                    if (visibiliteReporting.includes(v)) {
-                      setVisibiliteReporting(visibiliteReporting.filter((x) => x !== v));
-                    } else {
-                      setVisibiliteReporting([...visibiliteReporting, v]);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                    visibiliteReporting.includes(v)
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400'
-                  }`}
-                >
-                  {VISIBILITE_REPORTING_LABELS[v]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Risques & Problèmes">
-        <div className="space-y-4">
-          <Field label="Points de blocage" span={2}>
-            <Textarea {...register('points_blocage')} placeholder="Éléments bloquants..." rows={2} />
-          </Field>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Controller
-                name="escalade_requise"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox checked={field.value} onCheckedChange={field.onChange} id="escalade_requise" />
-                )}
-              />
-              <Label htmlFor="escalade_requise" className="cursor-pointer">
-                Escalade requise
-              </Label>
-            </div>
-            {watchEscaladeRequise && (
-              <Field label="Niveau d'escalade">
-                <Input {...register('niveau_escalade')} placeholder="Manager / Direction / DG" />
-              </Field>
-            )}
-          </div>
-          <div>
-            <Label className="text-sm font-medium text-neutral-700 mb-2 block">Risques associés</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {risquesAssocies.map((r, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm flex items-center gap-1"
-                >
-                  {r}
-                  <button type="button" onClick={() => removeFromList(setRisquesAssocies, idx)}>
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <Input
-              placeholder="Ajouter un ID risque (ex: R-2026-012)"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const value = (e.target as HTMLInputElement).value.trim();
-                  if (value && !risquesAssocies.includes(value)) {
-                    addToList(setRisquesAssocies, value);
-                    (e.target as HTMLInputElement).value = '';
-                  }
-                }
-              }}
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Méthode d'avancement">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Méthode de calcul">
-            <Select {...register('methode_avancement')}>
-              {METHODES_AVANCEMENT.map((m) => (
-                <SelectOption key={m} value={m}>
-                  {METHODE_AVANCEMENT_LABELS[m]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Impact si retard">
-            <Select {...register('impact_si_retard')}>
-              {NIVEAUX_IMPACT.map((n) => (
-                <SelectOption key={n} value={n}>
-                  {NIVEAU_IMPACT_LABELS[n]}
-                </SelectOption>
-              ))}
-            </Select>
-          </Field>
-        </div>
-      </Section>
-
-      {isEditing && (
-        <Section title="Audit & Traçabilité" defaultExpanded={false}>
-          <div className="space-y-4">
-            <div className="p-4 bg-neutral-50 rounded-lg grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-neutral-500">Version:</span>{' '}
-                <span className="font-medium">{action?.version || 1}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500">Créé le:</span>{' '}
-                <span className="font-medium">{action?.date_creation}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500">Modifié le:</span>{' '}
-                <span className="font-medium">{action?.date_modification}</span>
-              </div>
-              <div>
-                <span className="text-neutral-500">Par:</span>{' '}
-                <span className="font-medium">{action?.modifie_par}</span>
-              </div>
-            </div>
-          </div>
-        </Section>
-      )}
-    </div>
-  );
-
-  // ============================================================================
-  // TAB: SYNC (Synchronisation Chantier/Mobilisation)
-  // ============================================================================
-
-  const renderSync = () => {
-    const isTechnique = watchAxe === 'axe3_technique';
-    const isCommercial = watchAxe === 'axe2_commercial';
-
-    // Filter available actions based on current action's axe
-    const availableActions = allActions.filter((a) => {
-      if (isTechnique) {
-        // For technical actions, show commercial actions to link
-        return a.axe === 'axe2_commercial' && a.id_action !== watch('id_action');
-      } else if (isCommercial) {
-        // For commercial actions, show technical actions to link
-        return a.axe === 'axe3_technique' && a.id_action !== watch('id_action');
-      }
-      return false;
-    });
-
-    if (!isTechnique && !isCommercial) {
-      return (
-        <div className="space-y-4">
-          <div className="p-6 bg-neutral-50 rounded-xl text-center">
-            <ArrowLeftRight className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-neutral-700 mb-2">
-              Synchronisation non applicable
-            </h3>
-            <p className="text-sm text-neutral-500">
-              La synchronisation Chantier/Mobilisation est uniquement disponible pour les actions
-              des axes <strong>AXE 2 - Commercial</strong> et <strong>AXE 3 - Technique</strong>.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <Section
-          title={isTechnique ? "Lier à des actions de mobilisation" : "Lier à des actions techniques"}
-          icon={<Link2 className="w-4 h-4" />}
-        >
-          <div className="space-y-4">
-            <div className="p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-              <Info className="w-4 h-4 text-primary-600 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                {isTechnique ? (
-                  <p>
-                    Liez cette action technique à des actions de mobilisation commerciale.
-                    En cas de retard sur cette action, les dates des actions liées peuvent être
-                    automatiquement ajustées.
-                  </p>
-                ) : (
-                  <p>
-                    Liez cette action de mobilisation à des actions techniques.
-                    Si l'action technique liée prend du retard, cette action pourra être
-                    automatiquement reportée.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium text-neutral-700 mb-2 block">
-                Actions liées ({actionsLiees.length})
-              </Label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {actionsLiees.map((actionId, idx) => {
-                  const linkedAction = allActions.find((a) => a.id_action === actionId);
-                  return (
-                    <span
-                      key={idx}
-                      className="px-3 py-1.5 bg-purple-100 text-purple-800 rounded-lg text-sm flex items-center gap-2"
-                    >
-                      <Link2 className="w-3 h-3" />
-                      {linkedAction?.titre || actionId}
-                      <button
-                        type="button"
-                        onClick={() => setActionsLiees(actionsLiees.filter((_, i) => i !== idx))}
-                        className="hover:text-purple-900"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  );
-                })}
-                {actionsLiees.length === 0 && (
-                  <span className="text-sm text-neutral-500 italic">
-                    Aucune action liée
-                  </span>
-                )}
-              </div>
-
-              <Select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value && !actionsLiees.includes(e.target.value)) {
-                    setActionsLiees([...actionsLiees, e.target.value]);
-                  }
-                }}
-              >
-                <SelectOption value="">+ Ajouter une action</SelectOption>
-                {availableActions
-                  .filter((a) => !actionsLiees.includes(a.id_action))
-                  .map((a) => (
-                    <SelectOption key={a.id_action} value={a.id_action}>
-                      {a.id_action} - {a.titre}
-                    </SelectOption>
-                  ))}
-              </Select>
-            </div>
-          </div>
-        </Section>
-
-        {isTechnique && actionsLiees.length > 0 && (
-          <Section title="Propagation automatique des retards">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={propagationRetard}
-                  onCheckedChange={(checked) => setPropagationRetard(!!checked)}
-                  id="propagation_retard"
-                />
-                <Label htmlFor="propagation_retard" className="cursor-pointer">
-                  Propager automatiquement les retards aux actions de mobilisation
-                </Label>
-              </div>
-              <p className="text-xs text-neutral-500">
-                Si cette option est activée, un retard sur cette action technique déclenchera
-                automatiquement une proposition de décalage des dates pour les {actionsLiees.length} action(s)
-                de mobilisation liée(s).
-              </p>
-            </div>
-          </Section>
-        )}
-
-        {actionsLiees.length > 0 && (
-          <Section title="Aperçu des actions liées" defaultExpanded={true}>
-            <div className="space-y-2">
-              {actionsLiees.map((actionId) => {
-                const linkedAction = allActions.find((a) => a.id_action === actionId);
-                if (!linkedAction) return null;
-
-                return (
-                  <div
-                    key={actionId}
-                    className="p-3 bg-neutral-50 rounded-lg border border-neutral-200"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-neutral-900 text-sm">
-                          {linkedAction.titre}
-                        </p>
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          {linkedAction.id_action} | {AXE_LABELS[linkedAction.axe]}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          linkedAction.statut === 'termine'
-                            ? 'success'
-                            : linkedAction.statut === 'bloque'
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                      >
-                        {ACTION_STATUS_LABELS[linkedAction.statut]}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
-                      <span>Début: {linkedAction.date_debut_prevue}</span>
-                      <span>Fin: {linkedAction.date_fin_prevue}</span>
-                      <span>Avancement: {linkedAction.avancement}%</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Section>
-        )}
-      </div>
-    );
-  };
-
-  // ============================================================================
-  // MAIN RENDER
-  // ============================================================================
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        {/* Header */}
-        <DialogHeader className="px-5 py-4 border-b border-neutral-200 flex-shrink-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-neutral-900 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-white" />
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg">
+                {isEditing ? <Edit3 className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
               </div>
               <div>
-                <DialogTitle className="text-xl font-semibold">
-                  {isEditing ? "Modifier l'action" : 'Nouvelle action'}
-                </DialogTitle>
-                {isEditing && action && (
-                  <p className="text-sm text-neutral-500">{action.titre}</p>
+                <span>{action ? (isEditing ? 'Modifier l\'action' : 'Détails de l\'action') : 'Nouvelle Action'}</span>
+                {action?.id_action && (
+                  <span className="ml-2 text-sm font-mono text-neutral-500">{action.id_action}</span>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {action?.id_action && (
-                <Badge variant="secondary" className="text-xs">
-                  {action.id_action}
-                </Badge>
-              )}
-              {watchStatut && (
-                <Badge
-                  variant={watchStatut === 'termine' ? 'success' : watchStatut === 'bloque' ? 'destructive' : 'secondary'}
-                >
-                  {ACTION_STATUS_LABELS[watchStatut]}
-                </Badge>
-              )}
-            </div>
+            </DialogTitle>
+            {action && !isEditing && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Edit3 className="w-4 h-4 mr-1" />
+                Modifier
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
-            <TabsList className="flex-shrink-0 px-5 py-2 border-b border-neutral-200 flex gap-1 overflow-x-auto">
-              {TABS.map((tab) => {
+        {/* Statut rapide - Toujours visible */}
+        <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg flex-shrink-0 mx-1">
+          <span className="text-sm font-medium text-neutral-600">Statut:</span>
+          <div className="flex gap-1 flex-1 flex-wrap">
+            {(Object.entries(STATUT_CONFIG) as [keyof typeof STATUT_CONFIG, typeof STATUT_CONFIG[keyof typeof STATUT_CONFIG]][]).map(([key, config]) => {
+              const Icon = config.icon;
+              const isActive = watchStatut === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleStatutChange(key)}
+                  disabled={!isEditing && !action}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+                    isActive ? `${config.color} ring-2 ring-offset-1` : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            {/* Onglets */}
+            <TabsList className="flex-shrink-0 grid grid-cols-4 mx-1 mt-2">
+              {FORM_TABS.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="flex items-center gap-1.5 px-3 py-2 text-sm whitespace-nowrap"
-                  >
+                  <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1.5 text-xs sm:text-sm">
                     <Icon className="w-4 h-4" />
-                    {tab.label}
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    {tab.id === 'sousTaches' && sousTaches.length > 0 && (
+                      <Badge variant="info" className="ml-1 text-xs">{sousTaches.filter(st => st.fait).length}/{sousTaches.length}</Badge>
+                    )}
+                    {tab.id === 'preuves' && preuves.length > 0 && (
+                      <Badge variant="info" className="ml-1 text-xs">{preuves.length}</Badge>
+                    )}
+                    {tab.id === 'complements' && notes.length > 0 && (
+                      <Badge variant="info" className="ml-1 text-xs">{notes.length}</Badge>
+                    )}
                   </TabsTrigger>
                 );
               })}
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto p-5">
-              <TabsContent value="general">{renderGeneral()}</TabsContent>
-              <TabsContent value="planning">{renderPlanning()}</TabsContent>
-              <TabsContent value="responsabilites">{renderRACI()}</TabsContent>
-              <TabsContent value="dependances">{renderDependances()}</TabsContent>
-              <TabsContent value="ressources">{renderRessources()}</TabsContent>
-              <TabsContent value="livrables">{renderLivrables()}</TabsContent>
-              <TabsContent value="documents">{renderDocuments()}</TabsContent>
-              <TabsContent value="suivi">{renderSuivi()}</TabsContent>
-              <TabsContent value="sync">{renderSync()}</TabsContent>
+            {/* Contenu des onglets */}
+            <div className="flex-1 overflow-y-auto p-1 mt-2">
+
+              {/* ============================================= */}
+              {/* ONGLET GÉNÉRAL */}
+              {/* ============================================= */}
+              <TabsContent value="general" className="space-y-4 m-0">
+                {/* Champs obligatoires */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    Champs obligatoires
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Jalon */}
+                    <div>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                        <Link2 className="w-4 h-4 text-purple-600" />
+                        Jalon *
+                      </Label>
+                      {isEditing ? (
+                        <Select {...register('jalonId', { valueAsNumber: true })} className={errors.jalonId ? 'border-red-500' : ''}>
+                          <SelectOption value="">Sélectionner un jalon...</SelectOption>
+                          {jalons.map((jalon) => (
+                            <SelectOption key={jalon.id} value={jalon.id!}>{jalon.id_jalon} - {jalon.titre}</SelectOption>
+                          ))}
+                        </Select>
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm">{selectedJalon ? `${selectedJalon.id_jalon} - ${selectedJalon.titre}` : '-'}</div>
+                      )}
+                    </div>
+
+                    {/* Responsable */}
+                    <div>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                        <User className="w-4 h-4 text-green-600" />
+                        Responsable *
+                      </Label>
+                      {isEditing ? (
+                        <Select {...register('responsableId', { valueAsNumber: true })} className={errors.responsableId ? 'border-red-500' : ''}>
+                          <SelectOption value="">Sélectionner...</SelectOption>
+                          {users.map((user) => (
+                            <SelectOption key={user.id} value={user.id!}>{user.prenom} {user.nom}</SelectOption>
+                          ))}
+                        </Select>
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm">{action?.responsable || '-'}</div>
+                      )}
+                    </div>
+
+                    {/* Libellé */}
+                    <div className="md:col-span-2">
+                      <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                        <FileText className="w-4 h-4 text-blue-600" />
+                        Libellé * <span className="text-neutral-400 font-normal">(max 150 car.)</span>
+                      </Label>
+                      {isEditing ? (
+                        <Input {...register('titre')} placeholder="Ex: Finaliser le contrat fournisseur" maxLength={150} className={errors.titre ? 'border-red-500' : ''} />
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm font-medium">{action?.titre || '-'}</div>
+                      )}
+                    </div>
+
+                    {/* Échéance */}
+                    <div>
+                      <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                        <Calendar className="w-4 h-4 text-orange-600" />
+                        Échéance *
+                      </Label>
+                      {isEditing ? (
+                        <Input type="date" {...register('date_fin_prevue')} className={errors.date_fin_prevue ? 'border-red-500' : ''} />
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm">{action?.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Champs auto-calculés */}
+                <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    Champs auto-calculés
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">ID</div>
+                      <div className="font-mono font-medium text-blue-700 truncate">{action?.id_action || 'Auto'}</div>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">Axe</div>
+                      <div className="font-medium truncate">{axeHerite ? AXE_LABELS[axeHerite] : '-'}</div>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">Statut</div>
+                      <Badge className={`${STATUT_CONFIG[watchStatut]?.color} text-xs`}>{STATUT_CONFIG[watchStatut]?.label}</Badge>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">Avancement</div>
+                      <div className="font-medium">{avancementCalcule}%</div>
+                      <div className="w-full bg-neutral-200 rounded-full h-1 mt-1">
+                        <div className="bg-blue-500 h-1 rounded-full" style={{ width: `${avancementCalcule}%` }} />
+                      </div>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">Jours restants</div>
+                      <div className={`font-medium ${joursRestants && joursRestants < 0 ? 'text-red-600' : joursRestants && joursRestants < 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                        {joursRestants !== null ? (joursRestants < 0 ? `${Math.abs(joursRestants)}j retard` : `${joursRestants}j`) : '-'}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <div className="text-xs text-neutral-500">Priorité</div>
+                      <Badge variant={prioriteCalculee === 'haute' ? 'danger' : prioriteCalculee === 'moyenne' ? 'warning' : 'success'} className="text-xs">
+                        {prioriteCalculee === 'haute' ? 'Haute' : prioriteCalculee === 'moyenne' ? 'Moyenne' : 'Basse'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* ============================================= */}
+              {/* ONGLET SOUS-TÂCHES */}
+              {/* ============================================= */}
+              <TabsContent value="sousTaches" className="space-y-3 m-0">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-green-800 mb-1 flex items-center gap-2">
+                    <ListChecks className="w-4 h-4" />
+                    Sous-tâches
+                  </h3>
+                  <p className="text-xs text-green-600">Le % d'avancement est calculé automatiquement selon les sous-tâches cochées</p>
+                </div>
+
+                {sousTaches.length === 0 ? (
+                  <div className="p-8 text-center text-neutral-500 border-2 border-dashed rounded-lg">
+                    <ListChecks className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                    <p>Aucune sous-tâche</p>
+                    {isEditing && <p className="text-sm mt-1">Cliquez sur le bouton ci-dessous pour en ajouter</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {sousTaches.map((st, index) => (
+                      <div key={st.id} className={`p-3 rounded-lg border ${st.fait ? 'bg-green-50 border-green-200' : 'bg-white border-neutral-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={st.fait}
+                            onChange={() => handleToggleSousTache(index)}
+                            className="w-5 h-5 rounded border-neutral-300 text-green-600 focus:ring-green-500"
+                          />
+                          {isEditing ? (
+                            <Input
+                              value={st.libelle}
+                              onChange={(e) => handleUpdateSousTache(index, 'libelle', e.target.value)}
+                              placeholder="Libellé de la sous-tâche"
+                              className={`flex-1 ${st.fait ? 'line-through text-neutral-400' : ''}`}
+                            />
+                          ) : (
+                            <span className={`flex-1 ${st.fait ? 'line-through text-neutral-400' : ''}`}>{st.libelle}</span>
+                          )}
+                          {isEditing && (
+                            <button type="button" onClick={() => handleRemoveSousTache(index)} className="text-red-500 hover:text-red-700 p-1">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <div className="grid grid-cols-2 gap-2 mt-2 pl-8">
+                            <Select value={st.responsableId?.toString() || ''} onChange={(e) => handleUpdateSousTache(index, 'responsableId', e.target.value ? parseInt(e.target.value) : null)}>
+                              <SelectOption value="">Responsable (opt.)</SelectOption>
+                              {users.map((user) => (
+                                <SelectOption key={user.id} value={user.id!.toString()}>{user.prenom} {user.nom}</SelectOption>
+                              ))}
+                            </Select>
+                            <Input type="date" value={st.echeance || ''} onChange={(e) => handleUpdateSousTache(index, 'echeance', e.target.value || null)} placeholder="Échéance" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {isEditing && (
+                  <Button type="button" variant="outline" onClick={handleAddSousTache} className="w-full">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter une sous-tâche
+                  </Button>
+                )}
+              </TabsContent>
+
+              {/* ============================================= */}
+              {/* ONGLET COMPLÉMENTS */}
+              {/* ============================================= */}
+              <TabsContent value="complements" className="space-y-4 m-0">
+                {/* Dépendances */}
+                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Dépendances (actions prérequises)
+                  </h3>
+                  {isEditing ? (
+                    <Select multiple {...register('dependances')} className="min-h-[100px]">
+                      {actionsDisponibles.map((a) => (
+                        <SelectOption key={a.id} value={a.id!}>{a.id_action} - {a.titre}</SelectOption>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {action?.predecesseurs?.length ? action.predecesseurs.join(', ') : 'Aucune dépendance'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Livrable */}
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Livrable attendu
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-1.5 block">Description du livrable</Label>
+                      {isEditing ? (
+                        <Input {...register('livrable')} placeholder="Ex: Rapport d'analyse, Contrat signé..." />
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm">{action?.livrables?.[0]?.nom || '-'}</div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium mb-1.5 block">Format</Label>
+                      {isEditing ? (
+                        <Select {...register('format')}>
+                          {FORMATS_LIVRABLE.map((f) => (
+                            <SelectOption key={f.value} value={f.value}>{f.label}</SelectOption>
+                          ))}
+                        </Select>
+                      ) : (
+                        <div className="p-2 bg-white rounded border text-sm">
+                          {FORMATS_LIVRABLE.find(f => f.value === action?.livrables?.[0]?.format)?.label || '-'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Notes horodatées
+                    {notes.length > 0 && <Badge variant="info" className="ml-2">{notes.length}</Badge>}
+                  </h3>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {notes.length === 0 ? (
+                      <p className="text-sm text-blue-600 italic">Aucune note</p>
+                    ) : (
+                      notes.map((note, index) => (
+                        <div key={note.id} className="p-2 bg-white rounded border text-sm flex justify-between items-start">
+                          <div>
+                            <p className="text-neutral-700">{note.texte}</p>
+                            <p className="text-xs text-neutral-500 mt-1">{note.auteur} - {new Date(note.date).toLocaleString('fr-FR')}</p>
+                          </div>
+                          {isEditing && (
+                            <button type="button" onClick={() => handleRemoveNote(index)} className="text-red-500 hover:text-red-700 p-1">
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {isEditing && (
+                    <div className="flex gap-2 mt-3">
+                      <Input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Ajouter une note..." onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNote())} />
+                      <Button type="button" variant="outline" size="sm" onClick={handleAddNote}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* ============================================= */}
+              {/* ONGLET PREUVES */}
+              {/* ============================================= */}
+              <TabsContent value="preuves" className="space-y-4 m-0">
+                <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-cyan-800 mb-1 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" />
+                    Preuves et pièces jointes
+                  </h3>
+                  <p className="text-xs text-cyan-600">Ajoutez des fichiers (PDF, DOC, XLS, IMG - max 10MB) ou des liens</p>
+                </div>
+
+                {/* Liste des preuves */}
+                {preuves.length === 0 ? (
+                  <div className="p-8 text-center text-neutral-500 border-2 border-dashed rounded-lg">
+                    <Paperclip className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                    <p>Aucune preuve attachée</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {preuves.map((preuve, index) => (
+                      <div key={preuve.id} className="p-3 bg-white rounded-lg border flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {preuve.type === 'fichier' ? (
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <FileIcon className="w-5 h-5 text-blue-600" />
+                            </div>
+                          ) : (
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <LinkIcon className="w-5 h-5 text-green-600" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">{preuve.nom}</p>
+                            <p className="text-xs text-neutral-500">
+                              {preuve.type === 'fichier' ? 'Fichier' : 'Lien'} - {new Date(preuve.dateAjout).toLocaleDateString('fr-FR')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {preuve.url && (
+                            <a href={preuve.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                              Ouvrir
+                            </a>
+                          )}
+                          {isEditing && (
+                            <button type="button" onClick={() => handleRemovePreuve(index)} className="text-red-500 hover:text-red-700 p-1">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {isEditing && (
+                  <>
+                    {/* Zone de drop fichiers */}
+                    <div className="border-2 border-dashed border-neutral-300 rounded-lg p-8 text-center bg-white hover:bg-neutral-50 transition-colors">
+                      <Upload className="w-10 h-10 mx-auto text-neutral-400 mb-3" />
+                      <p className="text-neutral-600 font-medium">Glissez-déposez vos fichiers ici</p>
+                      <p className="text-xs text-neutral-500 mt-1">PDF, DOC, XLS, IMG - Max 10MB</p>
+                      <input
+                        type="file"
+                        className="hidden"
+                        id="file-upload"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) { alert('Le fichier ne doit pas dépasser 10MB'); return; }
+                            setPreuves([...preuves, { id: crypto.randomUUID(), type: 'fichier', nom: file.name, format: file.type, taille: file.size, dateAjout: new Date().toISOString() }]);
+                          }
+                        }}
+                      />
+                      <Button type="button" variant="outline" className="mt-4" onClick={() => document.getElementById('file-upload')?.click()}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Parcourir les fichiers
+                      </Button>
+                    </div>
+
+                    {/* Bouton ajouter lien */}
+                    <Button type="button" variant="outline" onClick={handleAddLien} className="w-full">
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Ajouter un lien
+                    </Button>
+                  </>
+                )}
+              </TabsContent>
             </div>
           </Tabs>
 
           {/* Footer */}
-          <DialogFooter className="flex-shrink-0 px-5 py-4 border-t border-neutral-200 flex items-center justify-between">
-            <div className="text-xs text-neutral-500">
-              {isEditing && action && (
-                <>
-                  Créé le {action.date_creation} | MAJ {action.date_modification} | v{action.version}
-                </>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {isEditing && action && (
-                <Button type="button" variant="outline" onClick={() => setReminderModalOpen(true)}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Relancer
-                </Button>
-              )}
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Annuler
+          <DialogFooter className="gap-2 pt-4 border-t flex-shrink-0">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <X className="w-4 h-4 mr-1" />
+              {isEditing ? 'Annuler' : 'Fermer'}
+            </Button>
+            {isEditing && (
+              <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700">
+                {isSubmitting ? (
+                  <><Clock className="w-4 h-4 mr-1 animate-spin" />Enregistrement...</>
+                ) : (
+                  <><Save className="w-4 h-4 mr-1" />Enregistrer</>
+                )}
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="bg-neutral-900 hover:bg-neutral-800">
-                {isSubmitting ? 'Enregistrement...' : isEditing ? 'Mettre à jour' : 'Créer'}
-              </Button>
-            </div>
+            )}
           </DialogFooter>
         </form>
-
-        {/* Send Reminder Modal */}
-        {isEditing && action && (
-          <SendReminderModal
-            isOpen={reminderModalOpen}
-            onClose={() => setReminderModalOpen(false)}
-            entityType="action"
-            entityId={action.id!}
-            entity={action}
-            defaultRecipientId={users.find(u => `${u.prenom} ${u.nom}` === action.responsable)?.id}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );
 }
+
+export default ActionForm;

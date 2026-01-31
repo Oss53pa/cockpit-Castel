@@ -1,4 +1,9 @@
 // ============================================================================
+// EXPORT TYPES BUDGET (fichier séparé pour meilleure organisation)
+// ============================================================================
+export * from './budget.types';
+
+// ============================================================================
 // DESIGN SYSTEM - COULEURS & STYLES
 // ============================================================================
 
@@ -41,26 +46,54 @@ export const AXES = [
   'axe4_budget',
   'axe5_marketing',
   'axe6_exploitation',
+  'axe7_construction',
 ] as const;
 export type Axe = (typeof AXES)[number];
 
 export const AXE_LABELS: Record<Axe, string> = {
   axe1_rh: 'AXE 1 - RH & Organisation',
-  axe2_commercial: 'AXE 2 - Commercialisation',
+  axe2_commercial: 'AXE 2 - Commercial & Leasing',
   axe3_technique: 'AXE 3 - Technique & Handover',
   axe4_budget: 'AXE 4 - Budget & Pilotage',
   axe5_marketing: 'AXE 5 - Marketing & Communication',
   axe6_exploitation: 'AXE 6 - Exploitation & Systèmes',
+  axe7_construction: 'AXE 7 - Construction',
 };
 
 export const AXE_SHORT_LABELS: Record<Axe, string> = {
   axe1_rh: 'RH & Organisation',
-  axe2_commercial: 'Commercialisation',
-  axe3_technique: 'Technique',
+  axe2_commercial: 'Commercial & Leasing',
+  axe3_technique: 'Technique & Handover',
   axe4_budget: 'Budget & Pilotage',
   axe5_marketing: 'Marketing & Comm.',
-  axe6_exploitation: 'Exploitation',
+  axe6_exploitation: 'Exploitation & Systèmes',
+  axe7_construction: 'Construction',
 };
+
+// Configuration complète des axes selon spécifications v2.0
+// syncCC = true : l'axe se synchronise avec la progression du Centre Commercial
+// Poids total = 100% (axe7_construction est le maître de la synchronisation)
+export const AXE_CONFIG: Record<Axe, { code: string; poids: number; couleur: string; icone: string; syncCC: boolean }> = {
+  axe1_rh: { code: 'RH', poids: 15, couleur: '#3B82F6', icone: 'Users', syncCC: true },
+  axe2_commercial: { code: 'COM', poids: 20, couleur: '#10B981', icone: 'Store', syncCC: true },
+  axe3_technique: { code: 'TECH', poids: 15, couleur: '#F59E0B', icone: 'Wrench', syncCC: true },
+  axe4_budget: { code: 'BUD', poids: 10, couleur: '#8B5CF6', icone: 'Calculator', syncCC: true },
+  axe5_marketing: { code: 'MKT', poids: 10, couleur: '#EC4899', icone: 'Megaphone', syncCC: true },
+  axe6_exploitation: { code: 'EXP', poids: 5, couleur: '#6366F1', icone: 'Settings', syncCC: true },
+  axe7_construction: { code: 'CON', poids: 25, couleur: '#EF4444', icone: 'Building', syncCC: false },
+};
+
+// Phases de construction (Centre Commercial uniquement)
+export const PHASES_CONSTRUCTION = [
+  { code: 'GO', nom: 'Gros œuvre', ordre: 1 },
+  { code: 'SO', nom: 'Second œuvre', ordre: 2 },
+  { code: 'LT', nom: 'Lots techniques', ordre: 3 },
+  { code: 'AE', nom: 'Aménagement externe', ordre: 4 },
+  { code: 'PR', nom: 'Pré-réception', ordre: 5 },
+  { code: 'RP', nom: 'Réception Provisoire', ordre: 6 },
+  { code: 'RD', nom: 'Réception Définitive', ordre: 7 },
+] as const;
+export type PhaseConstructionCode = typeof PHASES_CONSTRUCTION[number]['code'];
 
 export const PHASES = [
   'initiation',
@@ -737,24 +770,8 @@ export const TEAM_ROLE_LABELS: Record<TeamRole, string> = {
   membre: 'Membre',
 };
 
-export const BUDGET_CATEGORIES = [
-  'etudes',
-  'travaux',
-  'equipements',
-  'honoraires',
-  'assurances',
-  'divers',
-] as const;
-export type BudgetCategory = (typeof BUDGET_CATEGORIES)[number];
-
-export const BUDGET_CATEGORY_LABELS: Record<BudgetCategory, string> = {
-  etudes: 'Études',
-  travaux: 'Travaux',
-  equipements: 'Équipements',
-  honoraires: 'Honoraires',
-  assurances: 'Assurances',
-  divers: 'Divers',
-};
+// BUDGET_CATEGORIES, BudgetCategory, BUDGET_CATEGORY_LABELS
+// -> Exportés depuis ./budget.types
 
 export const ALERTE_TYPES = [
   'echeance_action',
@@ -841,6 +858,83 @@ export interface PropagationRetard {
 
 // ============================================================================
 // SUB-INTERFACES
+// ============================================================================
+
+// ============================================================================
+// SPÉCIFICATIONS V2.0 - SOUS-ENTITÉS
+// ============================================================================
+
+/**
+ * Sous-tâche d'une action (spécifications v2.0)
+ * Utilisée pour décomposer une action en étapes vérifiables
+ */
+export interface SousTache {
+  id?: number;
+  actionId: string;
+  libelle: string;
+  fait: boolean;
+  ordre: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Preuve/Livrable attaché à une action (spécifications v2.0)
+ * Permet de joindre des fichiers ou liens comme preuves de réalisation
+ */
+export interface Preuve {
+  id?: number;
+  actionId: string;
+  type: 'FICHIER' | 'LIEN';
+  nom: string;
+  url?: string;                   // Lien externe
+  fichier?: {
+    nom: string;
+    taille: number;
+    type: string;
+    base64: string;
+  };
+  uploadePar: string;
+  createdAt: string;
+}
+
+/**
+ * Note/Commentaire sur une action (spécifications v2.0)
+ * Permet de suivre l'historique des échanges sur une action
+ */
+export interface NoteAction {
+  id?: number;
+  actionId: string;
+  contenu: string;
+  auteurId: string;
+  auteurNom?: string;
+  createdAt: string;
+}
+
+/**
+ * Statuts de jalon selon spécifications v2.0
+ */
+export const STATUTS_JALON_V2 = ['A_VENIR', 'EN_COURS', 'A_VALIDER', 'ATTEINT', 'EN_RETARD'] as const;
+export type StatutJalonV2 = typeof STATUTS_JALON_V2[number];
+
+/**
+ * Statuts d'action selon spécifications v2.0
+ */
+export const STATUTS_ACTION_V2 = ['A_FAIRE', 'EN_COURS', 'FAIT', 'BLOQUE'] as const;
+export type StatutActionV2 = typeof STATUTS_ACTION_V2[number];
+
+/**
+ * Météos de jalon selon spécifications v2.0
+ */
+export const METEOS_JALON = ['SOLEIL', 'NUAGEUX', 'ORAGEUX'] as const;
+export type MeteoJalon = typeof METEOS_JALON[number];
+
+/**
+ * Priorités selon spécifications v2.0
+ */
+export const PRIORITES_V2 = ['HAUTE', 'MOYENNE', 'BASSE'] as const;
+export type PrioriteV2 = typeof PRIORITES_V2[number];
+
 // ============================================================================
 
 export interface Dependance {
@@ -1268,7 +1362,9 @@ export interface Jalon {
   // RESPONSABILITÉS (Onglet: RACI)
   // ═══════════════════════════════════════════════════════════════════════════
   responsable: string;            // Qui pilote
+  responsableId?: number;         // ID de l'utilisateur responsable (v2.0)
   validateur: string;             // Qui approuve l'atteinte
+  validateurId?: number;          // ID de l'utilisateur validateur (v2.0)
   contributeurs: string[];        // Consultés
   parties_prenantes: string[];    // Informés
 
@@ -1282,8 +1378,14 @@ export interface Jalon {
   // ═══════════════════════════════════════════════════════════════════════════
   predecesseurs: JalonDependance[];   // Jalons prérequis
   successeurs: JalonDependance[];     // Jalons dépendants
+  prerequis_jalons?: string[];        // IDs des jalons prérequis (simplifié v2.0)
   actions_prerequises: string[];      // IDs des actions
   chemin_critique: boolean;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PREUVE (v2.0)
+  // ═══════════════════════════════════════════════════════════════════════════
+  preuve_url?: string | null;         // Lien vers la preuve/justificatif
 
   // ═══════════════════════════════════════════════════════════════════════════
   // IMPACT & RISQUES (Onglet: Risques)
@@ -1471,21 +1573,7 @@ export interface Risque {
 // BUDGET & ALERTES
 // ============================================================================
 
-export interface BudgetItem {
-  id?: number;
-  libelle: string;
-  categorie: BudgetCategory;
-  axe: Axe;
-  projectPhase?: ProjectPhase;    // Phase projet Cosmos Angré (V2.0)
-  montantPrevu: number;
-  montantEngage: number;
-  montantRealise: number;
-  dateEngagement?: string;
-  dateRealisation?: string;
-  commentaire?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// BudgetItem -> Exporté depuis ./budget.types
 
 export interface Alerte {
   id?: number;
@@ -1495,10 +1583,38 @@ export interface Alerte {
   criticite: Criticite;
   entiteType: 'action' | 'jalon' | 'risque' | 'budget';
   entiteId: number;
+  // Responsable de l'alerte
+  responsableId?: number;
+  responsableNom?: string;
+  responsableEmail?: string;
+  // Statuts
   lu: boolean;
   traitee: boolean;
   createdAt: string;
   traiteeAt?: string;
+  traiteeParId?: number;
+  traiteeParNom?: string;
+  // Envoi email
+  emailEnvoye: boolean;
+  emailEnvoyeAt?: string;
+  emailRelanceCount?: number;
+  dernierRelanceAt?: string;
+}
+
+// Historique des emails d'alertes envoyés
+export interface AlerteEmailHistorique {
+  id?: number;
+  alerteId: number;
+  type: 'initial' | 'relance' | 'escalade';
+  destinataireEmail: string;
+  destinataireNom: string;
+  sujet: string;
+  contenuHtml: string;
+  envoyeAt: string;
+  statut: 'envoye' | 'echec' | 'ouvert' | 'clique';
+  ouvertAt?: string;
+  cliqueAt?: string;
+  erreur?: string;
 }
 
 export interface Historique {
@@ -1536,34 +1652,40 @@ export interface AvancementAxe {
 
 export type MeteoProjet = 'vert' | 'jaune' | 'orange' | 'rouge';
 
-export interface EVMIndicators {
-  PV: number;
-  EV: number;
-  AC: number;
-  BAC: number;
-  SPI: number;
-  CPI: number;
-  SV: number;
-  CV: number;
-  EAC: number;
-  ETC: number;
-  VAC: number;
-}
+// EVMIndicators -> Exporté depuis ./budget.types
 
 // ============================================================================
 // FILTERS & VIEWS
 // ============================================================================
 
-// Codes des bâtiments pour le filtrage
-export const BUILDING_CODES = ['CC', 'BB1', 'BB2', 'BB3', 'BB4', 'ZE', 'MA', 'PK'] as const;
+// Codes des bâtiments pour le filtrage (spécifications v2.0)
+export const BUILDING_CODES = ['CC', 'MKT', 'BB1', 'BB2', 'BB3', 'BB4'] as const;
 export type BuildingCode = typeof BUILDING_CODES[number];
 
 export const BUILDING_CODE_LABELS: Record<BuildingCode, string> = {
   CC: 'Centre Commercial',
+  MKT: 'Market',
   BB1: 'Big Box 1',
   BB2: 'Big Box 2',
   BB3: 'Big Box 3',
   BB4: 'Big Box 4',
+};
+
+// Configuration complète des bâtiments selon spécifications v2.0
+export const BATIMENTS_CONFIG: Record<BuildingCode, { id: string; nom: string; estPilote: boolean; ordre: number }> = {
+  CC: { id: 'BAT-1', nom: 'Centre Commercial', estPilote: true, ordre: 1 },
+  MKT: { id: 'BAT-2', nom: 'Market', estPilote: false, ordre: 2 },
+  BB1: { id: 'BAT-3', nom: 'Big Box 1', estPilote: false, ordre: 3 },
+  BB2: { id: 'BAT-4', nom: 'Big Box 2', estPilote: false, ordre: 4 },
+  BB3: { id: 'BAT-5', nom: 'Big Box 3', estPilote: false, ordre: 5 },
+  BB4: { id: 'BAT-6', nom: 'Big Box 4', estPilote: false, ordre: 6 },
+};
+
+// Codes bâtiments legacy pour compatibilité avec anciennes données
+export const LEGACY_BUILDING_CODES = ['ZE', 'MA', 'PK'] as const;
+export type LegacyBuildingCode = typeof LEGACY_BUILDING_CODES[number];
+
+export const LEGACY_BUILDING_CODE_LABELS: Record<LegacyBuildingCode, string> = {
   ZE: "Zone d'Exposition",
   MA: 'Marché Artisanal',
   PK: 'Parking',

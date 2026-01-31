@@ -1,20 +1,31 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+// ============================================================================
+// FORMULAIRE ACTION v2.0 - Selon spécifications
+// ============================================================================
+
+import { useState, useEffect, useCallback } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   Wand2,
   Target,
   Calendar,
-  Users,
-  ChevronRight,
-  ChevronLeft,
+  User,
+  ChevronDown,
+  ChevronUp,
   Check,
   X,
-  Sparkles,
-  Flag,
+  Plus,
+  Trash2,
   Link2,
+  FileText,
+  Upload,
+  LinkIcon,
+  ListTodo,
   Clock,
+  AlertTriangle,
+  FileIcon,
+  Sparkles,
 } from 'lucide-react';
 import {
   Dialog,
@@ -28,46 +39,93 @@ import {
   Select,
   SelectOption,
   Label,
+  Badge,
+  useToast,
 } from '@/components/ui';
 import { useUsers, useJalons } from '@/hooks';
 import { createAction } from '@/hooks/useActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import {
-  AXES,
-  AXE_LABELS,
-  ACTION_CATEGORIES,
-  ACTION_CATEGORY_LABELS,
-  ACTION_TYPES,
-  ACTION_TYPE_LABELS,
-  PRIORITES,
-  PRIORITE_LABELS,
-  type Axe,
-} from '@/types';
+import { AXE_LABELS, type Axe } from '@/types';
 
-// Schemas par étape
-const step1Schema = z.object({
-  titre: z.string().min(3, 'Le titre doit contenir au moins 3 caractères').max(100),
-  description: z.string().max(500).optional(),
-  jalonId: z.number().nullable(),
-  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation']),
+// ============================================================================
+// TYPES & SCHEMAS
+// ============================================================================
+
+// Schema pour les sous-tâches
+const sousTacheSchema = z.object({
+  id: z.string(),
+  libelle: z.string().min(1, 'Le libellé est obligatoire'),
+  responsableId: z.number().nullable().optional(),
+  echeance: z.string().nullable().optional(),
+  fait: z.boolean().default(false),
 });
 
-const step2Schema = z.object({
-  date_debut_prevue: z.string().min(1, 'La date de début est obligatoire'),
-  date_fin_prevue: z.string().min(1, 'La date de fin est obligatoire'),
-  duree_prevue_jours: z.number().min(1),
+// Schema pour les preuves
+const preuveSchema = z.object({
+  id: z.string(),
+  type: z.enum(['fichier', 'lien']),
+  nom: z.string(),
+  url: z.string().optional(),
+  format: z.string().optional(),
+  taille: z.number().optional(),
+  dateAjout: z.string(),
 });
 
-const step3Schema = z.object({
-  responsableId: z.number({ required_error: 'Veuillez sélectionner un responsable' }),
-  priorite: z.enum(['critique', 'haute', 'moyenne', 'basse']),
-  categorie: z.enum(['administratif', 'technique', 'commercial', 'financier', 'juridique', 'rh', 'communication', 'operationnel', 'autre']),
+// Schema pour les notes
+const noteSchema = z.object({
+  id: z.string(),
+  texte: z.string(),
+  auteur: z.string(),
+  date: z.string(),
 });
 
-// Schema complet
-const wizardSchema = step1Schema.merge(step2Schema).merge(step3Schema);
-type WizardFormData = z.infer<typeof wizardSchema>;
+// Schema principal du formulaire v2.0
+const actionFormSchema = z.object({
+  // Champs obligatoires (4)
+  jalonId: z.number({ required_error: 'Le jalon est obligatoire' }),
+  libelle: z.string().min(3, 'Le libellé doit contenir au moins 3 caractères').max(150, 'Maximum 150 caractères'),
+  echeance: z.string().min(1, 'L\'échéance est obligatoire'),
+  responsableId: z.number({ required_error: 'Le responsable est obligatoire' }),
+
+  // Champs complémentaires (4)
+  dependances: z.array(z.number()).default([]),
+  livrable: z.string().max(200).optional(),
+  format: z.enum(['pdf', 'excel', 'word', 'powerpoint', 'image', 'autre', '']).default(''),
+
+  // Sections
+  sousTaches: z.array(sousTacheSchema).default([]),
+  preuves: z.array(preuveSchema).default([]),
+  notes: z.array(noteSchema).default([]),
+});
+
+type ActionFormData = z.infer<typeof actionFormSchema>;
+
+// Formats de livrables
+const FORMATS_LIVRABLE = [
+  { value: '', label: 'Non spécifié' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'excel', label: 'Excel' },
+  { value: 'word', label: 'Word' },
+  { value: 'powerpoint', label: 'PowerPoint' },
+  { value: 'image', label: 'Image' },
+  { value: 'autre', label: 'Autre' },
+];
+
+// Préfixes par axe
+const AXE_PREFIXES: Record<string, string> = {
+  'axe1_rh': 'RH',
+  'axe2_commercial': 'COM',
+  'axe3_technique': 'TECH',
+  'axe4_budget': 'BUD',
+  'axe5_marketing': 'MKT',
+  'axe6_exploitation': 'EXP',
+  'axe7_construction': 'CON',
+};
+
+// ============================================================================
+// COMPOSANT PRINCIPAL
+// ============================================================================
 
 interface ActionWizardProps {
   isOpen: boolean;
@@ -77,40 +135,21 @@ interface ActionWizardProps {
   defaultAxe?: Axe;
 }
 
-const STEPS = [
-  { id: 1, label: 'Identification', icon: Target, description: 'Titre et jalon lié' },
-  { id: 2, label: 'Planning', icon: Calendar, description: 'Dates et durée' },
-  { id: 3, label: 'Attribution', icon: Users, description: 'Responsable et priorité' },
-];
-
-const AXE_PREFIXES: Record<string, string> = {
-  'axe1_rh': 'RH',
-  'axe2_commercial': 'COM',
-  'axe3_technique': 'TECH',
-  'axe4_budget': 'BUD',
-  'axe5_marketing': 'MKT',
-  'axe6_exploitation': 'EXP',
-};
-
-const PRIORITE_COLORS: Record<string, string> = {
-  critique: 'bg-red-100 border-red-300 text-red-800',
-  haute: 'bg-orange-100 border-orange-300 text-orange-800',
-  moyenne: 'bg-blue-100 border-blue-300 text-blue-800',
-  basse: 'bg-gray-100 border-gray-300 text-gray-600',
-};
-
 export function ActionWizard({
   isOpen,
   onClose,
   onSuccess,
   defaultJalonId,
-  defaultAxe,
 }: ActionWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSousTaches, setShowSousTaches] = useState(false);
+  const [showPreuves, setShowPreuves] = useState(false);
+  const [newNote, setNewNote] = useState('');
 
   const users = useUsers();
   const jalons = useJalons();
+  const toast = useToast();
   const allActions = useLiveQuery(() => db.actions.toArray()) ?? [];
 
   const {
@@ -119,177 +158,201 @@ export function ActionWizard({
     watch,
     setValue,
     reset,
-    trigger,
+    control,
     formState: { errors },
-  } = useForm<WizardFormData>({
-    resolver: zodResolver(wizardSchema),
+  } = useForm<ActionFormData>({
+    resolver: zodResolver(actionFormSchema),
     defaultValues: {
-      titre: '',
-      description: '',
-      jalonId: defaultJalonId ?? null,
-      axe: defaultAxe || 'axe3_technique',
-      date_debut_prevue: '',
-      date_fin_prevue: '',
-      duree_prevue_jours: 7,
+      jalonId: defaultJalonId,
+      libelle: '',
+      echeance: '',
       responsableId: undefined,
-      priorite: 'moyenne',
-      categorie: 'operationnel',
+      dependances: [],
+      livrable: '',
+      format: '',
+      sousTaches: [],
+      preuves: [],
+      notes: [],
     },
   });
 
-  const watchAxe = watch('axe');
+  const { fields: sousTachesFields, append: appendSousTache, remove: removeSousTache } = useFieldArray({
+    control,
+    name: 'sousTaches',
+  });
+
+  const { fields: preuvesFields, append: appendPreuve, remove: removePreuve } = useFieldArray({
+    control,
+    name: 'preuves',
+  });
+
+  const { fields: notesFields, append: appendNote, remove: removeNote } = useFieldArray({
+    control,
+    name: 'notes',
+  });
+
   const watchJalonId = watch('jalonId');
-  const watchPriorite = watch('priorite');
-  const watchDateDebut = watch('date_debut_prevue');
-  const watchDateFin = watch('date_fin_prevue');
+  const watchEcheance = watch('echeance');
+  const watchSousTaches = watch('sousTaches');
 
-  // Pre-fill from selected jalon
+  // Jalon sélectionné
+  const selectedJalon = watchJalonId ? jalons.find(j => j.id === watchJalonId) : null;
+
+  // Axe hérité du jalon (auto-calculé)
+  const axeHerite = selectedJalon?.axe || null;
+
+  // Calcul auto de la priorité selon l'échéance
+  const calculerPriorite = useCallback((echeance: string): 'haute' | 'moyenne' | 'basse' => {
+    if (!echeance) return 'moyenne';
+    const joursRestants = Math.ceil((new Date(echeance).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (joursRestants <= 7) return 'haute';
+    if (joursRestants <= 30) return 'moyenne';
+    return 'basse';
+  }, []);
+
+  const prioriteCalculee = calculerPriorite(watchEcheance);
+
+  // Jours restants (auto-calculé)
+  const joursRestants = watchEcheance
+    ? Math.ceil((new Date(watchEcheance).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  // % Avancement basé sur sous-tâches
+  const avancementCalcule = watchSousTaches.length > 0
+    ? Math.round((watchSousTaches.filter(st => st.fait).length / watchSousTaches.length) * 100)
+    : 0;
+
+  // Pré-remplissage quand le jalon change
   useEffect(() => {
-    if (watchJalonId) {
-      const linkedJalon = jalons.find(j => j.id === watchJalonId);
-      if (linkedJalon) {
-        // Auto-fill axe from jalon
-        setValue('axe', linkedJalon.axe);
+    if (watchJalonId && selectedJalon) {
+      // Auto-fill responsable from jalon if not set
+      if (selectedJalon.responsableId && !watch('responsableId')) {
+        setValue('responsableId', selectedJalon.responsableId);
+      }
 
-        // Auto-fill responsable if available
-        if (linkedJalon.responsableId && !watch('responsableId')) {
-          setValue('responsableId', linkedJalon.responsableId);
-        }
-
-        // Map jalon importance to action priority
-        const prioriteMap: Record<string, 'critique' | 'haute' | 'moyenne' | 'basse'> = {
-          'critique': 'critique',
-          'majeur': 'haute',
-          'standard': 'moyenne',
-          'mineur': 'basse',
-        };
-        if (linkedJalon.niveau_importance) {
-          setValue('priorite', prioriteMap[linkedJalon.niveau_importance] || 'moyenne');
-        }
-
-        // Suggest date = J-30 before jalon
-        if (linkedJalon.date_prevue) {
-          const jalonDate = new Date(linkedJalon.date_prevue);
-          const actionEndDate = new Date(jalonDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-          const duree = watch('duree_prevue_jours') || 7;
-          const actionStartDate = new Date(actionEndDate.getTime() - duree * 24 * 60 * 60 * 1000);
-          setValue('date_fin_prevue', actionEndDate.toISOString().split('T')[0]);
-          setValue('date_debut_prevue', actionStartDate.toISOString().split('T')[0]);
-        }
+      // Suggérer échéance = jalon - 5 jours
+      if (selectedJalon.date_prevue && !watch('echeance')) {
+        const jalonDate = new Date(selectedJalon.date_prevue);
+        const echeanceSuggeree = new Date(jalonDate.getTime() - 5 * 24 * 60 * 60 * 1000);
+        setValue('echeance', echeanceSuggeree.toISOString().split('T')[0]);
       }
     }
-  }, [watchJalonId, jalons, setValue, watch]);
-
-  // Auto-calculate duration when dates change
-  useEffect(() => {
-    if (watchDateDebut && watchDateFin) {
-      const start = new Date(watchDateDebut);
-      const end = new Date(watchDateFin);
-      const diffTime = end.getTime() - start.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays > 0) {
-        setValue('duree_prevue_jours', diffDays);
-      }
-    }
-  }, [watchDateDebut, watchDateFin, setValue]);
+  }, [watchJalonId, selectedJalon, setValue, watch]);
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       reset({
-        titre: '',
-        description: '',
-        jalonId: defaultJalonId ?? null,
-        axe: defaultAxe || 'axe3_technique',
-        date_debut_prevue: '',
-        date_fin_prevue: '',
-        duree_prevue_jours: 7,
+        jalonId: defaultJalonId,
+        libelle: '',
+        echeance: '',
         responsableId: undefined,
-        priorite: 'moyenne',
-        categorie: 'operationnel',
+        dependances: [],
+        livrable: '',
+        format: '',
+        sousTaches: [],
+        preuves: [],
+        notes: [],
       });
-      setCurrentStep(1);
+      setShowAdvanced(false);
+      setShowSousTaches(false);
+      setShowPreuves(false);
+      setNewNote('');
     }
-  }, [isOpen, defaultJalonId, defaultAxe, reset]);
+  }, [isOpen, defaultJalonId, reset]);
 
-  const generateActionId = (axe: Axe, jalonId: number | null): string => {
-    const prefix = AXE_PREFIXES[axe] || 'GEN';
+  // Générer l'ID auto: A-{AXE}-{N°Jalon}.{N°Action}
+  const generateActionId = (axe: Axe | null, jalonId: number): string => {
+    const prefix = axe ? AXE_PREFIXES[axe] || 'GEN' : 'GEN';
+    const linkedJalon = jalons.find(j => j.id === jalonId);
+    const jalonActions = allActions.filter(a => a.jalonId === jalonId);
+    const numAction = jalonActions.length + 1;
 
-    if (jalonId) {
-      const linkedJalon = jalons.find(j => j.id === jalonId);
-      const jalonActions = allActions.filter(a => a.jalonId === jalonId);
-      const num = jalonActions.length + 1;
-      const jalonNum = linkedJalon?.id_jalon?.split('-').pop() || '001';
-      return `${prefix}.${jalonNum}.${num}`;
-    } else {
-      const axeActions = allActions.filter(a => a.axe === axe);
-      const num = String(axeActions.length + 1).padStart(3, '0');
-      return `ACT-${prefix}-${num}`;
+    // Extraire le numéro du jalon (ex: J-RH-1 -> 1)
+    const jalonNum = linkedJalon?.id_jalon?.split('-').pop() || '1';
+
+    return `A-${prefix}-${jalonNum}.${numAction}`;
+  };
+
+  // Ajouter une sous-tâche
+  const handleAddSousTache = () => {
+    appendSousTache({
+      id: crypto.randomUUID(),
+      libelle: '',
+      responsableId: null,
+      echeance: null,
+      fait: false,
+    });
+  };
+
+  // Ajouter un lien comme preuve
+  const handleAddLien = () => {
+    const url = prompt('Entrez l\'URL du lien:');
+    if (url) {
+      const nom = prompt('Libellé du lien (optionnel):', url) || url;
+      appendPreuve({
+        id: crypto.randomUUID(),
+        type: 'lien',
+        nom,
+        url,
+        dateAjout: new Date().toISOString(),
+      });
     }
   };
 
-  const validateCurrentStep = async () => {
-    let fieldsToValidate: (keyof WizardFormData)[] = [];
-
-    switch (currentStep) {
-      case 1:
-        fieldsToValidate = ['titre', 'axe'];
-        break;
-      case 2:
-        fieldsToValidate = ['date_debut_prevue', 'date_fin_prevue'];
-        break;
-      case 3:
-        fieldsToValidate = ['responsableId', 'priorite', 'categorie'];
-        break;
-    }
-
-    return await trigger(fieldsToValidate);
-  };
-
-  const handleNext = async () => {
-    const isValid = await validateCurrentStep();
-    if (isValid && currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+  // Ajouter une note
+  const handleAddNote = () => {
+    if (newNote.trim()) {
+      const currentUser = users[0]; // À remplacer par l'utilisateur connecté
+      appendNote({
+        id: crypto.randomUUID(),
+        texte: newNote.trim(),
+        auteur: currentUser ? `${currentUser.prenom} ${currentUser.nom}` : 'Utilisateur',
+        date: new Date().toISOString(),
+      });
+      setNewNote('');
     }
   };
 
-  const handlePrev = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
+  // Actions disponibles pour les dépendances (exclure les actions du même jalon pour éviter les cycles)
+  const actionsDisponibles = allActions.filter(a => a.jalonId !== watchJalonId);
 
-  const onSubmit = async (data: WizardFormData) => {
+  // Soumission du formulaire
+  const onSubmit = async (data: ActionFormData) => {
+    if (!axeHerite) return;
+
     setIsSubmitting(true);
 
     try {
       const responsable = users.find(u => u.id === data.responsableId);
       const responsableName = responsable ? `${responsable.prenom} ${responsable.nom}` : '';
-
       const today = new Date().toISOString().split('T')[0];
-      const prefix = AXE_PREFIXES[data.axe] || 'GEN';
+
+      // Calculer la date de début (7 jours avant l'échéance par défaut)
+      const echeanceDate = new Date(data.echeance);
+      const dateDebut = new Date(echeanceDate.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       const actionId = await createAction({
-        // Identification
-        id_action: generateActionId(data.axe, data.jalonId),
-        code_wbs: `WBS-${prefix}-A${String(allActions.length + 1).padStart(3, '0')}`,
-        titre: data.titre,
-        description: data.description || data.titre,
+        // Identification (auto-calculé)
+        id_action: generateActionId(axeHerite, data.jalonId),
+        code_wbs: `WBS-${AXE_PREFIXES[axeHerite]}-A${String(allActions.length + 1).padStart(3, '0')}`,
+        titre: data.libelle,
+        description: data.livrable || data.libelle,
 
-        // Classification
-        axe: data.axe,
+        // Classification (axe hérité du jalon)
+        axe: axeHerite,
         phase: 'execution',
-        categorie: data.categorie,
+        categorie: 'operationnel',
         sous_categorie: null,
         type_action: 'tache',
 
         // Planning
         date_creation: today,
-        date_debut_prevue: data.date_debut_prevue,
-        date_fin_prevue: data.date_fin_prevue,
+        date_debut_prevue: dateDebut.toISOString().split('T')[0],
+        date_fin_prevue: data.echeance,
         date_debut_reelle: null,
         date_fin_reelle: null,
-        duree_prevue_jours: data.duree_prevue_jours,
+        duree_prevue_jours: 7,
         duree_reelle_jours: null,
         date_butoir: null,
         flexibilite: 'standard',
@@ -314,7 +377,7 @@ export function ActionWizard({
         escalade_niveau3: '',
 
         // Dependencies
-        predecesseurs: [],
+        predecesseurs: data.dependances.map(id => String(id)),
         successeurs: [],
         contraintes_externes: null,
         chemin_critique: false,
@@ -329,289 +392,166 @@ export function ActionWizard({
         ligne_budgetaire: null,
 
         // Livrables
-        livrables: [],
+        livrables: data.livrable ? [{
+          id: crypto.randomUUID(),
+          nom: data.livrable,
+          format: data.format || 'autre',
+          statut: 'attendu',
+        }] : [],
         criteres_acceptation: [],
-        documents: [],
+        documents: data.preuves.map(p => ({
+          id: p.id,
+          nom: p.nom,
+          type: p.type,
+          url: p.url || '',
+          dateAjout: p.dateAjout,
+        })),
 
-        // Suivi
+        // Suivi (auto-calculé)
         statut: 'a_faire',
-        avancement: 0,
-        methode_avancement: 'manuel',
-        priorite: data.priorite,
-        sante: 'vert',
+        avancement: avancementCalcule,
+        methode_avancement: data.sousTaches.length > 0 ? 'sous_taches' : 'manuel',
+        priorite: prioriteCalculee,
+        sante: joursRestants && joursRestants < 0 ? 'rouge' : joursRestants && joursRestants < 7 ? 'orange' : 'vert',
         tendance: 'stable',
         derniere_mise_a_jour: today,
+
+        // Sous-tâches
+        sous_taches: data.sousTaches.map(st => ({
+          id: st.id,
+          libelle: st.libelle,
+          responsableId: st.responsableId || null,
+          echeance: st.echeance || null,
+          fait: st.fait,
+        })),
 
         // Alertes & reporting
         alertes: [],
         visibilite_reporting: 'flash_hebdo',
 
         // Commentaires & historique
-        commentaires: [],
+        commentaires: data.notes.map(n => ({
+          id: n.id,
+          auteur: n.auteur,
+          date: n.date,
+          texte: n.texte,
+        })),
         historique: [{
           id: crypto.randomUUID(),
           date: today,
           auteur: responsableName,
           type: 'creation',
-          description: 'Création via assistant guidé',
+          description: 'Création de l\'action',
         }],
 
         // Metadata
         tags: [],
-        source: 'wizard',
+        source: 'formulaire_v2',
       });
 
+      toast.success('Action creee', `"${data.titre}" a ete ajoutee`);
       onSuccess?.(actionId);
       onClose();
     } catch (error) {
       console.error('Erreur lors de la création:', error);
+      toast.error('Erreur', 'Impossible de creer l\'action');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const selectedJalon = watchJalonId ? jalons.find(j => j.id === watchJalonId) : null;
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg">
               <Wand2 className="w-5 h-5 text-white" />
             </div>
-            <span>Assistant création d'action</span>
+            <span>Nouvelle Action</span>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress Steps */}
-        <div className="relative mb-6">
-          <div className="flex justify-between items-center">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-              return (
-                <div key={step.id} className="flex flex-col items-center flex-1">
-                  <div className="flex items-center w-full">
-                    {index > 0 && (
-                      <div
-                        className={`flex-1 h-1 transition-colors ${
-                          isCompleted || isActive ? 'bg-blue-500' : 'bg-neutral-200'
-                        }`}
-                      />
-                    )}
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                        isCompleted
-                          ? 'bg-green-500 text-white'
-                          : isActive
-                          ? 'bg-blue-500 text-white ring-4 ring-blue-100'
-                          : 'bg-neutral-200 text-neutral-500'
-                      }`}
-                    >
-                      {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                    </div>
-                    {index < STEPS.length - 1 && (
-                      <div
-                        className={`flex-1 h-1 transition-colors ${
-                          isCompleted ? 'bg-blue-500' : 'bg-neutral-200'
-                        }`}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-2 text-center">
-                    <div
-                      className={`text-sm font-medium ${
-                        isActive ? 'text-blue-700' : 'text-neutral-600'
-                      }`}
-                    >
-                      {step.label}
-                    </div>
-                    <div className="text-xs text-neutral-500">{step.description}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          {/* ============================================= */}
+          {/* CHAMPS OBLIGATOIRES (4) */}
+          {/* ============================================= */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Champs obligatoires
+            </h3>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Step 1: Identification */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg mb-4">
-                <div className="flex items-center gap-2 text-blue-800 text-sm font-medium">
-                  <Sparkles className="w-4 h-4" />
-                  Étape 1 : Identifiez votre action
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  Décrivez l'action et associez-la optionnellement à un jalon.
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="titre" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                  <Target className="w-4 h-4 text-blue-600" />
-                  Titre de l'action *
-                </Label>
-                <Input
-                  id="titre"
-                  {...register('titre')}
-                  placeholder="Ex: Finaliser le contrat fournisseur"
-                  className={errors.titre ? 'border-red-500' : ''}
-                  autoFocus
-                />
-                {errors.titre && (
-                  <p className="text-red-500 text-xs mt-1">{errors.titre.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="description" className="text-sm font-medium mb-1.5 block">
-                  Description (optionnel)
-                </Label>
-                <Textarea
-                  id="description"
-                  {...register('description')}
-                  placeholder="Détails supplémentaires..."
-                  rows={2}
-                />
-              </div>
-
+            <div className="space-y-3">
+              {/* Jalon (obligatoire) */}
               <div>
                 <Label htmlFor="jalonId" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                   <Link2 className="w-4 h-4 text-purple-600" />
-                  Jalon lié (optionnel)
+                  Jalon *
                 </Label>
                 <Select
                   id="jalonId"
                   {...register('jalonId', { valueAsNumber: true })}
+                  className={errors.jalonId ? 'border-red-500' : ''}
                 >
-                  <SelectOption value="">Aucun jalon</SelectOption>
+                  <SelectOption value="">Sélectionner un jalon...</SelectOption>
                   {jalons.map((jalon) => (
                     <SelectOption key={jalon.id} value={jalon.id!}>
-                      {jalon.titre} ({new Date(jalon.date_prevue).toLocaleDateString('fr-FR')})
+                      {jalon.id_jalon} - {jalon.titre}
                     </SelectOption>
                   ))}
                 </Select>
-                {selectedJalon && (
-                  <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700">
-                    <Sparkles className="w-3 h-3 inline mr-1" />
-                    L'axe, le responsable et les dates seront pré-remplis automatiquement.
-                  </div>
+                {errors.jalonId && (
+                  <p className="text-red-500 text-xs mt-1">{errors.jalonId.message}</p>
                 )}
               </div>
 
+              {/* Libellé (max 150 car) */}
               <div>
-                <Label htmlFor="axe" className="text-sm font-medium mb-1.5 block">
-                  Axe *
+                <Label htmlFor="libelle" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Libellé * <span className="text-neutral-400 font-normal">(max 150 car.)</span>
                 </Label>
-                <Select
-                  id="axe"
-                  {...register('axe')}
-                  className={errors.axe ? 'border-red-500' : ''}
-                  disabled={!!watchJalonId}
-                >
-                  {AXES.map((axe) => (
-                    <SelectOption key={axe} value={axe}>
-                      {AXE_LABELS[axe]}
-                    </SelectOption>
-                  ))}
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Planning */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg mb-4">
-                <div className="flex items-center gap-2 text-green-800 text-sm font-medium">
-                  <Calendar className="w-4 h-4" />
-                  Étape 2 : Planifiez votre action
-                </div>
-                <p className="text-xs text-green-700 mt-1">
-                  Définissez les dates de début et de fin. La durée est calculée automatiquement.
-                </p>
+                <Input
+                  id="libelle"
+                  {...register('libelle')}
+                  placeholder="Ex: Finaliser le contrat fournisseur"
+                  maxLength={150}
+                  className={errors.libelle ? 'border-red-500' : ''}
+                  autoFocus
+                />
+                {errors.libelle && (
+                  <p className="text-red-500 text-xs mt-1">{errors.libelle.message}</p>
+                )}
               </div>
 
-              {selectedJalon && (
-                <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-purple-800 text-sm font-medium mb-1">
-                    <Sparkles className="w-4 h-4" />
-                    Dates suggérées (J-30 du jalon)
-                  </div>
-                  <p className="text-xs text-purple-700">
-                    Jalon "{selectedJalon.titre}" prévu le {new Date(selectedJalon.date_prevue).toLocaleDateString('fr-FR')}.
-                    L'action devrait se terminer 30 jours avant.
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="date_debut_prevue" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                    <Calendar className="w-4 h-4 text-green-600" />
-                    Date de début *
-                  </Label>
-                  <Input
-                    type="date"
-                    id="date_debut_prevue"
-                    {...register('date_debut_prevue')}
-                    className={errors.date_debut_prevue ? 'border-red-500' : ''}
-                  />
-                  {errors.date_debut_prevue && (
-                    <p className="text-red-500 text-xs mt-1">{errors.date_debut_prevue.message}</p>
+              {/* Échéance (suggérée = jalon - 5j) */}
+              <div>
+                <Label htmlFor="echeance" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <Calendar className="w-4 h-4 text-orange-600" />
+                  Échéance *
+                  {selectedJalon && (
+                    <span className="text-xs text-neutral-500 font-normal ml-1">
+                      (suggérée: J-5 du jalon)
+                    </span>
                   )}
-                </div>
-
-                <div>
-                  <Label htmlFor="date_fin_prevue" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                    <Calendar className="w-4 h-4 text-red-600" />
-                    Date de fin *
-                  </Label>
-                  <Input
-                    type="date"
-                    id="date_fin_prevue"
-                    {...register('date_fin_prevue')}
-                    className={errors.date_fin_prevue ? 'border-red-500' : ''}
-                  />
-                  {errors.date_fin_prevue && (
-                    <p className="text-red-500 text-xs mt-1">{errors.date_fin_prevue.message}</p>
-                  )}
-                </div>
+                </Label>
+                <Input
+                  type="date"
+                  id="echeance"
+                  {...register('echeance')}
+                  className={errors.echeance ? 'border-red-500' : ''}
+                />
+                {errors.echeance && (
+                  <p className="text-red-500 text-xs mt-1">{errors.echeance.message}</p>
+                )}
               </div>
 
-              <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg">
-                <div className="flex items-center gap-2 text-neutral-700 text-sm">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium">Durée calculée:</span>
-                  <span className="font-bold text-blue-700">
-                    {watch('duree_prevue_jours')} jour{watch('duree_prevue_jours') > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Attribution */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg mb-4">
-                <div className="flex items-center gap-2 text-orange-800 text-sm font-medium">
-                  <Users className="w-4 h-4" />
-                  Étape 3 : Assignez l'action
-                </div>
-                <p className="text-xs text-orange-700 mt-1">
-                  Désignez un responsable et définissez la priorité.
-                </p>
-              </div>
-
+              {/* Responsable */}
               <div>
                 <Label htmlFor="responsableId" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                  <Users className="w-4 h-4 text-orange-600" />
+                  <User className="w-4 h-4 text-green-600" />
                   Responsable *
                 </Label>
                 <Select
@@ -622,7 +562,7 @@ export function ActionWizard({
                   <SelectOption value="">Sélectionner...</SelectOption>
                   {users.map((user) => (
                     <SelectOption key={user.id} value={user.id!}>
-                      {user.prenom} {user.nom} - {user.fonction || user.role}
+                      {user.prenom} {user.nom}
                     </SelectOption>
                   ))}
                 </Select>
@@ -630,119 +570,375 @@ export function ActionWizard({
                   <p className="text-red-500 text-xs mt-1">{errors.responsableId.message}</p>
                 )}
               </div>
+            </div>
+          </div>
 
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Priorité *
-                </Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {PRIORITES.map((priorite) => (
-                    <button
-                      key={priorite}
-                      type="button"
-                      onClick={() => setValue('priorite', priorite)}
-                      className={`p-2 rounded-lg border-2 text-center text-sm font-medium transition-all ${
-                        watchPriorite === priorite
-                          ? `${PRIORITE_COLORS[priorite]} ring-2 ring-offset-1`
-                          : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
-                      }`}
-                    >
-                      {priorite === 'critique' && <Flag className="w-4 h-4 mx-auto mb-1 text-red-600" />}
-                      {priorite === 'haute' && <Flag className="w-4 h-4 mx-auto mb-1 text-orange-600" />}
-                      {PRIORITE_LABELS[priorite]}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* ============================================= */}
+          {/* CHAMPS AUTO-CALCULÉS (6) */}
+          {/* ============================================= */}
+          {selectedJalon && (
+            <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                Champs auto-calculés
+              </h3>
 
-              <div>
-                <Label htmlFor="categorie" className="text-sm font-medium mb-1.5 block">
-                  Catégorie
-                </Label>
-                <Select
-                  id="categorie"
-                  {...register('categorie')}
-                >
-                  {ACTION_CATEGORIES.map((cat) => (
-                    <SelectOption key={cat} value={cat}>
-                      {ACTION_CATEGORY_LABELS[cat]}
-                    </SelectOption>
-                  ))}
-                </Select>
-              </div>
-
-              {/* Summary */}
-              <div className="mt-4 p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
-                <div className="text-sm font-medium text-neutral-700 mb-2">Récapitulatif</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-neutral-500">Titre:</div>
-                  <div className="font-medium truncate">{watch('titre') || '-'}</div>
-                  <div className="text-neutral-500">Axe:</div>
-                  <div className="font-medium">{AXE_LABELS[watchAxe]}</div>
-                  <div className="text-neutral-500">Durée:</div>
-                  <div className="font-medium">{watch('duree_prevue_jours')} jours</div>
-                  <div className="text-neutral-500">Priorité:</div>
-                  <div className={`font-medium px-2 py-0.5 rounded text-xs inline-block ${PRIORITE_COLORS[watchPriorite]}`}>
-                    {PRIORITE_LABELS[watchPriorite]}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                {/* ID */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">ID</div>
+                  <div className="font-mono font-medium text-blue-700">
+                    {generateActionId(axeHerite, watchJalonId)}
                   </div>
-                  {selectedJalon && (
-                    <>
-                      <div className="text-neutral-500">Jalon:</div>
-                      <div className="font-medium truncate text-purple-700">{selectedJalon.titre}</div>
-                    </>
-                  )}
+                </div>
+
+                {/* Axe (hérité) */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">Axe</div>
+                  <div className="font-medium">
+                    {axeHerite ? AXE_LABELS[axeHerite] : '-'}
+                  </div>
+                </div>
+
+                {/* Statut */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">Statut</div>
+                  <Badge variant="default">À faire</Badge>
+                </div>
+
+                {/* % Avancement */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">% Avancement</div>
+                  <div className="font-medium">{avancementCalcule}%</div>
+                </div>
+
+                {/* Jours restants */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">Jours restants</div>
+                  <div className={`font-medium ${joursRestants && joursRestants < 0 ? 'text-red-600' : joursRestants && joursRestants < 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                    {joursRestants !== null ? (joursRestants < 0 ? `${Math.abs(joursRestants)}j en retard` : `${joursRestants}j`) : '-'}
+                  </div>
+                </div>
+
+                {/* Priorité (auto) */}
+                <div className="p-2 bg-white rounded border">
+                  <div className="text-xs text-neutral-500">Priorité</div>
+                  <Badge
+                    variant={prioriteCalculee === 'haute' ? 'danger' : prioriteCalculee === 'moyenne' ? 'warning' : 'success'}
+                  >
+                    {prioriteCalculee === 'haute' ? 'Haute' : prioriteCalculee === 'moyenne' ? 'Moyenne' : 'Basse'}
+                  </Badge>
                 </div>
               </div>
             </div>
           )}
 
-          <DialogFooter className="gap-2 pt-4 mt-4 border-t">
-            <Button
+          {/* ============================================= */}
+          {/* CHAMPS COMPLÉMENTAIRES (4) - Collapsible */}
+          {/* ============================================= */}
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <button
               type="button"
-              variant="outline"
-              onClick={currentStep === 1 ? onClose : handlePrev}
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between text-sm font-medium text-neutral-700 transition-colors"
             >
-              {currentStep === 1 ? (
+              <span className="flex items-center gap-2">
+                <ListTodo className="w-4 h-4 text-purple-600" />
+                Champs complémentaires
+              </span>
+              {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showAdvanced && (
+              <div className="p-4 space-y-4 border-t border-neutral-200">
+                {/* Dépendances (multi-select) */}
+                <div>
+                  <Label htmlFor="dependances" className="text-sm font-medium mb-1.5 block">
+                    Dépendances (actions prérequises)
+                  </Label>
+                  <Select
+                    id="dependances"
+                    multiple
+                    {...register('dependances')}
+                    className="min-h-[80px]"
+                  >
+                    {actionsDisponibles.map((action) => (
+                      <SelectOption key={action.id} value={action.id!}>
+                        {action.id_action} - {action.titre}
+                      </SelectOption>
+                    ))}
+                  </Select>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Maintenez Ctrl/Cmd pour sélectionner plusieurs actions
+                  </p>
+                </div>
+
+                {/* Livrable */}
+                <div>
+                  <Label htmlFor="livrable" className="text-sm font-medium mb-1.5 block">
+                    Livrable (ce qui doit être produit)
+                  </Label>
+                  <Input
+                    id="livrable"
+                    {...register('livrable')}
+                    placeholder="Ex: Rapport d'analyse, Contrat signé..."
+                  />
+                </div>
+
+                {/* Format */}
+                <div>
+                  <Label htmlFor="format" className="text-sm font-medium mb-1.5 block">
+                    Format du livrable
+                  </Label>
+                  <Select id="format" {...register('format')}>
+                    {FORMATS_LIVRABLE.map((f) => (
+                      <SelectOption key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectOption>
+                    ))}
+                  </Select>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <Label className="text-sm font-medium mb-1.5 block">Notes</Label>
+                  <div className="space-y-2">
+                    {notesFields.map((note, index) => (
+                      <div key={note.id} className="p-2 bg-neutral-50 rounded border text-sm flex justify-between items-start">
+                        <div>
+                          <p className="text-neutral-700">{note.texte}</p>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {note.auteur} - {new Date(note.date).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeNote(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        placeholder="Ajouter une note..."
+                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNote())}
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={handleAddNote}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================= */}
+          {/* SECTION SOUS-TÂCHES - Collapsible */}
+          {/* ============================================= */}
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowSousTaches(!showSousTaches)}
+              className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between text-sm font-medium text-neutral-700 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600" />
+                Sous-tâches
+                {sousTachesFields.length > 0 && (
+                  <Badge variant="info" className="ml-2">{sousTachesFields.length}</Badge>
+                )}
+              </span>
+              {showSousTaches ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showSousTaches && (
+              <div className="p-4 space-y-3 border-t border-neutral-200">
+                {sousTachesFields.map((field, index) => (
+                  <div key={field.id} className="p-3 bg-neutral-50 rounded-lg border space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        {...register(`sousTaches.${index}.fait`)}
+                        className="w-4 h-4 rounded border-neutral-300"
+                      />
+                      <Input
+                        {...register(`sousTaches.${index}.libelle`)}
+                        placeholder="Libellé de la sous-tâche"
+                        className="flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSousTache(index)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pl-6">
+                      <Select {...register(`sousTaches.${index}.responsableId`, { valueAsNumber: true })}>
+                        <SelectOption value="">Responsable (opt.)</SelectOption>
+                        {users.map((user) => (
+                          <SelectOption key={user.id} value={user.id!}>
+                            {user.prenom} {user.nom}
+                          </SelectOption>
+                        ))}
+                      </Select>
+                      <Input
+                        type="date"
+                        {...register(`sousTaches.${index}.echeance`)}
+                        placeholder="Échéance (opt.)"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddSousTache}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Ajouter une sous-tâche
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================= */}
+          {/* SECTION PREUVES - Collapsible */}
+          {/* ============================================= */}
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPreuves(!showPreuves)}
+              className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between text-sm font-medium text-neutral-700 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Upload className="w-4 h-4 text-blue-600" />
+                Preuves
+                {preuvesFields.length > 0 && (
+                  <Badge variant="info" className="ml-2">{preuvesFields.length}</Badge>
+                )}
+              </span>
+              {showPreuves ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showPreuves && (
+              <div className="p-4 space-y-3 border-t border-neutral-200">
+                {/* Liste des preuves */}
+                {preuvesFields.map((field, index) => (
+                  <div key={field.id} className="p-2 bg-neutral-50 rounded border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {field.type === 'fichier' ? (
+                        <FileIcon className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <LinkIcon className="w-4 h-4 text-green-600" />
+                      )}
+                      <span className="text-sm">{field.nom}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePreuve(index)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Zone de drop pour fichiers */}
+                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center bg-white">
+                  <Upload className="w-8 h-8 mx-auto text-neutral-400 mb-2" />
+                  <p className="text-sm text-neutral-600">
+                    Glissez-déposez vos fichiers ici
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    PDF, DOC, XLS, IMG - Max 10MB
+                  </p>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 10 * 1024 * 1024) {
+                          alert('Le fichier ne doit pas dépasser 10MB');
+                          return;
+                        }
+                        appendPreuve({
+                          id: crypto.randomUUID(),
+                          type: 'fichier',
+                          nom: file.name,
+                          format: file.type,
+                          taille: file.size,
+                          dateAjout: new Date().toISOString(),
+                        });
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-1" />
+                    Parcourir
+                  </Button>
+                </div>
+
+                {/* Ajouter un lien */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddLien}
+                  className="w-full"
+                >
+                  <LinkIcon className="w-4 h-4 mr-1" />
+                  Ajouter un lien
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================= */}
+          {/* FOOTER */}
+          {/* ============================================= */}
+          <DialogFooter className="gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <X className="w-4 h-4 mr-1" />
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !watchJalonId}
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+            >
+              {isSubmitting ? (
                 <>
-                  <X className="w-4 h-4 mr-1" />
-                  Annuler
+                  <Clock className="w-4 h-4 mr-1 animate-spin" />
+                  Création...
                 </>
               ) : (
                 <>
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Précédent
+                  <Check className="w-4 h-4 mr-1" />
+                  Créer l'action
                 </>
               )}
             </Button>
-
-            {currentStep < 3 ? (
-              <Button
-                type="button"
-                onClick={handleNext}
-                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
-              >
-                Suivant
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="animate-spin mr-2">⏳</span>
-                    Création...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 mr-1" />
-                    Créer l'action
-                  </>
-                )}
-              </Button>
-            )}
           </DialogFooter>
         </form>
       </DialogContent>

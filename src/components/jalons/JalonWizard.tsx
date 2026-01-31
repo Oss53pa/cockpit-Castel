@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -12,8 +12,10 @@ import {
   Check,
   X,
   Sparkles,
-  Flag,
-  AlertTriangle,
+  Link2,
+  FileText,
+  MessageSquare,
+  GitBranch,
 } from 'lucide-react';
 import {
   Dialog,
@@ -27,49 +29,44 @@ import {
   Select,
   SelectOption,
   Label,
+  useToast,
 } from '@/components/ui';
 import { useUsers, useJalons } from '@/hooks';
 import { createJalon } from '@/hooks/useJalons';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db';
 import {
   AXES,
   AXE_LABELS,
-  JALON_CATEGORIES,
-  JALON_CATEGORY_LABELS,
-  JALON_TYPES,
-  JALON_TYPE_LABELS,
-  NIVEAUX_IMPORTANCE,
-  NIVEAU_IMPORTANCE_LABELS,
-  PROJECT_PHASES,
-  PROJECT_PHASE_LABELS,
-  FLEXIBILITES,
-  FLEXIBILITE_LABELS,
   type Axe,
 } from '@/types';
 
-// Schemas par étape
+// ============================================================================
+// SPÉCIFICATIONS v2.0 - Formulaire Jalon
+// ============================================================================
+// Champs Obligatoires (5) : Axe, Libellé, Cible, Échéance, Responsable
+// Champs Auto-calculés (5) : ID, Statut, % Avancement, Jours restants, Météo
+// Champs Optionnels (3) : Prérequis, Preuve, Commentaire
+// ============================================================================
+
+// Schema pour les champs obligatoires
 const step1Schema = z.object({
-  titre: z.string().min(3, 'Le titre doit contenir au moins 3 caractères').max(100),
-  description: z.string().max(500).optional(),
-  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation']),
-  categorie: z.enum(['contrat', 'reception', 'validation', 'livraison', 'inauguration', 'recrutement', 'formation', 'audit', 'autre']),
-  niveau_importance: z.enum(['critique', 'majeur', 'standard', 'mineur']),
-});
-
-const step2Schema = z.object({
-  date_prevue: z.string().min(1, 'La date prévue est obligatoire'),
-  projectPhase: z.enum(['phase1_preparation', 'phase2_mobilisation', 'phase3_lancement', 'phase4_stabilisation']).nullable(),
-  flexibilite: z.enum(['fixe', 'flexible', 'standard', 'critique']),
-});
-
-const step3Schema = z.object({
+  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction'] as const, {
+    required_error: 'L\'axe est obligatoire',
+  }),
+  titre: z.string().min(3, 'Le libellé doit contenir au moins 3 caractères').max(100, 'Le libellé ne peut pas dépasser 100 caractères'),
+  cible: z.string().min(1, 'La cible est obligatoire').max(50, 'La cible ne peut pas dépasser 50 caractères'),
+  date_prevue: z.string().min(1, 'L\'échéance est obligatoire'),
   responsableId: z.number({ required_error: 'Veuillez sélectionner un responsable' }),
-  validateurId: z.number({ required_error: 'Veuillez sélectionner un validateur' }),
+});
+
+// Schema pour les champs optionnels
+const step2Schema = z.object({
+  prerequis: z.array(z.string()).optional(),
+  preuve: z.string().max(500).optional(),
+  commentaire: z.string().max(500).optional(),
 });
 
 // Schema complet
-const wizardSchema = step1Schema.merge(step2Schema).merge(step3Schema);
+const wizardSchema = step1Schema.merge(step2Schema);
 type WizardFormData = z.infer<typeof wizardSchema>;
 
 interface JalonWizardProps {
@@ -80,11 +77,11 @@ interface JalonWizardProps {
 }
 
 const STEPS = [
-  { id: 1, label: 'Identification', icon: Target, description: 'Titre, axe et importance' },
-  { id: 2, label: 'Planning', icon: Calendar, description: 'Date et phase projet' },
-  { id: 3, label: 'Responsabilités', icon: Users, description: 'Responsable et validateur' },
+  { id: 1, label: 'Obligatoires', icon: Target, description: 'Axe, Libellé, Cible, Échéance, Responsable' },
+  { id: 2, label: 'Optionnels', icon: FileText, description: 'Prérequis, Preuve, Commentaire' },
 ];
 
+// Préfixes pour générer l'ID au format J-{AXE}-{N°}
 const AXE_PREFIXES: Record<string, string> = {
   'axe1_rh': 'RH',
   'axe2_commercial': 'COM',
@@ -92,13 +89,7 @@ const AXE_PREFIXES: Record<string, string> = {
   'axe4_budget': 'BUD',
   'axe5_marketing': 'MKT',
   'axe6_exploitation': 'EXP',
-};
-
-const IMPORTANCE_COLORS: Record<string, string> = {
-  critique: 'bg-red-100 border-red-300 text-red-800',
-  majeur: 'bg-orange-100 border-orange-300 text-orange-800',
-  standard: 'bg-blue-100 border-blue-300 text-blue-800',
-  mineur: 'bg-gray-100 border-gray-300 text-gray-600',
+  'axe7_construction': 'CON',
 };
 
 export function JalonWizard({
@@ -109,9 +100,11 @@ export function JalonWizard({
 }: JalonWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPrerequis, setSelectedPrerequis] = useState<string[]>([]);
 
   const users = useUsers();
   const jalons = useJalons();
+  const toast = useToast();
 
   const {
     register,
@@ -124,70 +117,72 @@ export function JalonWizard({
   } = useForm<WizardFormData>({
     resolver: zodResolver(wizardSchema),
     defaultValues: {
-      titre: '',
-      description: '',
       axe: defaultAxe || 'axe3_technique',
-      categorie: 'validation',
-      niveau_importance: 'standard',
+      titre: '',
+      cible: '',
       date_prevue: '',
-      projectPhase: null,
-      flexibilite: 'standard',
       responsableId: undefined,
-      validateurId: undefined,
+      prerequis: [],
+      preuve: '',
+      commentaire: '',
     },
   });
 
   const watchAxe = watch('axe');
-  const watchImportance = watch('niveau_importance');
+  const watchTitre = watch('titre');
+  const watchCible = watch('cible');
+  const watchDate = watch('date_prevue');
 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       reset({
-        titre: '',
-        description: '',
         axe: defaultAxe || 'axe3_technique',
-        categorie: 'validation',
-        niveau_importance: 'standard',
+        titre: '',
+        cible: '',
         date_prevue: '',
-        projectPhase: null,
-        flexibilite: 'standard',
         responsableId: undefined,
-        validateurId: undefined,
+        prerequis: [],
+        preuve: '',
+        commentaire: '',
       });
+      setSelectedPrerequis([]);
       setCurrentStep(1);
     }
   }, [isOpen, defaultAxe, reset]);
 
+  // Générer l'ID au format J-{AXE}-{N°}
   const generateJalonId = (axe: Axe): string => {
     const prefix = AXE_PREFIXES[axe] || 'GEN';
-    const year = new Date().getFullYear();
     const axeJalons = jalons.filter(j => j.axe === axe);
-    const num = String(axeJalons.length + 1).padStart(3, '0');
-    return `JAL-${prefix}-${year}-${num}`;
+    const num = axeJalons.length + 1;
+    return `J-${prefix}-${num}`;
   };
 
+  // ID prévisualisé
+  const previewId = generateJalonId(watchAxe);
+
+  // Calculer les jours restants
+  const calculateJoursRestants = (datePrevue: string): number | null => {
+    if (!datePrevue) return null;
+    const today = new Date();
+    const target = new Date(datePrevue);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const joursRestants = calculateJoursRestants(watchDate);
+
   const validateCurrentStep = async () => {
-    let fieldsToValidate: (keyof WizardFormData)[] = [];
-
-    switch (currentStep) {
-      case 1:
-        fieldsToValidate = ['titre', 'axe', 'categorie', 'niveau_importance'];
-        break;
-      case 2:
-        fieldsToValidate = ['date_prevue', 'flexibilite'];
-        break;
-      case 3:
-        fieldsToValidate = ['responsableId', 'validateurId'];
-        break;
+    if (currentStep === 1) {
+      return await trigger(['axe', 'titre', 'cible', 'date_prevue', 'responsableId']);
     }
-
-    return await trigger(fieldsToValidate);
+    return true;
   };
 
   const handleNext = async () => {
     const isValid = await validateCurrentStep();
-    if (isValid && currentStep < 3) {
+    if (isValid && currentStep < 2) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -198,46 +193,61 @@ export function JalonWizard({
     }
   };
 
+  const togglePrerequis = (jalonId: string) => {
+    setSelectedPrerequis((prev) => {
+      const newSelection = prev.includes(jalonId)
+        ? prev.filter((id) => id !== jalonId)
+        : [...prev, jalonId];
+      setValue('prerequis', newSelection);
+      return newSelection;
+    });
+  };
+
   const onSubmit = async (data: WizardFormData) => {
     setIsSubmitting(true);
 
     try {
       const responsable = users.find(u => u.id === data.responsableId);
-      const validateur = users.find(u => u.id === data.validateurId);
       const responsableName = responsable ? `${responsable.prenom} ${responsable.nom}` : '';
-      const validateurName = validateur ? `${validateur.prenom} ${validateur.nom}` : '';
 
       const today = new Date().toISOString().split('T')[0];
-      const prefix = AXE_PREFIXES[data.axe] || 'GEN';
+      const jalonIdGenerated = generateJalonId(data.axe);
 
       const jalonId = await createJalon({
-        // Identification
-        id_jalon: generateJalonId(data.axe),
-        code_wbs: `WBS-${prefix}-M${String(jalons.length + 1).padStart(3, '0')}`,
+        // ID auto-calculé au format J-{AXE}-{N°}
+        id_jalon: jalonIdGenerated,
+        code_wbs: jalonIdGenerated,
+
+        // Champs obligatoires
         titre: data.titre,
-        description: data.description || data.titre,
-
-        // Classification
+        description: data.cible, // La cible sert de description principale
         axe: data.axe,
-        categorie: data.categorie,
-        type_jalon: 'managerial',
-        niveau_importance: data.niveau_importance,
-        projectPhase: data.projectPhase || undefined,
-
-        // Planning
         date_prevue: data.date_prevue,
+        responsable: responsableName,
+        responsableId: data.responsableId,
+
+        // Champs optionnels
+        prerequis_jalons: selectedPrerequis,
+        preuve_url: data.preuve || null,
+
+        // Champs avec valeurs par défaut
+        categorie: 'validation',
+        type_jalon: 'managerial',
+        niveau_importance: 'standard',
+        projectPhase: undefined,
+
         date_reelle: null,
         heure_cible: null,
         fuseau_horaire: 'Africa/Abidjan',
         date_butoir_absolue: null,
-        flexibilite: data.flexibilite,
+        flexibilite: 'standard',
 
         // Alerts
         alerte_j30: '',
         alerte_j15: '',
         alerte_j7: '',
 
-        // Status
+        // Statut auto-calculé (initialisé à "a_venir")
         statut: 'a_venir',
         avancement_prealables: 0,
         confiance_atteinte: 50,
@@ -245,11 +255,9 @@ export function JalonWizard({
         date_derniere_maj: today,
         maj_par: responsableName,
 
-        // Responsabilités
-        responsable: responsableName,
-        responsableId: data.responsableId,
-        validateur: validateurName,
-        validateurId: data.validateurId,
+        // Validateur = responsable par défaut
+        validateur: responsableName,
+        validateurId: data.responsableId,
         contributeurs: [],
         parties_prenantes: [],
 
@@ -264,7 +272,12 @@ export function JalonWizard({
         documents: [],
 
         // Commentaires
-        commentaires: [],
+        commentaires: data.commentaire ? [{
+          id: crypto.randomUUID(),
+          date: today,
+          auteur: responsableName,
+          texte: data.commentaire,
+        }] : [],
         historique: [{
           id: crypto.randomUUID(),
           date: today,
@@ -279,14 +292,19 @@ export function JalonWizard({
         source: 'wizard',
       });
 
+      toast.success('Jalon cree', `"${data.titre}" a ete ajoute`);
       onSuccess?.(jalonId);
       onClose();
     } catch (error) {
       console.error('Erreur lors de la création:', error);
+      toast.error('Erreur', 'Impossible de creer le jalon');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Filtrer les jalons disponibles pour les prérequis (exclure le même axe en option)
+  const jalonsDisponibles = jalons.filter(j => j.statut !== 'atteint');
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -296,7 +314,7 @@ export function JalonWizard({
             <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg">
               <Wand2 className="w-5 h-5 text-white" />
             </div>
-            <span>Assistant création de jalon</span>
+            <span>Nouveau Jalon</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -354,29 +372,60 @@ export function JalonWizard({
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Step 1: Identification */}
+          {/* Step 1: Champs Obligatoires */}
           {currentStep === 1 && (
             <div className="space-y-4">
               <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg mb-4">
                 <div className="flex items-center gap-2 text-purple-800 text-sm font-medium">
                   <Sparkles className="w-4 h-4" />
-                  Étape 1 : Identifiez votre jalon
+                  Champs obligatoires (5)
                 </div>
                 <p className="text-xs text-purple-700 mt-1">
-                  Donnez un titre clair et choisissez les caractéristiques principales.
+                  Axe, Libellé, Cible, Échéance, Responsable
                 </p>
               </div>
 
+              {/* ID Auto-calculé (lecture seule) */}
+              <div className="p-3 bg-neutral-100 rounded-lg border border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-600">ID (auto-calculé)</span>
+                  <span className="font-mono font-bold text-purple-700">{previewId}</span>
+                </div>
+              </div>
+
+              {/* Axe */}
+              <div>
+                <Label htmlFor="axe" className="text-sm font-medium mb-1.5 block">
+                  Axe *
+                </Label>
+                <Select
+                  id="axe"
+                  {...register('axe')}
+                  className={errors.axe ? 'border-red-500' : ''}
+                >
+                  {AXES.map((axe) => (
+                    <SelectOption key={axe} value={axe}>
+                      {AXE_LABELS[axe]}
+                    </SelectOption>
+                  ))}
+                </Select>
+                {errors.axe && (
+                  <p className="text-red-500 text-xs mt-1">{errors.axe.message}</p>
+                )}
+              </div>
+
+              {/* Libellé */}
               <div>
                 <Label htmlFor="titre" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                   <Target className="w-4 h-4 text-purple-600" />
-                  Titre du jalon *
+                  Libellé * <span className="text-xs text-neutral-400">(max 100 car.)</span>
                 </Label>
                 <Input
                   id="titre"
                   {...register('titre')}
-                  placeholder="Ex: Signature du contrat exploitant"
+                  placeholder="Ex: Signature contrat exploitant principal"
                   className={errors.titre ? 'border-red-500' : ''}
+                  maxLength={100}
                   autoFocus
                 />
                 {errors.titre && (
@@ -384,96 +433,32 @@ export function JalonWizard({
                 )}
               </div>
 
+              {/* Cible */}
               <div>
-                <Label htmlFor="description" className="text-sm font-medium mb-1.5 block">
-                  Description (optionnel)
+                <Label htmlFor="cible" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <Target className="w-4 h-4 text-green-600" />
+                  Cible * <span className="text-xs text-neutral-400">(max 50 car.)</span>
                 </Label>
-                <Textarea
-                  id="description"
-                  {...register('description')}
-                  placeholder="Description détaillée..."
-                  rows={2}
+                <Input
+                  id="cible"
+                  {...register('cible')}
+                  placeholder="Ex: 80% BEFA signés"
+                  className={errors.cible ? 'border-red-500' : ''}
+                  maxLength={50}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="axe" className="text-sm font-medium mb-1.5 block">
-                    Axe *
-                  </Label>
-                  <Select
-                    id="axe"
-                    {...register('axe')}
-                    className={errors.axe ? 'border-red-500' : ''}
-                  >
-                    {AXES.map((axe) => (
-                      <SelectOption key={axe} value={axe}>
-                        {AXE_LABELS[axe]}
-                      </SelectOption>
-                    ))}
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="categorie" className="text-sm font-medium mb-1.5 block">
-                    Catégorie *
-                  </Label>
-                  <Select
-                    id="categorie"
-                    {...register('categorie')}
-                  >
-                    {JALON_CATEGORIES.map((cat) => (
-                      <SelectOption key={cat} value={cat}>
-                        {JALON_CATEGORY_LABELS[cat]}
-                      </SelectOption>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  Niveau d'importance *
-                </Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {NIVEAUX_IMPORTANCE.map((niveau) => (
-                    <button
-                      key={niveau}
-                      type="button"
-                      onClick={() => setValue('niveau_importance', niveau)}
-                      className={`p-2 rounded-lg border-2 text-center text-sm font-medium transition-all ${
-                        watchImportance === niveau
-                          ? `${IMPORTANCE_COLORS[niveau]} ring-2 ring-offset-1`
-                          : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-neutral-100'
-                      }`}
-                    >
-                      {niveau === 'critique' && <AlertTriangle className="w-4 h-4 mx-auto mb-1" />}
-                      {niveau === 'majeur' && <Flag className="w-4 h-4 mx-auto mb-1" />}
-                      {NIVEAU_IMPORTANCE_LABELS[niveau]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Planning */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg mb-4">
-                <div className="flex items-center gap-2 text-blue-800 text-sm font-medium">
-                  <Calendar className="w-4 h-4" />
-                  Étape 2 : Planifiez votre jalon
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  Définissez la date prévue et la phase du projet.
+                {errors.cible && (
+                  <p className="text-red-500 text-xs mt-1">{errors.cible.message}</p>
+                )}
+                <p className="text-xs text-neutral-500 mt-1">
+                  Objectif mesurable à atteindre (ex: "100% recrutement", "3 contrats signés")
                 </p>
               </div>
 
+              {/* Échéance */}
               <div>
                 <Label htmlFor="date_prevue" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                   <Calendar className="w-4 h-4 text-blue-600" />
-                  Date prévue *
+                  Échéance *
                 </Label>
                 <Input
                   type="date"
@@ -484,126 +469,153 @@ export function JalonWizard({
                 {errors.date_prevue && (
                   <p className="text-red-500 text-xs mt-1">{errors.date_prevue.message}</p>
                 )}
+                {joursRestants !== null && (
+                  <p className={`text-xs mt-1 ${joursRestants < 0 ? 'text-red-600' : joursRestants <= 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                    {joursRestants < 0
+                      ? `⚠️ Dépassé de ${Math.abs(joursRestants)} jour(s)`
+                      : joursRestants === 0
+                      ? "📅 Aujourd'hui"
+                      : `📅 Dans ${joursRestants} jour(s)`}
+                  </p>
+                )}
               </div>
 
-              <div>
-                <Label htmlFor="projectPhase" className="text-sm font-medium mb-1.5 block">
-                  Phase projet (optionnel)
-                </Label>
-                <Select
-                  id="projectPhase"
-                  {...register('projectPhase')}
-                >
-                  <SelectOption value="">Non définie</SelectOption>
-                  {PROJECT_PHASES.map((phase) => (
-                    <SelectOption key={phase} value={phase}>
-                      {PROJECT_PHASE_LABELS[phase]}
-                    </SelectOption>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="flexibilite" className="text-sm font-medium mb-1.5 block">
-                  Flexibilité de la date
-                </Label>
-                <Select
-                  id="flexibilite"
-                  {...register('flexibilite')}
-                >
-                  {FLEXIBILITES.map((flex) => (
-                    <SelectOption key={flex} value={flex}>
-                      {FLEXIBILITE_LABELS[flex]}
-                    </SelectOption>
-                  ))}
-                </Select>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Indique si la date peut être ajustée ou non.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Responsabilités */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg mb-4">
-                <div className="flex items-center gap-2 text-green-800 text-sm font-medium">
-                  <Users className="w-4 h-4" />
-                  Étape 3 : Assignez les responsables
-                </div>
-                <p className="text-xs text-green-700 mt-1">
-                  Désignez qui pilote et qui valide l'atteinte du jalon.
-                </p>
-              </div>
-
+              {/* Responsable */}
               <div>
                 <Label htmlFor="responsableId" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                  <Users className="w-4 h-4 text-green-600" />
-                  Responsable (R) *
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  Responsable *
                 </Label>
                 <Select
                   id="responsableId"
                   {...register('responsableId', { valueAsNumber: true })}
                   className={errors.responsableId ? 'border-red-500' : ''}
                 >
-                  <SelectOption value="">Sélectionner...</SelectOption>
+                  <SelectOption value="">Sélectionner un responsable...</SelectOption>
                   {users.map((user) => (
                     <SelectOption key={user.id} value={user.id!}>
-                      {user.prenom} {user.nom} - {user.fonction || user.role}
+                      {user.prenom} {user.nom} {user.fonction ? `- ${user.fonction}` : ''}
                     </SelectOption>
                   ))}
                 </Select>
                 {errors.responsableId && (
                   <p className="text-red-500 text-xs mt-1">{errors.responsableId.message}</p>
                 )}
-                <p className="text-xs text-neutral-500 mt-1">
-                  La personne qui pilote et coordonne les actions menant au jalon.
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Champs Optionnels */}
+          {currentStep === 2 && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg mb-4">
+                <div className="flex items-center gap-2 text-blue-800 text-sm font-medium">
+                  <FileText className="w-4 h-4" />
+                  Champs optionnels (3)
+                </div>
+                <p className="text-xs text-blue-700 mt-1">
+                  Prérequis, Preuve, Commentaire
                 </p>
               </div>
 
+              {/* Prérequis (Multi-select jalons) */}
               <div>
-                <Label htmlFor="validateurId" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                  <Check className="w-4 h-4 text-blue-600" />
-                  Validateur (A) *
+                <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <GitBranch className="w-4 h-4 text-orange-600" />
+                  Prérequis (jalons)
                 </Label>
-                <Select
-                  id="validateurId"
-                  {...register('validateurId', { valueAsNumber: true })}
-                  className={errors.validateurId ? 'border-red-500' : ''}
-                >
-                  <SelectOption value="">Sélectionner...</SelectOption>
-                  {users.map((user) => (
-                    <SelectOption key={user.id} value={user.id!}>
-                      {user.prenom} {user.nom} - {user.fonction || user.role}
-                    </SelectOption>
-                  ))}
-                </Select>
-                {errors.validateurId && (
-                  <p className="text-red-500 text-xs mt-1">{errors.validateurId.message}</p>
+                <p className="text-xs text-neutral-500 mb-2">
+                  Sélectionnez les jalons qui doivent être atteints avant celui-ci
+                </p>
+                <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+                  {jalonsDisponibles.length === 0 ? (
+                    <p className="text-sm text-neutral-400 text-center py-2">
+                      Aucun jalon disponible
+                    </p>
+                  ) : (
+                    jalonsDisponibles.map((jalon) => (
+                      <label
+                        key={jalon.id_jalon}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-neutral-50 ${
+                          selectedPrerequis.includes(jalon.id_jalon) ? 'bg-orange-50 border border-orange-200' : ''
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPrerequis.includes(jalon.id_jalon)}
+                          onChange={() => togglePrerequis(jalon.id_jalon)}
+                          className="rounded text-orange-600"
+                        />
+                        <span className="font-mono text-xs text-neutral-500">{jalon.id_jalon}</span>
+                        <span className="text-sm truncate">{jalon.titre}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+                {selectedPrerequis.length > 0 && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    {selectedPrerequis.length} prérequis sélectionné(s)
+                  </p>
                 )}
+              </div>
+
+              {/* Preuve (Fichier/Lien) */}
+              <div>
+                <Label htmlFor="preuve" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <Link2 className="w-4 h-4 text-green-600" />
+                  Preuve (lien ou référence)
+                </Label>
+                <Input
+                  id="preuve"
+                  {...register('preuve')}
+                  placeholder="Ex: https://drive.google.com/... ou Réf. Document #123"
+                />
                 <p className="text-xs text-neutral-500 mt-1">
-                  La personne qui approuve officiellement que le jalon est atteint.
+                  Lien vers le document justificatif ou référence du fichier
                 </p>
               </div>
 
-              {/* Summary */}
+              {/* Commentaire */}
+              <div>
+                <Label htmlFor="commentaire" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                  <MessageSquare className="w-4 h-4 text-blue-600" />
+                  Commentaire
+                </Label>
+                <Textarea
+                  id="commentaire"
+                  {...register('commentaire')}
+                  placeholder="Informations complémentaires..."
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+
+              {/* Récapitulatif */}
               <div className="mt-4 p-4 bg-neutral-50 border border-neutral-200 rounded-lg">
-                <div className="text-sm font-medium text-neutral-700 mb-2">Récapitulatif</div>
+                <div className="text-sm font-medium text-neutral-700 mb-3">Récapitulatif</div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-neutral-500">Titre:</div>
-                  <div className="font-medium">{watch('titre') || '-'}</div>
+                  <div className="text-neutral-500">ID:</div>
+                  <div className="font-mono font-bold text-purple-700">{previewId}</div>
+
                   <div className="text-neutral-500">Axe:</div>
                   <div className="font-medium">{AXE_LABELS[watchAxe]}</div>
-                  <div className="text-neutral-500">Date:</div>
+
+                  <div className="text-neutral-500">Libellé:</div>
+                  <div className="font-medium truncate">{watchTitre || '-'}</div>
+
+                  <div className="text-neutral-500">Cible:</div>
+                  <div className="font-medium truncate">{watchCible || '-'}</div>
+
+                  <div className="text-neutral-500">Échéance:</div>
                   <div className="font-medium">
-                    {watch('date_prevue')
-                      ? new Date(watch('date_prevue')).toLocaleDateString('fr-FR')
+                    {watchDate
+                      ? new Date(watchDate).toLocaleDateString('fr-FR')
                       : '-'}
                   </div>
-                  <div className="text-neutral-500">Importance:</div>
-                  <div className={`font-medium px-2 py-0.5 rounded text-xs inline-block ${IMPORTANCE_COLORS[watchImportance]}`}>
-                    {NIVEAU_IMPORTANCE_LABELS[watchImportance]}
+
+                  <div className="text-neutral-500">Jours restants:</div>
+                  <div className={`font-medium ${joursRestants !== null && joursRestants < 0 ? 'text-red-600' : ''}`}>
+                    {joursRestants !== null ? `${joursRestants} jour(s)` : '-'}
                   </div>
                 </div>
               </div>
@@ -629,7 +641,7 @@ export function JalonWizard({
               )}
             </Button>
 
-            {currentStep < 3 ? (
+            {currentStep < 2 ? (
               <Button
                 type="button"
                 onClick={handleNext}

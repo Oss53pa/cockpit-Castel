@@ -26,14 +26,16 @@ import { AXE_LABELS, AXE_SHORT_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS } fr
 // CONFIGURATION DES CATÉGORIES BASÉE SUR LES AXES RÉELS
 // ============================================================================
 
-// Couleurs et icônes pour les axes
-const AXE_CONFIG: Record<Axe, { color: string; icon: string; weight: number }> = {
-  axe1_rh: { color: '#EF4444', icon: 'Users', weight: 1.5 },
-  axe2_commercial: { color: '#F97316', icon: 'ShoppingBag', weight: 1.3 },
-  axe3_technique: { color: '#3B82F6', icon: 'Wrench', weight: 1.5 },
-  axe4_budget: { color: '#10B981', icon: 'Wallet', weight: 1.0 },
-  axe5_marketing: { color: '#EC4899', icon: 'Megaphone', weight: 1.0 },
-  axe6_exploitation: { color: '#8B5CF6', icon: 'Settings', weight: 1.2 },
+// Couleurs et icônes pour les axes (spécifications v2.0)
+// syncCC = true : l'axe se synchronise avec la progression du Centre Commercial
+const AXE_CONFIG: Record<Axe, { color: string; icon: string; weight: number; syncCC: boolean }> = {
+  axe1_rh: { color: '#3B82F6', icon: 'Users', weight: 1.5, syncCC: true },
+  axe2_commercial: { color: '#10B981', icon: 'Store', weight: 1.3, syncCC: true },
+  axe3_technique: { color: '#F59E0B', icon: 'Wrench', weight: 1.5, syncCC: true },
+  axe4_budget: { color: '#8B5CF6', icon: 'Calculator', weight: 1.0, syncCC: true },
+  axe5_marketing: { color: '#EC4899', icon: 'Megaphone', weight: 1.0, syncCC: true },
+  axe6_exploitation: { color: '#6366F1', icon: 'Settings', weight: 1.2, syncCC: true },
+  axe7_construction: { color: '#EF4444', icon: 'Building', weight: 2.0, syncCC: false },
 };
 
 // Couleurs et icônes pour les phases
@@ -49,14 +51,19 @@ const PHASE_CONFIG: Record<ProjectPhase, { color: string; icon: string; weight: 
 // ============================================================================
 
 /**
- * Calcule la progression d'une action basée sur son statut
+ * Calcule la progression d'une action basée sur son statut et avancement
  */
 function getActionProgress(action: Action): number {
-  switch (action.status) {
+  // Utiliser l'avancement réel s'il existe
+  if (action.avancement !== undefined && action.avancement > 0) {
+    return action.avancement;
+  }
+
+  // Sinon, utiliser le statut pour estimer
+  switch (action.statut) {
     case 'termine': return 100;
-    case 'en_cours': return action.avancementReel ?? 50;
-    case 'bloque': return action.avancementReel ?? 25;
-    case 'en_attente': return 10;
+    case 'en_cours': return 50;
+    case 'bloque': return 25;
     case 'annule': return 0;
     case 'a_faire':
     default: return 0;
@@ -168,43 +175,46 @@ export async function calculatePhaseProgress(siteId: number, phase: ProjectPhase
 }
 
 /**
- * Calcule la progression globale de la CONSTRUCTION (basée sur jalons + actions technique)
+ * Calcule la progression du CENTRE COMMERCIAL uniquement
+ * Car seul le CC se synchronise avec la mobilisation
  */
 export async function calculateConstructionProgress(siteId: number): Promise<{
   progress: number;
-  byPhase: Record<ProjectPhase, CategoryProgress>;
+  ccProgress: number;
+  byPhase: Record<string, CategoryProgress>;
 }> {
-  const byPhase: Partial<Record<ProjectPhase, CategoryProgress>> = {};
-  let totalWeightedProgress = 0;
-  let totalWeight = 0;
+  // Récupérer le jalon du Centre Commercial
+  const ccJalon = await db.jalons
+    .filter(j => j.axe === 'axe7_construction' && j.buildingCode === 'CC')
+    .first();
 
-  for (const phase of PROJECT_PHASES) {
-    const phaseData = await calculatePhaseProgress(siteId, phase);
-    const config = PHASE_CONFIG[phase];
-
-    byPhase[phase] = {
-      categoryId: phase,
-      categoryCode: phase,
-      categoryName: PROJECT_PHASE_LABELS[phase],
-      progress: phaseData.progress,
-      itemsCount: phaseData.totalItems,
-      completedCount: phaseData.completedItems,
-    };
-
-    totalWeightedProgress += phaseData.progress * config.weight;
-    totalWeight += config.weight;
+  if (!ccJalon) {
+    return { progress: 0, ccProgress: 0, byPhase: {} };
   }
 
-  // Ajouter la progression de l'axe technique (construction)
-  const techniqueData = await calculateAxeProgress(siteId, 'axe3_technique');
-  const techniqueWeight = AXE_CONFIG.axe3_technique.weight;
+  // Récupérer les actions liées au CC
+  const ccActions = await db.actions
+    .filter(a => a.jalonId === ccJalon.id || (a.axe === 'axe7_construction' && a.id_action?.includes('CON-1')))
+    .toArray();
 
-  totalWeightedProgress += techniqueData.progress * techniqueWeight;
-  totalWeight += techniqueWeight;
+  // Calculer la progression globale du CC
+  let totalProgress = 0;
+  let completedCount = 0;
+
+  for (const action of ccActions) {
+    const progress = getActionProgress(action);
+    totalProgress += progress;
+    if (action.statut === 'termine') {
+      completedCount++;
+    }
+  }
+
+  const ccProgress = ccActions.length > 0 ? totalProgress / ccActions.length : 0;
 
   return {
-    progress: totalWeight > 0 ? Math.round((totalWeightedProgress / totalWeight) * 100) / 100 : 0,
-    byPhase: byPhase as Record<ProjectPhase, CategoryProgress>,
+    progress: Math.round(ccProgress * 100) / 100,
+    ccProgress: Math.round(ccProgress * 100) / 100,
+    byPhase: {},
   };
 }
 
@@ -258,12 +268,14 @@ export async function calculateMobilisationProgress(siteId: number): Promise<{
 
 /**
  * Calcule le statut de synchronisation Construction vs Mobilisation
+ * IMPORTANT: Seul le Centre Commercial (CC) est synchronisé avec la mobilisation
  */
 export async function calculateSyncStatusV2(siteId: number): Promise<SyncStatusResult> {
   const constructionData = await calculateConstructionProgress(siteId);
   const mobilisationData = await calculateMobilisationProgress(siteId);
 
-  const projectProgress = constructionData.progress;
+  // Utiliser la progression du CC pour la synchronisation (pas la progression globale)
+  const projectProgress = constructionData.ccProgress;
   const mobilizationProgress = mobilisationData.progress;
 
   const gap = Math.round((projectProgress - mobilizationProgress) * 100) / 100;
@@ -347,22 +359,93 @@ export function generateSyncCategories(): SyncCategory[] {
 }
 
 /**
- * Obtient les détails de progression par catégorie pour la Construction
+ * Obtient les détails de progression pour le CENTRE COMMERCIAL uniquement
+ * Car seul le CC se synchronise avec la mobilisation
+ * Affiche les actions du CC groupées par phase de construction
  */
 export async function getConstructionCategoryDetails(siteId: number): Promise<CategoryProgress[]> {
   const result: CategoryProgress[] = [];
 
-  for (const phase of PROJECT_PHASES) {
-    const phaseData = await calculatePhaseProgress(siteId, phase);
+  // Récupérer le jalon du Centre Commercial (buildingCode = 'CC')
+  const ccJalon = await db.jalons
+    .filter(j => j.axe === 'axe7_construction' && j.buildingCode === 'CC')
+    .first();
+
+  if (!ccJalon) {
+    // Pas de jalon CC trouvé - retourner vide
+    return [];
+  }
+
+  // Récupérer toutes les actions liées au jalon CC
+  const ccActions = await db.actions
+    .filter(a => a.jalonId === ccJalon.id || (a.axe === 'axe7_construction' && a.id_action?.includes('CON-1')))
+    .toArray();
+
+  // Configuration des phases de construction du CC
+  const phaseConfig: Record<string, { name: string; color: string; order: number }> = {
+    'gros_oeuvre': { name: 'Gros œuvre', color: '#6366F1', order: 1 },
+    'second_oeuvre': { name: 'Second œuvre', color: '#F59E0B', order: 2 },
+    'lots_techniques': { name: 'Lots techniques', color: '#3B82F6', order: 3 },
+    'amenagement_externe': { name: 'Aménagement externe', color: '#10B981', order: 4 },
+    'pre_reception': { name: 'Pré-réception', color: '#8B5CF6', order: 5 },
+    'reception_provisoire': { name: 'Réception provisoire', color: '#EC4899', order: 6 },
+    'reception_definitive': { name: 'Réception définitive', color: '#22C55E', order: 7 },
+  };
+
+  // Mapper les actions vers les phases basées sur leur titre
+  const actionsByPhase = new Map<string, typeof ccActions>();
+
+  for (const action of ccActions) {
+    let phase = 'autre';
+    const titre = action.titre.toLowerCase();
+
+    if (titre.includes('gros') && titre.includes('uvre')) phase = 'gros_oeuvre';
+    else if (titre.includes('second') && titre.includes('uvre')) phase = 'second_oeuvre';
+    else if (titre.includes('lots') && titre.includes('technique')) phase = 'lots_techniques';
+    else if (titre.includes('aménagement') || titre.includes('amenagement') || titre.includes('externe')) phase = 'amenagement_externe';
+    else if (titre.includes('pré-réception') || titre.includes('pre-reception')) phase = 'pre_reception';
+    else if (titre.includes('réception') && titre.includes('provisoire')) phase = 'reception_provisoire';
+    else if (titre.includes('réception') && titre.includes('définitive')) phase = 'reception_definitive';
+
+    if (!actionsByPhase.has(phase)) {
+      actionsByPhase.set(phase, []);
+    }
+    actionsByPhase.get(phase)!.push(action);
+  }
+
+  // Calculer la progression pour chaque phase
+  for (const [phaseCode, actions] of actionsByPhase.entries()) {
+    const config = phaseConfig[phaseCode] || { name: phaseCode, color: '#9CA3AF', order: 99 };
+
+    let totalProgress = 0;
+    let completedCount = 0;
+
+    for (const action of actions) {
+      const progress = getActionProgress(action);
+      totalProgress += progress;
+      if (action.statut === 'termine') {
+        completedCount++;
+      }
+    }
+
+    const avgProgress = actions.length > 0 ? totalProgress / actions.length : 0;
+
     result.push({
-      categoryId: `CONST-${phase}`,
-      categoryCode: phase,
-      categoryName: PROJECT_PHASE_LABELS[phase],
-      progress: phaseData.progress,
-      itemsCount: phaseData.totalItems,
-      completedCount: phaseData.completedItems,
+      categoryId: `CC-${phaseCode}`,
+      categoryCode: phaseCode,
+      categoryName: config.name,
+      progress: Math.round(avgProgress * 100) / 100,
+      itemsCount: actions.length,
+      completedCount,
     });
   }
+
+  // Trier par ordre d'affichage
+  result.sort((a, b) => {
+    const orderA = phaseConfig[a.categoryCode]?.order || 99;
+    const orderB = phaseConfig[b.categoryCode]?.order || 99;
+    return orderA - orderB;
+  });
 
   return result;
 }

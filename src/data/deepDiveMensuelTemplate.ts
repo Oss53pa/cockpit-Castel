@@ -1,9 +1,10 @@
 // ============================================================================
 // DEEP DIVE MENSUEL V2 - TEMPLATE DES SECTIONS
-// Structure conforme au format COPIL avec 6 sections principales
+// Structure conforme au format COPIL avec 14 slides + Annexes
 // ============================================================================
 
 import type { DeepDiveMensuelSection, DeepDiveMensuelSlide, AxeType } from '@/types/deepDive';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // CONFIGURATION DES 6 AXES
@@ -14,199 +15,286 @@ export const AXES_MENSUEL_CONFIG: Record<AxeType, {
   labelCourt: string;
   color: string;
   numero: number;
+  poids: number; // Pondération pour l'avancement global
 }> = {
-  rh: { label: 'RH & Organisation', labelCourt: 'RH', color: '#EF4444', numero: 1 },
-  commercialisation: { label: 'Commercial & Leasing', labelCourt: 'COM', color: '#3B82F6', numero: 2 },
-  technique: { label: 'Technique & Handover', labelCourt: 'TECH', color: '#8B5CF6', numero: 3 },
-  budget: { label: 'Budget & Finances', labelCourt: 'BUD', color: '#F59E0B', numero: 4 },
-  marketing: { label: 'Marketing & Communication', labelCourt: 'MKT', color: '#EC4899', numero: 5 },
-  exploitation: { label: 'Exploitation & Juridique', labelCourt: 'EXP', color: '#10B981', numero: 6 },
-  general: { label: 'Général / Transverse', labelCourt: 'GEN', color: '#6B7280', numero: 0 },
+  rh: { label: 'RH & Organisation', labelCourt: 'RH', color: '#EF4444', numero: 1, poids: 20 },
+  commercialisation: { label: 'Commercial & Leasing', labelCourt: 'COM', color: '#3B82F6', numero: 2, poids: 25 },
+  technique: { label: 'Technique & Handover', labelCourt: 'TECH', color: '#8B5CF6', numero: 3, poids: 20 },
+  budget: { label: 'Budget & Pilotage', labelCourt: 'BUD', color: '#F59E0B', numero: 4, poids: 15 },
+  marketing: { label: 'Marketing & Communication', labelCourt: 'MKT', color: '#EC4899', numero: 5, poids: 15 },
+  exploitation: { label: 'Exploitation & Systèmes', labelCourt: 'EXP', color: '#10B981', numero: 6, poids: 5 },
+  general: { label: 'Général / Transverse', labelCourt: 'GEN', color: '#6B7280', numero: 0, poids: 0 },
 };
 
 // ============================================================================
-// SLIDES PAR SECTION
+// CONFIGURATION DE L'AGENDA
 // ============================================================================
 
-// Section 1 - Synthèse Exécutive
-const SECTION_1_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_1_1',
-    numero: '1.1',
-    titre: 'Météo Globale du Mois',
-    description: 'Vue synthétique avec KPIs principaux et indicateur météo global',
-    type: 'meteo_globale',
-    included: true,
-  },
-  {
-    id: 'slide_1_2',
-    numero: '1.2',
-    titre: 'Faits Marquants du Mois',
-    description: 'Réalisations clés, Points d\'attention et Alertes critiques',
-    type: 'faits_marquants',
-    included: true,
-  },
+export const AGENDA_CONFIG = [
+  { numero: 1, section: 'Synthèse Exécutive & Météo', duree: '10 min' },
+  { numero: 2, section: 'Avancement par Axe', duree: '15 min' },
+  { numero: 3, section: 'Focus Axe 1 : RH & Organisation', duree: '10 min' },
+  { numero: 4, section: 'Focus Axe 2 : Commercial & Leasing', duree: '15 min' },
+  { numero: 5, section: 'Focus Axe 3 : Technique & Handover', duree: '15 min' },
+  { numero: 6, section: 'Focus Axe 4 : Budget & Pilotage', duree: '10 min' },
+  { numero: 7, section: 'Focus Axe 5 : Marketing & Communication', duree: '10 min' },
+  { numero: 8, section: 'Focus Axe 6 : Exploitation & Systèmes', duree: '5 min' },
+  { numero: 9, section: 'Risques Consolidés', duree: '10 min' },
+  { numero: 10, section: 'Points DG — Décisions Requises', duree: '10 min' },
+  { numero: 11, section: 'Plan d\'Actions M+1', duree: '5 min' },
+  { numero: 12, section: 'Synthèse & Clôture', duree: '5 min' },
 ];
 
-// Section 2 - Analyse par Axe
-const generateAxeSlides = (axe: AxeType, axeNumero: number): Omit<DeepDiveMensuelSlide, 'sectionId'>[] => {
+// ============================================================================
+// SLIDES INDIVIDUELLES
+// ============================================================================
+
+// Slide 1 - Page de Garde
+const SLIDE_PAGE_GARDE: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_1',
+  numero: '1',
+  titre: 'Page de Garde',
+  description: 'Page de titre avec nom du projet, mois, date et présentateur',
+  type: 'page_garde',
+  included: true,
+};
+
+// Slide 2 - Agenda
+const SLIDE_AGENDA: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_2',
+  numero: '2',
+  titre: 'Agenda',
+  description: 'Ordre du jour avec sections et durées estimées (2h00 total)',
+  type: 'agenda',
+  included: true,
+};
+
+// Slide 3 - Synthèse Exécutive
+const SLIDE_SYNTHESE_EXECUTIVE: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_3',
+  numero: '3',
+  titre: 'Synthèse Exécutive',
+  description: 'Compte à Rebours, Météo Globale, KPIs Clés et Faits Marquants du Mois',
+  type: 'synthese_executive',
+  included: true,
+};
+
+// Slide 4 - Avancement par Axe
+const SLIDE_AVANCEMENT_AXES: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_4',
+  numero: '4',
+  titre: 'Avancement par Axe',
+  description: 'Synthèse des 6 axes avec poids, avancement, météo et tendance',
+  type: 'tableau_bord_axes',
+  included: true,
+};
+
+// Slides 5-10 - Détails des Axes
+const generateAxeSlide = (axe: AxeType, slideNumero: number): Omit<DeepDiveMensuelSlide, 'sectionId'> => {
   const config = AXES_MENSUEL_CONFIG[axe];
-  return [
-    {
-      id: `slide_2_${axeNumero + 1}`,
-      numero: `2.${axeNumero + 1}`,
-      titre: `AXE ${axeNumero} — ${config.label}`,
-      description: `Détail de l'avancement, jalons, actions et risques pour l'axe ${config.labelCourt}`,
-      type: 'detail_axe',
-      included: true,
-      axe,
-    },
-  ];
+  return {
+    id: `slide_${slideNumero}`,
+    numero: `${slideNumero}`,
+    titre: `AXE ${config.numero} : ${config.label.toUpperCase()}`,
+    description: `Jalons, Actions du Mois, Effectif/Pipeline/Budget détaillé pour ${config.label}`,
+    type: 'detail_axe',
+    included: true,
+    axe,
+  };
 };
 
-const SECTION_2_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_2_1',
-    numero: '2.1',
-    titre: 'Tableau de Bord Axes',
-    description: 'Synthèse visuelle des 6 axes avec météo, avancement et alertes',
-    type: 'tableau_bord_axes',
-    included: true,
-  },
-  ...generateAxeSlides('rh', 1),
-  ...generateAxeSlides('commercialisation', 2),
-  ...generateAxeSlides('technique', 3),
-  ...generateAxeSlides('budget', 4),
-  ...generateAxeSlides('marketing', 5),
-  ...generateAxeSlides('exploitation', 6),
-];
+const SLIDE_AXE_RH = generateAxeSlide('rh', 5);
+const SLIDE_AXE_COMMERCIAL = generateAxeSlide('commercialisation', 6);
+const SLIDE_AXE_TECHNIQUE = generateAxeSlide('technique', 7);
+const SLIDE_AXE_BUDGET = generateAxeSlide('budget', 8);
+const SLIDE_AXE_MARKETING = generateAxeSlide('marketing', 9);
+const SLIDE_AXE_EXPLOITATION = generateAxeSlide('exploitation', 10);
 
-// Section 3 - Suivi des Risques
-const SECTION_3_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_3_1',
-    numero: '3.1',
-    titre: 'Top 5 Risques Actifs',
-    description: 'Risques majeurs avec score, évolution et statut des mitigations',
-    type: 'top_risques',
-    included: true,
-  },
-  {
-    id: 'slide_3_2',
-    numero: '3.2',
-    titre: 'Risques Nouveaux / Fermés',
-    description: 'Évolution du registre des risques sur le mois',
-    type: 'risques_evolution',
-    included: true,
-  },
-];
+// Slide 11 - Risques Consolidés
+const SLIDE_RISQUES_CONSOLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_11',
+  numero: '11',
+  titre: 'Risques Consolidés',
+  description: 'Top 5 Risques Actifs, Matrice des Risques, Évolution (Nouveaux/Fermés)',
+  type: 'risques_consolides',
+  included: true,
+};
 
-// Section 4 - Décisions & Arbitrages
-const SECTION_4_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_4_1',
-    numero: '4',
-    titre: 'Décisions & Arbitrages Requis',
-    description: 'Points en attente de validation avec options et recommandations',
-    type: 'decisions_table',
-    included: true,
-  },
-];
+// Slide 12 - Points DG : Décisions Requises
+const SLIDE_DECISIONS: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_12',
+  numero: '12',
+  titre: 'Points DG : Décisions Requises',
+  description: 'Arbitrages en Attente avec montant, urgence, deadline et recommandation DGA',
+  type: 'decisions_table',
+  included: true,
+};
 
-// Section 5 - Plan d'Action M+1
-const SECTION_5_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_5_1',
-    numero: '5.1',
-    titre: 'Actions Prioritaires',
-    description: 'Top 10 actions à réaliser le mois prochain',
-    type: 'actions_prioritaires',
-    included: true,
-  },
-  {
-    id: 'slide_5_2',
-    numero: '5.2',
-    titre: 'Jalons à Atteindre M+1',
-    description: 'Jalons critiques du mois à venir avec critères de succès',
-    type: 'jalons_m1',
-    included: true,
-  },
-];
+// Slide 13 - Plan d'Actions M+1
+const SLIDE_PLAN_ACTIONS: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_13',
+  numero: '13',
+  titre: 'Plan d\'Actions M+1',
+  description: 'Actions Prioritaires et Jalons à Atteindre pour le mois suivant',
+  type: 'plan_actions_m1',
+  included: true,
+};
 
-// Section 6 - Annexes
-const SECTION_6_SLIDES: Omit<DeepDiveMensuelSlide, 'sectionId'>[] = [
-  {
-    id: 'slide_6_1',
-    numero: '6.1',
-    titre: 'Planning Jalons (Gantt simplifié)',
-    description: 'Vue timeline des jalons avec chemin critique',
-    type: 'gantt_simplifie',
-    included: true,
-  },
-  {
-    id: 'slide_6_2',
-    numero: '6.2',
-    titre: 'Courbe en S — Budget',
-    description: 'Évolution budget prévu vs réalisé avec indicateurs EVM',
-    type: 'courbe_s',
-    included: true,
-  },
-];
+// Slide 14 - Synthèse & Clôture
+const SLIDE_SYNTHESE_CLOTURE: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_14',
+  numero: '14',
+  titre: 'Synthèse & Clôture',
+  description: 'Ce qui va bien, Points de vigilance, Décisions du jour, Prochain Deep Dive',
+  type: 'synthese_cloture',
+  included: true,
+};
+
+// Annexes
+const SLIDE_ANNEXE_GANTT: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_A1',
+  numero: 'A1',
+  titre: 'Planning Gantt',
+  description: 'Vue Gantt des jalons et du chemin critique (capture COCKPIT)',
+  type: 'gantt_simplifie',
+  included: false,
+};
+
+const SLIDE_ANNEXE_COURBE_S: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_A2',
+  numero: 'A2',
+  titre: 'Courbe en S Budget',
+  description: 'Évolution budget prévu vs réalisé avec indicateurs EVM (SPI, CPI, EAC)',
+  type: 'courbe_s',
+  included: false,
+};
+
+const SLIDE_ANNEXE_LISTE_ACTIONS: Omit<DeepDiveMensuelSlide, 'sectionId'> = {
+  id: 'slide_A3',
+  numero: 'A3',
+  titre: 'Liste complète des Actions',
+  description: 'Export complet des actions depuis COCKPIT',
+  type: 'liste_actions_complete',
+  included: false,
+};
 
 // ============================================================================
-// TEMPLATE DES 6 SECTIONS
+// TEMPLATE DES SECTIONS
 // ============================================================================
 
 export const DEEP_DIVE_MENSUEL_SECTIONS: DeepDiveMensuelSection[] = [
   {
-    id: 'section_1',
+    id: 'section_intro',
+    numero: '0',
+    titre: 'INTRODUCTION',
+    type: 'synthese',
+    slides: [
+      { ...SLIDE_PAGE_GARDE, sectionId: 'section_intro' },
+      { ...SLIDE_AGENDA, sectionId: 'section_intro' },
+    ],
+    expanded: true,
+  },
+  {
+    id: 'section_synthese',
     numero: '1',
     titre: 'SYNTHÈSE EXÉCUTIVE',
     type: 'synthese',
-    slides: SECTION_1_SLIDES.map(s => ({ ...s, sectionId: 'section_1' })),
+    slides: [
+      { ...SLIDE_SYNTHESE_EXECUTIVE, sectionId: 'section_synthese' },
+    ],
     expanded: true,
   },
   {
-    id: 'section_2',
+    id: 'section_avancement',
     numero: '2',
-    titre: 'ANALYSE PAR AXE — MÉTÉO DÉTAILLÉE',
+    titre: 'AVANCEMENT PAR AXE',
     type: 'analyse_axe',
-    slides: SECTION_2_SLIDES.map(s => ({ ...s, sectionId: 'section_2' })),
+    slides: [
+      { ...SLIDE_AVANCEMENT_AXES, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_RH, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_COMMERCIAL, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_TECHNIQUE, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_BUDGET, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_MARKETING, sectionId: 'section_avancement' },
+      { ...SLIDE_AXE_EXPLOITATION, sectionId: 'section_avancement' },
+    ],
     expanded: true,
   },
   {
-    id: 'section_3',
+    id: 'section_risques',
     numero: '3',
-    titre: 'SUIVI DES RISQUES',
+    titre: 'RISQUES CONSOLIDÉS',
     type: 'risques',
-    slides: SECTION_3_SLIDES.map(s => ({ ...s, sectionId: 'section_3' })),
+    slides: [
+      { ...SLIDE_RISQUES_CONSOLIDES, sectionId: 'section_risques' },
+    ],
     expanded: true,
   },
   {
-    id: 'section_4',
+    id: 'section_decisions',
     numero: '4',
-    titre: 'DÉCISIONS & ARBITRAGES REQUIS',
+    titre: 'DÉCISIONS & ARBITRAGES',
     type: 'decisions',
-    slides: SECTION_4_SLIDES.map(s => ({ ...s, sectionId: 'section_4' })),
+    slides: [
+      { ...SLIDE_DECISIONS, sectionId: 'section_decisions' },
+    ],
     expanded: true,
   },
   {
-    id: 'section_5',
+    id: 'section_plan_action',
     numero: '5',
     titre: 'PLAN D\'ACTION M+1',
     type: 'plan_action',
-    slides: SECTION_5_SLIDES.map(s => ({ ...s, sectionId: 'section_5' })),
+    slides: [
+      { ...SLIDE_PLAN_ACTIONS, sectionId: 'section_plan_action' },
+    ],
     expanded: true,
   },
   {
-    id: 'section_6',
+    id: 'section_cloture',
     numero: '6',
+    titre: 'SYNTHÈSE & CLÔTURE',
+    type: 'synthese',
+    slides: [
+      { ...SLIDE_SYNTHESE_CLOTURE, sectionId: 'section_cloture' },
+    ],
+    expanded: true,
+  },
+  {
+    id: 'section_annexes',
+    numero: 'A',
     titre: 'ANNEXES',
     type: 'annexes',
-    slides: SECTION_6_SLIDES.map(s => ({ ...s, sectionId: 'section_6' })),
+    slides: [
+      { ...SLIDE_ANNEXE_GANTT, sectionId: 'section_annexes' },
+      { ...SLIDE_ANNEXE_COURBE_S, sectionId: 'section_annexes' },
+      { ...SLIDE_ANNEXE_LISTE_ACTIONS, sectionId: 'section_annexes' },
+    ],
     expanded: false,
   },
 ];
+
+// ============================================================================
+// COMPTE À REBOURS CONFIG
+// ============================================================================
+
+// Jalons clés pour le compte à rebours - utilise PROJET_CONFIG comme source unique
+export const JALONS_CLES_COMPTE_REBOURS = [
+  { code: 'SOFT_OPENING', label: 'Soft Opening', date: PROJET_CONFIG.jalonsClés.softOpening },
+  { code: 'INAUGURATION', label: 'Inauguration', date: PROJET_CONFIG.jalonsClés.inauguration },
+];
+
+// ============================================================================
+// MÉTÉO CONFIG
+// ============================================================================
+
+export const METEO_LABELS = {
+  excellent: { emoji: '☀️', label: 'VERT' },
+  bon: { emoji: '🌤️', label: 'JAUNE' },
+  attention: { emoji: '⛅', label: 'ORANGE' },
+  alerte: { emoji: '🌧️', label: 'ROUGE' },
+  critique: { emoji: '⛈️', label: 'CRITIQUE' },
+};
 
 // ============================================================================
 // HELPERS
@@ -280,4 +368,21 @@ export function reorderSlidesInSection(
 
     return { ...section, slides: newSlides };
   });
+}
+
+// Calcule les jours restants jusqu'à une date
+export function getJoursRestants(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  const diffTime = target.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// Formate J-XX ou J+XX
+export function formatCompteRebours(jours: number): string {
+  if (jours > 0) return `J-${jours}`;
+  if (jours < 0) return `J+${Math.abs(jours)}`;
+  return 'J-0';
 }

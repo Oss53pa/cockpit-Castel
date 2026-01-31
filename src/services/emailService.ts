@@ -18,7 +18,7 @@ import emailjs from '@emailjs/browser';
 // ============================================
 
 export interface EmailConfig {
-  provider: 'smtp' | 'sendgrid' | 'mailgun' | 'resend' | 'emailjs' | 'simulation';
+  provider: 'smtp' | 'emailjs' | 'simulation';
   // SMTP Settings
   smtpHost?: string;
   smtpPort?: number;
@@ -232,10 +232,15 @@ export function isEmailConfigured(): boolean {
   const config = getEmailConfig();
   if (!config.fromEmail) return false;
 
-  if (config.provider === 'smtp') {
-    return !!(config.smtpHost && config.smtpUser && config.smtpPassword);
-  } else {
-    return !!config.apiKey;
+  switch (config.provider) {
+    case 'smtp':
+      return !!(config.smtpHost && config.smtpUser && config.smtpPassword);
+    case 'emailjs':
+      return !!(config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey);
+    case 'simulation':
+      return false; // Mode simulation = pas configuré
+    default:
+      return !!config.apiKey;
   }
 }
 
@@ -1412,4 +1417,82 @@ ${params.senderName}
 Ce message a été généré par le Cockpit COSMOS ANGRE.`);
 
   window.open(`mailto:${params.recipientEmail}?subject=${subject}&body=${body}`, '_blank');
+}
+
+// ============================================
+// FONCTION GENERIQUE D'ENVOI D'EMAIL
+// ============================================
+
+export interface SimpleEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Envoie un email simple (utilise par alerteEmailService)
+ */
+export async function sendEmail(params: SimpleEmailParams): Promise<EmailResult> {
+  const config = getEmailConfig();
+
+  // Store email content for history
+  const storeEmail = () => {
+    const sentEmails = JSON.parse(localStorage.getItem('sent_emails') || '[]');
+    sentEmails.push({
+      id: Date.now(),
+      to: params.to,
+      toName: params.to,
+      subject: params.subject,
+      html: params.html,
+      entityType: 'alerte',
+      entityId: 0,
+      from: config.fromEmail,
+      fromName: config.fromName,
+      sentAt: new Date().toISOString(),
+    });
+    localStorage.setItem('sent_emails', JSON.stringify(sentEmails.slice(-100)));
+  };
+
+  // EmailJS - Envoi reel cote client
+  if (config.provider === 'emailjs' && config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
+    try {
+      const templateParams = {
+        to_email: params.to,
+        to_name: params.to,
+        from_name: config.fromName,
+        from_email: config.fromEmail,
+        subject: params.subject,
+        message_html: params.html,
+        reply_to: config.replyTo || config.fromEmail,
+      };
+
+      const response = await emailjs.send(
+        config.emailjsServiceId,
+        config.emailjsTemplateId,
+        templateParams,
+        config.emailjsPublicKey
+      );
+
+      storeEmail();
+      return {
+        success: true,
+        messageId: `emailjs_${response.status}_${Date.now()}`,
+      };
+    } catch (error) {
+      console.error('EmailJS error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur EmailJS inconnue',
+      };
+    }
+  }
+
+  // Mode simulation (defaut)
+  storeEmail();
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  return {
+    success: true,
+    messageId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  };
 }

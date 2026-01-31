@@ -194,17 +194,24 @@ export interface DeepDiveMensuelSlide {
 }
 
 export type SlideType =
+  | 'page_garde'
+  | 'agenda'
+  | 'synthese_executive'
   | 'meteo_globale'
   | 'faits_marquants'
   | 'tableau_bord_axes'
   | 'detail_axe'
   | 'top_risques'
   | 'risques_evolution'
+  | 'risques_consolides'
   | 'decisions_table'
   | 'actions_prioritaires'
   | 'jalons_m1'
+  | 'plan_actions_m1'
+  | 'synthese_cloture'
   | 'gantt_simplifie'
-  | 'courbe_s';
+  | 'courbe_s'
+  | 'liste_actions_complete';
 
 // Section 1 - Synthèse Exécutive
 export interface MeteoGlobaleData {

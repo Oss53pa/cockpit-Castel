@@ -13,6 +13,7 @@ import {
   GitBranch,
   LogOut,
   Building2,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores';
@@ -49,6 +50,7 @@ function NavItem({ to, icon, label, collapsed }: NavItemProps) {
 
 const navItems = [
   { to: '/', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Tableau de bord' },
+  { to: '/axes', icon: <Layers className="h-5 w-5" />, label: 'Axes' },
   { to: '/jalons', icon: <Flag className="h-5 w-5" />, label: 'Jalons' },
   { to: '/actions', icon: <ClipboardList className="h-5 w-5" />, label: 'Plan d\'actions' },
   { to: '/synchronisation', icon: <GitBranch className="h-5 w-5" />, label: 'Synchronisation' },

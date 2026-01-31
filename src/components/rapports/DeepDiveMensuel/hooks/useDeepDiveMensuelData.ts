@@ -15,6 +15,7 @@ import {
 import { useSync } from '@/hooks/useSync';
 import { JALONS_V21, ACTIONS_V21 } from '@/data/cosmosAngreRefV21';
 import { REGISTRE_RISQUES_COSMOS_ANGRE, getTop10Risques } from '@/data/risquesCosmosAngre';
+import { PROJET_CONFIG, SEUILS_METEO, SEUILS_UI } from '@/data/constants';
 import type {
   AxeType,
   MeteoNiveau,
@@ -73,10 +74,11 @@ const dbCodeToAxe: Record<string, AxeType> = {
 
 function calculateMeteo(avancement: number, objectif: number = 100, actionsEnRetard: number = 0): MeteoNiveau {
   const ratio = avancement / objectif;
-  if (ratio >= 0.95 && actionsEnRetard === 0) return 'excellent';
-  if (ratio >= 0.85 && actionsEnRetard <= 1) return 'bon';
-  if (ratio >= 0.70 && actionsEnRetard <= 3) return 'attention';
-  if (ratio >= 0.50) return 'alerte';
+  // Utilise les seuils configurés dans constants.ts
+  if (ratio >= SEUILS_METEO.excellent.completion && actionsEnRetard <= SEUILS_METEO.excellent.actionsEnRetardMax) return 'excellent';
+  if (ratio >= SEUILS_METEO.bon.completion && actionsEnRetard <= SEUILS_METEO.bon.actionsEnRetardMax) return 'bon';
+  if (ratio >= SEUILS_METEO.attention.completion && actionsEnRetard <= SEUILS_METEO.attention.actionsEnRetardMax) return 'attention';
+  if (ratio >= SEUILS_METEO.alerte.completion) return 'alerte';
   return 'critique';
 }
 
@@ -592,44 +594,52 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
             new Date(j.date) <= new Date() ? 'en_cours' : 'a_venir',
         };
       }),
-      dateDebut: '2026-01-01',
-      dateFin: '2027-02-28',
+      // Dates depuis la configuration centralisée
+      dateDebut: PROJET_CONFIG.dateDebut,
+      dateFin: PROJET_CONFIG.dateFin,
       dateActuelle: new Date().toISOString().split('T')[0],
     };
   }, [jalonsDb]);
 
   const courbeS = useMemo((): CourbeSData => {
-    const totalBudget = budgetSynthese.prevu || 597_500_000;
+    // Utiliser le budget réel de la DB, sans fallback hardcodé
+    const totalBudget = budgetSynthese.prevu || 0;
     const consumed = budgetSynthese.realise || 0;
     const engaged = budgetSynthese.engage || 0;
 
-    // Générer des points mensuels de janvier 2026 à février 2027
+    // Générer des points mensuels depuis les dates de la configuration
     const points: CourbeSData['points'] = [];
-    const startDate = new Date('2026-01-01');
-    const endDate = new Date('2027-02-28');
+    const startDate = new Date(PROJET_CONFIG.dateDebut);
+    const endDate = new Date(PROJET_CONFIG.dateFin);
     const today = new Date();
+
+    // Calculer le nombre total de mois
+    const totalMonths = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
 
     let currentDate = new Date(startDate);
     let monthIndex = 0;
 
     while (currentDate <= endDate) {
       const isPast = currentDate <= today;
-      const monthProgress = monthIndex / 14; // 14 mois total
+      const monthProgress = totalMonths > 0 ? monthIndex / totalMonths : 0;
 
       points.push({
         date: currentDate.toISOString().split('T')[0],
         prevu: Math.round(totalBudget * monthProgress),
-        realise: isPast ? Math.round(consumed * (monthProgress / (today.getTime() - startDate.getTime()) * (endDate.getTime() - startDate.getTime()))) : 0,
-        engage: isPast ? Math.round(engaged * monthProgress) : 0,
+        realise: isPast && totalBudget > 0 ? Math.round(consumed * monthProgress) : 0,
+        engage: isPast && totalBudget > 0 ? Math.round(engaged * monthProgress) : 0,
       });
 
       currentDate.setMonth(currentDate.getMonth() + 1);
       monthIndex++;
     }
 
-    // Indicateurs EVM simplifiés
-    const spi = consumed > 0 ? (consumed / (totalBudget * 0.3)) : 1; // Simplifié
-    const cpi = consumed > 0 ? 1.05 : 1; // Simplifié
+    // Indicateurs EVM calculés dynamiquement
+    // SPI = Valeur Acquise / Valeur Planifiée (simplifié: réalisé / prévu à date)
+    const plannedToDate = totalBudget > 0 ? totalBudget * (monthIndex / totalMonths) : 0;
+    const spi = plannedToDate > 0 ? consumed / plannedToDate : 1;
+    // CPI = Valeur Acquise / Coût Réel (simplifié: on suppose efficacité à 1 si pas de données)
+    const cpi = consumed > 0 ? (engaged > 0 ? consumed / engaged : 1) : 1;
 
     return {
       points,
@@ -638,8 +648,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       budgetEngage: engaged,
       spi: Math.round(spi * 100) / 100,
       cpi: Math.round(cpi * 100) / 100,
-      eac: Math.round(totalBudget / cpi),
-      vac: Math.round(totalBudget - (totalBudget / cpi)),
+      eac: cpi > 0 ? Math.round(totalBudget / cpi) : totalBudget,
+      vac: cpi > 0 ? Math.round(totalBudget - (totalBudget / cpi)) : 0,
     };
   }, [budgetSynthese]);
 

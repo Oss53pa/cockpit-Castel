@@ -77,16 +77,14 @@ function DialogPortal({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function DialogOverlay({ className }: { className?: string }) {
-  const { setOpen } = useDialog();
-
+function DialogOverlay({ className, onClick }: { className?: string; onClick?: () => void }) {
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-fade-in',
+        'fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in',
         className
       )}
-      onClick={() => setOpen(false)}
+      onClick={onClick}
     />
   );
 }
@@ -100,24 +98,26 @@ function DialogContent({ className, children, ...props }: DialogContentProps) {
 
   return (
     <DialogPortal>
-      <DialogOverlay />
-      <div
-        className={cn(
-          'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-white p-6 shadow-xl animate-scale-in',
-          className
-        )}
-        {...props}
-      >
-        {children}
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="absolute right-4 top-4"
-          onClick={() => setOpen(false)}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <DialogOverlay onClick={() => setOpen(false)} />
+        <div
+          className={cn(
+            'relative z-50 w-full max-w-lg rounded-xl border bg-white p-6 shadow-xl animate-scale-in',
+            className
+          )}
+          {...props}
         >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Fermer</span>
-        </Button>
+          {children}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="absolute right-4 top-4"
+            onClick={() => setOpen(false)}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Fermer</span>
+          </Button>
+        </div>
       </div>
     </DialogPortal>
   );

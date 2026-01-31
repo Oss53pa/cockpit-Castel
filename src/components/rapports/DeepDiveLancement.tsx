@@ -32,6 +32,7 @@ import {
   Copy,
   Share2,
   CircleDot,
+  Loader2,
 } from 'lucide-react';
 import {
   Card,
@@ -114,6 +115,9 @@ import {
   BUDGET_EXPLOITATION_2026,
   TOTAL_EFFECTIF_2026,
 } from '@/data/budgetExploitationCosmosAngre';
+
+// Import constantes centralisées
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation';
@@ -206,11 +210,11 @@ function SlideRappelProjet() {
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Soft Opening</TableCell>
-              <TableCell className="text-right">15 novembre 2026</TableCell>
+              <TableCell className="text-right">{new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Inauguration</TableCell>
-              <TableCell className="text-right">15 décembre 2026</TableCell>
+              <TableCell className="text-right">{new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Occupation cible</TableCell>
@@ -272,8 +276,8 @@ function SlideRappelProjet() {
 // ============================================================================
 function SlideAgenda() {
   const agendaItems = [
-    { num: 1, titre: 'Rappel Projet & Météo Globale', icon: Target },
-    { num: 2, titre: 'Agenda', icon: FileText },
+    { num: 1, titre: 'Agenda', icon: FileText },
+    { num: 2, titre: 'Rappel Projet & Météo Globale', icon: Target },
     { num: 3, titre: 'AXE RH & Organisation', icon: Users },
     { num: 4, titre: 'AXE Commercial & Leasing', icon: Building2 },
     { num: 5, titre: 'AXE Technique & Handover', icon: Wrench },
@@ -1199,10 +1203,97 @@ export function DeepDiveLancement() {
   // États pour le preview comme DeepDive normal
   const [previewSlideIndex, setPreviewSlideIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // ========== HOOKS DONNÉES RÉELLES ==========
+  const kpis = useDashboardKPIs();
+  const actions = useActions();
+  const jalons = useJalons();
+  const risques = useRisques();
+  const budgetSynthese = useBudgetSynthese();
+  const budgetParAxe = useBudgetParAxe();
+
+  // Données calculées à partir des hooks
+  const cockpitData = useMemo(() => {
+    const actionsData = actions.data || [];
+    const jalonsData = jalons.data || [];
+    const risquesData = risques || [];
+
+    // Actions par axe
+    const actionsByAxe = (axeCode: string) => actionsData.filter(a => a.axe === axeCode);
+    const jalonsByAxe = (axeCode: string) => jalonsData.filter(j => j.axe === axeCode);
+
+    // Calcul météo par axe basé sur les données réelles
+    const calculateAxeMeteo = (axeCode: string) => {
+      const axeActions = actionsByAxe(axeCode);
+      const axeJalons = jalonsByAxe(axeCode);
+
+      if (axeActions.length === 0 && axeJalons.length === 0) return { meteo: 'soleil_nuage' as MeteoType, statut: 'À démarrer' };
+
+      const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
+      const actionsBloquees = axeActions.filter(a => a.statut === 'bloque').length;
+      const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint').length;
+
+      const tauxCompletion = axeActions.length > 0 ? (actionsTerminees / axeActions.length) * 100 : 0;
+      const tauxJalons = axeJalons.length > 0 ? (jalonsAtteints / axeJalons.length) * 100 : 0;
+
+      if (actionsBloquees > 0 || tauxCompletion < 30) {
+        return { meteo: 'pluie' as MeteoType, statut: 'En difficulté' };
+      } else if (tauxCompletion < 60 || tauxJalons < 50) {
+        return { meteo: 'nuage' as MeteoType, statut: 'À surveiller' };
+      } else if (tauxCompletion < 80) {
+        return { meteo: 'soleil_nuage' as MeteoType, statut: 'En cours' };
+      }
+      return { meteo: 'soleil' as MeteoType, statut: 'En bonne voie' };
+    };
+
+    // Top 5 risques
+    const top5Risques = [...risquesData]
+      .filter(r => r.status !== 'ferme')
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 5);
+
+    // Jalons critiques (prochains 30 jours)
+    const today = new Date();
+    const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const jalonsCritiques = jalonsData
+      .filter(j => {
+        const dateJalon = new Date(j.date_prevue);
+        return dateJalon >= today && dateJalon <= in30Days && j.statut !== 'atteint';
+      })
+      .sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime())
+      .slice(0, 5);
+
+    return {
+      tauxOccupation: kpis?.tauxOccupation || 0,
+      jalonsTotal: jalonsData.length,
+      jalonsAtteints: jalonsData.filter(j => j.statut === 'atteint').length,
+      actionsTotal: actionsData.length,
+      actionsTerminees: actionsData.filter(a => a.statut === 'termine').length,
+      actionsEnCours: actionsData.filter(a => a.statut === 'en_cours').length,
+      actionsBloquees: actionsData.filter(a => a.statut === 'bloque').length,
+      risquesActifs: risquesData.filter(r => r.status !== 'ferme').length,
+      top5Risques,
+      jalonsCritiques,
+      budgetPrevu: budgetSynthese?.prevu || 0,
+      budgetRealise: budgetSynthese?.realise || 0,
+      budgetEngage: budgetSynthese?.engage || 0,
+      meteoAxes: {
+        rh: calculateAxeMeteo('axe1_rh'),
+        commercial: calculateAxeMeteo('axe2_commercial'),
+        technique: calculateAxeMeteo('axe3_technique'),
+        budget: calculateAxeMeteo('axe4_budget'),
+        marketing: calculateAxeMeteo('axe5_marketing'),
+        exploitation: calculateAxeMeteo('axe6_exploitation'),
+      },
+      actionsByAxe,
+      jalonsByAxe,
+    };
+  }, [kpis, actions.data, jalons.data, risques, budgetSynthese]);
 
   const slides = [
-    { numero: 1, titre: 'Rappel Projet & Météo Globale', component: SlideRappelProjet },
-    { numero: 2, titre: 'Agenda', component: SlideAgenda },
+    { numero: 1, titre: 'Agenda', component: SlideAgenda },
+    { numero: 2, titre: 'Rappel Projet & Météo Globale', component: SlideRappelProjet },
     { numero: 3, titre: 'AXE RH & Organisation', component: SlideAxeRH },
     { numero: 4, titre: 'AXE Commercial & Leasing', component: SlideAxeCommercial },
     { numero: 5, titre: 'AXE Technique & Handover', component: SlideAxeTechnique },
@@ -1224,7 +1315,7 @@ export function DeepDiveLancement() {
 
   const ActiveSlideComponent = slides.find(s => s.numero === activeSlide)?.component || SlideRappelProjet;
 
-  // Fonction pour générer le HTML complet
+  // Fonction pour générer le HTML complet avec données COCKPIT
   const generateHtmlContent = () => {
     const dateFormatted = new Date(presentationDate).toLocaleDateString('fr-FR', {
       weekday: 'long',
@@ -1232,6 +1323,69 @@ export function DeepDiveLancement() {
       month: 'long',
       day: 'numeric',
     });
+
+    // Helper météo emoji
+    const getMeteoHtml = (meteo: MeteoType, statut: string) => {
+      const config: Record<MeteoType, { emoji: string; class: string }> = {
+        soleil: { emoji: '☀️', class: 'meteo-soleil' },
+        soleil_nuage: { emoji: '⛅', class: 'meteo-soleil-nuage' },
+        nuage: { emoji: '☁️', class: 'meteo-nuage' },
+        pluie: { emoji: '🌧️', class: 'meteo-pluie' },
+      };
+      const c = config[meteo];
+      return `<span class="${c.class} px-2 py-1 rounded text-xs">${c.emoji} ${statut}</span>`;
+    };
+
+    // Helper probabilité/impact
+    const getProbImpactEmoji = (value: number) => {
+      if (value >= 4) return '🔴';
+      if (value >= 3) return '🟠';
+      if (value >= 2) return '🟡';
+      return '🟢';
+    };
+
+    // Helper statut jalon
+    const getStatutJalonHtml = (statut: string) => {
+      switch (statut) {
+        case 'atteint': return '✅ Atteint';
+        case 'en_cours': return '🟡 En cours';
+        case 'en_retard': return '🔴 En retard';
+        default: return '🔵 Planifié';
+      }
+    };
+
+    // Générer les lignes risques depuis cockpitData
+    const risquesHtml = cockpitData.top5Risques.length > 0
+      ? cockpitData.top5Risques.map((r, i) => `
+          <tr class="border-b">
+            <td class="p-2 font-bold">${i + 1}</td>
+            <td class="p-2">${r.titre}</td>
+            <td class="p-2 text-center">${getProbImpactEmoji(r.probabilite || 2)}</td>
+            <td class="p-2 text-center">${getProbImpactEmoji(r.impact || 3)}</td>
+            <td class="p-2 text-sm">${r.strategie_reponse || 'À définir'}</td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="5" class="p-4 text-center text-gray-500">Aucun risque actif</td></tr>';
+
+    // Générer les jalons techniques depuis cockpitData
+    const jalonsTechniques = cockpitData.jalonsByAxe('axe3_technique').slice(0, 5);
+    const jalonsTechHtml = jalonsTechniques.length > 0
+      ? jalonsTechniques.map(j => `
+          <tr class="border-b">
+            <td class="p-2">${j.titre}</td>
+            <td class="p-2 text-center">${new Date(j.date_prevue).toLocaleDateString('fr-FR')}</td>
+            <td class="p-2 text-center">${getStatutJalonHtml(j.statut)}</td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="3" class="p-4 text-center text-gray-500">Aucun jalon technique</td></tr>';
+
+    // Jalons marketing
+    const jalonsMarketing = cockpitData.jalonsByAxe('axe5_marketing').slice(0, 5);
+    const jalonsMarketingHtml = jalonsMarketing.length > 0
+      ? jalonsMarketing.map(j => `
+          <li class="flex justify-between"><span>${j.titre}</span><span class="${j.statut === 'atteint' ? 'text-green-600' : 'text-orange-600'}">${j.statut === 'atteint' ? 'Fait' : j.statut === 'en_cours' ? 'En cours' : 'À planifier'}</span></li>
+        `).join('')
+      : '<li class="text-gray-500">Aucun jalon marketing défini</li>';
 
     return `<!DOCTYPE html>
 <html lang="fr">
@@ -1241,13 +1395,8 @@ export function DeepDiveLancement() {
   <title>Deep Dive Lancement - Cosmos Angré - ${dateFormatted}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @media print {
-      .no-print { display: none !important; }
-      .page-break { page-break-after: always; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
+    @media print { .no-print { display: none !important; } .page-break { page-break-after: always; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .slide { min-height: 100vh; padding: 2rem; background: white; }
     .slide-header { border-bottom: 3px solid #1C3163; padding-bottom: 1rem; margin-bottom: 2rem; }
     .meteo-soleil { color: #16a34a; background: #dcfce7; }
     .meteo-nuage { color: #ea580c; background: #ffedd5; }
@@ -1256,7 +1405,6 @@ export function DeepDiveLancement() {
   </style>
 </head>
 <body class="bg-gray-100">
-  <!-- Header -->
   <div class="bg-gradient-to-r from-[#1C3163] to-[#2a4a8a] text-white p-8 no-print">
     <div class="max-w-6xl mx-auto">
       <h1 class="text-3xl font-bold mb-2">DEEP DIVE LANCEMENT</h1>
@@ -1266,7 +1414,6 @@ export function DeepDiveLancement() {
     </div>
   </div>
 
-  <!-- Navigation -->
   <div class="bg-white shadow-sm sticky top-0 z-50 no-print">
     <div class="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto">
       ${slides.map(s => `<a href="#slide-${s.numero}" class="px-3 py-1 bg-gray-100 hover:bg-[#1C3163] hover:text-white rounded text-sm whitespace-nowrap transition-colors">${s.numero}. ${s.titre}</a>`).join('\n      ')}
@@ -1274,266 +1421,240 @@ export function DeepDiveLancement() {
   </div>
 
   <div class="max-w-6xl mx-auto py-8 space-y-8">
-    <!-- Slide 1: Rappel Projet -->
+    <!-- Slide 1: AGENDA -->
     <div id="slide-1" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 1/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 1/10</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AGENDA</h2>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6">
+        ${slides.map((s, i) => `
+          <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+            <div class="w-8 h-8 rounded-full bg-[#1C3163] text-white flex items-center justify-center text-sm font-bold">${s.numero}</div>
+            <span class="font-medium">${s.titre}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Slide 2: RAPPEL PROJET & MÉTÉO -->
+    <div id="slide-2" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 2/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">RAPPEL PROJET & MÉTÉO GLOBALE</h2>
       </div>
       <div class="grid md:grid-cols-2 gap-6">
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Le Projet</h3>
           <table class="w-full text-sm">
-            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">45 000 m²</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">${PROJET_INFO.surfaceGLA.toLocaleString()} m²</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">8</td></tr>
-            <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">15 nov. 2026</td></tr>
-            <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">15 déc. 2026</td></tr>
-            <tr><td class="py-2 font-medium">Occupation cible</td><td class="text-right">≥ 85%</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
+            <tr><td class="py-2 font-medium">Occupation actuelle</td><td class="text-right font-bold ${cockpitData.tauxOccupation >= 85 ? 'text-green-600' : 'text-amber-600'}">${cockpitData.tauxOccupation.toFixed(1)}%</td></tr>
           </table>
         </div>
         <div class="bg-gray-50 p-6 rounded-lg">
-          <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Météo par Axe</h3>
+          <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Météo par Axe (temps réel)</h3>
           <div class="space-y-2">
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>RH & Organisation</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ À valider</span></div>
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Commercial</span><span class="meteo-soleil px-2 py-1 rounded text-xs">☀️ En avance</span></div>
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Technique</span><span class="meteo-nuage px-2 py-1 rounded text-xs">☁️ À surveiller</span></div>
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Budget</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ À valider</span></div>
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Marketing</span><span class="meteo-soleil-nuage px-2 py-1 rounded text-xs">⛅ En préparation</span></div>
-            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Exploitation</span><span class="meteo-soleil px-2 py-1 rounded text-xs">☀️ OK</span></div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>RH & Organisation</span>${getMeteoHtml(cockpitData.meteoAxes.rh.meteo, cockpitData.meteoAxes.rh.statut)}</div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Commercial</span>${getMeteoHtml(cockpitData.meteoAxes.commercial.meteo, cockpitData.meteoAxes.commercial.statut)}</div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Technique</span>${getMeteoHtml(cockpitData.meteoAxes.technique.meteo, cockpitData.meteoAxes.technique.statut)}</div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Budget</span>${getMeteoHtml(cockpitData.meteoAxes.budget.meteo, cockpitData.meteoAxes.budget.statut)}</div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Marketing</span>${getMeteoHtml(cockpitData.meteoAxes.marketing.meteo, cockpitData.meteoAxes.marketing.statut)}</div>
+            <div class="flex justify-between items-center p-2 bg-white rounded"><span>Exploitation</span>${getMeteoHtml(cockpitData.meteoAxes.exploitation.meteo, cockpitData.meteoAxes.exploitation.statut)}</div>
           </div>
         </div>
       </div>
+      <div class="mt-6 grid grid-cols-4 gap-4 text-center">
+        <div class="bg-blue-50 p-4 rounded-lg"><p class="text-2xl font-bold text-blue-700">${cockpitData.jalonsAtteints}/${cockpitData.jalonsTotal}</p><p class="text-xs text-blue-600">Jalons atteints</p></div>
+        <div class="bg-green-50 p-4 rounded-lg"><p class="text-2xl font-bold text-green-700">${cockpitData.actionsTerminees}/${cockpitData.actionsTotal}</p><p class="text-xs text-green-600">Actions terminées</p></div>
+        <div class="bg-amber-50 p-4 rounded-lg"><p class="text-2xl font-bold text-amber-700">${cockpitData.actionsBloquees}</p><p class="text-xs text-amber-600">Actions bloquées</p></div>
+        <div class="bg-red-50 p-4 rounded-lg"><p class="text-2xl font-bold text-red-700">${cockpitData.risquesActifs}</p><p class="text-xs text-red-600">Risques actifs</p></div>
+      </div>
     </div>
 
-    <!-- Slide 2: AXE RH -->
-    <div id="slide-2" class="bg-white rounded-lg shadow-lg p-8 page-break">
+    <!-- Slide 3: AXE RH -->
+    <div id="slide-3" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 2/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 3/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE RH & ORGANISATION</h2>
       </div>
-      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-amber-600">⛅</span>
-        <span class="font-medium text-amber-800">Organigramme à valider</span>
+      <div class="p-3 ${cockpitData.meteoAxes.rh.meteo === 'soleil' ? 'bg-green-50 border-green-200' : cockpitData.meteoAxes.rh.meteo === 'pluie' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.rh.meteo, cockpitData.meteoAxes.rh.statut)}
       </div>
       <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="font-bold mb-4">Actions RH (temps réel)</h3>
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div class="bg-blue-50 p-3 rounded-lg"><p class="text-xl font-bold text-blue-700">${cockpitData.actionsByAxe('axe1_rh').length}</p><p class="text-xs">Total</p></div>
+            <div class="bg-green-50 p-3 rounded-lg"><p class="text-xl font-bold text-green-700">${cockpitData.actionsByAxe('axe1_rh').filter(a => a.statut === 'termine').length}</p><p class="text-xs">Terminées</p></div>
+            <div class="bg-amber-50 p-3 rounded-lg"><p class="text-xl font-bold text-amber-700">${cockpitData.actionsByAxe('axe1_rh').filter(a => a.statut === 'en_cours').length}</p><p class="text-xs">En cours</p></div>
+          </div>
+        </div>
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold mb-4">Effectif Cible</h3>
           <div class="text-center p-4 bg-blue-50 rounded-lg">
-            <p class="text-3xl font-bold text-blue-700">6</p>
+            <p class="text-3xl font-bold text-blue-700">${EFFECTIF_CIBLE.total}</p>
             <p class="text-sm text-blue-600">personnes</p>
-            <p class="text-xs text-gray-500 mt-2">4 dédiés + 2 mutualisés (25%)</p>
-          </div>
-        </div>
-        <div class="bg-gray-50 p-6 rounded-lg">
-          <h3 class="font-bold mb-4">Planning Recrutement</h3>
-          <table class="w-full text-sm">
-            <tr class="border-b"><td class="py-2">Vague 1</td><td>Mai 2026</td><td class="text-right">DGA, CM</td></tr>
-            <tr class="border-b"><td class="py-2">Vague 2</td><td>Juil 2026</td><td class="text-right">FSM, CTL</td></tr>
-            <tr><td class="py-2">Vague 3</td><td>Oct 2026</td><td class="text-right">AFT</td></tr>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 3: AXE Commercial -->
-    <div id="slide-3" class="bg-white rounded-lg shadow-lg p-8 page-break">
-      <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 3/9</span>
-        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE COMMERCIAL & LEASING</h2>
-      </div>
-      <div class="p-3 bg-green-50 border border-green-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-green-600">☀️</span>
-        <span class="font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
-      </div>
-      <div class="bg-gray-50 p-6 rounded-lg">
-        <h3 class="font-bold mb-4">KPIs Clés</h3>
-        <div class="grid grid-cols-3 gap-4 text-center">
-          <div class="bg-indigo-50 p-4 rounded-lg">
-            <p class="text-2xl font-bold text-indigo-700">85%</p>
-            <p class="text-xs text-indigo-600">Taux cible</p>
-          </div>
-          <div class="bg-green-50 p-4 rounded-lg">
-            <p class="text-2xl font-bold text-green-700">-</p>
-            <p class="text-xs text-green-600">BEFA signés</p>
-          </div>
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <p class="text-2xl font-bold text-blue-700">-</p>
-            <p class="text-xs text-blue-600">Pipeline</p>
+            <p class="text-xs text-gray-500 mt-2">${EFFECTIF_CIBLE.dedies} dédiés + ${EFFECTIF_CIBLE.mutualises} mutualisés</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Slide 4: AXE Technique -->
+    <!-- Slide 4: AXE Commercial -->
     <div id="slide-4" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 4/9</span>
-        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE TECHNIQUE & HANDOVER</h2>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 4/10</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE COMMERCIAL & LEASING</h2>
       </div>
-      <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-orange-600">☁️</span>
-        <span class="font-medium text-orange-800">À surveiller - Bassin de rétention en cours</span>
+      <div class="p-3 ${cockpitData.meteoAxes.commercial.meteo === 'soleil' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.commercial.meteo, cockpitData.meteoAxes.commercial.statut)}
       </div>
       <div class="bg-gray-50 p-6 rounded-lg">
-        <h3 class="font-bold mb-4">Jalons Clés</h3>
-        <table class="w-full text-sm">
-          <tr class="bg-gray-200"><th class="p-2 text-left">Jalon</th><th class="p-2">Cible</th><th class="p-2">Statut</th></tr>
-          <tr class="border-b"><td class="p-2">Livraison Centre Commercial</td><td class="p-2 text-center">15 oct. 2026</td><td class="p-2 text-center">🔵 Planifié</td></tr>
-          <tr class="border-b"><td class="p-2">Livraison Big Box</td><td class="p-2 text-center">30 sept. 2026</td><td class="p-2 text-center">🔵 Planifié</td></tr>
-          <tr class="border-b"><td class="p-2">Achèvement Bassin</td><td class="p-2 text-center">30 juin 2026</td><td class="p-2 text-center">🟡 En cours</td></tr>
-        </table>
+        <h3 class="font-bold mb-4">KPIs Commercial (temps réel)</h3>
+        <div class="grid grid-cols-4 gap-4 text-center">
+          <div class="bg-indigo-50 p-4 rounded-lg"><p class="text-2xl font-bold text-indigo-700">${cockpitData.tauxOccupation.toFixed(1)}%</p><p class="text-xs text-indigo-600">Occupation</p></div>
+          <div class="bg-green-50 p-4 rounded-lg"><p class="text-2xl font-bold text-green-700">${cockpitData.actionsByAxe('axe2_commercial').filter(a => a.statut === 'termine').length}</p><p class="text-xs text-green-600">Actions faites</p></div>
+          <div class="bg-blue-50 p-4 rounded-lg"><p class="text-2xl font-bold text-blue-700">${cockpitData.jalonsByAxe('axe2_commercial').filter(j => j.statut === 'atteint').length}/${cockpitData.jalonsByAxe('axe2_commercial').length}</p><p class="text-xs text-blue-600">Jalons</p></div>
+          <div class="bg-purple-50 p-4 rounded-lg"><p class="text-2xl font-bold text-purple-700">${PROJET_CONFIG.occupationCible}%</p><p class="text-xs text-purple-600">Cible</p></div>
+        </div>
       </div>
     </div>
 
-    <!-- Slide 5: AXE Budget -->
+    <!-- Slide 5: AXE Technique -->
     <div id="slide-5" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 5/9</span>
-        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE BUDGET & FINANCES</h2>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 5/10</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE TECHNIQUE & HANDOVER</h2>
       </div>
-      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-amber-600">⛅</span>
-        <span class="font-medium text-amber-800">Budgets à valider (ce Deep Dive)</span>
+      <div class="p-3 ${cockpitData.meteoAxes.technique.meteo === 'soleil' ? 'bg-green-50 border-green-200' : cockpitData.meteoAxes.technique.meteo === 'pluie' ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.technique.meteo, cockpitData.meteoAxes.technique.statut)}
       </div>
-      <div class="bg-gray-50 p-6 rounded-lg mb-6">
-        <h3 class="font-bold mb-4">Vue Synthétique 2026</h3>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Jalons Techniques (temps réel)</h3>
         <table class="w-full text-sm">
-          <tr class="bg-gray-200"><th class="p-2 text-left">Budget</th><th class="p-2 text-right">Montant</th><th class="p-2">Type</th></tr>
-          <tr class="border-b"><td class="p-2">Mobilisation</td><td class="p-2 text-right font-mono">930 000 000 FCFA</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">CAPEX</span></td></tr>
-          <tr class="border-b"><td class="p-2">Exploitation</td><td class="p-2 text-right font-mono">1 142 000 000 FCFA</td><td class="p-2 text-center"><span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">OPEX</span></td></tr>
-          <tr class="bg-[#1C3163] text-white"><td class="p-2 font-bold">TOTAL 2026</td><td class="p-2 text-right font-bold font-mono">2 072 000 000 FCFA</td><td class="p-2"></td></tr>
+          <tr class="bg-gray-200"><th class="p-2 text-left">Jalon</th><th class="p-2">Date cible</th><th class="p-2">Statut</th></tr>
+          ${jalonsTechHtml}
         </table>
       </div>
     </div>
 
-    <!-- Slide 6: AXE Marketing -->
+    <!-- Slide 6: AXE Budget -->
     <div id="slide-6" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 6/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 6/10</span>
+        <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE BUDGET & FINANCES</h2>
+      </div>
+      <div class="p-3 ${cockpitData.meteoAxes.budget.meteo === 'soleil' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.budget.meteo, cockpitData.meteoAxes.budget.statut)}
+      </div>
+      <div class="bg-gray-50 p-6 rounded-lg">
+        <h3 class="font-bold mb-4">Exécution Budgétaire (temps réel)</h3>
+        <table class="w-full text-sm">
+          <tr class="bg-gray-200"><th class="p-2 text-left">Poste</th><th class="p-2 text-right">Montant</th><th class="p-2 text-right">%</th></tr>
+          <tr class="border-b"><td class="p-2">Budget Prévu</td><td class="p-2 text-right font-mono">${formatNumber(cockpitData.budgetPrevu)} FCFA</td><td class="p-2 text-right">100%</td></tr>
+          <tr class="border-b"><td class="p-2">Engagé</td><td class="p-2 text-right font-mono">${formatNumber(cockpitData.budgetEngage)} FCFA</td><td class="p-2 text-right">${cockpitData.budgetPrevu > 0 ? ((cockpitData.budgetEngage / cockpitData.budgetPrevu) * 100).toFixed(1) : 0}%</td></tr>
+          <tr class="border-b"><td class="p-2">Réalisé</td><td class="p-2 text-right font-mono">${formatNumber(cockpitData.budgetRealise)} FCFA</td><td class="p-2 text-right">${cockpitData.budgetPrevu > 0 ? ((cockpitData.budgetRealise / cockpitData.budgetPrevu) * 100).toFixed(1) : 0}%</td></tr>
+          <tr class="bg-[#1C3163] text-white"><td class="p-2 font-bold">Reste à engager</td><td class="p-2 text-right font-bold font-mono">${formatNumber(cockpitData.budgetPrevu - cockpitData.budgetEngage)} FCFA</td><td class="p-2 text-right font-bold">${cockpitData.budgetPrevu > 0 ? (((cockpitData.budgetPrevu - cockpitData.budgetEngage) / cockpitData.budgetPrevu) * 100).toFixed(1) : 0}%</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Slide 7: AXE Marketing -->
+    <div id="slide-7" class="bg-white rounded-lg shadow-lg p-8 page-break">
+      <div class="slide-header">
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 7/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE MARKETING & COMMUNICATION</h2>
       </div>
-      <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-amber-600">⛅</span>
-        <span class="font-medium text-amber-800">En préparation - Identité de marque à lancer</span>
+      <div class="p-3 ${cockpitData.meteoAxes.marketing.meteo === 'soleil' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.marketing.meteo, cockpitData.meteoAxes.marketing.statut)}
       </div>
       <div class="grid md:grid-cols-2 gap-6">
         <div class="bg-gray-50 p-6 rounded-lg">
-          <h3 class="font-bold mb-4">Jalons Clés</h3>
-          <ul class="space-y-2 text-sm">
-            <li class="flex justify-between"><span>Identité de marque</span><span class="text-orange-600">À planifier</span></li>
-            <li class="flex justify-between"><span>Stratégie digitale</span><span class="text-orange-600">À planifier</span></li>
-            <li class="flex justify-between"><span>Plan média lancement</span><span class="text-orange-600">À planifier</span></li>
-          </ul>
+          <h3 class="font-bold mb-4">Jalons Marketing (temps réel)</h3>
+          <ul class="space-y-2 text-sm">${jalonsMarketingHtml}</ul>
         </div>
         <div class="bg-gray-50 p-6 rounded-lg">
-          <h3 class="font-bold mb-4">Budget Marketing</h3>
-          <p class="text-center text-2xl font-bold text-pink-700">150 000 000 FCFA</p>
-          <p class="text-center text-sm text-gray-500">Inclus dans Mobilisation</p>
+          <h3 class="font-bold mb-4">Avancement</h3>
+          <div class="grid grid-cols-2 gap-4 text-center">
+            <div class="bg-pink-50 p-3 rounded-lg"><p class="text-xl font-bold text-pink-700">${cockpitData.actionsByAxe('axe5_marketing').filter(a => a.statut === 'termine').length}</p><p class="text-xs">Actions faites</p></div>
+            <div class="bg-purple-50 p-3 rounded-lg"><p class="text-xl font-bold text-purple-700">${cockpitData.actionsByAxe('axe5_marketing').filter(a => a.statut === 'en_cours').length}</p><p class="text-xs">En cours</p></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Slide 7: AXE Exploitation -->
-    <div id="slide-7" class="bg-white rounded-lg shadow-lg p-8 page-break">
+    <!-- Slide 8: AXE Exploitation -->
+    <div id="slide-8" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 7/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 8/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">AXE EXPLOITATION & JURIDIQUE</h2>
       </div>
-      <div class="p-3 bg-green-50 border border-green-200 rounded-lg mb-6 flex items-center gap-2">
-        <span class="text-green-600">☀️</span>
-        <span class="font-medium text-green-800">OK - BEFA standard prêt</span>
+      <div class="p-3 ${cockpitData.meteoAxes.exploitation.meteo === 'soleil' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'} border rounded-lg mb-6 flex items-center gap-2">
+        ${getMeteoHtml(cockpitData.meteoAxes.exploitation.meteo, cockpitData.meteoAxes.exploitation.statut)}
       </div>
       <div class="bg-gray-50 p-6 rounded-lg">
-        <h3 class="font-bold mb-4">Modèle d'Exploitation</h3>
-        <table class="w-full text-sm">
-          <tr class="bg-gray-200"><th class="p-2 text-left">Prestation</th><th class="p-2">Mode</th><th class="p-2">Effectif</th></tr>
-          <tr class="border-b"><td class="p-2">Sécurité</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">12-15</td></tr>
-          <tr class="border-b"><td class="p-2">Nettoyage</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">8-10</td></tr>
-          <tr class="border-b"><td class="p-2">Maintenance</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">4-6</td></tr>
-          <tr><td class="p-2">Espaces verts</td><td class="p-2 text-center"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">Externalisée</span></td><td class="p-2 text-center">3-4</td></tr>
-        </table>
+        <h3 class="font-bold mb-4">Avancement Exploitation (temps réel)</h3>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div class="bg-green-50 p-4 rounded-lg"><p class="text-xl font-bold text-green-700">${cockpitData.actionsByAxe('axe6_exploitation').filter(a => a.statut === 'termine').length}</p><p class="text-xs">Actions terminées</p></div>
+          <div class="bg-blue-50 p-4 rounded-lg"><p class="text-xl font-bold text-blue-700">${cockpitData.actionsByAxe('axe6_exploitation').filter(a => a.statut === 'en_cours').length}</p><p class="text-xs">En cours</p></div>
+          <div class="bg-purple-50 p-4 rounded-lg"><p class="text-xl font-bold text-purple-700">${cockpitData.jalonsByAxe('axe6_exploitation').filter(j => j.statut === 'atteint').length}/${cockpitData.jalonsByAxe('axe6_exploitation').length}</p><p class="text-xs">Jalons</p></div>
+        </div>
       </div>
     </div>
 
-    <!-- Slide 8: Risques -->
-    <div id="slide-8" class="bg-white rounded-lg shadow-lg p-8 page-break">
+    <!-- Slide 9: Risques -->
+    <div id="slide-9" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 8/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 9/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">RISQUES MAJEURS</h2>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg">
-        <h3 class="font-bold mb-4">Top 5 Risques</h3>
+        <h3 class="font-bold mb-4">Top 5 Risques (temps réel - ${cockpitData.risquesActifs} actifs)</h3>
         <table class="w-full text-sm">
           <tr class="bg-gray-200"><th class="p-2 w-12">#</th><th class="p-2 text-left">Risque</th><th class="p-2 text-center">Prob.</th><th class="p-2 text-center">Impact</th><th class="p-2">Mitigation</th></tr>
-          <tr class="border-b"><td class="p-2 font-bold">1</td><td class="p-2">Retard livraison bâtiments</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Suivi hebdomadaire MOE</td></tr>
-          <tr class="border-b"><td class="p-2 font-bold">2</td><td class="p-2">Taux occupation < 85%</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Plan commercialisation actif</td></tr>
-          <tr class="border-b"><td class="p-2 font-bold">3</td><td class="p-2">Dépassement budget</td><td class="p-2 text-center">🟡</td><td class="p-2 text-center">🟠</td><td class="p-2 text-sm">Contrôle mensuel</td></tr>
-          <tr class="border-b"><td class="p-2 font-bold">4</td><td class="p-2">Recrutement clés tardif</td><td class="p-2 text-center">🟢</td><td class="p-2 text-center">🟠</td><td class="p-2 text-sm">Anticipation vagues</td></tr>
-          <tr><td class="p-2 font-bold">5</td><td class="p-2">Problème autorisations</td><td class="p-2 text-center">🟢</td><td class="p-2 text-center">🔴</td><td class="p-2 text-sm">Veille réglementaire</td></tr>
+          ${risquesHtml}
         </table>
       </div>
     </div>
 
-    <!-- Slide 9: Décisions -->
-    <div id="slide-9" class="bg-white rounded-lg shadow-lg p-8 page-break">
+    <!-- Slide 10: Décisions -->
+    <div id="slide-10" class="bg-white rounded-lg shadow-lg p-8 page-break">
       <div class="slide-header">
-        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 9/9</span>
+        <span class="text-sm text-[#D4AF37] font-semibold">SLIDE 10/10</span>
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">DÉCISIONS ATTENDUES</h2>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg mb-6">
         <h3 class="font-bold mb-4">Checklist de Validation</h3>
         <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <span>1. Validation Organigramme</span>
-            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-          </div>
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <span>2. Validation Budget Mobilisation (930 MFCFA)</span>
-            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-          </div>
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <span>3. Validation Budget Exploitation (1 142 MFCFA)</span>
-            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-          </div>
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <span>4. Validation Modèle Externalisé</span>
-            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-          </div>
-          <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-            <span>5. Validation Planning Recrutement</span>
-            <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-          </div>
+          ${DECISIONS_ATTENDUES.map((d, i) => `
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+              <span>${i + 1}. ${d.titre}</span>
+              <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+            </div>
+          `).join('')}
         </div>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg">
         <h3 class="font-bold mb-4">Signatures</h3>
         <table class="w-full text-sm">
           <tr class="bg-gray-200"><th class="p-2 text-left">Rôle</th><th class="p-2">Nom</th><th class="p-2">Date</th><th class="p-2">Signature</th></tr>
-          <tr class="border-b"><td class="p-2">PDG</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
-          <tr class="border-b"><td class="p-2">DGA</td><td class="p-2">Pamela Atokouna</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
-          <tr><td class="p-2">DAF</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
+          ${SIGNATAIRES.map(s => `<tr class="border-b"><td class="p-2">${s.role}</td><td class="p-2">${s.nom || '_____________'}</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>`).join('')}
         </table>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
   <div class="bg-[#1C3163] text-white p-4 mt-8 no-print">
     <div class="max-w-6xl mx-auto text-center text-sm">
       <p>Deep Dive Lancement - Cosmos Angré - CRMC / New Heaven SA</p>
-      <p class="opacity-75 mt-1">Document généré le ${new Date().toLocaleDateString('fr-FR')} via COCKPIT</p>
+      <p class="opacity-75 mt-1">Document généré le ${new Date().toLocaleDateString('fr-FR')} via COCKPIT (données temps réel)</p>
     </div>
   </div>
 
-  <script>
-    // Smooth scroll for navigation
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
-      });
-    });
-  </script>
+  <script>document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' }); }));</script>
 </body>
 </html>`;
   };
@@ -1560,6 +1681,241 @@ export function DeepDiveLancement() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Générer PowerPoint (même qualité que Deep Dive Mensuel)
+  const generatePowerPoint = async () => {
+    setGenerating(true);
+
+    try {
+      const PptxGenJS = (await import('pptxgenjs')).default;
+      const pptx = new PptxGenJS();
+
+      const dateFormatted = new Date(presentationDate).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+      pptx.author = 'Cockpit Cosmos Angré';
+      pptx.title = `Deep Dive Lancement - Cosmos Angré - ${dateFormatted}`;
+      pptx.subject = 'Validation Stratégique Direction Générale';
+      pptx.company = 'Cosmos Angré / CRMC / New Heaven SA';
+
+      // Design settings
+      const primaryColor = '1C3163';
+      const accentColor = 'D4AF37';
+      const fontFamily = 'Arial';
+
+      // Helper functions
+      const addSlideHeader = (slide: InstanceType<typeof PptxGenJS>['Slide'], title: string, axeColor?: string) => {
+        slide.addShape('rect', {
+          x: 0,
+          y: 0,
+          w: '100%',
+          h: 0.8,
+          fill: { color: primaryColor },
+        });
+
+        if (axeColor) {
+          slide.addShape('rect', {
+            x: 0.3,
+            y: 0.2,
+            w: 0.4,
+            h: 0.4,
+            fill: { color: axeColor },
+          });
+        }
+
+        slide.addText(title, {
+          x: axeColor ? 0.9 : 0.5,
+          y: 0.2,
+          w: 7,
+          h: 0.5,
+          fontSize: 24,
+          fontFace: fontFamily,
+          color: 'FFFFFF',
+          bold: true,
+        });
+
+        slide.addText('COSMOS ANGRÉ', {
+          x: 7.5,
+          y: 0.2,
+          w: 2,
+          h: 0.5,
+          fontSize: 12,
+          fontFace: fontFamily,
+          color: accentColor,
+          align: 'right',
+        });
+      };
+
+      const addSlideFooter = (slide: InstanceType<typeof PptxGenJS>['Slide'], pageNum: number, total: number) => {
+        slide.addText(
+          `Deep Dive Lancement - ${dateFormatted}`,
+          {
+            x: 0.5,
+            y: 5.2,
+            w: 4,
+            h: 0.3,
+            fontSize: 8,
+            fontFace: fontFamily,
+            color: '666666',
+          }
+        );
+        slide.addText(`${pageNum} / ${total}`, {
+          x: 8.5,
+          y: 5.2,
+          w: 1,
+          h: 0.3,
+          fontSize: 8,
+          fontFace: fontFamily,
+          color: primaryColor,
+          align: 'right',
+        });
+      };
+
+      const totalSlides = slides.length + 2; // +2 pour page de garde et page de fin
+
+      // ===== SLIDE 0: PAGE DE GARDE =====
+      const coverSlide = pptx.addSlide();
+      coverSlide.addShape('rect', {
+        x: 0, y: 0, w: '100%', h: '100%',
+        fill: { color: primaryColor },
+      });
+      coverSlide.addText('DEEP DIVE LANCEMENT', {
+        x: 0.5, y: 1.5, w: 9, h: 1,
+        fontSize: 40, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center',
+      });
+      coverSlide.addText('COSMOS ANGRÉ', {
+        x: 0.5, y: 2.5, w: 9, h: 0.6,
+        fontSize: 28, fontFace: fontFamily, color: accentColor, bold: true, align: 'center',
+      });
+      coverSlide.addText('Validation Stratégique | Présentation Direction Générale', {
+        x: 0.5, y: 3.3, w: 9, h: 0.4,
+        fontSize: 14, fontFace: fontFamily, color: 'FFFFFF', align: 'center',
+      });
+      coverSlide.addText(dateFormatted, {
+        x: 0.5, y: 4.2, w: 9, h: 0.4,
+        fontSize: 16, fontFace: fontFamily, color: accentColor, align: 'center',
+      });
+      coverSlide.addText('Présenté par : Pamela Atokouna, DGA', {
+        x: 0.5, y: 4.8, w: 9, h: 0.3,
+        fontSize: 11, fontFace: fontFamily, color: 'CCCCCC', align: 'center',
+      });
+
+      // ===== SLIDES 1-10: CONTENU =====
+      slides.forEach((slideInfo, index) => {
+        const slide = pptx.addSlide();
+        const pageNum = index + 2;
+
+        // Couleur par axe
+        const axeColors: Record<number, string> = {
+          3: '3B82F6', // RH - blue
+          4: '6366F1', // Commercial - indigo
+          5: '8B5CF6', // Technique - purple
+          6: 'F59E0B', // Budget - amber
+          7: 'EC4899', // Marketing - pink
+          8: '10B981', // Exploitation - green
+          9: 'EF4444', // Risques - red
+          10: 'F97316', // Décisions - orange
+        };
+
+        addSlideHeader(slide, slideInfo.titre, axeColors[slideInfo.numero]);
+        addSlideFooter(slide, pageNum, totalSlides);
+
+        // Contenu spécifique par slide
+        if (slideInfo.numero === 1) {
+          // Agenda
+          const agendaItems = [
+            '1. Rappel du projet & Météo globale',
+            '2. AXE RH & Organisation',
+            '3. AXE Commercial & Leasing',
+            '4. AXE Technique & Handover',
+            '5. AXE Budget & Finances',
+            '6. AXE Marketing & Communication',
+            '7. AXE Exploitation & Juridique',
+            '8. Risques Majeurs',
+            '9. Décisions Attendues',
+          ];
+          agendaItems.forEach((item, i) => {
+            slide.addText(item, {
+              x: 1, y: 1.2 + i * 0.4, w: 8, h: 0.35,
+              fontSize: 14, fontFace: fontFamily, color: primaryColor,
+              bullet: { type: 'number' },
+            });
+          });
+        } else if (slideInfo.numero === 2) {
+          // Rappel projet
+          const projetInfo = [
+            ['Nom du projet', PROJET_INFO.nom],
+            ['Maître d\'ouvrage', PROJET_INFO.maitreOuvrage],
+            ['Localisation', PROJET_INFO.localisation],
+            ['Superficie', PROJET_INFO.superficie],
+            ['Budget global', formatMontantFCFA(PROJET_INFO.budgetGlobal)],
+            ['Date livraison', PROJET_INFO.dateLivraison],
+          ];
+          projetInfo.forEach((row, i) => {
+            slide.addText(row[0], { x: 0.5, y: 1.0 + i * 0.35, w: 2.5, h: 0.3, fontSize: 11, fontFace: fontFamily, color: '666666' });
+            slide.addText(row[1], { x: 3, y: 1.0 + i * 0.35, w: 4, h: 0.3, fontSize: 11, fontFace: fontFamily, color: primaryColor, bold: true });
+          });
+
+          // Météo par axe
+          slide.addText('Météo par axe stratégique', { x: 0.5, y: 3.2, w: 9, h: 0.3, fontSize: 14, fontFace: fontFamily, color: primaryColor, bold: true });
+          const axes = ['RH', 'Commercial', 'Technique', 'Budget', 'Marketing', 'Exploitation'];
+          axes.forEach((axe, i) => {
+            slide.addText(`• ${axe}`, { x: 0.5 + (i % 3) * 3, y: 3.6 + Math.floor(i / 3) * 0.4, w: 2.8, h: 0.3, fontSize: 10, fontFace: fontFamily, color: '333333' });
+          });
+        } else {
+          // Slides génériques pour les axes
+          slide.addText('Contenu généré depuis les données Cockpit', {
+            x: 0.5, y: 1.2, w: 9, h: 0.4,
+            fontSize: 12, fontFace: fontFamily, color: '666666', italic: true,
+          });
+
+          // KPIs de l'axe
+          const kpiBoxes = [
+            { label: 'Actions', value: cockpitData.totalActions?.toString() || '-' },
+            { label: 'Jalons', value: cockpitData.totalJalons?.toString() || '-' },
+            { label: 'Risques', value: cockpitData.top5Risques?.length?.toString() || '-' },
+            { label: 'Avancement', value: `${cockpitData.avancementGlobal || 0}%` },
+          ];
+
+          kpiBoxes.forEach((kpi, i) => {
+            slide.addShape('rect', { x: 0.5 + i * 2.3, y: 1.8, w: 2.1, h: 1, fill: { color: 'F3F4F6' } });
+            slide.addText(kpi.value, { x: 0.5 + i * 2.3, y: 1.9, w: 2.1, h: 0.5, fontSize: 24, fontFace: fontFamily, color: primaryColor, bold: true, align: 'center' });
+            slide.addText(kpi.label, { x: 0.5 + i * 2.3, y: 2.4, w: 2.1, h: 0.3, fontSize: 10, fontFace: fontFamily, color: '666666', align: 'center' });
+          });
+        }
+      });
+
+      // ===== SLIDE FINALE: PAGE DE FIN =====
+      const endSlide = pptx.addSlide();
+      endSlide.addShape('rect', {
+        x: 0, y: 0, w: '100%', h: '100%',
+        fill: { color: primaryColor },
+      });
+      endSlide.addText('Merci de votre attention', {
+        x: 0.5, y: 2, w: 9, h: 0.8,
+        fontSize: 32, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center',
+      });
+      endSlide.addText('Questions ?', {
+        x: 0.5, y: 3, w: 9, h: 0.5,
+        fontSize: 20, fontFace: fontFamily, color: accentColor, align: 'center',
+      });
+      endSlide.addText('COSMOS ANGRÉ - CRMC / New Heaven SA', {
+        x: 0.5, y: 4.5, w: 9, h: 0.3,
+        fontSize: 12, fontFace: fontFamily, color: 'CCCCCC', align: 'center',
+      });
+
+      // Sauvegarder
+      await pptx.writeFile({ fileName: `DeepDive-Lancement-${presentationDate}.pptx` });
+
+    } catch (error) {
+      console.error('Erreur génération PPTX:', error);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   // Copier le lien HTML
@@ -1609,9 +1965,18 @@ export function DeepDiveLancement() {
             <Printer className="h-4 w-4 mr-2" />
             Imprimer
           </Button>
-          <Button size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter PPTX
+          <Button size="sm" onClick={generatePowerPoint} disabled={generating}>
+            {generating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Génération...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Exporter PPTX
+              </>
+            )}
           </Button>
         </div>
       </div>

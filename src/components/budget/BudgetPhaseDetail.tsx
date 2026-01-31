@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, TrendingUp, Wallet, Users, Building2, Megaphone, Package } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { BudgetImportExport } from './BudgetImportExport';
 import {
   BUDGET_PROJET_TOTAL,
   BUDGET_PHASE1,
@@ -218,7 +219,8 @@ function TresorerieChart() {
   );
 }
 
-export function BudgetPhaseDetail() {
+// Vue Synthèse
+function VueSynthese() {
   return (
     <div className="space-y-6">
       {/* En-tête avec budget total */}
@@ -226,8 +228,8 @@ export function BudgetPhaseDetail() {
         <CardContent className="py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Budget Projet COSMOS ANGRÉ</h2>
-              <p className="text-primary-200">Référentiel V2.0 — Janvier 2026</p>
+              <h2 className="text-2xl font-bold">Budget Projet COSMOS ANGRE</h2>
+              <p className="text-primary-200">1,85 Mds FCFA</p>
             </div>
             <div className="text-right">
               <div className="text-4xl font-bold">
@@ -257,30 +259,193 @@ export function BudgetPhaseDetail() {
         </CardContent>
       </Card>
 
-      {/* Onglets par phase */}
-      <Tabs defaultValue="phase2" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="phase1">Phase 1</TabsTrigger>
-          <TabsTrigger value="phase2">Phase 2</TabsTrigger>
-          <TabsTrigger value="phase3">Phase 3</TabsTrigger>
-          <TabsTrigger value="phase4">Phase 4</TabsTrigger>
-          <TabsTrigger value="tresorerie">Trésorerie</TabsTrigger>
+      {/* Tableau récapitulatif des phases */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Synthèse par Phase</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Phase</TableHead>
+                <TableHead>Période</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
+                <TableHead className="text-right">%</TableHead>
+                <TableHead className="w-40">Répartition</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">Phase 1: Préparation</TableCell>
+                <TableCell>Jan - Mar 2026</TableCell>
+                <TableCell className="text-right">{formatCurrency(BUDGET_PHASE1.montantTotal)}</TableCell>
+                <TableCell className="text-right">{BUDGET_PHASE1.pourcentage}%</TableCell>
+                <TableCell>
+                  <Progress value={BUDGET_PHASE1.pourcentage} className={`h-2 ${PHASE_COLORS.phase1_preparation}`} />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Phase 2: Mobilisation</TableCell>
+                <TableCell>Avr - Oct 2026</TableCell>
+                <TableCell className="text-right">{formatCurrency(BUDGET_PHASE2.montantTotal)}</TableCell>
+                <TableCell className="text-right">{BUDGET_PHASE2.pourcentage}%</TableCell>
+                <TableCell>
+                  <Progress value={BUDGET_PHASE2.pourcentage} className={`h-2 ${PHASE_COLORS.phase2_mobilisation}`} />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Phase 3: Lancement</TableCell>
+                <TableCell>Nov - Déc 2026</TableCell>
+                <TableCell className="text-right">{formatCurrency(BUDGET_PHASE3.montantTotal)}</TableCell>
+                <TableCell className="text-right">{BUDGET_PHASE3.pourcentage}%</TableCell>
+                <TableCell>
+                  <Progress value={BUDGET_PHASE3.pourcentage} className={`h-2 ${PHASE_COLORS.phase3_lancement}`} />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Phase 4: Stabilisation</TableCell>
+                <TableCell>Jan - Déc 2027</TableCell>
+                <TableCell className="text-right">{formatCurrency(BUDGET_PHASE4.montantTotal)}</TableCell>
+                <TableCell className="text-right">{BUDGET_PHASE4.pourcentage}%</TableCell>
+                <TableCell>
+                  <Progress value={BUDGET_PHASE4.pourcentage} className={`h-2 ${PHASE_COLORS.phase4_stabilisation}`} />
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Vue Détail
+function VueDetail() {
+  const allPhases = [BUDGET_PHASE1, BUDGET_PHASE2, BUDGET_PHASE3, BUDGET_PHASE4];
+
+  return (
+    <div className="space-y-6">
+      {allPhases.map((phase) => (
+        <PhaseCard key={phase.phase} phase={phase} />
+      ))}
+    </div>
+  );
+}
+
+// Vue Graphiques
+function VueGraphiques() {
+  const phaseData = [
+    { name: 'P1: Préparation', montant: BUDGET_PHASE1.montantTotal / 1_000_000, fill: '#3b82f6' },
+    { name: 'P2: Mobilisation', montant: BUDGET_PHASE2.montantTotal / 1_000_000, fill: '#f59e0b' },
+    { name: 'P3: Lancement', montant: BUDGET_PHASE3.montantTotal / 1_000_000, fill: '#22c55e' },
+    { name: 'P4: Stabilisation', montant: BUDGET_PHASE4.montantTotal / 1_000_000, fill: '#8b5cf6' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Répartition par phase */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Répartition du budget par phase</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <TresorerieChart />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Graphique des phases */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Budget par phase (M FCFA)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 gap-4">
+            {phaseData.map((phase) => (
+              <div key={phase.name} className="text-center p-4 rounded-lg" style={{ backgroundColor: `${phase.fill}20` }}>
+                <p className="text-2xl font-bold" style={{ color: phase.fill }}>{phase.montant.toFixed(0)} M</p>
+                <p className="text-sm text-muted-foreground">{phase.name}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Vue Par Phase
+function VueParPhase() {
+  const [selectedPhase, setSelectedPhase] = useState('phase2');
+
+  const phases = {
+    phase1: BUDGET_PHASE1,
+    phase2: BUDGET_PHASE2,
+    phase3: BUDGET_PHASE3,
+    phase4: BUDGET_PHASE4,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Sélecteur de phase */}
+      <div className="flex gap-2">
+        {Object.entries(phases).map(([key, phase]) => (
+          <button
+            key={key}
+            onClick={() => setSelectedPhase(key)}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              selectedPhase === key
+                ? `${PHASE_COLORS[phase.phase]} text-white`
+                : 'bg-muted hover:bg-muted/80'
+            }`}
+          >
+            {phase.label.split(':')[0]}
+          </button>
+        ))}
+      </div>
+
+      {/* Phase sélectionnée */}
+      <PhaseCard phase={phases[selectedPhase as keyof typeof phases]} />
+    </div>
+  );
+}
+
+export function BudgetPhaseDetail() {
+  const [activeTab, setActiveTab] = useState('synthese');
+
+  return (
+    <div className="space-y-6">
+      {/* Toolbar Import/Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-primary-900">Budget Estimatif par Phase</h2>
+          <p className="text-sm text-primary-500">Referentiel V2.0 - Janvier 2026</p>
+        </div>
+        <BudgetImportExport budgetType="estimatif" />
+      </div>
+
+      {/* Onglets */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="synthese">Synthèse</TabsTrigger>
+          <TabsTrigger value="detail">Détail</TabsTrigger>
+          <TabsTrigger value="graphiques">Graphiques</TabsTrigger>
+          <TabsTrigger value="par-phase">Par phase</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="phase1">
-          <PhaseCard phase={BUDGET_PHASE1} />
+        <TabsContent value="synthese">
+          <VueSynthese />
         </TabsContent>
-        <TabsContent value="phase2">
-          <PhaseCard phase={BUDGET_PHASE2} />
+        <TabsContent value="detail">
+          <VueDetail />
         </TabsContent>
-        <TabsContent value="phase3">
-          <PhaseCard phase={BUDGET_PHASE3} />
+        <TabsContent value="graphiques">
+          <VueGraphiques />
         </TabsContent>
-        <TabsContent value="phase4">
-          <PhaseCard phase={BUDGET_PHASE4} />
-        </TabsContent>
-        <TabsContent value="tresorerie">
-          <TresorerieChart />
+        <TabsContent value="par-phase">
+          <VueParPhase />
         </TabsContent>
       </Tabs>
     </div>

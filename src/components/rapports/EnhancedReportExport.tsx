@@ -79,6 +79,7 @@ import {
   generateExecutiveSummary,
   generateSectionComment,
 } from '@/services/reportAnalysisService';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface ReportSection {
   id: string;
@@ -190,7 +191,7 @@ export function EnhancedReportExport() {
   const teams = useTeams();
   const alertes = useAlertes();
   const historique = useHistorique(100);
-  const syncData = useSync('cosmos-angre');
+  const syncData = useSync(1, 'cosmos-angre');
 
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'copil',
@@ -201,7 +202,7 @@ export function EnhancedReportExport() {
     'budget',
     'risques',
   ]);
-  const [reportTitle, setReportTitle] = useState('Rapport de projet COSMOS ANGRE');
+  const [reportTitle, setReportTitle] = useState(`Rapport de projet ${PROJET_CONFIG.nom}`);
   const [generating, setGenerating] = useState<string | null>(null);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod | null>(() => {
     const now = new Date();
@@ -371,7 +372,7 @@ export function EnhancedReportExport() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text('COSMOS ANGRE', pageWidth / 2, 25, { align: 'center' });
+      doc.text(PROJET_CONFIG.nom, pageWidth / 2, 25, { align: 'center' });
 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
@@ -455,13 +456,13 @@ export function EnhancedReportExport() {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...COLORS.textLight);
-      const statsLine = `Ce rapport contient: ${actions.length} actions | ${jalons.length} jalons | ${risques.length} risques | ${budgetItems.length} postes budget | ${syncData.items.length} items synchronisation`;
+      const statsLine = `Ce rapport contient: ${actions.length} actions | ${jalons.length} jalons | ${risques.length} risques | ${budgetItems.length} postes budget | ${syncData.categories?.length || 0} categories sync`;
       doc.text(statsLine, pageWidth / 2, currentY, { align: 'center' });
 
       // Pied de page
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.textLight);
-      doc.text('Document confidentiel - COSMOS ANGRE', pageWidth / 2, pageHeight - 15, { align: 'center' });
+      doc.text(`Document confidentiel - ${PROJET_CONFIG.nom}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
       // ==================== DASHBOARD COPIL ====================
       if (selectedSections.includes('copil')) {
@@ -1309,7 +1310,7 @@ export function EnhancedReportExport() {
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.textLight);
         doc.text(
-          `Page ${i}/${pageCount} - COSMOS ANGRE - ${today.toLocaleDateString('fr-FR')}`,
+          `Page ${i}/${pageCount} - ${PROJET_CONFIG.nom} - ${today.toLocaleDateString('fr-FR')}`,
           pageWidth / 2,
           pageHeight - 8,
           { align: 'center' }
@@ -1317,7 +1318,7 @@ export function EnhancedReportExport() {
       }
 
       // Sauvegarde
-      doc.save(`rapport-cosmos-angre-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`rapport-${PROJET_CONFIG.nom.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
 
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -1345,7 +1346,7 @@ export function EnhancedReportExport() {
       // Summary sheet
       if (selectedSections.includes('summary')) {
         const summaryData = [
-          ['RAPPORT DE PROJET - COSMOS ANGRE'],
+          [`RAPPORT DE PROJET - ${PROJET_CONFIG.nom}`],
           [''],
           ['Date de generation', new Date().toLocaleDateString('fr-FR')],
           [''],
@@ -1428,23 +1429,17 @@ export function EnhancedReportExport() {
 
       // Synchronisation sheets
       if (selectedSections.includes('synchronisation')) {
-        if (syncData.items.length > 0) {
-          const wsSyncItems = XLSX.utils.json_to_sheet(
-            syncData.items.map(item => {
-              const category = syncData.categories.find(c => c.id === item.categoryId);
-              return {
-                'Code': item.code,
-                'Nom': item.name,
-                'Categorie': category?.name || item.categoryId,
-                'Dimension': category?.dimension === 'PROJECT' ? 'Projet' : 'Mobilisation',
-                'Avancement (%)': item.progressPercent,
-                'Statut': item.status,
-                'Responsable': item.responsible || '',
-                'Date fin prevue': item.plannedEndDate || '',
-              };
-            })
+        if (syncData.categories && syncData.categories.length > 0) {
+          const wsSyncCategories = XLSX.utils.json_to_sheet(
+            syncData.categories.map(cat => ({
+              'ID': cat.id,
+              'Nom': cat.name,
+              'Dimension': cat.dimension === 'PROJECT' ? 'Projet' : 'Mobilisation',
+              'Avancement (%)': cat.progress || 0,
+              'Poids': cat.weight || 1,
+            }))
           );
-          XLSX.utils.book_append_sheet(wb, wsSyncItems, 'Sync-Items');
+          XLSX.utils.book_append_sheet(wb, wsSyncCategories, 'Sync-Categories');
         }
       }
 
@@ -1529,7 +1524,7 @@ export function EnhancedReportExport() {
         }
       }
 
-      XLSX.writeFile(wb, `export-cosmos-angre-${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `export-${PROJET_CONFIG.nom.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
       console.error('Error generating Excel:', error);
       alert('Erreur lors de la generation Excel');
@@ -1565,7 +1560,7 @@ export function EnhancedReportExport() {
         <div className="flex flex-wrap gap-2 p-3 bg-primary-50 rounded-lg">
           <Badge variant="info">{actions.length} actions</Badge>
           <Badge variant="info">{jalons.length} jalons</Badge>
-          <Badge variant="info">{syncData.items.length} items sync</Badge>
+          <Badge variant="info">{syncData?.categories?.length || 0} cat. sync</Badge>
           <Badge variant="warning">{risques.length} risques</Badge>
           <Badge variant="success">{budgetItems.length} postes budget</Badge>
           <Badge variant="secondary">{users.length} utilisateurs</Badge>

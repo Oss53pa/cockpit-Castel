@@ -22,24 +22,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/openrouter/, ''),
       },
-      // Proxy pour SendGrid
-      '/api/sendgrid': {
-        target: 'https://api.sendgrid.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sendgrid/, ''),
-      },
-      // Proxy pour Mailgun
-      '/api/mailgun': {
-        target: 'https://api.mailgun.net',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/mailgun/, ''),
-      },
-      // Proxy pour Resend
-      '/api/resend': {
-        target: 'https://api.resend.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/resend/, ''),
-      },
     },
   },
   plugins: [

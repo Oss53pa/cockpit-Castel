@@ -57,6 +57,7 @@ import {
 } from '@/hooks/useDeepDives';
 import type { DeepDive, ProjectWeather } from '@/types/deepDive';
 import { WEATHER_CONFIG } from '@/types/deepDive';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface JournalProps {
   onOpenDeepDive: (id: number) => void;
@@ -296,7 +297,7 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
   const handleNewDeepDive = async () => {
     const newId = await createDeepDive({
       titre: 'Nouveau DeepDive',
-      projet: 'COSMOS ANGRE',
+      projet: PROJET_CONFIG.nom,
       periode: new Date().toISOString().slice(0, 7),
       periodeDebut: new Date().toISOString().slice(0, 7),
       periodeFin: new Date().toISOString().slice(0, 7),

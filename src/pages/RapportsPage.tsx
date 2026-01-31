@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -34,6 +34,7 @@ import {
   Shield,
   Presentation,
   Bot,
+  Zap,
 } from 'lucide-react';
 import {
   Card,
@@ -73,6 +74,15 @@ import { DeepDiveLancement } from '@/components/rapports/DeepDiveLancement';
 import { ImportIA } from '@/components/rapports/ImportIA';
 import { Journal } from '@/components/rapports/Journal';
 import { ReportPeriodSelector, type ReportPeriod } from '@/components/rapports/ReportPeriodSelector';
+import { ReportGenerator } from '@/components/rapports/ReportGenerator';
+import {
+  downloadReportHTML,
+  openReportHTML,
+  downloadReportPDF,
+  downloadReportPPTX,
+} from '@/services/reportExportService';
+import type { GeneratedReport } from '@/types/reports.types';
+import { DEFAULT_EXPORT_OPTIONS } from '@/types/reports.types';
 import { sendReportShareEmail, openEmailClientForReport } from '@/services/emailService';
 import type { ReportType, ReportStatus, ChartCategory, TableCategory } from '@/types/reportStudio';
 import {
@@ -143,7 +153,7 @@ const statusColors: Record<ReportStatus, string> = {
 
 const CHART_COLORS = ['#1C3163', '#D4AF37', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal';
+type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal' | 'auto_generation';
 
 // Type pour les commentaires de section
 interface ReportComment {
@@ -246,7 +256,7 @@ export function RapportsPage() {
   const [newReportData, setNewReportData] = useState<{
     title: string;
     type: ReportType;
-    templateId: string;
+    templateIds: string[]; // Support multiple templates
     period: ReportPeriod | null;
   }>(() => {
     // Default period = current month
@@ -258,7 +268,7 @@ export function RapportsPage() {
     return {
       title: '',
       type: 'RAPPORT_MENSUEL' as ReportType,
-      templateId: '',
+      templateIds: [], // Array for multiple selection
       period: {
         type: 'month',
         label: months[month],
@@ -279,49 +289,25 @@ export function RapportsPage() {
   // Deep Dive state
   const [deepDiveTemplate, setDeepDiveTemplate] = useState<'launch' | 'monthly'>('launch');
 
-  // HTML Reports state
-  const [sharedReports, setSharedReports] = useState<SharedHtmlReport[]>([
-    // Données de démonstration
-    {
-      id: 'share-1',
-      reportId: 1,
-      reportTitle: 'Rapport Mensuel - Janvier 2025',
-      reportType: 'RAPPORT_MENSUEL',
-      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/abc123xyz',
-      createdAt: '2025-01-15T10:30:00Z',
-      expiresAt: '2025-02-15T10:30:00Z',
-      viewCount: 24,
-      isActive: true,
-      sharedBy: 'Jean Martin',
-      recipients: ['direction@cosmos.com', 'finance@cosmos.com'],
-    },
-    {
-      id: 'share-2',
-      reportId: 2,
-      reportTitle: 'Avancement Projet Handover - S03',
-      reportType: 'AVANCEMENT_PROJET',
-      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/def456uvw',
-      createdAt: '2025-01-20T14:00:00Z',
-      expiresAt: null,
-      viewCount: 15,
-      isActive: true,
-      sharedBy: 'Sophie Dupont',
-      recipients: ['proprietaire@castel.com'],
-    },
-    {
-      id: 'share-3',
-      reportId: 3,
-      reportTitle: 'Flash Projet - Semaine 02',
-      reportType: 'FLASH_PROJET',
-      shareLink: 'https://cockpit.cosmos-angre.com/reports/share/ghi789rst',
-      createdAt: '2025-01-10T09:00:00Z',
-      expiresAt: '2025-01-17T09:00:00Z',
-      viewCount: 8,
-      isActive: false,
-      sharedBy: 'Jean Martin',
-      recipients: ['equipe@cosmos.com'],
-    },
-  ]);
+  // HTML Reports state - chargé depuis localStorage ou vide
+  const [sharedReports, setSharedReports] = useState<SharedHtmlReport[]>(() => {
+    // Charger les rapports partagés depuis localStorage
+    const stored = localStorage.getItem('shared-reports-list');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Persister les rapports partagés dans localStorage
+  useEffect(() => {
+    localStorage.setItem('shared-reports-list', JSON.stringify(sharedReports));
+  }, [sharedReports]);
+
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedReportForShare, setSelectedReportForShare] = useState<number | null>(null);
   const [sharePeriod, setSharePeriod] = useState<ReportPeriod | null>(() => {
@@ -397,32 +383,53 @@ export function RapportsPage() {
   const handleCreateReport = async () => {
     if (!newReportData.title.trim()) return;
 
-    const template = newReportData.templateId
-      ? REPORT_TEMPLATES.find((t) => t.id === newReportData.templateId)
-      : null;
+    // Récupérer tous les templates sélectionnés
+    const selectedTemplates = newReportData.templateIds
+      .map((id) => REPORT_TEMPLATES.find((t) => t.id === id))
+      .filter(Boolean);
+
+    // Fusionner les sections de tous les templates sélectionnés
+    let mergedSections: typeof REPORT_TEMPLATES[0]['sections'] = [];
+    let mergedDescription = '';
+
+    if (selectedTemplates.length > 0) {
+      // Combiner les sections de tous les templates
+      selectedTemplates.forEach((template, index) => {
+        if (template?.sections) {
+          mergedSections = [...mergedSections, ...template.sections];
+        }
+        if (template?.description) {
+          mergedDescription += (index > 0 ? ' | ' : '') + template.description;
+        }
+      });
+    }
+
+    // Utiliser les designSettings du premier template ou les valeurs par défaut
+    const firstTemplate = selectedTemplates[0];
+    const designSettings = firstTemplate?.designSettings || {
+      page: { format: 'A4', orientation: 'portrait', margins: 'normal' },
+      typography: { headingFont: 'Exo 2', bodyFont: 'Inter', baseFontSize: 12 },
+      colors: {
+        primary: '#1C3163',
+        secondary: '#D4AF37',
+        accent: '#10b981',
+        text: '#1f2937',
+        background: '#ffffff',
+      },
+      branding: { showPageNumbers: true },
+      coverPage: { enabled: true, template: 'standard' },
+      tableOfContents: { enabled: true, depth: 2, showPageNumbers: true },
+    };
 
     const id = await createReport({
       centreId: 1,
       title: newReportData.title,
-      description: template?.description || '',
+      description: mergedDescription || `Rapport combiné (${selectedTemplates.length} modèle${selectedTemplates.length > 1 ? 's' : ''})`,
       type: newReportData.type,
       status: 'draft',
       author: 'Utilisateur',
-      contentTree: template?.contentTree || { sections: [] },
-      designSettings: template?.designSettings || {
-        page: { format: 'A4', orientation: 'portrait', margins: 'normal' },
-        typography: { headingFont: 'Exo 2', bodyFont: 'Inter', baseFontSize: 12 },
-        colors: {
-          primary: '#1C3163',
-          secondary: '#D4AF37',
-          accent: '#10b981',
-          text: '#1f2937',
-          background: '#ffffff',
-        },
-        branding: { showPageNumbers: true },
-        coverPage: { enabled: true, template: 'standard' },
-        tableOfContents: { enabled: true, depth: 2, showPageNumbers: true },
-      },
+      contentTree: { sections: mergedSections },
+      designSettings,
     });
 
     setShowNewReportModal(false);
@@ -435,7 +442,7 @@ export function RapportsPage() {
     setNewReportData({
       title: '',
       type: 'RAPPORT_MENSUEL',
-      templateId: '',
+      templateIds: [],
       period: {
         type: 'month',
         label: months[month],
@@ -660,6 +667,10 @@ export function RapportsPage() {
             {sharedReports.filter(r => r.isActive).length > 0 && (
               <Badge variant="secondary">{sharedReports.filter(r => r.isActive).length}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="auto_generation" className="gap-2">
+            <Zap className="h-4 w-4" />
+            Génération Auto
           </TabsTrigger>
           <TabsTrigger value="deep_dive" className="gap-2">
             <Presentation className="h-4 w-4" />
@@ -1387,6 +1398,42 @@ export function RapportsPage() {
           </Card>
         </TabsContent>
 
+        {/* Auto Generation */}
+        <TabsContent value="auto_generation">
+          <ReportGenerator
+            onExport={(report: GeneratedReport, format: 'pdf' | 'html' | 'pptx') => {
+              const options = DEFAULT_EXPORT_OPTIONS;
+              if (format === 'pdf') {
+                downloadReportPDF(report, options);
+              } else if (format === 'html') {
+                openReportHTML(report, options);
+              } else if (format === 'pptx') {
+                downloadReportPPTX(report, options);
+              }
+            }}
+            onSend={(report: GeneratedReport) => {
+              // Créer un partage HTML et rediriger vers l'onglet partage
+              const shareId = Math.random().toString(36).substring(2, 10);
+              const now = new Date().toISOString();
+              const newShare: SharedHtmlReport = {
+                id: `share-${Date.now()}`,
+                reportId: Date.now(),
+                reportTitle: report.titre,
+                reportType: 'RAPPORT_MENSUEL',
+                shareLink: `${window.location.origin}/reports/share/${shareId}`,
+                createdAt: now,
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                viewCount: 0,
+                isActive: true,
+                sharedBy: 'Utilisateur',
+                recipients: report.destinataires.map(d => d.email).filter(e => e),
+              };
+              setSharedReports(prev => [newShare, ...prev]);
+              setViewMode('html_reports');
+            }}
+          />
+        </TabsContent>
+
         {/* Deep Dive */}
         <TabsContent value="deep_dive">
           <div className="space-y-6">
@@ -1448,7 +1495,7 @@ export function RapportsPage() {
 
       {/* New Report Modal */}
       <Dialog open={showNewReportModal} onOpenChange={setShowNewReportModal}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Nouveau rapport</DialogTitle>
           </DialogHeader>
@@ -1488,22 +1535,82 @@ export function RapportsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">
-                Modèle (optionnel)
+              <label className="block text-sm font-medium text-primary-700 mb-2">
+                Modèles (sélection multiple)
               </label>
-              <Select
-                value={newReportData.templateId}
-                onChange={(e) =>
-                  setNewReportData((prev) => ({ ...prev, templateId: e.target.value }))
-                }
-              >
-                <SelectOption value="">Document vierge</SelectOption>
-                {REPORT_TEMPLATES.map((template) => (
-                  <SelectOption key={template.id} value={template.id}>
-                    {template.name}
-                  </SelectOption>
-                ))}
-              </Select>
+              <p className="text-xs text-primary-500 mb-3">
+                Sélectionnez un ou plusieurs modèles à combiner dans votre rapport
+              </p>
+              <div className="border rounded-lg max-h-48 overflow-y-auto">
+                {/* Option document vierge */}
+                <label
+                  className={`flex items-center gap-3 p-3 border-b cursor-pointer hover:bg-primary-50 transition-colors ${
+                    newReportData.templateIds.length === 0 ? 'bg-primary-50' : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={newReportData.templateIds.length === 0}
+                    onChange={() => setNewReportData((prev) => ({ ...prev, templateIds: [] }))}
+                    className="h-4 w-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <div className="flex-1">
+                    <span className="font-medium text-primary-900">Document vierge</span>
+                    <p className="text-xs text-primary-500">Commencer avec un rapport vide</p>
+                  </div>
+                </label>
+
+                {/* Templates disponibles */}
+                {REPORT_TEMPLATES.map((template) => {
+                  const isSelected = newReportData.templateIds.includes(template.id);
+                  return (
+                    <label
+                      key={template.id}
+                      className={`flex items-center gap-3 p-3 border-b last:border-b-0 cursor-pointer hover:bg-primary-50 transition-colors ${
+                        isSelected ? 'bg-primary-50' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          setNewReportData((prev) => ({
+                            ...prev,
+                            templateIds: e.target.checked
+                              ? [...prev.templateIds, template.id]
+                              : prev.templateIds.filter((id) => id !== template.id),
+                          }));
+                        }}
+                        className="h-4 w-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex-1">
+                        <span className="font-medium text-primary-900">{template.name}</span>
+                        {template.description && (
+                          <p className="text-xs text-primary-500 line-clamp-1">{template.description}</p>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {template.sections?.length || 0} sections
+                      </Badge>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Résumé de la sélection */}
+              {newReportData.templateIds.length > 0 && (
+                <div className="mt-3 p-3 bg-success-50 rounded-lg border border-success-200">
+                  <div className="flex items-center gap-2 text-success-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {newReportData.templateIds.length} modèle{newReportData.templateIds.length > 1 ? 's' : ''} sélectionné{newReportData.templateIds.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-xs text-success-600 mt-1">
+                    Les sections seront combinées dans l'ordre de sélection
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Période du rapport */}
@@ -1780,7 +1887,7 @@ export function RapportsPage() {
                   <strong>Aperçu du lien :</strong>
                 </p>
                 <code className="text-xs text-info-600 block mt-1 break-all">
-                  https://cockpit.cosmos-angre.com/reports/share/{Math.random().toString(36).substring(2, 10)}
+                  {window.location.origin}/reports/share/{Math.random().toString(36).substring(2, 10)}
                 </code>
               </div>
             )}
@@ -1848,7 +1955,7 @@ export function RapportsPage() {
                       reportId: report.id!,
                       reportTitle: report.title,
                       reportType: report.type,
-                      shareLink: `https://cockpit.cosmos-angre.com/reports/share/${shareId}`,
+                      shareLink: `${window.location.origin}/reports/share/${shareId}`,
                       createdAt: now,
                       expiresAt:
                         shareSettings.expirationDays > 0

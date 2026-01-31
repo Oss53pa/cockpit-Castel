@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, User, Mail } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Edit2, Trash2, User, Mail, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import {
   Card,
   Button,
@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  Tooltip,
+  useToast,
 } from '@/components/ui';
 import {
   useUsers,
@@ -23,6 +25,7 @@ import {
 } from '@/hooks';
 import type { User as UserType, UserRole } from '@/types';
 import { USER_ROLES, USER_ROLE_LABELS } from '@/types';
+import { excelService } from '@/services/excelService';
 
 interface UserFormData {
   nom: string;
@@ -40,9 +43,12 @@ const initialFormData: UserFormData = {
 
 export function UserManagement() {
   const users = useUsers();
+  const toast = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [formData, setFormData] = useState<UserFormData>(initialFormData);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setFormData(initialFormData);
@@ -69,29 +75,40 @@ export function UserManagement() {
     e.preventDefault();
     if (!formData.nom || !formData.prenom || !formData.email) return;
 
-    if (editingUser?.id) {
-      await updateUser(editingUser.id, {
-        nom: formData.nom,
-        prenom: formData.prenom,
-        email: formData.email,
-        role: formData.role,
-      });
-    } else {
-      await createUser({
-        nom: formData.nom,
-        prenom: formData.prenom,
-        email: formData.email,
-        role: formData.role,
-      });
-    }
+    try {
+      if (editingUser?.id) {
+        await updateUser(editingUser.id, {
+          nom: formData.nom,
+          prenom: formData.prenom,
+          email: formData.email,
+          role: formData.role,
+        });
+        toast.success('Utilisateur modifie', `${formData.prenom} ${formData.nom}`);
+      } else {
+        await createUser({
+          nom: formData.nom,
+          prenom: formData.prenom,
+          email: formData.email,
+          role: formData.role,
+        });
+        toast.success('Utilisateur cree', `${formData.prenom} ${formData.nom}`);
+      }
 
-    setIsDialogOpen(false);
-    resetForm();
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error('Erreur', 'Impossible de sauvegarder l\'utilisateur');
+    }
   };
 
   const handleDelete = async (userId: number) => {
     if (confirm('Supprimer cet utilisateur ?')) {
-      await deleteUser(userId);
+      try {
+        await deleteUser(userId);
+        toast.success('Utilisateur supprime');
+      } catch (error) {
+        toast.error('Erreur', 'Impossible de supprimer l\'utilisateur');
+      }
     }
   };
 
@@ -106,6 +123,61 @@ export function UserManagement() {
     }
   };
 
+  // === EXCEL IMPORT/EXPORT ===
+  const handleExportExcel = () => {
+    excelService.exportResponsables(users);
+  };
+
+  const handleDownloadTemplate = () => {
+    excelService.downloadTemplate('responsables');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const result = await excelService.importResponsables(file);
+
+      if (result.errors.length > 0) {
+        toast.warning('Import partiel', `${result.errors.length} erreur(s) rencontree(s)`);
+      }
+
+      for (const userData of result.data) {
+        // Vérifier si l'utilisateur existe déjà (par email)
+        const existingUser = users.find(u => u.email === userData.email);
+
+        if (existingUser && existingUser.id) {
+          await updateUser(existingUser.id, userData);
+        } else if (userData.nom && userData.prenom && userData.email) {
+          await createUser({
+            nom: userData.nom,
+            prenom: userData.prenom,
+            email: userData.email,
+            role: userData.role || 'viewer',
+          });
+        }
+      }
+
+      if (result.data.length > 0) {
+        toast.success('Import reussi', `${result.data.length} utilisateur(s) importe(s)`);
+      }
+    } catch (error) {
+      console.error('Erreur import Excel:', error);
+      toast.error('Erreur', 'Erreur lors de l\'import du fichier Excel');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <Card padding="md">
       <div className="flex items-center justify-between mb-4">
@@ -117,10 +189,37 @@ export function UserManagement() {
             Creer et gerer les utilisateurs et leurs droits d'acces
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvel utilisateur
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Boutons Excel Import/Export */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <Tooltip content="Importer depuis Excel">
+            <Button variant="outline" size="sm" onClick={handleImportClick} disabled={importing}>
+              <Upload className="h-4 w-4 mr-1" />
+              {importing ? 'Import...' : 'Importer'}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Exporter vers Excel">
+            <Button variant="outline" size="sm" onClick={handleExportExcel}>
+              <Download className="h-4 w-4 mr-1" />
+              Exporter
+            </Button>
+          </Tooltip>
+          <Tooltip content="Télécharger le modèle Excel">
+            <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}>
+              <FileSpreadsheet className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+          <Button onClick={openCreateDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel utilisateur
+          </Button>
+        </div>
       </div>
 
       {/* Users List */}

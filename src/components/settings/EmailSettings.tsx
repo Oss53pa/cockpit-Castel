@@ -45,7 +45,6 @@ export function EmailSettings() {
   const [activeTab, setActiveTab] = useState<TabType>('config');
   const [config, setConfig] = useState<EmailConfig>(getEmailConfig());
   const [showPassword, setShowPassword] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -197,9 +196,6 @@ export function EmailSettings() {
                 { id: 'emailjs', label: 'EmailJS', desc: 'Cote client (Recommande)' },
                 { id: 'simulation', label: 'Simulation', desc: 'Mode demo (pas d\'envoi)' },
                 { id: 'smtp', label: 'SMTP', desc: 'Serveur personnalise' },
-                { id: 'sendgrid', label: 'SendGrid', desc: 'API SendGrid' },
-                { id: 'mailgun', label: 'Mailgun', desc: 'API Mailgun' },
-                { id: 'resend', label: 'Resend', desc: 'API Resend' },
               ].map(provider => (
                 <button
                   key={provider.id}
@@ -355,38 +351,6 @@ export function EmailSettings() {
               </div>
             )}
 
-            {/* API Settings (for SendGrid, Mailgun, Resend) */}
-            {['sendgrid', 'mailgun', 'resend'].includes(config.provider) && (
-              <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-primary-800">Configuration API</h4>
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                  <p className="text-xs text-amber-800">
-                    <strong>Note:</strong> Ces fournisseurs necessitent un proxy backend pour eviter les erreurs CORS.
-                    Utilisez le Cloudflare Worker fourni ou configurez EmailJS.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary-700 mb-1">
-                    Cle API {config.provider}
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showApiKey ? 'text' : 'password'}
-                      placeholder="Votre cle API..."
-                      value={config.apiKey || ''}
-                      onChange={e => setConfig({ ...config, apiKey: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    >
-                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </Card>
 
           {/* Sender Settings */}

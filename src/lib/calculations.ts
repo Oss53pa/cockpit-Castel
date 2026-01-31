@@ -1,8 +1,170 @@
-import type { Action, Jalon, Risque, MeteoProjet } from '@/types';
+import type { Action, Jalon, Risque, MeteoProjet, SousTache, MeteoJalon, StatutJalonV2, StatutActionV2 } from '@/types';
 import { getDaysUntil } from './utils';
 
 // ============================================================================
-// PROGRESS CALCULATIONS
+// SPÉCIFICATIONS V2.0 - CALCULS AUTOMATISÉS
+// ============================================================================
+
+/**
+ * Calcule le pourcentage d'avancement d'une action (spécifications v2.0)
+ * - Si statut A_FAIRE → 0%
+ * - Si statut FAIT → 100%
+ * - Si statut BLOQUE → garde la valeur actuelle
+ * - Si EN_COURS avec sous-tâches → basé sur les sous-tâches faites
+ * - Si EN_COURS sans sous-tâches → valeur manuelle ou 50% par défaut
+ */
+export function calculerPourcentageAction(
+  statut: StatutActionV2 | string,
+  sousTaches: SousTache[] = [],
+  pourcentageActuel: number = 50
+): number {
+  // Mapping des statuts legacy vers v2.0
+  const statutNormalise = normaliserStatutAction(statut);
+
+  if (statutNormalise === 'A_FAIRE') return 0;
+  if (statutNormalise === 'FAIT') return 100;
+  if (statutNormalise === 'BLOQUE') return pourcentageActuel;
+
+  // EN_COURS avec sous-tâches
+  if (sousTaches.length > 0) {
+    const faites = sousTaches.filter(st => st.fait).length;
+    return Math.round((faites / sousTaches.length) * 100);
+  }
+
+  // EN_COURS sans sous-tâches → valeur manuelle ou 50% par défaut
+  return pourcentageActuel || 50;
+}
+
+/**
+ * Calcule le pourcentage d'avancement d'un jalon (spécifications v2.0)
+ * = Moyenne des pourcentages de toutes les actions du jalon
+ */
+export function calculerPourcentageJalon(actions: Action[]): number {
+  if (actions.length === 0) return 0;
+
+  const somme = actions.reduce((acc, action) => {
+    return acc + (action.avancement || 0);
+  }, 0);
+
+  return Math.round(somme / actions.length);
+}
+
+/**
+ * Calcule le statut d'un jalon (spécifications v2.0)
+ * - A_VENIR : 0% et date début > aujourd'hui
+ * - A_VALIDER : 100% atteint, en attente de validation
+ * - ATTEINT : validé
+ * - EN_RETARD : échéance dépassée et < 100%
+ * - EN_COURS : en progression
+ */
+export function calculerStatutJalon(
+  pourcentage: number,
+  dateDebutPrevue: Date | string,
+  dateFinPrevue: Date | string,
+  dateValidation?: Date | string | null
+): StatutJalonV2 {
+  const now = new Date();
+  const debut = new Date(dateDebutPrevue);
+  const fin = new Date(dateFinPrevue);
+
+  if (dateValidation) {
+    return 'ATTEINT';
+  }
+
+  if (pourcentage === 0 && debut > now) {
+    return 'A_VENIR';
+  }
+
+  if (pourcentage === 100) {
+    return 'A_VALIDER';
+  }
+
+  if (fin < now && pourcentage < 100) {
+    return 'EN_RETARD';
+  }
+
+  return 'EN_COURS';
+}
+
+/**
+ * Calcule la météo d'un jalon (spécifications v2.0)
+ * Basée sur l'écart entre le % réel et le % théorique (temps écoulé)
+ * - SOLEIL : en avance ou à l'heure (écart >= -5)
+ * - NUAGEUX : léger retard (écart >= -20)
+ * - ORAGEUX : retard significatif (écart < -20)
+ */
+export function calculerMeteoJalon(
+  pourcentageReel: number,
+  dateDebutPrevue: Date | string,
+  dateFinPrevue: Date | string
+): MeteoJalon {
+  const now = new Date();
+  const debut = new Date(dateDebutPrevue);
+  const fin = new Date(dateFinPrevue);
+
+  // Calcul du % théorique basé sur le temps écoulé
+  const dureeTotal = fin.getTime() - debut.getTime();
+  const dureeEcoulee = Math.max(0, now.getTime() - debut.getTime());
+  const pourcentageTheorique = Math.min(100, (dureeEcoulee / dureeTotal) * 100);
+
+  // Écart entre réel et théorique
+  const ecart = pourcentageReel - pourcentageTheorique;
+
+  if (ecart >= -5) return 'SOLEIL';      // ☀️ En avance ou à l'heure
+  if (ecart >= -20) return 'NUAGEUX';    // 🌤️ Léger retard
+  return 'ORAGEUX';                       // ⛈️ Retard significatif
+}
+
+/**
+ * Normalise un statut d'action legacy vers v2.0
+ */
+export function normaliserStatutAction(statut: string): StatutActionV2 {
+  const mapping: Record<string, StatutActionV2> = {
+    // Statuts v2.0
+    'A_FAIRE': 'A_FAIRE',
+    'EN_COURS': 'EN_COURS',
+    'FAIT': 'FAIT',
+    'BLOQUE': 'BLOQUE',
+    // Statuts legacy
+    'a_faire': 'A_FAIRE',
+    'en_cours': 'EN_COURS',
+    'termine': 'FAIT',
+    'fait': 'FAIT',
+    'bloque': 'BLOQUE',
+    'a_planifier': 'A_FAIRE',
+    'planifie': 'A_FAIRE',
+    'en_attente': 'EN_COURS',
+    'en_validation': 'EN_COURS',
+    'annule': 'FAIT',
+    'reporte': 'A_FAIRE',
+  };
+  return mapping[statut] || 'A_FAIRE';
+}
+
+/**
+ * Normalise un statut de jalon legacy vers v2.0
+ */
+export function normaliserStatutJalon(statut: string): StatutJalonV2 {
+  const mapping: Record<string, StatutJalonV2> = {
+    // Statuts v2.0
+    'A_VENIR': 'A_VENIR',
+    'EN_COURS': 'EN_COURS',
+    'A_VALIDER': 'A_VALIDER',
+    'ATTEINT': 'ATTEINT',
+    'EN_RETARD': 'EN_RETARD',
+    // Statuts legacy
+    'a_venir': 'A_VENIR',
+    'en_approche': 'EN_COURS',
+    'en_danger': 'EN_RETARD',
+    'atteint': 'ATTEINT',
+    'depasse': 'EN_RETARD',
+    'annule': 'ATTEINT',
+  };
+  return mapping[statut] || 'A_VENIR';
+}
+
+// ============================================================================
+// PROGRESS CALCULATIONS (existing)
 // ============================================================================
 
 export function calculateActionProgress(actions: Action[]): number {

@@ -1,5 +1,6 @@
 export * from './LoginPage';
 export * from './DashboardPage';
+export * from './AxesPage';
 export * from './ActionsPage';
 export * from './JalonsPage';
 export * from './BudgetPage';

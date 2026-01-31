@@ -7,14 +7,11 @@ export { SyncAlertBanner } from './SyncAlertBanner';
 export { SyncActionList } from './SyncActionList';
 export { SyncStatusBadge } from './SyncStatusBadge';
 export { SyncItemModal } from './SyncItemModal';
+export { ConstructionCCView } from './ConstructionCCView';
+export { TimelineSynchronisee } from './TimelineSynchronisee';
 
-// Hierarchical components (AXE > JALON > ACTION)
+// Hierarchical Gantt component (AXE > JALON > ACTION)
 export { SyncGanttHierarchical } from './SyncGanttHierarchical';
-export { SyncPertHierarchical } from './SyncPertHierarchical';
 
-// Interdependency components
-export * from './interdependency';
-
-// Re-export Gantt and PERT components for convenience
+// Re-export Gantt component for convenience
 export { GanttChart } from '@/components/gantt';
-export { PertChart } from '@/components/pert';

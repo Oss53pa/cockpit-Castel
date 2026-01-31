@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText, BarChart3 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText, BarChart3, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
-import { Button, Select, SelectOption, Card, Badge } from '@/components/ui';
+import { Button, Select, SelectOption, Card, Badge, Tooltip } from '@/components/ui';
+import { excelService } from '@/services/excelService';
+import { useRisques, createRisque, updateRisque } from '@/hooks';
 import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
 import {
   RISQUE_CATEGORIES,
@@ -23,6 +25,9 @@ export function RisquesPage() {
   const [viewMode, setViewMode] = useState<'list' | 'matrix' | 'top10' | 'synthese'>('list');
   const [formOpen, setFormOpen] = useState(false);
   const [selectedRisque, setSelectedRisque] = useState<Risque | undefined>();
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const risques = useRisques(risqueFilters);
 
   // État pour les risques de la cellule sélectionnée dans la matrice
   const [selectedCellRisques, setSelectedCellRisques] = useState<{
@@ -55,6 +60,56 @@ export function RisquesPage() {
     setSelectedCellRisques({ probabilite, impact, risques });
   };
 
+  // === EXCEL IMPORT/EXPORT ===
+  const handleExportExcel = () => {
+    excelService.exportRisques(risques);
+  };
+
+  const handleDownloadTemplate = () => {
+    excelService.downloadTemplate('risques');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const result = await excelService.importRisques(file);
+
+      if (result.errors.length > 0) {
+        const errorMessages = result.errors.map(err => `Ligne ${err.row}: ${err.message}`).join('\n');
+        alert(`Erreurs d'import:\n${errorMessages}`);
+      }
+
+      for (const risqueData of result.data) {
+        const existingRisque = risques.find(r => r.id_risque === risqueData.id_risque);
+
+        if (existingRisque && existingRisque.id) {
+          await updateRisque(existingRisque.id, risqueData);
+        } else {
+          await createRisque(risqueData as Parameters<typeof createRisque>[0]);
+        }
+      }
+
+      if (result.data.length > 0) {
+        alert(`Import réussi: ${result.data.length} risque(s) importé(s)`);
+      }
+    } catch (error) {
+      console.error('Erreur import Excel:', error);
+      alert('Erreur lors de l\'import du fichier Excel');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 12) return 'bg-error-500 text-white';
     if (score >= 9) return 'bg-warning-500 text-white';
@@ -80,10 +135,38 @@ export function RisquesPage() {
           </p>
         </div>
 
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau risque
-        </Button>
+        {/* Boutons Excel Import/Export */}
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <Tooltip content="Importer depuis Excel">
+            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+              <Upload className="h-4 w-4 mr-2" />
+              {importing ? 'Import...' : 'Importer'}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Exporter vers Excel">
+            <Button variant="outline" onClick={handleExportExcel}>
+              <Download className="h-4 w-4 mr-2" />
+              Exporter
+            </Button>
+          </Tooltip>
+          <Tooltip content="Télécharger le modèle Excel">
+            <Button variant="ghost" onClick={handleDownloadTemplate}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Template
+            </Button>
+          </Tooltip>
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau risque
+          </Button>
+        </div>
       </div>
 
       {/* Filters and view toggle */}

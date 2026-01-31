@@ -3,6 +3,7 @@ import {
   Wallet,
   CheckCircle,
   TrendingDown,
+  TrendingUp,
   PiggyBank,
   AlertTriangle,
   ArrowDownLeft,
@@ -19,6 +20,9 @@ import {
   Calendar,
   Percent,
   Info,
+  Pencil,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import {
   BarChart,
@@ -50,8 +54,14 @@ import {
   TableRow,
   TableCell,
   Badge,
+  Button,
+  Progress,
 } from '@/components/ui';
 import { formatNumber } from '@/lib/utils';
+import { BudgetImportExport } from './BudgetImportExport';
+import { BudgetEditModal } from './BudgetEditModal';
+import { useBudgetExploitation } from '@/hooks/useBudgetExploitation';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // Import des vraies données Cosmos Angré
 import {
@@ -1194,12 +1204,462 @@ function VueComparative() {
   );
 }
 
+// Vue Graphiques
+function VueGraphiques({ budget }: { budget: BudgetExploitationAnnee }) {
+  const parCategorie = budget.postes.reduce((acc, poste) => {
+    acc[poste.categorie] = (acc[poste.categorie] || 0) + poste.budgetAnnuel;
+    return acc;
+  }, {} as Record<CategorieExploitation, number>);
+
+  const pieData = Object.entries(parCategorie).map(([cat, montant]) => ({
+    name: CATEGORY_LABELS[cat as CategorieExploitation],
+    value: montant,
+    fill: CATEGORY_COLORS[cat as CategorieExploitation].fill,
+  }));
+
+  const barData = budget.postes.map((p) => ({
+    name: p.poste.substring(0, 15),
+    montant: p.budgetAnnuel / 1_000_000,
+    fill: CATEGORY_COLORS[p.categorie].fill,
+  }));
+
+  // Données mensuelles simulées
+  const monthlyData = budget.annee === 2026
+    ? [
+        { mois: 'Nov', montant: budget.montantTotal / 2 / 1_000_000 },
+        { mois: 'Déc', montant: budget.montantTotal / 2 / 1_000_000 },
+      ]
+    : [
+        { mois: 'Jan', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Fév', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Mar', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Avr', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Mai', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Juin', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Juil', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Août', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Sept', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Oct', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Nov', montant: budget.montantTotal / 12 / 1_000_000 },
+        { mois: 'Déc', montant: budget.montantTotal / 12 / 1_000_000 },
+      ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        {/* Pie Chart */}
+        <Card padding="md">
+          <h3 className="font-semibold text-primary-900 mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary-600" />
+            Répartition par catégorie
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => [`${formatMontant(value)} FCFA`, 'Montant']} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Bar Chart */}
+        <Card padding="md">
+          <h3 className="font-semibold text-primary-900 mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary-600" />
+            Montants par poste (M FCFA)
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="name" width={120} fontSize={11} />
+                <Tooltip formatter={(value: number) => [`${value.toFixed(0)} M FCFA`, 'Montant']} />
+                <Bar dataKey="montant" radius={[0, 4, 4, 0]}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      {/* Evolution mensuelle */}
+      <Card padding="md">
+        <h3 className="font-semibold text-primary-900 mb-4">
+          Budget mensuel prévisionnel {budget.annee} (M FCFA)
+        </h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+              <XAxis dataKey="mois" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v.toFixed(0)}M`} />
+              <Tooltip formatter={(value: number) => [`${value.toFixed(1)} M FCFA`, 'Budget']} />
+              <Bar dataKey="montant" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-sm text-primary-500 text-center mt-2">
+          Budget moyen mensuel : {formatMontant(budget.montantTotal / (budget.annee === 2026 ? 2 : 12))} FCFA
+        </p>
+      </Card>
+
+      {/* Comparaison 2026 vs 2027 */}
+      <Card padding="md">
+        <h3 className="font-semibold text-primary-900 mb-4">Comparaison 2026 vs 2027</h3>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={SYNTHESE_COMPARATIVE.postes.map((p) => ({
+              poste: p.poste,
+              '2026': p.budget2026 / 1_000_000,
+              '2027': p.budget2027 / 1_000_000,
+            }))} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+              <XAxis
+                dataKey="poste"
+                tick={{ fontSize: 10 }}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis tickFormatter={(value) => `${value}M`} />
+              <Tooltip formatter={(value: number) => `${value.toFixed(0)} M FCFA`} />
+              <Legend />
+              <Bar dataKey="2026" name="2026 (10 mois)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="2027" name="2027 (12 mois)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// Vue Par Phase
+function VueParPhase({ annee }: { annee: 2026 | 2027 }) {
+  const phases = annee === 2026
+    ? [
+        {
+          phase: 'Nov 2026',
+          prevu: 95_250_000,
+          description: 'Premier mois d\'exploitation',
+          periode: 'Novembre 2026',
+          responsable: 'Center Manager',
+        },
+        {
+          phase: 'Déc 2026',
+          prevu: 95_250_000,
+          description: 'Deuxième mois d\'exploitation',
+          periode: 'Décembre 2026',
+          responsable: 'Center Manager',
+        },
+      ]
+    : [
+        {
+          phase: 'T1 2027',
+          prevu: 190_000_000,
+          description: 'Premier trimestre - Montée en charge',
+          periode: 'Janvier - Mars 2027',
+          responsable: 'Center Manager',
+        },
+        {
+          phase: 'T2 2027',
+          prevu: 190_000_000,
+          description: 'Deuxième trimestre - Stabilisation',
+          periode: 'Avril - Juin 2027',
+          responsable: 'Center Manager',
+        },
+        {
+          phase: 'T3 2027',
+          prevu: 190_000_000,
+          description: 'Troisième trimestre - Croisière',
+          periode: 'Juillet - Septembre 2027',
+          responsable: 'Center Manager',
+        },
+        {
+          phase: 'T4 2027',
+          prevu: 191_000_000,
+          description: 'Quatrième trimestre - Bilan annuel',
+          periode: 'Octobre - Décembre 2027',
+          responsable: 'Center Manager',
+        },
+      ];
+
+  const total = phases.reduce((sum, p) => sum + p.prevu, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Graphique par phase */}
+      <Card padding="md">
+        <h3 className="text-lg font-semibold text-primary-900 mb-4">
+          Budget par {annee === 2026 ? 'mois' : 'trimestre'} ({annee})
+        </h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={phases} layout="vertical" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => `${value / 1_000_000}M`}
+              />
+              <YAxis type="category" dataKey="phase" tick={{ fontSize: 12 }} />
+              <Tooltip formatter={(value: number) => `${formatMontant(value)} FCFA`} />
+              <Legend />
+              <Bar dataKey="prevu" name="Prévu" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* Cards par phase */}
+      <div className={cn('grid gap-6', annee === 2026 ? 'grid-cols-2' : 'grid-cols-2')}>
+        {phases.map((phase) => (
+          <Card key={phase.phase} padding="md" className="border-primary-200">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-primary-900">{phase.phase}</h4>
+              <Badge className="bg-primary-100 text-primary-700">{phase.periode}</Badge>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-primary-500 mb-1">Budget prévu</p>
+                <p className="text-xl font-bold text-primary-900">{formatMontant(phase.prevu)}</p>
+              </div>
+              <p className="text-sm text-primary-600">{phase.description}</p>
+              <div className="pt-2 border-t border-primary-100">
+                <p className="text-xs text-primary-400">Responsable: {phase.responsable}</p>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Récapitulatif */}
+      <Card padding="md" className="bg-primary-50 border-primary-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold text-primary-800">Total {annee}</h4>
+            <p className="text-sm text-primary-600">
+              Budget exploitation ({annee === 2026 ? '2 mois' : '12 mois'})
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-bold text-primary-900">{formatMontant(total)}</p>
+            <p className="text-sm text-primary-600">FCFA</p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// Vue Synthèse Éditable (avec données du hook)
+function VueSyntheseEditable({
+  lignes,
+  totaux,
+  onEdit,
+  annee,
+}: {
+  lignes: LigneBudgetExploitation[];
+  totaux: { prevu: number; engage: number; consomme: number; reste: number };
+  onEdit: (ligne: LigneBudgetExploitation) => void;
+  annee: 2026 | 2027;
+}) {
+  const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
+
+  // Si pas de données du hook, afficher la vue statique
+  if (lignes.length === 0) {
+    return <VueSynthese budget={budget} />;
+  }
+
+  const tauxEngagement = totaux.prevu > 0 ? (totaux.engage / totaux.prevu) * 100 : 0;
+  const tauxConsommation = totaux.prevu > 0 ? (totaux.consomme / totaux.prevu) * 100 : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card padding="md">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-primary-900">Postes budgétaires {annee}</h3>
+            <p className="text-sm text-primary-500">Cliquez sur une ligne pour modifier les montants</p>
+          </div>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8">#</TableHead>
+              <TableHead>Poste</TableHead>
+              <TableHead className="text-right">Prévu</TableHead>
+              <TableHead className="text-right">Engagé</TableHead>
+              <TableHead className="text-right">Consommé</TableHead>
+              <TableHead className="text-right">Part</TableHead>
+              <TableHead className="w-16"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {lignes.map((ligne, idx) => {
+              const part = totaux.prevu > 0 ? ((ligne.montantPrevu / totaux.prevu) * 100).toFixed(1) : '0';
+              return (
+                <TableRow
+                  key={ligne.id}
+                  className="hover:bg-primary-50 cursor-pointer transition-colors"
+                  onClick={() => onEdit(ligne)}
+                >
+                  <TableCell className="text-primary-400">{idx + 1}</TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{ligne.poste}</p>
+                      {ligne.description && (
+                        <p className="text-xs text-primary-400">{ligne.description}</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-mono">{formatMontant(ligne.montantPrevu)}</TableCell>
+                  <TableCell className="text-right font-mono text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
+                  <TableCell className="text-right font-mono text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
+                  <TableCell className="text-right">{part}%</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(ligne);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 text-primary-600" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+          <TableFooter>
+            <TableRow className="bg-primary-100">
+              <TableCell colSpan={2} className="font-bold">
+                TOTAL EXPLOITATION {annee}
+              </TableCell>
+              <TableCell className="text-right font-bold font-mono">
+                {formatMontant(totaux.prevu)}
+              </TableCell>
+              <TableCell className="text-right font-bold font-mono text-blue-700">
+                {formatMontant(totaux.engage)}
+              </TableCell>
+              <TableCell className="text-right font-bold font-mono text-green-700">
+                {formatMontant(totaux.consomme)}
+              </TableCell>
+              <TableCell className="text-right font-bold">100%</TableCell>
+              <TableCell></TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+
+        <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t">
+          <div>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-primary-600">Taux d'engagement</span>
+              <span className="font-semibold">{tauxEngagement.toFixed(1)}%</span>
+            </div>
+            <Progress value={tauxEngagement} variant="default" size="md" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-primary-600">Taux de consommation</span>
+              <span className="font-semibold">{tauxConsommation.toFixed(1)}%</span>
+            </div>
+            <Progress value={tauxConsommation} variant="success" size="md" />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // Composant principal Budget Opérationnel
 export function BudgetOperationnel() {
   const [activeTab, setActiveTab] = useState('synthese');
   const [annee, setAnnee] = useState<2026 | 2027>(2027);
+  const [editingLigne, setEditingLigne] = useState<LigneBudgetExploitation | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
+
+  // Hook pour les données persistées
+  const {
+    lignes,
+    isLoading,
+    error,
+    totaux,
+    updateLigne,
+    resetToDefaults,
+  } = useBudgetExploitation({
+    budgetType: 'operationnel',
+    annee,
+  });
+
+  // Handler de sauvegarde
+  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string) => {
+    await updateLigne(id, {
+      montantPrevu: prevu,
+      montantEngage: engage,
+      montantConsomme: consomme,
+      note,
+    });
+  };
+
+  // Handler de reset
+  const handleReset = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir réinitialiser tous les montants aux valeurs par défaut ?')) {
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await resetToDefaults();
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="ml-2 text-primary-600">Chargement du budget...</span>
+      </div>
+    );
+  }
+
+  // Use hook data if available
+  const useHookData = lignes.length > 0;
+  const budgetTotal = useHookData ? totaux.prevu : budget.montantTotal;
+  const masseSalariale = useHookData
+    ? lignes.find((l) => l.categorie === 'masse_salariale')?.montantPrevu || 0
+    : budget.postes.find((p) => p.categorie === 'masse_salariale')?.budgetAnnuel || 0;
+  const prestations = useHookData
+    ? lignes.find((l) => l.categorie === 'prestations')?.montantPrevu || 0
+    : budget.postes.find((p) => p.categorie === 'prestations')?.budgetAnnuel || 0;
+  const fluides = useHookData
+    ? lignes.find((l) => l.categorie === 'fluides')?.montantPrevu || 0
+    : budget.postes.find((p) => p.categorie === 'fluides')?.budgetAnnuel || 0;
 
   return (
     <div className="space-y-6">
@@ -1208,42 +1668,61 @@ export function BudgetOperationnel() {
         <div>
           <h2 className="text-xl font-bold text-primary-900">Budget d'Exploitation</h2>
           <p className="text-sm text-primary-500">
-            Centre Commercial Cosmos Angré - New Heaven SA / CRMC
+            Centre Commercial Cosmos Angre - New Heaven SA / CRMC - Éditable
           </p>
         </div>
-        <AnneeSelector annee={annee} onChange={setAnnee} />
+        <div className="flex items-center gap-4">
+          <AnneeSelector annee={annee} onChange={setAnnee} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isResetting}
+          >
+            <RotateCcw className={cn('h-4 w-4 mr-2', isResetting && 'animate-spin')} />
+            {isResetting ? 'Réinitialisation...' : 'Réinitialiser'}
+          </Button>
+          <BudgetImportExport budgetType="operationnel" />
+        </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <Card padding="md" className="bg-error-50 border-error-200">
+          <p className="text-error-700">{error}</p>
+        </Card>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard
           label="Budget total"
-          value={formatMontant(budget.montantTotal)}
-          subValue={`FCFA - ${budget.annee}`}
+          value={formatMontant(budgetTotal)}
+          subValue={`FCFA - ${annee}`}
           icon={Wallet}
           color="text-primary-600"
           bgColor="bg-primary-100"
         />
         <KPICard
           label="Masse salariale"
-          value={formatMontant(budget.postes.find(p => p.categorie === 'masse_salariale')?.budgetAnnuel || 0)}
-          subValue={`${((budget.postes.find(p => p.categorie === 'masse_salariale')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          value={formatMontant(masseSalariale)}
+          subValue={budgetTotal > 0 ? `${((masseSalariale / budgetTotal) * 100).toFixed(0)}% du budget` : '0%'}
           icon={Users}
           color="text-blue-600"
           bgColor="bg-blue-100"
         />
         <KPICard
           label="Prestations"
-          value={formatMontant(budget.postes.find(p => p.categorie === 'prestations')?.budgetAnnuel || 0)}
-          subValue={`${((budget.postes.find(p => p.categorie === 'prestations')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          value={formatMontant(prestations)}
+          subValue={budgetTotal > 0 ? `${((prestations / budgetTotal) * 100).toFixed(0)}% du budget` : '0%'}
           icon={Shield}
           color="text-green-600"
           bgColor="bg-green-100"
         />
         <KPICard
           label="Fluides"
-          value={formatMontant(budget.postes.find(p => p.categorie === 'fluides')?.budgetAnnuel || 0)}
-          subValue={`${((budget.postes.find(p => p.categorie === 'fluides')?.budgetAnnuel || 0) / budget.montantTotal * 100).toFixed(0)}% du budget`}
+          value={formatMontant(fluides)}
+          subValue={budgetTotal > 0 ? `${((fluides / budgetTotal) * 100).toFixed(0)}% du budget` : '0%'}
           icon={Zap}
           color="text-amber-600"
           bgColor="bg-amber-100"
@@ -1262,22 +1741,35 @@ export function BudgetOperationnel() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="synthese">Synthèse</TabsTrigger>
-          <TabsTrigger value="details">Détails</TabsTrigger>
-          <TabsTrigger value="comparatif">Comparatif</TabsTrigger>
+          <TabsTrigger value="detail">Détail</TabsTrigger>
+          <TabsTrigger value="graphiques">Graphiques</TabsTrigger>
+          <TabsTrigger value="par-phase">Par phase</TabsTrigger>
         </TabsList>
 
         <TabsContent value="synthese">
-          <VueSynthese budget={budget} />
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} annee={annee} />
         </TabsContent>
 
-        <TabsContent value="details">
+        <TabsContent value="detail">
           <VueDetails annee={annee} />
         </TabsContent>
 
-        <TabsContent value="comparatif">
-          <VueComparative />
+        <TabsContent value="graphiques">
+          <VueGraphiques budget={budget} />
+        </TabsContent>
+
+        <TabsContent value="par-phase">
+          <VueParPhase annee={annee} />
         </TabsContent>
       </Tabs>
+
+      {/* Modal d'édition */}
+      <BudgetEditModal
+        ligne={editingLigne}
+        open={!!editingLigne}
+        onClose={() => setEditingLigne(null)}
+        onSave={handleSave}
+      />
     </div>
   );
 }

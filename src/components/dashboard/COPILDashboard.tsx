@@ -3,7 +3,7 @@
 // Version améliorée avec tendances, faits marquants et exports
 // ============================================================================
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
   Cloud,
   CloudRain,
@@ -30,8 +30,12 @@ import {
   ArrowDownRight,
   ArrowRight,
   User,
+  LayoutDashboard,
+  ShieldAlert,
+  CircleDollarSign,
+  MessageSquare,
 } from 'lucide-react';
-import { Card, Badge, Progress, Button } from '@/components/ui';
+import { Card, Badge, Progress, Button, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import {
   useDashboardKPIs,
   useAvancementGlobal,
@@ -1148,7 +1152,10 @@ function DecisionsCOPILSection() {
 // COMPOSANT PRINCIPAL
 // ============================================================================
 
+type COPILTab = 'synthese' | 'risques-alertes' | 'jalons-budget' | 'decisions';
+
 export function COPILDashboard() {
+  const [activeTab, setActiveTab] = useState<COPILTab>('synthese');
   const kpis = useDashboardKPIs();
   const jalons = useJalons();
   const risques = useRisques();
@@ -1156,6 +1163,11 @@ export function COPILDashboard() {
   const actions = useActions();
   const budgetSynthese = useBudgetSynthese();
   const syncData = useSync(1, 'cosmos-angre');
+
+  // Counters for tab badges
+  const risquesCritiques = risques.filter((r) => r.score >= 12 && r.status !== 'closed').length;
+  const alertesNonTraitees = alertes.filter((a) => !a.traitee).length;
+  const decisionsEnAttente = actions.filter((a) => a.statut === 'bloque').length;
 
   // Prepare data for export
   const getExportData = useCallback(() => {
@@ -1200,66 +1212,100 @@ export function COPILDashboard() {
   }, [getExportData]);
 
   return (
-    <div className="space-y-6">
-      {/* En-tête */}
+    <div className="space-y-4">
+      {/* En-tête compact */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-primary-900 flex items-center gap-3">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <Users className="h-6 w-6 text-primary-600" />
-            </div>
-            Tableau de Bord COPIL
-          </h2>
-          <p className="text-sm text-primary-500 mt-1">
-            {kpis.projectName} — Vue de synthèse pour le Comité de Pilotage
-          </p>
-        </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-primary-500">
-            <Calendar className="h-4 w-4" />
-            {new Date().toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
+          <div className="p-2 bg-primary-100 rounded-lg">
+            <Users className="h-5 w-5 text-primary-600" />
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <FileText className="h-4 w-4 mr-1" />
-              PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPPTX}>
-              <Presentation className="h-4 w-4 mr-1" />
-              PPTX
-            </Button>
+          <div>
+            <h2 className="text-xl font-bold text-primary-900">
+              Tableau de Bord COPIL
+            </h2>
+            <p className="text-xs text-primary-500">
+              {kpis.projectName} — {new Date().toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </p>
           </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
+            <FileText className="h-4 w-4 mr-1" />
+            PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPPTX}>
+            <Presentation className="h-4 w-4 mr-1" />
+            PPTX
+          </Button>
         </div>
       </div>
 
-      {/* Météo Projet */}
-      <MeteoProjetSection />
+      {/* Onglets */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as COPILTab)}
+        className="space-y-4"
+      >
+        <TabsList className="w-full justify-start bg-white border border-primary-200 p-1 rounded-xl shadow-sm">
+          <TabsTrigger value="synthese" className="flex items-center gap-2 px-4 py-2">
+            <LayoutDashboard className="h-4 w-4" />
+            <span>Synthèse</span>
+          </TabsTrigger>
+          <TabsTrigger value="risques-alertes" className="flex items-center gap-2 px-4 py-2">
+            <ShieldAlert className="h-4 w-4" />
+            <span>Risques & Alertes</span>
+            {(risquesCritiques > 0 || alertesNonTraitees > 0) && (
+              <Badge variant="error" className="ml-1 text-xs px-1.5 py-0">
+                {risquesCritiques + alertesNonTraitees}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="jalons-budget" className="flex items-center gap-2 px-4 py-2">
+            <CircleDollarSign className="h-4 w-4" />
+            <span>Jalons & Budget</span>
+          </TabsTrigger>
+          <TabsTrigger value="decisions" className="flex items-center gap-2 px-4 py-2">
+            <MessageSquare className="h-4 w-4" />
+            <span>Décisions</span>
+            {decisionsEnAttente > 0 && (
+              <Badge variant="warning" className="ml-1 text-xs px-1.5 py-0">
+                {decisionsEnAttente}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Faits Marquants */}
-      <FaitsMarquantsCOPILSection />
+        {/* Onglet Synthèse */}
+        <TabsContent value="synthese" className="space-y-4">
+          <MeteoProjetSection />
+          <FaitsMarquantsCOPILSection />
+        </TabsContent>
 
-      {/* Grille principale */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top 5 Risques */}
-        <Top5RisquesSection />
+        {/* Onglet Risques & Alertes */}
+        <TabsContent value="risques-alertes" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Top5RisquesSection />
+            <AlertesCOPILSection />
+          </div>
+        </TabsContent>
 
-        {/* Jalons J-30 */}
-        <JalonsJ30Section />
+        {/* Onglet Jalons & Budget */}
+        <TabsContent value="jalons-budget" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <JalonsJ30Section />
+            <BudgetCOPILSection />
+          </div>
+        </TabsContent>
 
-        {/* Budget */}
-        <BudgetCOPILSection />
-
-        {/* Alertes */}
-        <AlertesCOPILSection />
-      </div>
-
-      {/* Décisions à prendre (pleine largeur) */}
-      <DecisionsCOPILSection />
+        {/* Onglet Décisions */}
+        <TabsContent value="decisions" className="space-y-4">
+          <DecisionsCOPILSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

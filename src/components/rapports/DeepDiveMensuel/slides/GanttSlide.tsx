@@ -6,6 +6,7 @@ import React, { useMemo } from 'react';
 import { Calendar, Flag, AlertCircle } from 'lucide-react';
 import type { GanttSimplifiedData } from '@/types/deepDive';
 import { AXES_MENSUEL_CONFIG } from '@/data/deepDiveMensuelTemplate';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface GanttSlideProps {
   data: GanttSimplifiedData;
@@ -74,20 +75,16 @@ export function GanttSlide({ data, designSettings, periode }: GanttSlideProps) {
     en_danger: '#EF4444',
   };
 
-  // Grouper les jalons par phase (trimestre approximatif)
+  // Grouper les jalons par phase depuis la configuration centralisée
   const phases = useMemo(() => {
-    const phaseGroups = [
-      { label: 'Phase 1: Préparation', start: '2026-01-01', end: '2026-03-31' },
-      { label: 'Phase 2: Mobilisation', start: '2026-04-01', end: '2026-09-30' },
-      { label: 'Phase 3: Lancement', start: '2026-10-01', end: '2026-11-30' },
-      { label: 'Phase 4: Stabilisation', start: '2026-12-01', end: '2027-02-28' },
-    ];
-
-    return phaseGroups.map(phase => ({
-      ...phase,
+    // Utiliser les phases depuis PROJET_CONFIG
+    return PROJET_CONFIG.phases.map(phase => ({
+      label: phase.label,
+      start: phase.dateDebut,
+      end: phase.dateFin,
       jalons: data.jalons.filter(j =>
-        new Date(j.dateDebut) >= new Date(phase.start) &&
-        new Date(j.dateDebut) <= new Date(phase.end)
+        new Date(j.dateDebut) >= new Date(phase.dateDebut) &&
+        new Date(j.dateDebut) <= new Date(phase.dateFin)
       ),
     }));
   }, [data.jalons]);

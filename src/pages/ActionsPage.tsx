@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { List, LayoutGrid, Columns, GanttChart, CalendarDays, Network, Plus } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { List, LayoutGrid, Columns, GanttChart, CalendarDays, Network, Plus, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
 import { Button, Tooltip } from '@/components/ui';
+import { excelService } from '@/services/excelService';
+import { useActions, createAction, updateAction } from '@/hooks';
 import {
   ActionsList,
   ActionsCards,
@@ -27,6 +29,9 @@ export function ActionsPage() {
   const { actionsViewMode, setActionsViewMode, actionFilters } = useAppStore();
   const [formOpen, setFormOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<Action | undefined>();
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const actions = useActions(actionFilters);
 
   const handleEdit = (action: Action) => {
     setSelectedAction(action);
@@ -46,6 +51,56 @@ export function ActionsPage() {
   const handleFormClose = () => {
     setFormOpen(false);
     setSelectedAction(undefined);
+  };
+
+  // === EXCEL IMPORT/EXPORT ===
+  const handleExportExcel = () => {
+    excelService.exportActions(actions);
+  };
+
+  const handleDownloadTemplate = () => {
+    excelService.downloadTemplate('actions');
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const result = await excelService.importActions(file);
+
+      if (result.errors.length > 0) {
+        const errorMessages = result.errors.map(err => `Ligne ${err.row}: ${err.message}`).join('\n');
+        alert(`Erreurs d'import:\n${errorMessages}`);
+      }
+
+      for (const actionData of result.data) {
+        const existingAction = actions.find(a => a.id_action === actionData.id_action);
+
+        if (existingAction && existingAction.id) {
+          await updateAction(existingAction.id, actionData);
+        } else {
+          await createAction(actionData as Parameters<typeof createAction>[0]);
+        }
+      }
+
+      if (result.data.length > 0) {
+        alert(`Import réussi: ${result.data.length} action(s) importée(s)`);
+      }
+    } catch (error) {
+      console.error('Erreur import Excel:', error);
+      alert('Erreur lors de l\'import du fichier Excel');
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const renderContent = () => {
@@ -118,6 +173,33 @@ export function ActionsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Boutons Excel Import/Export */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+          <Tooltip content="Importer depuis Excel">
+            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+              <Upload className="h-4 w-4 mr-2" />
+              {importing ? 'Import...' : 'Importer'}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Exporter vers Excel">
+            <Button variant="outline" onClick={handleExportExcel}>
+              <Download className="h-4 w-4 mr-2" />
+              Exporter
+            </Button>
+          </Tooltip>
+          <Tooltip content="Télécharger le modèle Excel">
+            <Button variant="ghost" onClick={handleDownloadTemplate}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Template
+            </Button>
+          </Tooltip>
+
           {/* View mode selector */}
           <div className="flex rounded-lg border bg-primary-50 p-1">
             {viewModes.map((mode) => {

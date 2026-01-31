@@ -51,19 +51,26 @@ import {
   toggleSectionExpanded,
   countActiveSlides,
 } from '@/data/deepDiveMensuelTemplate';
+import { PROJET_CONFIG } from '@/data/constants';
 import { useDeepDiveMensuelData } from './hooks/useDeepDiveMensuelData';
 
 // Import slides
 import {
+  PageGardeSlide,
+  AgendaSlide,
+  SyntheseExecutiveSlide,
   MeteoGlobaleSlide,
   FaitsMarquantsSlide,
   TableauBordAxesSlide,
   DetailAxeSlide,
   Top5RisquesSlide,
   RisquesEvolutionSlide,
+  RisquesConsolidesSlide,
   DecisionsTableSlide,
   ActionsPrioritairesSlide,
   JalonsM1Slide,
+  PlanActionsM1Slide,
+  SyntheseCloureSlide,
   GanttSlide,
   CourbeSSlide,
 } from './slides';
@@ -295,6 +302,33 @@ export function DeepDiveMensuel({
       };
 
       switch (slide.type) {
+        case 'page_garde':
+          return (
+            <PageGardeSlide
+              data={{
+                projectName: PROJET_CONFIG.nom,
+                mois: data.periode,
+                date: new Date().toLocaleDateString('fr-FR'),
+                presentateur: PROJET_CONFIG.presentateur.titre,
+              }}
+              {...props}
+            />
+          );
+
+        case 'agenda':
+          return <AgendaSlide {...props} />;
+
+        case 'synthese_executive':
+          return (
+            <SyntheseExecutiveSlide
+              data={{
+                meteoGlobale: data.meteoGlobale,
+                faitsMarquants: data.faitsMarquants,
+              }}
+              {...props}
+            />
+          );
+
         case 'meteo_globale':
           return <MeteoGlobaleSlide data={data.meteoGlobale} {...props} />;
 
@@ -321,6 +355,17 @@ export function DeepDiveMensuel({
         case 'risques_evolution':
           return <RisquesEvolutionSlide data={data.risquesEvolution} {...props} />;
 
+        case 'risques_consolides':
+          return (
+            <RisquesConsolidesSlide
+              data={{
+                top5Risques: data.top5Risques,
+                risquesEvolution: data.risquesEvolution,
+              }}
+              {...props}
+            />
+          );
+
         case 'decisions_table':
           return <DecisionsTableSlide data={decisions} {...props} />;
 
@@ -335,6 +380,39 @@ export function DeepDiveMensuel({
 
         case 'jalons_m1':
           return <JalonsM1Slide data={data.planActionM1.jalonsM1} {...props} />;
+
+        case 'plan_actions_m1':
+          return (
+            <PlanActionsM1Slide
+              data={{
+                actionsPrioritaires: data.planActionM1.actionsPrioritaires,
+                jalonsM1: data.planActionM1.jalonsM1,
+                focusStrategique: data.planActionM1.focusStrategique,
+                periode: data.periode,
+              }}
+              {...props}
+            />
+          );
+
+        case 'synthese_cloture':
+          return (
+            <SyntheseCloureSlide
+              data={{
+                pointsPositifs: data.faitsMarquants.realisations.slice(0, 3).map(f => f.titre),
+                pointsVigilance: data.faitsMarquants.attentions.slice(0, 2).map(f => f.titre),
+                decisionsJour: [],
+                prochainDeepDive: {
+                  date: (() => {
+                    const nextMonth = new Date();
+                    nextMonth.setMonth(nextMonth.getMonth() + 1);
+                    return nextMonth.toISOString().split('T')[0];
+                  })(),
+                  heure: '09:00',
+                },
+              }}
+              {...props}
+            />
+          );
 
         case 'gantt_simplifie':
           return <GanttSlide data={data.gantt} {...props} />;

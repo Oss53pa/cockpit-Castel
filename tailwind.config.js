@@ -71,9 +71,9 @@ export default {
         },
       },
       animation: {
-        'fade-in': 'fadeIn 0.2s ease-out',
-        'slide-in': 'slideIn 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out',
+        'fade-in': 'fadeIn 0.2s ease-out forwards',
+        'slide-in': 'slideIn 0.3s ease-out forwards',
+        'scale-in': 'scaleIn 0.2s ease-out forwards',
       },
       keyframes: {
         fadeIn: {

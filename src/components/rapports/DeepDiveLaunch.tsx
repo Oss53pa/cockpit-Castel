@@ -95,6 +95,7 @@ import {
   useBudgetParAxe,
   useRisques,
 } from '@/hooks';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -135,7 +136,7 @@ interface DesignSettings {
   headerStyle: 'full' | 'minimal' | 'none';
 }
 
-// Axes configuration - 6 axes du projet (couleurs officielles COSMOS ANGRÉ)
+// Axes configuration - 6 axes du projet (couleurs officielles)
 const axesConfig: Record<AxeType, { label: string; color: string; icon: React.ElementType; shortLabel: string }> = {
   commercialisation: { label: 'Commercialisation', color: '#1C3163', icon: Building2, shortLabel: 'AX1' },
   rh: { label: 'RH & Organisation', color: '#D4AF37', icon: Users, shortLabel: 'AX2' },
@@ -1118,7 +1119,7 @@ AXE COMMUNICATION
     comment: '',
     section: 'etat',
     duration: '6 min',
-    content: `LES 8 STRUCTURES DU PROJET COSMOS ANGRÉ
+    content: `LES 8 STRUCTURES DU PROJET ${PROJET_CONFIG.nom}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1673,7 +1674,7 @@ DOCUMENTS
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-COSMOS ANGRÉ
+${PROJET_CONFIG.nom}
 Opening Q4 2026`
   },
 ];
@@ -2280,7 +2281,7 @@ export function DeepDiveLaunch() {
     if (slideItem.id === 'launch_1') {
       return (
         <div style={{ ...baseStyles, backgroundColor: primaryColor }} className="h-full flex flex-col items-center justify-center text-white p-8">
-          <h1 className="text-4xl font-bold mb-2">COSMOS ANGRÉ</h1>
+          <h1 className="text-4xl font-bold mb-2">{PROJET_CONFIG.nom}</h1>
           <div className="w-24 h-1 mb-6" style={{ backgroundColor: accentColor }} />
           <h2 className="text-2xl mb-2" style={{ color: accentColor }}>Deep Dive #1</h2>
           <p className="text-lg opacity-80">Lancement & Cadrage</p>
@@ -3749,7 +3750,7 @@ export function DeepDiveLaunch() {
           color: textColor,
           bold: true,
         });
-        slide.addText('COSMOS ANGRÉ', {
+        slide.addText(PROJET_CONFIG.nom, {
           x: 7.5,
           y: 0.2,
           w: 2,

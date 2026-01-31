@@ -1,9 +1,15 @@
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import type { Jalon, JalonFilters, JalonStatus, Axe, ProjectPhase } from '@/types';
+import type { Jalon, JalonFilters, JalonStatus, Axe, ProjectPhase, MeteoJalon, StatutJalonV2 } from '@/types';
 import { AXES, PROJECT_PHASES } from '@/types';
 import { getDaysUntil } from '@/lib/utils';
 import { recalculateActionsForJalon } from '@/lib/dateCalculations';
+import {
+  calculerPourcentageJalon,
+  calculerStatutJalon,
+  calculerMeteoJalon,
+} from '@/lib/calculations';
 
 export function useJalons(filters?: JalonFilters) {
   const jalons = useLiveQuery(async () => {
@@ -284,4 +290,63 @@ export async function recalculateJalonStatuses(): Promise<void> {
       await db.jalons.update(jalon.id!, { statut: newStatus });
     }
   }
+}
+
+// ============================================================================
+// HOOK useJalonCalculs (spécifications v2.0)
+// ============================================================================
+
+/**
+ * Hook pour obtenir les calculs automatisés d'un jalon (spécifications v2.0)
+ * Retourne le pourcentage, statut et météo calculés automatiquement
+ */
+export function useJalonCalculs(jalonId: number | undefined) {
+  const jalon = useJalon(jalonId);
+
+  // Récupérer les actions du jalon
+  const actionsJalon = useLiveQuery(async () => {
+    if (!jalonId) return [];
+    return db.actions.where('jalonId').equals(jalonId).toArray();
+  }, [jalonId]) ?? [];
+
+  // Calculer le pourcentage (moyenne des actions)
+  const pourcentage = useMemo(() => {
+    return calculerPourcentageJalon(actionsJalon);
+  }, [actionsJalon]);
+
+  // Calculer le statut
+  const statut = useMemo((): StatutJalonV2 => {
+    if (!jalon) return 'A_VENIR';
+    return calculerStatutJalon(
+      pourcentage,
+      jalon.date_prevue,
+      jalon.date_prevue, // Utiliser date_prevue comme date de fin pour l'instant
+      jalon.date_validation
+    );
+  }, [jalon, pourcentage]);
+
+  // Calculer la météo
+  const meteo = useMemo((): MeteoJalon => {
+    if (!jalon) return 'SOLEIL';
+    // Utiliser une date de début estimée (date_prevue - 30 jours si non définie)
+    const dateDebut = jalon.date_prevue
+      ? new Date(new Date(jalon.date_prevue).getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      : jalon.date_prevue;
+    return calculerMeteoJalon(pourcentage, dateDebut, jalon.date_prevue);
+  }, [jalon, pourcentage]);
+
+  // Calculer les jours restants
+  const joursRestants = useMemo(() => {
+    if (!jalon) return 0;
+    return getDaysUntil(jalon.date_prevue);
+  }, [jalon]);
+
+  return {
+    jalon,
+    actionsJalon,
+    pourcentage,
+    statut,
+    meteo,
+    joursRestants,
+  };
 }

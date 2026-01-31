@@ -23,8 +23,6 @@ Dans le dashboard Cloudflare:
 | `ALLOWED_ORIGIN` | URL de votre app (ex: `https://cosmos-angre.vercel.app`) |
 | `ANTHROPIC_API_KEY` | Cle API Anthropic (Claude) |
 | `OPENROUTER_API_KEY` | Cle API OpenRouter |
-| `SENDGRID_API_KEY` | Cle API SendGrid (optionnel) |
-| `RESEND_API_KEY` | Cle API Resend (optionnel) |
 
 ## Deploiement avec Wrangler CLI (optionnel)
 
@@ -50,8 +48,6 @@ wrangler secret put OPENROUTER_API_KEY
 |----------|-------|
 | `/api/anthropic/*` | `https://api.anthropic.com/*` |
 | `/api/openrouter/*` | `https://openrouter.ai/api/*` |
-| `/api/sendgrid/*` | `https://api.sendgrid.com/*` |
-| `/api/resend/*` | `https://api.resend.com/*` |
 | `/health` | Health check |
 
 ## URL du Worker

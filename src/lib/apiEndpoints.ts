@@ -24,27 +24,6 @@ export const API_ENDPOINTS = {
       ? '/api/openrouter/v1/chat/completions'
       : 'https://openrouter.ai/api/v1/chat/completions',
   },
-
-  // SendGrid
-  sendgrid: {
-    send: isDev
-      ? '/api/sendgrid/v3/mail/send'
-      : 'https://api.sendgrid.com/v3/mail/send',
-  },
-
-  // Mailgun
-  mailgun: {
-    base: isDev
-      ? '/api/mailgun'
-      : 'https://api.mailgun.net',
-  },
-
-  // Resend
-  resend: {
-    send: isDev
-      ? '/api/resend/emails'
-      : 'https://api.resend.com/emails',
-  },
 };
 
 /**
