@@ -263,10 +263,12 @@ export function RisqueFormContent({
   const impactToNum: Record<Impact, number> = { FAIBLE: 1, MOYEN: 2, ELEVE: 3, CRITIQUE: 4 };
   const score = probabiliteToNum[probabilite] * impactToNum[impact];
 
-  // Notifier les changements de statut
+  // Notifier les changements de statut (seulement si callback fourni)
   useEffect(() => {
-    onStatutChange?.(statut);
-  }, [statut]);
+    if (onStatutChange) {
+      onStatutChange(statut);
+    }
+  }, [statut, onStatutChange]);
 
   // Handlers clôture
   const handleCloseRisk = (type: 'FERME' | 'ACCEPTE') => {

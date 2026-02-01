@@ -260,8 +260,10 @@ export function ActionFormContent({
 
   // Notifier les changements de statut
   useEffect(() => {
-    onStatutChange?.(statut);
-  }, [statut]);
+    if (onStatutChange) {
+      onStatutChange(statut);
+    }
+  }, [statut, onStatutChange]);
 
   // Handler avancement manuel
   const handleAvancementChange = (newAvancement: number) => {

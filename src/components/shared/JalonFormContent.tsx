@@ -175,10 +175,12 @@ export function JalonFormContent({
 
   const meteo = calculerMeteo();
 
-  // Notifier les changements de statut
+  // Notifier les changements de statut (seulement si callback fourni)
   useEffect(() => {
-    onStatutChange?.(statut);
-  }, [statut]);
+    if (onStatutChange) {
+      onStatutChange(statut);
+    }
+  }, [statut, onStatutChange]);
 
   // Handler validation
   const handleValiderJalon = () => {
