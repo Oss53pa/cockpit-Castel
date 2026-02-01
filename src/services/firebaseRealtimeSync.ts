@@ -554,13 +554,17 @@ export function isRealtimeListenerActive(): boolean {
  */
 export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boolean> {
   if (!update.response) {
-    console.warn('No response to sync for:', update.token);
+    console.warn('[SyncToLocal] No response to sync for:', update.token);
     return false;
   }
 
   try {
     const { entityType, entityId, response } = update;
     const changes = response.changes;
+
+    // DEBUG: Log des changements reçus
+    console.log('[SyncToLocal] Synchronisation pour:', entityType, entityId);
+    console.log('[SyncToLocal] Changes reçus:', JSON.stringify(changes, null, 2));
 
     // Préparer les données de mise à jour
     const updateData: Record<string, any> = {
@@ -574,10 +578,13 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
     if (changes.commentaires) updateData.commentaires_externes = changes.commentaires;
 
     if (entityType === 'action') {
-      // Champs Action
+      // Champs Action - TOUJOURS appliquer si présent (même tableau vide)
       if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
-      if (changes.sousTaches) updateData.sous_taches = changes.sousTaches;
-      if (changes.preuves) {
+      if (changes.sousTaches !== undefined) {
+        updateData.sous_taches = changes.sousTaches;
+        console.log('[SyncToLocal] Sous-tâches à sauvegarder:', changes.sousTaches?.length || 0);
+      }
+      if (changes.preuves !== undefined) {
         updateData.documents = changes.preuves.map(p => ({
           id: p.id,
           nom: p.nom,
@@ -585,20 +592,27 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
           url: p.url || '',
           dateAjout: p.dateAjout,
         }));
+        console.log('[SyncToLocal] Documents à sauvegarder:', changes.preuves?.length || 0);
       }
       if (changes.liens_documents) updateData.liens_documents = changes.liens_documents;
+
+      console.log('[SyncToLocal] UpdateData pour action:', JSON.stringify(updateData, null, 2));
       await db.actions.update(entityId, updateData);
     } else if (entityType === 'jalon') {
       // Champs Jalon
-      if (changes.preuve_url) updateData.preuve_url = changes.preuve_url;
+      if (changes.preuve_url !== undefined) updateData.preuve_url = changes.preuve_url;
       if (changes.date_validation !== undefined) updateData.date_validation = changes.date_validation;
+
+      console.log('[SyncToLocal] UpdateData pour jalon:', JSON.stringify(updateData, null, 2));
       await db.jalons.update(entityId, updateData);
     } else if (entityType === 'risque') {
       // Champs Risque
       if (changes.probabilite !== undefined) updateData.probabilite = changes.probabilite;
       if (changes.impact !== undefined) updateData.impact = changes.impact;
       if (changes.score !== undefined) updateData.score = changes.score;
-      if (changes.plan_mitigation) updateData.plan_mitigation = changes.plan_mitigation;
+      if (changes.plan_mitigation !== undefined) updateData.plan_mitigation = changes.plan_mitigation;
+
+      console.log('[SyncToLocal] UpdateData pour risque:', JSON.stringify(updateData, null, 2));
       await db.risques.update(entityId, updateData);
     }
 

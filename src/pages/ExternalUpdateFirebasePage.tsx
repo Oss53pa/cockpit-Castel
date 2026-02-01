@@ -164,6 +164,9 @@ export function ExternalUpdateFirebasePage() {
 
     setSaving(true);
 
+    // DEBUG: Log des données du formulaire
+    console.log('[ExternalUpdate] FormData reçu:', JSON.stringify(formData, null, 2));
+
     try {
       const response: ExternalUpdateData['response'] = {
         submittedAt: new Date().toISOString(),
@@ -178,17 +181,17 @@ export function ExternalUpdateFirebasePage() {
         },
       };
 
-      // Champs spécifiques aux actions
+      // Champs spécifiques aux actions - TOUJOURS inclure tous les champs
       if (type === 'action') {
         const actionData = formData as ActionFormSaveData;
         response.changes.avancement = actionData.avancement;
         response.changes.liens_documents = actionData.liens_documents;
-        if (actionData.sousTaches) {
-          response.changes.sousTaches = actionData.sousTaches;
-        }
-        if (actionData.preuves) {
-          response.changes.preuves = actionData.preuves;
-        }
+        // Toujours inclure sousTaches même si vide (pour permettre suppression)
+        response.changes.sousTaches = actionData.sousTaches || [];
+        response.changes.preuves = actionData.preuves || [];
+
+        console.log('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
+        console.log('[ExternalUpdate] Action - avancement:', actionData.avancement);
       }
 
       // Champs spécifiques aux jalons
@@ -196,6 +199,8 @@ export function ExternalUpdateFirebasePage() {
         const jalonData = formData as JalonFormSaveData;
         response.changes.preuve_url = jalonData.preuve_url;
         response.changes.date_validation = jalonData.date_validation;
+
+        console.log('[ExternalUpdate] Jalon - preuve_url:', jalonData.preuve_url);
       }
 
       // Champs spécifiques aux risques
@@ -205,7 +210,13 @@ export function ExternalUpdateFirebasePage() {
         response.changes.impact = risqueData.impact;
         response.changes.score = risqueData.score;
         response.changes.plan_mitigation = risqueData.plan_mitigation;
+
+        console.log('[ExternalUpdate] Risque - probabilite/impact/score:',
+          risqueData.probabilite, risqueData.impact, risqueData.score);
       }
+
+      // DEBUG: Log de la réponse complète
+      console.log('[ExternalUpdate] Response à envoyer:', JSON.stringify(response, null, 2));
 
       // Submit to Firebase
       const submitSuccess = await submitExternalResponse(token, response);
