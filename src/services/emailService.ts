@@ -85,7 +85,7 @@ const DEFAULT_CONFIG: EmailConfig = {
   emailjsTemplateId: ENV_EMAILJS_TEMPLATE_ID,
   emailjsPublicKey: ENV_EMAILJS_PUBLIC_KEY,
   fromEmail: 'patokouna@cosmos-angre.com',
-  fromName: 'COSMOS ANGRE Cockpit',
+  fromName: 'Cockpit-Cosmos Angré',
   defaultLinkDuration: 72, // 3 jours
   baseUrl: window.location.origin,
 };
@@ -725,9 +725,15 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           </div>
         </div>
 
-        <div class="cta-section">
-          <p class="cta-text">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
-          <a href="{{update_link}}" class="btn">Mettre a jour l'action</a>
+        <div class="cta-section" style="text-align: center; padding: 30px 0;">
+          <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+            <tr>
+              <td style="border-radius: 10px; background-color: #18181b;">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; background-color: #18181b;">Mettre a jour l'action</a>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <div class="warning-box">
@@ -843,8 +849,8 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
             <tr>
-              <td style="border-radius: 10px; background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); box-shadow: 0 4px 14px 0 rgba(22, 163, 74, 0.39);">
-                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px;">Mettre a jour le jalon</a>
+              <td style="border-radius: 10px; background-color: #16a34a;">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; background-color: #16a34a;">Mettre a jour le jalon</a>
               </td>
             </tr>
           </table>
@@ -980,8 +986,8 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
             <tr>
-              <td style="border-radius: 10px; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.39);">
-                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px;">Mettre a jour le risque</a>
+              <td style="border-radius: 10px; background-color: #dc2626;">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; background-color: #dc2626;">Mettre a jour le risque</a>
               </td>
             </tr>
           </table>

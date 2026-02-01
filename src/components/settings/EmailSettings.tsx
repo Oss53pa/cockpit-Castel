@@ -362,7 +362,7 @@ export function EmailSettings() {
                   Nom d'expediteur
                 </label>
                 <Input
-                  placeholder="COSMOS ANGRE Cockpit"
+                  placeholder="Cockpit-Cosmos Angré"
                   value={config.fromName}
                   onChange={e => setConfig({ ...config, fromName: e.target.value })}
                 />
