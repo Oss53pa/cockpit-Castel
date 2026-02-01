@@ -25,6 +25,7 @@ import {
 import { db } from '@/db';
 import { getUpdateLink, markLinkAccessed, markLinkUpdated } from '@/services/emailService';
 import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase';
+import { useUsers } from '@/hooks';
 import type { UpdateLink } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
@@ -50,6 +51,7 @@ type ExtendedEntity = (Action | Jalon | Risque) & ExternalUpdateFields;
 
 export function ExternalUpdatePage() {
   const { type, token } = useParams<{ type: EntityType; token: string }>();
+  const users = useUsers();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -386,6 +388,7 @@ export function ExternalUpdatePage() {
             {type === 'action' && entity && (
               <ActionFormContent
                 action={entity as Action}
+                users={users}
                 isEditing={true}
                 isExternal={true}
                 onSave={handleSave}

@@ -35,6 +35,7 @@ import {
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
+import { useUsers } from '@/hooks';
 import type { Action, Jalon, Risque } from '@/types';
 
 // COCKPIT Fonts
@@ -46,6 +47,7 @@ type EntityType = 'action' | 'jalon' | 'risque';
 
 export function ExternalUpdateFirebasePage() {
   const { type, token } = useParams<{ type: EntityType; token: string }>();
+  const users = useUsers();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -387,6 +389,7 @@ export function ExternalUpdateFirebasePage() {
             {type === 'action' && entity && (
               <ActionFormContent
                 action={entity as Action}
+                users={users}
                 isEditing={true}
                 isExternal={true}
                 onSave={handleSave}
