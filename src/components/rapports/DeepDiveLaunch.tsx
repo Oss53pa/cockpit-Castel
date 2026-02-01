@@ -1949,7 +1949,12 @@ export function DeepDiveLaunch() {
 
   const getJalonsForAxe = (axe: AxeType) => {
     const dbCode = axeToDbCode[axe];
-    return (jalons || []).filter((j) => j.axe === dbCode);
+    const filtered = (jalons || []).filter((j) => j.axe === dbCode);
+    console.log(`[DeepDive] getJalonsForAxe(${axe}) -> dbCode=${dbCode}, total jalons=${(jalons || []).length}, filtered=${filtered.length}`);
+    if (filtered.length === 0 && (jalons || []).length > 0) {
+      console.log('[DeepDive] Sample jalon axes:', (jalons || []).slice(0, 5).map(j => j.axe));
+    }
+    return filtered;
   };
 
   const getRisquesForAxe = (axe: AxeType) => {
