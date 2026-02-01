@@ -325,6 +325,15 @@ export async function createUpdateLink(
   if (entity) {
     try {
       console.log('[EmailService] Sauvegarde du lien dans Firebase:', link.token);
+
+      // Récupérer la liste des utilisateurs pour l'inclure dans Firebase (pour sélection externe)
+      const allUsers = await db.users.toArray();
+      const usersForFirebase = allUsers.map(u => ({
+        id: u.id!,
+        nom: u.nom,
+        prenom: u.prenom,
+      }));
+
       const firebaseSaved = await createRealtimeLink(
         link.token,
         entityType,
@@ -332,7 +341,8 @@ export async function createUpdateLink(
         entity,
         recipientEmail,
         recipientName,
-        expiresAt.toISOString()
+        expiresAt.toISOString(),
+        usersForFirebase // Passer les utilisateurs à Firebase
       );
       if (firebaseSaved) {
         console.log('[EmailService] Lien sauvegardé dans Firebase avec succès:', link.token);

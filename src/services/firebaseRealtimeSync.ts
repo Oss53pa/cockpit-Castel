@@ -38,6 +38,13 @@ export interface ExternalUpdateData {
   entityType: 'action' | 'jalon' | 'risque';
   entityId: number;
 
+  // Liste des utilisateurs (pour sélection responsable en externe)
+  users?: Array<{
+    id: number;
+    nom: string;
+    prenom: string;
+  }>;
+
   // Données de l'entité (snapshot au moment de l'envoi)
   entitySnapshot: {
     titre: string;
@@ -258,7 +265,8 @@ export async function createUpdateLinkInFirebase(
   entity: Action | Jalon | Risque,
   recipientEmail: string,
   recipientName: string,
-  expiresAt: string
+  expiresAt: string,
+  users?: Array<{ id: number; nom: string; prenom: string }>
 ): Promise<boolean> {
   console.log('[Firebase] Création du lien:', token, 'type:', entityType);
 
@@ -355,6 +363,7 @@ export async function createUpdateLinkInFirebase(
       entityType,
       entityId,
       entitySnapshot,
+      users, // Liste des utilisateurs pour sélection en externe
       recipientEmail,
       recipientName,
       createdAt: new Date().toISOString(),

@@ -12,7 +12,6 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  Loader2,
   Calendar,
   Target,
   Shield,
@@ -35,8 +34,7 @@ import {
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
-import { useUsers } from '@/hooks';
-import type { Action, Jalon, Risque } from '@/types';
+import type { Action, Jalon, Risque, User } from '@/types';
 
 // COCKPIT Fonts
 const cockpitFonts = `
@@ -47,7 +45,6 @@ type EntityType = 'action' | 'jalon' | 'risque';
 
 export function ExternalUpdateFirebasePage() {
   const { type, token } = useParams<{ type: EntityType; token: string }>();
-  const users = useUsers();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,6 +56,9 @@ export function ExternalUpdateFirebasePage() {
 
   // Entity data reconstructed from Firebase snapshot
   const [entity, setEntity] = useState<Action | Jalon | Risque | null>(null);
+
+  // Users list from Firebase (for external selection)
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     loadData();
@@ -110,6 +110,20 @@ export function ExternalUpdateFirebasePage() {
       }
 
       setLinkData(data);
+
+      // Set users from Firebase data (for external responsible selection)
+      if (data.users && data.users.length > 0) {
+        const usersFromFirebase: User[] = data.users.map(u => ({
+          id: u.id,
+          nom: u.nom,
+          prenom: u.prenom,
+          email: '',
+          role: 'membre' as const,
+          actif: true,
+        }));
+        setUsers(usersFromFirebase);
+        console.log('[ExternalUpdate] Users chargés depuis Firebase:', usersFromFirebase.length);
+      }
 
       // Mark as accessed
       await markLinkAccessedInFirebase(token);
