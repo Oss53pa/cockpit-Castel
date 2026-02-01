@@ -76,6 +76,12 @@ export interface JalonFormContentProps {
 
 export interface JalonFormSaveData {
   statut: StatutJalon;
+  // Champs éditables en interne uniquement
+  titre?: string;
+  description?: string;
+  date_prevue?: string;
+  responsable?: string;
+  // Champs éditables en interne ET externe
   preuve_url?: string;
   notes_mise_a_jour?: string;
   commentaires_externes?: string;
@@ -95,7 +101,14 @@ export function JalonFormContent({
   onCancel,
   isSaving = false,
 }: JalonFormContentProps) {
-  // État du formulaire
+  // Champs éditables en interne uniquement
+  const canEditInternal = isEditing && !isExternal;
+  const [titre, setTitre] = useState(jalon.titre || '');
+  const [description, setDescription] = useState(jalon.description || '');
+  const [datePrevue, setDatePrevue] = useState(jalon.date_prevue || '');
+  const [responsable, setResponsable] = useState(jalon.responsable || '');
+
+  // Champs éditables en interne ET externe
   const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
   const [preuveUrl, setPreuveUrl] = useState(jalon.preuve_url || '');
   const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any).notes_mise_a_jour || '');
@@ -196,6 +209,14 @@ export function JalonFormContent({
   const handleSave = () => {
     onSave?.({
       statut,
+      // Champs internes (seulement si édition interne)
+      ...(canEditInternal && {
+        titre,
+        description,
+        date_prevue: datePrevue,
+        responsable,
+      }),
+      // Champs communs (interne + externe)
       preuve_url: preuveUrl,
       notes_mise_a_jour: notesMiseAJour,
       commentaires_externes: JSON.stringify(comments),
@@ -257,11 +278,12 @@ export function JalonFormContent({
         </p>
       </div>
 
-      {/* Champs obligatoires (lecture seule) */}
+      {/* Informations du jalon */}
       <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
         <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
           <Target className="w-4 h-4" />
           Informations du jalon
+          {isExternal && <span className="text-xs font-normal text-purple-500">(lecture seule)</span>}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -283,7 +305,16 @@ export function JalonFormContent({
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               Libellé
             </Label>
-            <div className="p-2 bg-white rounded border text-sm font-medium">{jalon.titre || '-'}</div>
+            {canEditInternal ? (
+              <Input
+                value={titre}
+                onChange={(e) => setTitre(e.target.value)}
+                placeholder="Titre du jalon..."
+                className="bg-white"
+              />
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm font-medium">{titre || '-'}</div>
+            )}
           </div>
 
           <div>
@@ -291,9 +322,18 @@ export function JalonFormContent({
               <Calendar className="w-4 h-4 text-blue-600" />
               Échéance
             </Label>
-            <div className="p-2 bg-white rounded border text-sm">
-              {jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-'}
-            </div>
+            {canEditInternal ? (
+              <Input
+                type="date"
+                value={datePrevue}
+                onChange={(e) => setDatePrevue(e.target.value)}
+                className="bg-white"
+              />
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">
+                {datePrevue ? new Date(datePrevue).toLocaleDateString('fr-FR') : '-'}
+              </div>
+            )}
           </div>
 
           <div>
@@ -301,12 +341,31 @@ export function JalonFormContent({
               <User className="w-4 h-4 text-green-600" />
               Responsable
             </Label>
-            <div className="p-2 bg-white rounded border text-sm">{jalon.responsable || '-'}</div>
+            {canEditInternal ? (
+              <Input
+                value={responsable}
+                onChange={(e) => setResponsable(e.target.value)}
+                placeholder="Nom du responsable..."
+                className="bg-white"
+              />
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">{responsable || '-'}</div>
+            )}
           </div>
 
-          <div>
-            <Label className="text-sm font-medium mb-1.5 block">Cible</Label>
-            <div className="p-2 bg-white rounded border text-sm">{jalon.description || '-'}</div>
+          <div className="md:col-span-2">
+            <Label className="text-sm font-medium mb-1.5 block">Description / Cible</Label>
+            {canEditInternal ? (
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Description du jalon..."
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none bg-white"
+              />
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">{description || '-'}</div>
+            )}
           </div>
         </div>
       </div>

@@ -40,14 +40,23 @@ export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps
       const today = new Date().toISOString().split('T')[0];
 
       await updateRisque(risque.id, {
+        // Champs principaux (édition interne)
+        ...(data.titre && { titre: data.titre }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.categorie && { categorie: data.categorie }),
+        ...(data.proprietaire && { proprietaire: data.proprietaire }),
+        // Évaluation
         statut: data.statut,
         probabilite: data.probabilite,
         impact: data.impact,
         score: data.score,
+        // Plan de mitigation
+        ...(data.plan_mitigation !== undefined && { plan_mitigation: data.plan_mitigation }),
+        // Métadonnées
         date_derniere_evaluation: today,
       });
 
-      toast.success('Risque mis à jour', `"${risque.titre}" a été enregistré`);
+      toast.success('Risque mis à jour', `"${data.titre || risque.titre}" a été enregistré`);
       onSuccess();
       onClose();
     } catch (error) {

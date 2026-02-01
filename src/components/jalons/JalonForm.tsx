@@ -66,19 +66,25 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
 
     setIsSubmitting(true);
     try {
-      const responsable = jalon.responsable || '';
       const today = new Date().toISOString().split('T')[0];
 
       await updateJalon(jalon.id, {
+        // Champs principaux (édition interne)
+        ...(data.titre && { titre: data.titre }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.date_prevue && { date_prevue: data.date_prevue }),
+        ...(data.responsable && { responsable: data.responsable }),
+        // Statut et validation
         statut: data.statut,
         preuve_url: data.preuve_url || null,
         date_validation: data.date_validation || null,
+        // Métadonnées
         date_derniere_maj: today,
-        maj_par: responsable,
+        maj_par: data.responsable || jalon.responsable || '',
         commentaires: data.commentaires_externes ? JSON.parse(data.commentaires_externes) : jalon.commentaires,
       });
 
-      toast.success('Jalon mis à jour', `"${jalon.titre}" a été enregistré`);
+      toast.success('Jalon mis à jour', `"${data.titre || jalon.titre}" a été enregistré`);
       onSuccess();
       onClose();
     } catch (error) {

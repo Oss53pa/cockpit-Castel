@@ -147,6 +147,12 @@ export interface RisqueFormSaveData {
   probabilite: number;
   impact: number;
   score: number;
+  // Champs éditables en interne uniquement
+  titre?: string;
+  description?: string;
+  categorie?: string;
+  proprietaire?: string;
+  // Champs éditables en interne ET externe
   plan_mitigation?: string;
   notes_mise_a_jour?: string;
   commentaires_externes?: string;
@@ -166,6 +172,13 @@ export function RisqueFormContent({
   isSaving = false,
 }: RisqueFormContentProps) {
   const [activeTab, setActiveTab] = useState('general');
+
+  // Champs éditables en interne uniquement
+  const canEditInternal = isEditing && !isExternal;
+  const [titre, setTitre] = useState(risque.titre || '');
+  const [description, setDescription] = useState(risque.description || '');
+  const [categorie, setCategorie] = useState(risque.categorie || '');
+  const [proprietaire, setProprietaire] = useState(risque.proprietaire || '');
 
   // Convertir les valeurs numériques en enums
   const getProbabiliteFromNum = (num?: number): Probabilite => {
@@ -293,6 +306,14 @@ export function RisqueFormContent({
       probabilite: probabiliteToNum[probabilite],
       impact: impactToNum[impact],
       score,
+      // Champs internes (seulement si édition interne)
+      ...(canEditInternal && {
+        titre,
+        description,
+        categorie,
+        proprietaire,
+      }),
+      // Champs communs (interne + externe)
       plan_mitigation: planMitigation,
       notes_mise_a_jour: notesMiseAJour,
       commentaires_externes: JSON.stringify(comments),
@@ -396,6 +417,7 @@ export function RisqueFormContent({
               <h3 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4" />
                 Identification du risque
+                {isExternal && <span className="text-xs font-normal text-red-500">(lecture seule)</span>}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -404,17 +426,52 @@ export function RisqueFormContent({
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-1.5 block">Catégorie</Label>
-                  <div className="p-2 bg-white rounded border text-sm">
-                    {CATEGORIE_LABELS[risque.categorie?.toUpperCase() || ''] || risque.categorie || '-'}
-                  </div>
+                  {canEditInternal ? (
+                    <select
+                      value={categorie}
+                      onChange={(e) => setCategorie(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Sélectionner...</option>
+                      <option value="technique">Technique</option>
+                      <option value="commercial">Commercial</option>
+                      <option value="rh">RH</option>
+                      <option value="financier">Financier</option>
+                      <option value="reglementaire">Réglementaire</option>
+                      <option value="operationnel">Opérationnel</option>
+                    </select>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {CATEGORIE_LABELS[categorie?.toUpperCase() || ''] || categorie || '-'}
+                    </div>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium mb-1.5 block">Titre</Label>
-                  <div className="p-2 bg-white rounded border text-sm font-medium">{risque.titre || '-'}</div>
+                  {canEditInternal ? (
+                    <Input
+                      value={titre}
+                      onChange={(e) => setTitre(e.target.value)}
+                      placeholder="Titre du risque..."
+                      className="bg-white"
+                    />
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm font-medium">{titre || '-'}</div>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium mb-1.5 block">Description</Label>
-                  <div className="p-2 bg-white rounded border text-sm min-h-[60px]">{risque.description || '-'}</div>
+                  {canEditInternal ? (
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Description du risque..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none bg-white"
+                    />
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm min-h-[60px]">{description || '-'}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -427,7 +484,16 @@ export function RisqueFormContent({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium mb-1.5 block">Responsable</Label>
-                  <div className="p-2 bg-white rounded border text-sm">{risque.proprietaire || '-'}</div>
+                  {canEditInternal ? (
+                    <Input
+                      value={proprietaire}
+                      onChange={(e) => setProprietaire(e.target.value)}
+                      placeholder="Nom du responsable..."
+                      className="bg-white"
+                    />
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">{proprietaire || '-'}</div>
+                  )}
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-1.5 block">Date d'identification</Label>
