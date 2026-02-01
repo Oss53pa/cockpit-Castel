@@ -89,41 +89,34 @@ function useJalonsProblematiquesParAxe(): JalonProblematique[] {
 }
 
 /**
- * Composant pour afficher un jalon problématique
+ * Composant pour afficher un jalon problématique (1 par axe)
  */
 function JalonProblematiqueLine({ data }: { data: JalonProblematique }) {
-  if (!data.jalon) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-primary-400 py-1">
-        <span className="w-24 font-medium truncate">{AXE_SHORT_LABELS[data.axe]?.split(' ')[0] || data.axe}</span>
-        <span className="flex-1 text-success-500">OK</span>
-      </div>
-    );
-  }
+  if (!data.jalon) return null; // Ne pas afficher si pas de problème
 
   const isDepasse = data.jalon.statut === 'depasse';
 
   return (
     <div className={cn(
-      "flex items-center gap-2 text-xs py-1 rounded px-1 -mx-1",
+      "flex items-center gap-2 text-xs py-1.5 rounded px-2 -mx-1",
       isDepasse ? "bg-error-50" : "bg-warning-50"
     )}>
-      <span className="w-20 font-medium text-primary-600 truncate">
+      <span className="w-20 font-medium text-primary-700 truncate flex-shrink-0">
         {AXE_SHORT_LABELS[data.axe]?.split(' ')[0] || data.axe}
       </span>
       <AlertTriangle className={cn(
-        "h-3 w-3 flex-shrink-0",
+        "h-3.5 w-3.5 flex-shrink-0",
         isDepasse ? "text-error-500" : "text-warning-500"
       )} />
       <span className={cn(
-        "flex-1 truncate",
+        "flex-1 truncate font-medium",
         isDepasse ? "text-error-700" : "text-warning-700"
       )} title={data.jalon.titre}>
         {data.jalon.titre}
       </span>
       {data.count > 1 && (
         <span className={cn(
-          "text-[10px] px-1.5 py-0.5 rounded-full",
+          "text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0",
           isDepasse ? "bg-error-200 text-error-700" : "bg-warning-200 text-warning-700"
         )}>
           +{data.count - 1}
@@ -167,19 +160,19 @@ export function MeteoProjetCard() {
         </div>
       </div>
 
-      {/* Liste des jalons problématiques par axe */}
+      {/* Liste des jalons problématiques - 1 par axe */}
       {axesAvecProblemes.length > 0 ? (
         <div className="border-t border-primary-100 pt-3 mt-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">
-              Jalons critiques par axe
+              Jalon critique par axe
             </p>
             <span className="text-xs text-error-500 font-medium">
-              {totalProblemes} jalon{totalProblemes > 1 ? 's' : ''}
+              {axesAvecProblemes.length} axe{axesAvecProblemes.length > 1 ? 's' : ''}
             </span>
           </div>
-          <div className="space-y-0.5 max-h-40 overflow-y-auto">
-            {jalonsProblematiques.map(data => (
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {axesAvecProblemes.map(data => (
               <JalonProblematiqueLine key={data.axe} data={data} />
             ))}
           </div>
