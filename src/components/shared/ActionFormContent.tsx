@@ -546,7 +546,7 @@ export function ActionFormContent({
                     <Link2 className="w-4 h-4 text-purple-600" />
                     Jalon
                   </Label>
-                  {isEditing && !isExternal && jalons.length > 0 ? (
+                  {isEditing && !isExternal ? (
                     <Select
                       value={jalonId?.toString() || ''}
                       onChange={(e) => setJalonId(e.target.value ? parseInt(e.target.value) : null)}
@@ -571,7 +571,7 @@ export function ActionFormContent({
                     <User className="w-4 h-4 text-green-600" />
                     Responsable
                   </Label>
-                  {isEditing && !isExternal && users.length > 0 ? (
+                  {isEditing && !isExternal ? (
                     <Select
                       value={responsableId?.toString() || ''}
                       onChange={(e) => setResponsableId(e.target.value ? parseInt(e.target.value) : null)}
