@@ -6,8 +6,8 @@
 import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useDashboardKPIs, useAvancementGlobal, useAvancementParAxe, useJalons } from '@/hooks';
+import { useEffect, useState, useRef } from 'react';
+import { useProph3tHealth } from '@/hooks/useProph3t';
 
 interface ScoreFactor {
   label: string;
@@ -215,10 +215,8 @@ export function ScoreSante() {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const kpis = useDashboardKPIs();
-  const avancementGlobal = useAvancementGlobal();
-  const avancementsAxes = useAvancementParAxe();
-  const jalons = useJalons();
+  // Utiliser le même hook que partout ailleurs pour cohérence
+  const health = useProph3tHealth();
 
   // Intersection observer
   useEffect(() => {
@@ -235,92 +233,47 @@ export function ScoreSante() {
     return () => observer.disconnect();
   }, []);
 
-  // Calculate health factors - VALEURS RÉELLES (pas de transformation)
-  const factors = useMemo<ScoreFactor[]>(() => {
-    // 1. Avancement global RÉEL (moyenne des avancements de toutes les actions)
-    const avancementReel = Math.round(avancementGlobal);
+  // Facteurs depuis le hook unifié
+  const factors: ScoreFactor[] = health ? [
+    {
+      label: 'Avancement',
+      score: health.planningScore,
+      weight: 30,
+      trend: health.spi >= 1 ? 'up' : health.spi < 0.9 ? 'down' : 'stable',
+      icon: Activity,
+    },
+    {
+      label: 'Jalons',
+      score: health.riskScore,
+      weight: 25,
+      trend: health.riskScore >= 50 ? 'up' : health.riskScore < 30 ? 'down' : 'stable',
+      icon: health.riskScore >= 50 ? CheckCircle : AlertTriangle,
+    },
+    {
+      label: 'Budget',
+      score: health.budgetScore,
+      weight: 20,
+      trend: health.cpi >= 1 ? 'up' : 'down',
+      icon: health.budgetScore > health.planningScore + 20 ? AlertTriangle : CheckCircle,
+    },
+    {
+      label: 'Occupation',
+      score: health.alertScore,
+      weight: 15,
+      trend: health.alertScore >= 70 ? 'up' : health.alertScore < 50 ? 'down' : 'stable',
+      icon: health.alertScore >= 70 ? CheckCircle : Clock,
+    },
+    {
+      label: 'Vélocité',
+      score: Math.round((health.spi || 0) * 100),
+      weight: 10,
+      trend: health.spi >= 1 ? 'up' : health.spi < 0.8 ? 'down' : 'stable',
+      icon: TrendingUp,
+    },
+  ] : [];
 
-    // 2. Jalons - % de jalons atteints
-    const today = new Date();
-    const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
-    const jalonsTotal = jalons.length || 1;
-    const jalonsScore = Math.round((jalonsAtteints / jalonsTotal) * 100);
-
-    // 3. Budget - % consommé (inversé: 100 = tout dépensé, 0 = rien dépensé)
-    const budgetScore = kpis.budgetTotal > 0
-      ? Math.round((kpis.budgetConsomme / kpis.budgetTotal) * 100)
-      : 0;
-
-    // 4. Occupation rate RÉEL
-    const occupationScore = Math.round(kpis.tauxOccupation);
-
-    // 5. Vélocité - % d'actions terminées
-    const actionsTerminees = avancementsAxes.reduce((acc, a) => {
-      // Estimer basé sur avancement moyen de l'axe
-      return acc + (a.actuel >= 100 ? 1 : 0);
-    }, 0);
-    const velocityScore = avancementsAxes.length > 0
-      ? Math.round((actionsTerminees / avancementsAxes.length) * 100)
-      : 0;
-
-    // Tendances basées sur données réelles
-    const avgPrevu = avancementsAxes.length > 0
-      ? avancementsAxes.reduce((acc, a) => acc + a.prevu, 0) / avancementsAxes.length
-      : 0;
-    const ecartAvancement = avancementGlobal - avgPrevu;
-    const jalonsEnRetard = jalons.filter((j) => {
-      const date = new Date(j.date_prevue);
-      return date < today && j.statut !== 'atteint';
-    }).length;
-    const trendsUp = avancementsAxes.filter((a) => a.tendance === 'up').length;
-    const trendsDown = avancementsAxes.filter((a) => a.tendance === 'down').length;
-
-    return [
-      {
-        label: 'Avancement',
-        score: avancementReel,
-        weight: 30,
-        trend: ecartAvancement > 0 ? 'up' : ecartAvancement < -5 ? 'down' : 'stable',
-        icon: Activity,
-      },
-      {
-        label: 'Jalons',
-        score: jalonsScore,
-        weight: 25,
-        trend: jalonsEnRetard === 0 ? 'up' : jalonsEnRetard > 3 ? 'down' : 'stable',
-        icon: jalonsEnRetard > 0 ? AlertTriangle : CheckCircle,
-      },
-      {
-        label: 'Budget',
-        score: budgetScore,
-        weight: 20,
-        trend: budgetScore <= avancementReel ? 'up' : 'down',
-        icon: budgetScore > avancementReel + 20 ? AlertTriangle : CheckCircle,
-      },
-      {
-        label: 'Occupation',
-        score: occupationScore,
-        weight: 15,
-        trend: occupationScore >= 70 ? 'up' : occupationScore < 50 ? 'down' : 'stable',
-        icon: occupationScore >= 70 ? CheckCircle : Clock,
-      },
-      {
-        label: 'Vélocité',
-        score: velocityScore,
-        weight: 10,
-        trend: trendsUp > trendsDown ? 'up' : trendsUp < trendsDown ? 'down' : 'stable',
-        icon: TrendingUp,
-      },
-    ];
-  }, [avancementGlobal, avancementsAxes, jalons, kpis]);
-
-  // Calculate overall score
-  const overallScore = useMemo(() => {
-    const totalWeight = factors.reduce((acc, f) => acc + f.weight, 0);
-    return Math.round(
-      factors.reduce((acc, f) => acc + (f.score * f.weight) / totalWeight, 0)
-    );
-  }, [factors]);
+  // Score global depuis le hook unifié
+  const overallScore = health?.score ?? 0;
 
   return (
     <div
