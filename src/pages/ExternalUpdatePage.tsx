@@ -1,5 +1,6 @@
 // ============================================================================
 // PAGE MISE À JOUR EXTERNE - Utilise les mêmes formulaires que le Cockpit
+// Affiche le formulaire dans un modal identique à l'interface interne
 // ============================================================================
 
 import { useState, useEffect } from 'react';
@@ -12,8 +13,15 @@ import {
   Calendar,
   Target,
   AlertTriangle,
-  User,
+  Shield,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Badge,
+} from '@/components/ui';
 import { db } from '@/db';
 import { getUpdateLink, markLinkAccessed, markLinkUpdated } from '@/services/emailService';
 import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase';
@@ -50,6 +58,7 @@ export function ExternalUpdatePage() {
   const [link, setLink] = useState<(UpdateLink & { entityData?: FirebaseUpdateLink['entityData'] }) | null>(null);
   const [entity, setEntity] = useState<ExtendedEntity | null>(null);
   const [isFirebaseMode, setIsFirebaseMode] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -193,6 +202,7 @@ export function ExternalUpdatePage() {
       }
 
       await markLinkUpdated(token);
+      setDialogOpen(false);
       setSuccess(true);
     } catch (e) {
       console.error('Error saving:', e);
@@ -202,24 +212,38 @@ export function ExternalUpdatePage() {
     }
   };
 
-  const getEntityIcon = () => {
-    if (type === 'action') return <Target className="h-8 w-8" />;
-    if (type === 'jalon') return <Calendar className="h-8 w-8" />;
-    if (type === 'risque') return <AlertTriangle className="h-8 w-8" />;
-    return <Target className="h-8 w-8" />;
+  const getDialogIcon = () => {
+    if (type === 'action') return <Target className="w-5 h-5 text-white" />;
+    if (type === 'jalon') return <Calendar className="w-5 h-5 text-white" />;
+    if (type === 'risque') return <Shield className="w-5 h-5 text-white" />;
+    return <Target className="w-5 h-5 text-white" />;
   };
 
-  const getEntityGradient = () => {
+  const getDialogGradient = () => {
     if (type === 'action') return 'from-blue-500 to-cyan-600';
     if (type === 'jalon') return 'from-emerald-500 to-teal-600';
-    if (type === 'risque') return 'from-red-500 to-rose-600';
+    if (type === 'risque') return 'from-red-500 to-orange-600';
     return 'from-gray-500 to-gray-600';
+  };
+
+  const getDialogTitle = () => {
+    if (type === 'action') return "Modifier l'action";
+    if (type === 'jalon') return 'Modifier le jalon';
+    if (type === 'risque') return 'Modifier le risque';
+    return 'Modifier';
+  };
+
+  const getEntityId = () => {
+    if (type === 'action') return (entity as Action)?.id_action;
+    if (type === 'jalon') return (entity as Jalon)?.id_jalon;
+    if (type === 'risque') return (entity as Risque)?.id_risque;
+    return null;
   };
 
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <style>{cockpitFonts}</style>
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
@@ -232,7 +256,7 @@ export function ExternalUpdatePage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <style>{cockpitFonts}</style>
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -248,7 +272,7 @@ export function ExternalUpdatePage() {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <style>{cockpitFonts}</style>
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -264,84 +288,90 @@ export function ExternalUpdatePage() {
     );
   }
 
-  // Main form - utilise le même design que le Cockpit interne
+  // Main form in Dialog - identique au Cockpit interne
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <style>{cockpitFonts}</style>
 
-      {/* Header */}
-      <header className={`bg-gradient-to-r ${getEntityGradient()} text-white py-6`}>
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              {getEntityIcon()}
-            </div>
-            <div>
-              <p className="text-white/80 text-sm uppercase tracking-wider">
-                Mise à jour {type === 'action' ? "d'action" : type === 'jalon' ? 'de jalon' : 'de risque'}
-              </p>
-              <h1 className="text-2xl font-bold">{entity?.titre}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-white/80 text-sm">
-            <span className="flex items-center gap-1">
-              <User className="h-4 w-4" />
-              {link?.recipientName}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              Expire le {new Date(link?.expiresAt || '').toLocaleDateString('fr-FR')}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      {/* Form - Utilise ActionFormContent identique au Cockpit */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {type === 'action' && entity && (
-            <ActionFormContent
-              action={entity as Action}
-              isEditing={true}
-              isExternal={true}
-              onSave={handleSave}
-              isSaving={saving}
-            />
-          )}
-
-          {type === 'jalon' && entity && (
-            <JalonFormContent
-              jalon={entity as Jalon}
-              isEditing={true}
-              isExternal={true}
-              onSave={handleSave}
-              isSaving={saving}
-            />
-          )}
-
-          {type === 'risque' && entity && (
-            <RisqueFormContent
-              risque={entity as Risque}
-              isEditing={true}
-              isExternal={true}
-              onSave={handleSave}
-              isSaving={saving}
-            />
-          )}
-        </div>
-
-        <p className="text-center text-sm text-gray-500 mt-4">
-          Les modifications seront automatiquement synchronisées avec le Cockpit
-        </p>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-sm text-gray-500 border-t bg-white">
-        <p className="text-xl text-blue-600 mb-1" style={{ fontFamily: "'Grand Hotel', cursive" }}>
+      {/* Background branding */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5">
+        <p className="text-9xl font-bold text-gray-900" style={{ fontFamily: "'Grand Hotel', cursive" }}>
           Cockpit
         </p>
-        <p>Application de pilotage de projet</p>
-      </footer>
+      </div>
+
+      {/* Info bar */}
+      <div className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-b px-4 py-2 z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between text-sm text-gray-600">
+          <span className="flex items-center gap-2">
+            <span className="text-xl text-blue-600" style={{ fontFamily: "'Grand Hotel', cursive" }}>Cockpit</span>
+            <span className="text-gray-300">|</span>
+            <span>Mise à jour externe</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            Expire le {new Date(link?.expiresAt || '').toLocaleDateString('fr-FR')}
+          </span>
+        </div>
+      </div>
+
+      {/* Dialog Modal - identique aux formulaires internes */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className={`p-2 bg-gradient-to-br ${getDialogGradient()} rounded-lg`}>
+                {getDialogIcon()}
+              </div>
+              <div className="flex-1">
+                <span>{getDialogTitle()}</span>
+                {getEntityId() && (
+                  <Badge variant="outline" className="ml-2 font-mono text-xs">
+                    {getEntityId()}
+                  </Badge>
+                )}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {type === 'action' && entity && (
+              <ActionFormContent
+                action={entity as Action}
+                isEditing={true}
+                isExternal={true}
+                onSave={handleSave}
+                isSaving={saving}
+              />
+            )}
+
+            {type === 'jalon' && entity && (
+              <JalonFormContent
+                jalon={entity as Jalon}
+                isEditing={true}
+                isExternal={true}
+                onSave={handleSave}
+                isSaving={saving}
+              />
+            )}
+
+            {type === 'risque' && entity && (
+              <RisqueFormContent
+                risque={entity as Risque}
+                isEditing={true}
+                isExternal={true}
+                onSave={handleSave}
+                isSaving={saving}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t px-4 py-2 text-center text-xs text-gray-500">
+        Les modifications seront automatiquement synchronisées avec le Cockpit
+      </div>
     </div>
   );
 }
