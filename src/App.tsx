@@ -54,35 +54,48 @@ function AppContent() {
   useAutoRecalculate();
 
   useEffect(() => {
+    let isMounted = true;
+
     async function initApp() {
       try {
-        // Initialize default site if none exists
+        // ÉTAPE 1: Opérations critiques minimales
         await initializeDefaultSite();
 
-        // Initialiser la base avec les données v2.0 (si vide)
+        // Initialiser la base (vérifie si vide avant de seeder)
         const initResult = await initializeDatabase();
-        if (initResult.seeded) {
-          console.log('[App] Base de données seedée avec données v2.0:', initResult.result);
+
+        // Seed cosmosAngre seulement si initializeDatabase n'a pas seedé
+        if (!initResult.seeded) {
+          await seedDatabase();
+        } else {
+          console.log('[App] Base seedée v2.0, skip cosmosAngre');
         }
 
-        // Fallback: seed avec cosmosAngre si initializeDatabase n'a pas seedé
-        // (pour compatibilité avec les données existantes)
-        await seedDatabase();
+        // App prête à afficher
+        if (isMounted) setIsReady(true);
 
-        // Nettoyer les alertes en double avant d'en generer de nouvelles
-        await cleanupDuplicateAlertes();
-        await generateAlertesAutomatiques();
-        // Migration et initialisation des services email
-        await migrateEmailConfig();
-        await initDefaultTemplates();
-        setIsReady(true);
+        // ÉTAPE 2: Opérations différées (non-bloquantes)
+        setTimeout(async () => {
+          if (!isMounted) return;
+          try {
+            await cleanupDuplicateAlertes();
+            await generateAlertesAutomatiques();
+            await migrateEmailConfig();
+            await initDefaultTemplates();
+          } catch (err) {
+            console.error('[App] Erreur initialisation différée:', err);
+          }
+        }, 1500);
+
       } catch (error) {
         console.error('Error initializing app:', error);
-        setIsReady(true);
+        if (isMounted) setIsReady(true);
       }
     }
 
     initApp();
+
+    return () => { isMounted = false; };
   }, []);
 
   if (!isReady) {
