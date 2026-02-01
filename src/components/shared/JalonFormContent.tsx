@@ -27,6 +27,7 @@ import {
   Badge,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { useUsers } from '@/hooks';
 import { AXE_LABELS, type Jalon, type Axe, type MeteoJalon } from '@/types';
 
 // ============================================================================
@@ -103,6 +104,7 @@ export function JalonFormContent({
 }: JalonFormContentProps) {
   // Champs éditables en interne uniquement
   const canEditInternal = isEditing && !isExternal;
+  const users = useUsers();
   const [titre, setTitre] = useState(jalon.titre || '');
   const [description, setDescription] = useState(jalon.description || '');
   const [datePrevue, setDatePrevue] = useState(jalon.date_prevue || '');
@@ -342,12 +344,18 @@ export function JalonFormContent({
               Responsable
             </Label>
             {canEditInternal ? (
-              <Input
+              <select
                 value={responsable}
                 onChange={(e) => setResponsable(e.target.value)}
-                placeholder="Nom du responsable..."
-                className="bg-white"
-              />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              >
+                <option value="">Sélectionner un responsable...</option>
+                {users.map((user) => (
+                  <option key={user.id} value={`${user.prenom} ${user.nom}`}>
+                    {user.prenom} {user.nom} {user.role ? `(${user.role})` : ''}
+                  </option>
+                ))}
+              </select>
             ) : (
               <div className="p-2 bg-white rounded border text-sm">{responsable || '-'}</div>
             )}

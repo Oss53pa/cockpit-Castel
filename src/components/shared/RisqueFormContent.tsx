@@ -25,6 +25,7 @@ import {
   Badge,
 } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useUsers } from '@/hooks';
 import { type Risque } from '@/types';
 
 // ============================================================================
@@ -172,9 +173,9 @@ export function RisqueFormContent({
   isSaving = false,
 }: RisqueFormContentProps) {
   const [activeTab, setActiveTab] = useState('general');
+  const users = useUsers();
 
-  // Champs éditables en interne uniquement
-  const canEditInternal = isEditing && !isExternal;
+  // Tous les champs sont éditables (sauf le code qui est auto-généré)
   const [titre, setTitre] = useState(risque.titre || '');
   const [description, setDescription] = useState(risque.description || '');
   const [categorie, setCategorie] = useState(risque.categorie || '');
@@ -306,14 +307,12 @@ export function RisqueFormContent({
       probabilite: probabiliteToNum[probabilite],
       impact: impactToNum[impact],
       score,
-      // Champs internes (seulement si édition interne)
-      ...(canEditInternal && {
-        titre,
-        description,
-        categorie,
-        proprietaire,
-      }),
-      // Champs communs (interne + externe)
+      // Tous les champs sont éditables (sauf le code)
+      titre,
+      description,
+      categorie,
+      proprietaire,
+      // Champs communs
       plan_mitigation: planMitigation,
       notes_mise_a_jour: notesMiseAJour,
       commentaires_externes: JSON.stringify(comments),
@@ -417,16 +416,15 @@ export function RisqueFormContent({
               <h3 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4" />
                 Identification du risque
-                {isExternal && <span className="text-xs font-normal text-red-500">(lecture seule)</span>}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium mb-1.5 block">Code</Label>
-                  <div className="p-2 bg-white rounded border text-sm font-mono">{risque.id_risque || risque.code || '-'}</div>
+                  <Label className="text-sm font-medium mb-1.5 block">Code <span className="text-xs text-neutral-400">(auto-généré)</span></Label>
+                  <div className="p-2 bg-white rounded border text-sm font-mono">{risque.id_risque || '-'}</div>
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-1.5 block">Catégorie</Label>
-                  {canEditInternal ? (
+                  {isEditing ? (
                     <select
                       value={categorie}
                       onChange={(e) => setCategorie(e.target.value)}
@@ -448,7 +446,7 @@ export function RisqueFormContent({
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium mb-1.5 block">Titre</Label>
-                  {canEditInternal ? (
+                  {isEditing ? (
                     <Input
                       value={titre}
                       onChange={(e) => setTitre(e.target.value)}
@@ -461,7 +459,7 @@ export function RisqueFormContent({
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium mb-1.5 block">Description</Label>
-                  {canEditInternal ? (
+                  {isEditing ? (
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -484,13 +482,19 @@ export function RisqueFormContent({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium mb-1.5 block">Responsable</Label>
-                  {canEditInternal ? (
-                    <Input
+                  {isEditing ? (
+                    <select
                       value={proprietaire}
                       onChange={(e) => setProprietaire(e.target.value)}
-                      placeholder="Nom du responsable..."
-                      className="bg-white"
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Sélectionner un responsable...</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={`${user.prenom} ${user.nom}`}>
+                          {user.prenom} {user.nom} {user.role ? `(${user.role})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <div className="p-2 bg-white rounded border text-sm">{proprietaire || '-'}</div>
                   )}
