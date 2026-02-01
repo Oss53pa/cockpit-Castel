@@ -74,6 +74,11 @@ export interface ExternalUpdateData {
       responsableNom?: string;
       dateCreation: string;
     }>;
+    decisions_attendues?: Array<{
+      id: string;
+      sujet: string;
+      dateCreation: string;
+    }>;
 
     // Jalon
     date_prevue?: string;
@@ -131,6 +136,11 @@ export interface ExternalUpdateData {
         sujet: string;
         responsableId?: number | null;
         responsableNom?: string;
+        dateCreation: string;
+      }>;
+      decisionsAttendues?: Array<{
+        id: string;
+        sujet: string;
         dateCreation: string;
       }>;
 
@@ -314,6 +324,10 @@ export async function createUpdateLinkInFirebase(
       // Inclure les points d'attention
       if ((action as any).points_attention) {
         entitySnapshot.points_attention = (action as any).points_attention;
+      }
+      // Inclure les décisions attendues
+      if ((action as any).decisions_attendues) {
+        entitySnapshot.decisions_attendues = (action as any).decisions_attendues;
       }
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
@@ -616,6 +630,10 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
       if (changes.pointsAttention !== undefined) {
         updateData.points_attention = changes.pointsAttention;
         console.log('[SyncToLocal] Points d\'attention à sauvegarder:', changes.pointsAttention?.length || 0);
+      }
+      if (changes.decisionsAttendues !== undefined) {
+        updateData.decisions_attendues = changes.decisionsAttendues;
+        console.log('[SyncToLocal] Décisions attendues à sauvegarder:', changes.decisionsAttendues?.length || 0);
       }
 
       console.log('[SyncToLocal] UpdateData pour action:', JSON.stringify(updateData, null, 2));

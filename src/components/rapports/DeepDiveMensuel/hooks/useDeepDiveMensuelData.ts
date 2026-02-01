@@ -254,6 +254,29 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
 
       const meteo = calculateMeteo(avancement, 100, actionsEnRetard);
 
+      // Consolider les points d'attention des actions de cet axe
+      const consolidatedPointsAttention = axeActions
+        .filter(a => (a as any).points_attention && (a as any).points_attention.length > 0)
+        .flatMap(a => ((a as any).points_attention || []).map((pa: any) => ({
+          id: pa.id,
+          sujet: pa.sujet,
+          responsableNom: pa.responsableNom || '',
+          actionTitre: a.titre,
+          actionId: a.id?.toString() || '',
+          dateCreation: pa.dateCreation,
+        })));
+
+      // Consolider les décisions attendues des actions de cet axe
+      const consolidatedDecisionsAttendues = axeActions
+        .filter(a => (a as any).decisions_attendues && (a as any).decisions_attendues.length > 0)
+        .flatMap(a => ((a as any).decisions_attendues || []).map((da: any) => ({
+          id: da.id,
+          sujet: da.sujet,
+          actionTitre: a.titre,
+          actionId: a.id?.toString() || '',
+          dateCreation: da.dateCreation,
+        })));
+
       result[axe] = {
         axe,
         label: config.label,
@@ -295,6 +318,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         })),
         pointsCles: [],
         focusM1: [],
+        pointsAttention: consolidatedPointsAttention,
+        decisionsAttendues: consolidatedDecisionsAttendues,
       };
     });
 

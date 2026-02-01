@@ -181,6 +181,7 @@ export function ExternalUpdatePage() {
             liens_documents: actionData.liens_documents,
             sous_taches: actionData.sousTaches,
             points_attention: actionData.pointsAttention,
+            decisions_attendues: actionData.decisionsAttendues,
             updated_at: new Date().toISOString(),
             derniere_mise_a_jour_externe: new Date().toISOString(),
           };

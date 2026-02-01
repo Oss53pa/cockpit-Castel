@@ -51,6 +51,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         avancement: data.avancement,
         sous_taches: data.sousTaches,
         points_attention: data.pointsAttention,
+        decisions_attendues: data.decisionsAttendues,
         documents: data.preuves?.map(p => ({
           id: p.id,
           nom: p.nom,

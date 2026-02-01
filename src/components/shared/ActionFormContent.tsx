@@ -772,6 +772,78 @@ export function ActionFormContent({
             )}
           </TabsContent>
 
+          {/* ONGLET DÉCISIONS ATTENDUES */}
+          <TabsContent value="decisionsAttendues" className="space-y-3 m-0">
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                <HelpCircle className="w-4 h-4" />
+                Décisions attendues
+                {decisionsAttendues.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-purple-200 text-purple-800">{decisionsAttendues.length}</Badge>
+                )}
+              </h3>
+              <p className="text-xs text-purple-600 mb-3">
+                Ces décisions seront consolidées dans le rapport DeepDive sous l'axe de cette action.
+              </p>
+            </div>
+
+            {decisionsAttendues.length > 0 && (
+              <div className="space-y-2">
+                {decisionsAttendues.map((da, index) => (
+                  <div
+                    key={da.id}
+                    className="p-3 bg-purple-50 border border-purple-200 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <Label className="text-xs text-purple-700 mb-1">Sujet</Label>
+                        {isEditing ? (
+                          <Input
+                            value={da.sujet}
+                            onChange={(e) => handleUpdateDecisionAttendue(index, 'sujet', e.target.value)}
+                            placeholder="Décrivez la décision attendue..."
+                            className="border-purple-300 focus:border-purple-500"
+                          />
+                        ) : (
+                          <p className="text-sm">{da.sujet || 'Non renseigné'}</p>
+                        )}
+                      </div>
+
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDecisionAttendue(index)}
+                          className="text-red-500 hover:text-red-700 p-1 mt-5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {decisionsAttendues.length === 0 && (
+              <div className="text-center py-8 text-purple-600">
+                <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Aucune décision attendue</p>
+              </div>
+            )}
+
+            {isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddDecisionAttendue}
+                className="w-full border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Ajouter une décision attendue
+              </Button>
+            )}
+          </TabsContent>
+
           {/* ONGLET COMPLÉMENTS / NOTES */}
           <TabsContent value="complements" className="space-y-4 m-0">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">

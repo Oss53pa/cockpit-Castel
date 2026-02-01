@@ -315,6 +315,23 @@ export interface DetailAxeData {
   pointsCles: string[];
   // Focus M+1
   focusM1: string[];
+  // Points d'attention consolidés des actions
+  pointsAttention?: {
+    id: string;
+    sujet: string;
+    responsableNom?: string;
+    actionTitre: string;
+    actionId: string;
+    dateCreation: string;
+  }[];
+  // Décisions attendues consolidées des actions
+  decisionsAttendues?: {
+    id: string;
+    sujet: string;
+    actionTitre: string;
+    actionId: string;
+    dateCreation: string;
+  }[];
 }
 
 // Tableaux spécifiques par axe

@@ -131,6 +131,7 @@ export function ExternalUpdateFirebasePage() {
           documents: snapshot.documents || [],
           commentaires: snapshot.commentaires || [],
           points_attention: snapshot.points_attention || [],
+          decisions_attendues: snapshot.decisions_attendues || [],
         } as Action);
       } else if (type === 'jalon') {
         setEntity({
@@ -191,9 +192,11 @@ export function ExternalUpdateFirebasePage() {
         response.changes.sousTaches = actionData.sousTaches || [];
         response.changes.preuves = actionData.preuves || [];
         response.changes.pointsAttention = actionData.pointsAttention || [];
+        response.changes.decisionsAttendues = actionData.decisionsAttendues || [];
 
         console.log('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
         console.log('[ExternalUpdate] Action - pointsAttention:', actionData.pointsAttention);
+        console.log('[ExternalUpdate] Action - decisionsAttendues:', actionData.decisionsAttendues);
         console.log('[ExternalUpdate] Action - avancement:', actionData.avancement);
       }
 

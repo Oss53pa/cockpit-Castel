@@ -14,6 +14,8 @@ import {
   DollarSign,
   Shield,
   Calendar,
+  AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 import type { DetailAxeData, MeteoNiveau } from '@/types/deepDive';
 import { METEO_EMOJI_CONFIG } from '@/types/deepDive';
@@ -278,6 +280,51 @@ export function DetailAxeSlide({ data, designSettings, periode }: DetailAxeSlide
                 )}
               </div>
             </div>
+
+            {/* Points d'Attention */}
+            {data.pointsAttention && data.pointsAttention.length > 0 && (
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="font-semibold text-sm text-amber-800">
+                    Points d'Attention ({data.pointsAttention.length})
+                  </span>
+                </div>
+                <div className="space-y-1 max-h-24 overflow-auto">
+                  {data.pointsAttention.slice(0, 4).map((pa) => (
+                    <div key={pa.id} className="flex items-start gap-2 text-xs">
+                      <span className="text-amber-600">⚠</span>
+                      <div className="flex-1">
+                        <span className="text-amber-800">{pa.sujet}</span>
+                        {pa.responsableNom && (
+                          <span className="text-amber-600 ml-1">({pa.responsableNom})</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Décisions Attendues */}
+            {data.decisionsAttendues && data.decisionsAttendues.length > 0 && (
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <HelpCircle className="h-4 w-4 text-purple-600" />
+                  <span className="font-semibold text-sm text-purple-800">
+                    Décisions Attendues ({data.decisionsAttendues.length})
+                  </span>
+                </div>
+                <div className="space-y-1 max-h-24 overflow-auto">
+                  {data.decisionsAttendues.slice(0, 4).map((da) => (
+                    <div key={da.id} className="flex items-start gap-2 text-xs">
+                      <span className="text-purple-600">?</span>
+                      <span className="text-purple-800">{da.sujet}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Colonne 3: Risques */}
