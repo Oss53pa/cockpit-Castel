@@ -182,11 +182,38 @@ export async function createUpdateLinkInFirebase(
   recipientName: string,
   expiresAt: string
 ): Promise<boolean> {
+  console.log('[Firebase] Création du lien:', token, 'type:', entityType);
+
   if (!firestoreDb) {
+    console.log('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
     const initialized = await initRealtimeSync();
+
     if (!initialized || !firestoreDb) {
-      console.warn('Firebase not available, link will be local only');
-      return false;
+      console.warn('[Firebase] Échec init, tentative fallback...');
+
+      // Fallback: essayer d'initialiser directement
+      try {
+        const existingApps = getApps();
+        const fallbackAppName = 'cockpit-fallback';
+        let fallbackApp = existingApps.find(app => app.name === fallbackAppName);
+
+        if (!fallbackApp) {
+          fallbackApp = initializeApp({
+            apiKey: 'AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0',
+            authDomain: 'cockpit-project-management.firebaseapp.com',
+            projectId: 'cockpit-project-management',
+            storageBucket: 'cockpit-project-management.firebasestorage.app',
+            messagingSenderId: '525943959593',
+            appId: '1:525943959593:web:2f69e6d45c76ddf5846c38',
+          }, fallbackAppName);
+        }
+
+        firestoreDb = getFirestore(fallbackApp);
+        console.log('[Firebase] Fallback réussi pour création');
+      } catch (fallbackError) {
+        console.error('[Firebase] Échec du fallback:', fallbackError);
+        return false;
+      }
     }
   }
 
@@ -230,34 +257,70 @@ export async function createUpdateLinkInFirebase(
     };
 
     await setDoc(docRef, updateData);
-    console.log('Update link created in Firebase:', token);
+    console.log('[Firebase] Lien créé avec succès dans Firestore:', token);
     return true;
   } catch (e) {
-    console.error('Error creating update link in Firebase:', e);
+    console.error('[Firebase] Erreur lors de la création du lien:', e);
     return false;
   }
 }
 
 /**
  * Récupère un lien depuis Firebase (pour la page externe)
+ * Utilise la config par défaut si nécessaire pour les appareils externes
  */
 export async function getUpdateLinkFromFirebase(token: string): Promise<ExternalUpdateData | null> {
+  console.log('[Firebase] Tentative de récupération du lien:', token);
+
+  // Forcer l'initialisation si pas encore fait
   if (!firestoreDb) {
+    console.log('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
     const initialized = await initRealtimeSync();
+    console.log('[Firebase] Résultat initialisation:', initialized);
+
     if (!initialized || !firestoreDb) {
-      return null;
+      console.error('[Firebase] Échec de l\'initialisation de Firestore');
+
+      // Fallback: essayer d'initialiser directement avec la config par défaut
+      try {
+        console.log('[Firebase] Tentative de fallback avec config par défaut...');
+        const existingApps = getApps();
+        const fallbackAppName = 'cockpit-fallback';
+        let fallbackApp = existingApps.find(app => app.name === fallbackAppName);
+
+        if (!fallbackApp) {
+          // Config par défaut hardcodée pour les appareils externes
+          fallbackApp = initializeApp({
+            apiKey: 'AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0',
+            authDomain: 'cockpit-project-management.firebaseapp.com',
+            projectId: 'cockpit-project-management',
+            storageBucket: 'cockpit-project-management.firebasestorage.app',
+            messagingSenderId: '525943959593',
+            appId: '1:525943959593:web:2f69e6d45c76ddf5846c38',
+          }, fallbackAppName);
+        }
+
+        firestoreDb = getFirestore(fallbackApp);
+        console.log('[Firebase] Fallback réussi, Firestore initialisé');
+      } catch (fallbackError) {
+        console.error('[Firebase] Échec du fallback:', fallbackError);
+        return null;
+      }
     }
   }
 
   try {
+    console.log('[Firebase] Lecture du document:', COLLECTION_UPDATE_LINKS, '/', token);
     const docRef = doc(firestoreDb, COLLECTION_UPDATE_LINKS, token);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
+      console.log('[Firebase] Document non trouvé pour le token:', token);
       return null;
     }
 
     const data = docSnap.data() as ExternalUpdateData;
+    console.log('[Firebase] Document trouvé:', { token: data.token, entityType: data.entityType, entityId: data.entityId });
 
     // Vérifier expiration
     if (new Date(data.expiresAt) < new Date() && !data.isExpired) {
@@ -267,7 +330,7 @@ export async function getUpdateLinkFromFirebase(token: string): Promise<External
 
     return data;
   } catch (e) {
-    console.error('Error getting update link from Firebase:', e);
+    console.error('[Firebase] Erreur lors de la récupération du lien:', e);
     return null;
   }
 }

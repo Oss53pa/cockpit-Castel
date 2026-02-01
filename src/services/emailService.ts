@@ -321,11 +321,11 @@ export async function createUpdateLink(
   // Sauvegarder localement (IndexedDB) pour compatibilité
   const id = await db.updateLinks.add(link);
 
-  // Sauvegarder dans Firebase si configuré (pour synchronisation temps réel)
-  const firebaseConfig = getFirebaseConfig();
-  if (firebaseConfig.enabled && isFirebaseConfigured() && entity) {
+  // Toujours sauvegarder dans Firebase pour la synchronisation temps réel (appareils externes)
+  if (entity) {
     try {
-      await createRealtimeLink(
+      console.log('[EmailService] Sauvegarde du lien dans Firebase:', link.token);
+      const firebaseSaved = await createRealtimeLink(
         link.token,
         entityType,
         entityId,
@@ -334,10 +334,16 @@ export async function createUpdateLink(
         recipientName,
         expiresAt.toISOString()
       );
-      console.log('Lien sauvegardé dans Firebase (temps réel):', link.token);
+      if (firebaseSaved) {
+        console.log('[EmailService] Lien sauvegardé dans Firebase avec succès:', link.token);
+      } else {
+        console.warn('[EmailService] Échec de la sauvegarde Firebase, le lien sera uniquement local');
+      }
     } catch (error) {
-      console.error('Erreur Firebase (fallback sur IndexedDB):', error);
+      console.error('[EmailService] Erreur Firebase (fallback sur IndexedDB):', error);
     }
+  } else {
+    console.warn('[EmailService] Pas de données entité, impossible de sauvegarder dans Firebase');
   }
 
   return { ...link, id };
@@ -368,42 +374,46 @@ export async function getUpdateLink(token: string): Promise<(UpdateLink & { enti
   }
 
   // Si pas trouvé localement, essayer Firebase (pour les appareils externes)
-  const firebaseConfig = getFirebaseConfig();
-  if (firebaseConfig.enabled && isFirebaseConfigured()) {
-    try {
-      const firebaseLink = await getUpdateLinkFromFirebase(token);
-      if (firebaseLink) {
-        // Convertir le format Firebase vers le format UpdateLink
-        return {
-          id: 0, // ID virtuel pour les liens Firebase
-          token: firebaseLink.token,
-          entityType: firebaseLink.entityType,
-          entityId: firebaseLink.entityId,
-          recipientEmail: firebaseLink.recipientEmail,
-          recipientName: firebaseLink.recipientName,
-          createdAt: firebaseLink.createdAt,
-          expiresAt: firebaseLink.expiresAt,
-          isUsed: firebaseLink.isUsed,
-          isExpired: firebaseLink.isExpired,
-          accessedAt: firebaseLink.accessedAt,
-          // Inclure les données de l'entité pour affichage
-          entityData: firebaseLink.entitySnapshot ? {
-            titre: firebaseLink.entitySnapshot.titre,
-            statut: firebaseLink.entitySnapshot.statut,
-            avancement: firebaseLink.entitySnapshot.avancement,
-            date_prevue: firebaseLink.entitySnapshot.date_prevue,
-            date_fin_prevue: firebaseLink.entitySnapshot.date_fin_prevue,
-            probabilite: firebaseLink.entitySnapshot.probabilite,
-            impact: firebaseLink.entitySnapshot.impact,
-            score: firebaseLink.entitySnapshot.score,
-          } : undefined,
-        };
-      }
-    } catch (error) {
-      console.error('Erreur lors de la récupération du lien depuis Firebase:', error);
+  // Toujours essayer Firebase même si la config n'est pas explicitement définie
+  // car DEFAULT_CONFIG est utilisé automatiquement
+  console.log('[EmailService] Lien non trouvé localement, tentative Firebase...');
+
+  try {
+    const firebaseLink = await getUpdateLinkFromFirebase(token);
+    console.log('[EmailService] Résultat Firebase:', firebaseLink ? 'trouvé' : 'non trouvé');
+
+    if (firebaseLink) {
+      // Convertir le format Firebase vers le format UpdateLink
+      return {
+        id: 0, // ID virtuel pour les liens Firebase
+        token: firebaseLink.token,
+        entityType: firebaseLink.entityType,
+        entityId: firebaseLink.entityId,
+        recipientEmail: firebaseLink.recipientEmail,
+        recipientName: firebaseLink.recipientName,
+        createdAt: firebaseLink.createdAt,
+        expiresAt: firebaseLink.expiresAt,
+        isUsed: firebaseLink.isUsed,
+        isExpired: firebaseLink.isExpired,
+        accessedAt: firebaseLink.accessedAt,
+        // Inclure les données de l'entité pour affichage
+        entityData: firebaseLink.entitySnapshot ? {
+          titre: firebaseLink.entitySnapshot.titre,
+          statut: firebaseLink.entitySnapshot.statut,
+          avancement: firebaseLink.entitySnapshot.avancement,
+          date_prevue: firebaseLink.entitySnapshot.date_prevue,
+          date_fin_prevue: firebaseLink.entitySnapshot.date_fin_prevue,
+          probabilite: firebaseLink.entitySnapshot.probabilite,
+          impact: firebaseLink.entitySnapshot.impact,
+          score: firebaseLink.entitySnapshot.score,
+        } : undefined,
+      };
     }
+  } catch (error) {
+    console.error('[EmailService] Erreur lors de la récupération du lien depuis Firebase:', error);
   }
 
+  console.log('[EmailService] Lien non trouvé ni localement ni dans Firebase');
   return null;
 }
 

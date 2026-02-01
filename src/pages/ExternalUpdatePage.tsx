@@ -64,9 +64,12 @@ export function ExternalUpdatePage() {
     }
 
     try {
+      console.log('[ExternalUpdate] Chargement du lien:', token, 'type:', type);
       const updateLink = await getUpdateLink(token);
+      console.log('[ExternalUpdate] Résultat getUpdateLink:', updateLink ? 'trouvé' : 'non trouvé', updateLink);
 
       if (!updateLink) {
+        console.error('[ExternalUpdate] Lien non trouvé dans IndexedDB et Firebase');
         setError('Ce lien n\'existe pas ou a été supprimé.');
         setLoading(false);
         return;
