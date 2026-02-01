@@ -23,38 +23,41 @@ const RECALCULATION_INTERVAL_MS = 60 * 60 * 1000;
 export function useAutoRecalculate(): void {
   const hasRunInitial = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Éviter les exécutions multiples en mode strict de React
     if (hasRunInitial.current) return;
     hasRunInitial.current = true;
 
-    // Exécuter au montage de l'app
-    console.log('[useAutoRecalculate] Démarrage du recalcul automatique initial...');
+    // Différer le recalcul pour ne pas bloquer le rendu initial
+    timeoutRef.current = setTimeout(() => {
+      console.log('[useAutoRecalculate] Démarrage du recalcul automatique initial...');
 
-    // Nettoyer les doublons de budget d'abord
-    cleanupAllBudgetDuplicates()
-      .then(({ totalRemoved }) => {
-        if (totalRemoved > 0) {
-          console.log(`[useAutoRecalculate] ${totalRemoved} doublons de budget supprimés`);
-        }
-      })
-      .catch((error) => {
-        console.error('[useAutoRecalculate] Erreur nettoyage doublons budget:', error);
-      });
+      // Nettoyer les doublons de budget d'abord
+      cleanupAllBudgetDuplicates()
+        .then(({ totalRemoved }) => {
+          if (totalRemoved > 0) {
+            console.log(`[useAutoRecalculate] ${totalRemoved} doublons de budget supprimés`);
+          }
+        })
+        .catch((error) => {
+          console.error('[useAutoRecalculate] Erreur nettoyage doublons budget:', error);
+        });
 
-    // Puis exécuter le recalcul des statuts
-    runDailyAutoCalculations()
-      .then(({ actionsUpdated, jalonsUpdated }) => {
-        if (actionsUpdated > 0 || jalonsUpdated > 0) {
-          console.log(
-            `[useAutoRecalculate] Recalcul initial terminé: ${actionsUpdated} actions, ${jalonsUpdated} jalons mis à jour`
-          );
-        }
-      })
-      .catch((error) => {
-        console.error('[useAutoRecalculate] Erreur lors du recalcul initial:', error);
-      });
+      // Puis exécuter le recalcul des statuts
+      runDailyAutoCalculations()
+        .then(({ actionsUpdated, jalonsUpdated }) => {
+          if (actionsUpdated > 0 || jalonsUpdated > 0) {
+            console.log(
+              `[useAutoRecalculate] Recalcul initial terminé: ${actionsUpdated} actions, ${jalonsUpdated} jalons mis à jour`
+            );
+          }
+        })
+        .catch((error) => {
+          console.error('[useAutoRecalculate] Erreur lors du recalcul initial:', error);
+        });
+    }, 2000); // Attendre 2 secondes après le montage
 
     // Configurer l'intervalle pour les recalculs périodiques
     intervalRef.current = setInterval(() => {
@@ -74,10 +77,13 @@ export function useAutoRecalculate(): void {
 
     // Cleanup au démontage
     return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        console.log('[useAutoRecalculate] Intervalle de recalcul nettoyé');
       }
     };
   }, []);
