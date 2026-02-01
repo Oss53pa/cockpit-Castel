@@ -34,6 +34,7 @@ import {
   DashboardSkeleton,
   ScoreSante,
 } from '@/components/dashboard';
+import { useCurrentSite } from '@/hooks/useSites';
 import type { Axe } from '@/types';
 import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { Proph3tWidget } from '@/components/proph3t';
@@ -79,12 +80,16 @@ function GlassmorphismHeader({
   syncData,
   daysUntilOpening,
   isVisible,
+  siteLocalisation,
+  dateOuvertureFormatee,
 }: {
   kpis: ReturnType<typeof useDashboardKPIs>;
   avancementGlobal: number;
   syncData: ReturnType<typeof useSync>;
   daysUntilOpening: number;
   isVisible: boolean;
+  siteLocalisation: string;
+  dateOuvertureFormatee: string;
 }) {
   const progressStatus = getProgressStatus(avancementGlobal);
 
@@ -146,11 +151,11 @@ function GlassmorphismHeader({
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <div className="flex items-center gap-1.5 text-primary-200 bg-white/5 px-3 py-1 rounded-full">
                 <MapPin className="h-4 w-4" />
-                <span>Angré, Abidjan</span>
+                <span>{siteLocalisation}</span>
               </div>
               <div className="flex items-center gap-1.5 text-primary-200 bg-white/5 px-3 py-1 rounded-full">
                 <Calendar className="h-4 w-4" />
-                <span>Ouverture nov. 2026</span>
+                <span>Ouverture {dateOuvertureFormatee}</span>
               </div>
               <div className="flex items-center gap-1.5 bg-secondary-500/20 px-3 py-1 rounded-full">
                 <Clock className="h-4 w-4 text-secondary-400" />
@@ -348,6 +353,7 @@ export function DashboardPage() {
   const kpis = useDashboardKPIs();
   const avancementGlobal = useAvancementGlobal();
   const syncData = useSync(1, 'cosmos-angre');
+  const currentSite = useCurrentSite();
 
   // Simulate loading and trigger visibility
   useEffect(() => {
@@ -364,12 +370,22 @@ export function DashboardPage() {
   const jalonsPercent =
     kpis.jalonsTotal > 0 ? (kpis.jalonsAtteints / kpis.jalonsTotal) * 100 : 0;
 
-  // Calculate days until opening
-  const openingDate = new Date('2026-11-15');
+  // Get opening date from site configuration (database)
+  const dateOuverture = currentSite?.dateOuverture || '2026-11-15';
+  const openingDate = new Date(dateOuverture);
   const today = new Date();
   const daysUntilOpening = Math.ceil(
     (openingDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
+
+  // Format opening date for display
+  const dateOuvertureFormatee = openingDate.toLocaleDateString('fr-FR', {
+    month: 'short',
+    year: 'numeric',
+  });
+
+  // Get site location from database
+  const siteLocalisation = currentSite?.localisation || 'Abidjan, Côte d\'Ivoire';
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -394,6 +410,8 @@ export function DashboardPage() {
             syncData={syncData}
             daysUntilOpening={daysUntilOpening}
             isVisible={isVisible}
+            siteLocalisation={siteLocalisation}
+            dateOuvertureFormatee={dateOuvertureFormatee}
           />
 
           {/* Onglets du dashboard opérationnel */}
@@ -474,7 +492,7 @@ export function DashboardPage() {
               </div>
 
               {/* Compte à rebours */}
-              <CompteARebours dateOuverture="2026-11-15" />
+              <CompteARebours dateOuverture={dateOuverture} />
 
               {/* Météo Projet compact */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

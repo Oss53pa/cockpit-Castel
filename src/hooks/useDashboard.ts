@@ -70,7 +70,20 @@ export function useDashboardKPIs() {
 
 export function useAvancementParAxe(): AvancementAxe[] {
   const data = useLiveQuery(async () => {
-    const actions = await db.actions.toArray();
+    const [actions, sites] = await Promise.all([
+      db.actions.toArray(),
+      db.sites.filter(s => !!s.actif).toArray(),
+    ]);
+
+    // Get project dates from site configuration
+    const site = sites[0];
+    const dateOuverture = site?.dateOuverture || '2026-11-15';
+    // Estimate project start as 2.5 years before opening
+    const projectEnd = new Date(dateOuverture);
+    projectEnd.setMonth(projectEnd.getMonth() + 1); // Buffer of 1 month after soft opening
+    const projectStart = new Date(projectEnd);
+    projectStart.setFullYear(projectStart.getFullYear() - 3); // 3 years project duration
+
     const axes: Axe[] = [
       'axe1_rh',
       'axe2_commercial',
@@ -93,13 +106,11 @@ export function useAvancementParAxe(): AvancementAxe[] {
 
       // Calculate trend (simplified: compare to target progress)
       const today = new Date();
-      const projectStart = new Date('2024-01-01');
-      const projectEnd = new Date('2026-11-30');
       const totalDays =
         (projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
       const elapsedDays =
         (today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
-      const expectedProgress = (elapsedDays / totalDays) * 100;
+      const expectedProgress = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
 
       let tendance: 'up' | 'down' | 'stable' = 'stable';
       if (avancement > expectedProgress + 5) tendance = 'up';

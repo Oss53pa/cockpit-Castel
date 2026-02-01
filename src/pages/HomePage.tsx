@@ -11,22 +11,23 @@ import {
   Brain,
 } from 'lucide-react';
 import { useDashboardKPIs, useAvancementGlobal, useAlertes } from '@/hooks';
+import { useCurrentSite } from '@/hooks/useSites';
 import { useProph3tHealth } from '@/hooks/useProph3t';
 import { cn } from '@/lib/utils';
 import { Proph3tWidget } from '@/components/proph3t/Proph3tWidget';
-
-function getDaysUntilOpening(): number {
-  const opening = new Date('2026-11-15');
-  const today = new Date();
-  return Math.ceil((opening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
 
 export function HomePage() {
   const navigate = useNavigate();
   const kpis = useDashboardKPIs();
   const avancementGlobal = useAvancementGlobal();
-  const daysUntilOpening = getDaysUntilOpening();
+  const currentSite = useCurrentSite();
   const { alertes = [] } = useAlertes();
+
+  // Calculate days until opening from site configuration (database)
+  const dateOuverture = currentSite?.dateOuverture || '2026-11-15';
+  const opening = new Date(dateOuverture);
+  const today = new Date();
+  const daysUntilOpening = Math.ceil((opening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   const [showProph3t, setShowProph3t] = useState(false);
   const proph3tHealth = useProph3tHealth();
 
@@ -51,7 +52,7 @@ export function HomePage() {
 
       {/* Header */}
       <header className="flex items-center justify-between px-12 py-6">
-        <span className="text-lg font-semibold text-primary-900">Cosmos Angre</span>
+        <span className="text-lg font-semibold text-primary-900">{currentSite?.nom || kpis.projectName}</span>
 
         <nav className="flex items-center gap-6">
           {/* Score de Santé PROPH3T */}

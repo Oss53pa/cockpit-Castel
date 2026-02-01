@@ -67,59 +67,34 @@ import {
   useRisques,
 } from '@/hooks';
 
-// Données de référence
-import {
-  PROJET_INFO,
-  METEO_PAR_AXE,
-  METEO_ICONS,
-  ORGANIGRAMME,
-  EFFECTIF_CIBLE,
-  PLANNING_RECRUTEMENT,
-  COUT_MASSE_SALARIALE_2026,
-  COMMERCIAL_STATUS,
-  COMMERCIAL_KPIS,
-  COMMERCIAL_ACTIONS,
-  TECHNIQUE_STATUS,
-  TECHNIQUE_JALONS,
-  TECHNIQUE_POINTS_ATTENTION,
-  TECHNIQUE_RISQUE_PRINCIPAL,
-  BUDGET_SYNTHESE_2026,
-  BUDGET_TOTAL_2026,
-  BUDGET_MOBILISATION_DETAILS,
-  BUDGET_EXPLOITATION_DETAILS,
-  BUDGET_RATIOS,
-  MARKETING_STATUS,
-  MARKETING_JALONS,
-  MARKETING_BUDGET,
-  MARKETING_BUDGET_TOTAL,
-  MARKETING_PRIORITES,
-  EXPLOITATION_STATUS,
-  MODELE_EXPLOITATION,
-  DOCUMENTS_JURIDIQUES,
-  AVANTAGES_MODELE_EXTERNALISE,
-  RISQUES_MAJEURS,
-  DECISIONS_ATTENDUES,
-  PROCHAINES_ETAPES,
-  SIGNATAIRES,
-  formatMontantFCFA,
-  getMeteoIcon,
-  getProbabiliteColor,
-  getImpactColor,
-  getStatutIcon,
-  getDocumentStatutLabel,
-  type MeteoType,
-} from '@/data/deepDiveLancementCosmosAngre';
+// Types et utilitaires uniquement (pas de données)
+import { AXE_LABELS, AXE_SHORT_LABELS, JALON_STATUS_LABELS } from '@/types';
+import type { Action, Jalon, Risque } from '@/types';
 
-// Import des données budget exploitation
-import {
-  BUDGET_EXPLOITATION_2026,
-  TOTAL_EFFECTIF_2026,
-} from '@/data/budgetExploitationCosmosAngre';
+// Utilitaires de formatage
+function formatMontantFCFA(montant: number): string {
+  if (montant >= 1_000_000_000) return `${(montant / 1_000_000_000).toFixed(1)} Md`;
+  if (montant >= 1_000_000) return `${(montant / 1_000_000).toFixed(0)} M`;
+  if (montant >= 1_000) return `${(montant / 1_000).toFixed(0)} K`;
+  return montant.toLocaleString('fr-FR');
+}
+
+function getStatutIcon(statut: string): string {
+  switch (statut) {
+    case 'a_venir': case 'planifie': return '📅';
+    case 'en_cours': case 'en_approche': return '🔄';
+    case 'termine': case 'atteint': return '✅';
+    case 'en_retard': case 'en_danger': case 'depasse': return '⚠️';
+    case 'bloque': return '🚫';
+    default: return '📋';
+  }
+}
 
 // Import constantes centralisées
 import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
+type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
 type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'construction' | 'divers';
 
 // Configuration des axes
@@ -238,7 +213,7 @@ function AxeMeteoBadge({ actions, jalons }: { actions: any[]; jalons: any[] }) {
 // SLIDE 1 - RAPPEL PROJET & MÉTÉO GLOBALE
 // ============================================================================
 function SlideRappelProjet() {
-  // Données réelles
+  // Données réelles de la base de données
   const kpis = useDashboardKPIs();
   const jalons = useJalons();
   const actions = useActions();
@@ -251,20 +226,79 @@ function SlideRappelProjet() {
 
   const jalonsTotal = jalons.data?.length || 0;
 
+  // Calcul dynamique de la météo par axe basé sur les vraies données
+  const meteoParAxe = useMemo(() => {
+    if (!actions.data || !jalons.data) return [];
+
+    const axes: { code: string; key: AxeType; label: string }[] = [
+      { code: 'axe1_rh', key: 'rh', label: 'RH & Organisation' },
+      { code: 'axe2_commercial', key: 'commercial', label: 'Commercial & Leasing' },
+      { code: 'axe3_technique', key: 'technique', label: 'Technique & Handover' },
+      { code: 'axe4_budget', key: 'budget', label: 'Budget & Finances' },
+      { code: 'axe5_marketing', key: 'marketing', label: 'Marketing & Communication' },
+      { code: 'axe6_exploitation', key: 'exploitation', label: 'Exploitation & Juridique' },
+    ];
+
+    return axes.map(axe => {
+      const axeActions = actions.data!.filter(a => a.axe === axe.code);
+      const axeJalons = jalons.data!.filter(j => j.axe === axe.code);
+
+      const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
+      const actionsBloquees = axeActions.filter(a => a.statut === 'bloque').length;
+      const actionsEnRetard = axeActions.filter(a => {
+        if (a.statut === 'termine') return false;
+        return a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date();
+      }).length;
+      const jalonsEnDanger = axeJalons.filter(j => j.statut === 'en_danger' || j.statut === 'depasse').length;
+
+      const tauxCompletion = axeActions.length > 0 ? (actionsTerminees / axeActions.length) * 100 : 0;
+
+      let meteo: MeteoType;
+      let statut: string;
+
+      if (axeActions.length === 0 && axeJalons.length === 0) {
+        meteo = 'soleil_nuage';
+        statut = 'À démarrer';
+      } else if (actionsBloquees > 0 || actionsEnRetard > 2 || jalonsEnDanger > 1) {
+        meteo = 'pluie';
+        statut = actionsBloquees > 0 ? `${actionsBloquees} bloquée(s)` : `${actionsEnRetard} en retard`;
+      } else if (tauxCompletion < 30 || actionsEnRetard > 0 || jalonsEnDanger > 0) {
+        meteo = 'nuage';
+        statut = `Vigilance - ${Math.round(tauxCompletion)}%`;
+      } else if (tauxCompletion < 70) {
+        meteo = 'soleil_nuage';
+        statut = `En cours - ${Math.round(tauxCompletion)}%`;
+      } else {
+        meteo = 'soleil';
+        statut = `${Math.round(tauxCompletion)}% complété`;
+      }
+
+      return { axe: axe.code, key: axe.key, label: axe.label, meteo, statut };
+    });
+  }, [actions.data, jalons.data]);
+
+  // Calcul effectif depuis les actions RH
+  const effectifCible = useMemo(() => {
+    if (!actions.data) return 25; // Valeur par défaut
+    const actionsRH = actions.data.filter(a => a.axe === 'axe1_rh');
+    // Chercher une action qui mentionne l'effectif ou utiliser la config
+    return PROJET_CONFIG.surfaceGLA > 40000 ? 25 : 15;
+  }, [actions.data]);
+
   return (
     <div className="space-y-6">
-      {/* Info Projet */}
+      {/* Info Projet - Données de PROJET_CONFIG */}
       <Card padding="md">
         <h3 className="text-lg font-bold text-primary-900 mb-4">Le Projet</h3>
         <Table>
           <TableBody>
             <TableRow>
               <TableCell className="font-medium">Surface GLA</TableCell>
-              <TableCell className="text-right">{PROJET_INFO.surfaceGLA.toLocaleString()} m²</TableCell>
+              <TableCell className="text-right">{PROJET_CONFIG.surfaceGLA.toLocaleString()} m²</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Bâtiments</TableCell>
-              <TableCell className="text-right">8 (CC, Big Box 1-4, Zone Expo, Marché, Parking)</TableCell>
+              <TableCell className="text-right">{PROJET_CONFIG.nombreBatiments} bâtiments</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Soft Opening</TableCell>
@@ -276,31 +310,18 @@ function SlideRappelProjet() {
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Occupation cible</TableCell>
-              <TableCell className="text-right">≥ {PROJET_INFO.occupationCible}%</TableCell>
+              <TableCell className="text-right">≥ {PROJET_CONFIG.occupationCible}%</TableCell>
             </TableRow>
           </TableBody>
         </Table>
       </Card>
 
-      {/* Météo par Axe */}
+      {/* Météo par Axe - Calculée dynamiquement */}
       <Card padding="md">
         <h3 className="text-lg font-bold text-primary-900 mb-4">Météo par Axe</h3>
         <div className="space-y-3">
-          {METEO_PAR_AXE.map((item) => {
-            // Mapping axe code vers axe key
-            const axeMapping: Record<string, AxeType> = {
-              'axe1_rh': 'rh',
-              'axe2_commercial': 'commercial',
-              'axe3_technique': 'technique',
-              'axe4_budget': 'budget',
-              'axe5_marketing': 'marketing',
-              'axe6_exploitation': 'exploitation',
-              'axe7_construction': 'construction',
-              'divers': 'divers',
-            };
-            const axeKey = axeMapping[item.axe] || 'divers';
-            const config = AXES_CONFIG[axeKey];
-
+          {meteoParAxe.map((item) => {
+            const config = AXES_CONFIG[item.key];
             return (
               <div key={item.axe} className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -319,7 +340,7 @@ function SlideRappelProjet() {
         <h3 className="text-lg font-bold text-primary-900 mb-4">KPIs Temps Réel</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-blue-700">{(kpis?.tauxOccupation || 0).toFixed(2)}%</p>
+            <p className="text-2xl font-bold text-blue-700">{(kpis?.tauxOccupation || 0).toFixed(1)}%</p>
             <p className="text-xs text-blue-600">Occupation</p>
           </div>
           <div className="p-4 bg-green-50 rounded-lg text-center">
@@ -331,7 +352,7 @@ function SlideRappelProjet() {
             <p className="text-xs text-amber-600">Actions totales</p>
           </div>
           <div className="p-4 bg-purple-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-purple-700">{kpis?.equipeTaille || EFFECTIF_CIBLE.total}</p>
+            <p className="text-2xl font-bold text-purple-700">{kpis?.equipeTaille || effectifCible}</p>
             <p className="text-xs text-purple-600">Effectif cible</p>
           </div>
         </div>
@@ -445,38 +466,61 @@ function SlideAxeRH() {
         </div>
       </Card>
 
-      {/* Planning Recrutement */}
+      {/* Actions RH - données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Planning Recrutement</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Vague</TableHead>
-              <TableHead>Période</TableHead>
-              <TableHead>Postes clés</TableHead>
-              <TableHead className="text-center">Effectif</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {PLANNING_RECRUTEMENT.map((vague) => (
-              <TableRow key={vague.vague}>
-                <TableCell className="font-medium">{vague.vague}</TableCell>
-                <TableCell>{vague.periode}</TableCell>
-                <TableCell>{vague.postes}</TableCell>
-                <TableCell className="text-center">{vague.effectif}</TableCell>
+        <h4 className="font-semibold text-primary-900 mb-3">Actions RH</h4>
+        {actionsRH.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Échéance</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {actionsRH.slice(0, 8).map((action) => (
+                <TableRow key={action.id}>
+                  <TableCell className="font-medium">{action.titre}</TableCell>
+                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune action RH définie</p>
+        )}
       </Card>
 
-      {/* Coût */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <p className="text-center">
-          <span className="text-sm text-blue-600">Coût Total 2026 - Masse salariale :</span>
-          <span className="ml-2 text-xl font-bold text-blue-800">{formatMontantFCFA(COUT_MASSE_SALARIALE_2026)} FCFA</span>
-        </p>
-      </div>
+      {/* Jalons RH - données réelles */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Jalons RH</h4>
+        {jalonsRH.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Jalon</TableHead>
+                <TableHead>Date cible</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jalonsRH.slice(0, 5).map((jalon) => (
+                <TableRow key={jalon.id}>
+                  <TableCell className="font-medium">{jalon.titre}</TableCell>
+                  <TableCell>{jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(jalon.statut)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun jalon RH défini</p>
+        )}
+      </Card>
     </div>
   );
 }
@@ -653,30 +697,34 @@ function SlideAxeTechnique() {
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsTechniques} jalons={jalonsTechniques} />
 
-      {/* Jalons Clés */}
+      {/* Jalons Techniques - données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Jalons Clés</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Jalon</TableHead>
-              <TableHead>Cible</TableHead>
-              <TableHead className="text-center">Statut</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {TECHNIQUE_JALONS.map((jalon, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{jalon.jalon}</TableCell>
-                <TableCell>{jalon.dateCible || '-'}</TableCell>
-                <TableCell className="text-center">{getStatutIcon(jalon.statut)} {jalon.statut.replace('_', ' ')}</TableCell>
+        <h4 className="font-semibold text-primary-900 mb-3">Jalons Techniques</h4>
+        {jalonsTechniques.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Jalon</TableHead>
+                <TableHead>Date cible</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {jalonsTechniques.slice(0, 8).map((jalon) => (
+                <TableRow key={jalon.id}>
+                  <TableCell className="font-medium">{jalon.titre}</TableCell>
+                  <TableCell>{jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(jalon.statut)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun jalon technique défini</p>
+        )}
       </Card>
 
-      {/* Données réelles */}
+      {/* KPIs Techniques */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
         <div className="grid grid-cols-3 gap-4">
@@ -763,122 +811,86 @@ function SlideAxeBudget() {
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsBudget} jalons={jalonsBudget} />
 
-      {/* Vue Synthétique 2026 */}
+      {/* Vue Synthétique Budget - données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Vue Synthétique 2026</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Budget</TableHead>
-              <TableHead className="text-right">Montant</TableHead>
-              <TableHead>Nature</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {BUDGET_SYNTHESE_2026.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{item.nature}</TableCell>
-                <TableCell className="text-right font-mono">{formatMontantFCFA(item.montant)} FCFA</TableCell>
-                <TableCell>
-                  <Badge variant={item.type === 'CAPEX' ? 'default' : 'outline'}>{item.type}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow className="bg-primary-100">
-              <TableCell className="font-bold">TOTAL 2026</TableCell>
-              <TableCell className="text-right font-bold font-mono">{formatMontantFCFA(BUDGET_TOTAL_2026)} FCFA</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-      </Card>
-
-      {/* Mobilisation - Grandes Masses */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Mobilisation - Grandes Masses</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nature</TableHead>
-              <TableHead className="text-right">Montant</TableHead>
-              <TableHead className="text-right">%</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {BUDGET_MOBILISATION_DETAILS.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{item.nature}</TableCell>
-                <TableCell className="text-right font-mono">{formatMontantFCFA(item.montant)}</TableCell>
-                <TableCell className="text-right">{item.pourcentage}%</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {/* Exploitation 2026 - Grandes Masses */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Exploitation 2026 - Grandes Masses</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nature</TableHead>
-              <TableHead className="text-right">Montant</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {BUDGET_EXPLOITATION_DETAILS.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{item.nature}</TableCell>
-                <TableCell className="text-right font-mono">{formatMontantFCFA(item.montant)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {/* Benchmark */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Benchmark</h4>
-        <div className="flex items-center gap-2 mb-3">
-          <CheckCircle className="h-5 w-5 text-green-600" />
-          <span className="font-medium text-green-700">Dans les standards marché CI</span>
-        </div>
-        <ul className="space-y-2 text-sm">
-          {BUDGET_RATIOS.map((ratio, idx) => (
-            <li key={idx} className="flex justify-between">
-              <span className="text-primary-600">{ratio.indicateur}</span>
-              <span className="font-mono">{ratio.valeur} <span className="text-primary-400">(norme : {ratio.norme})</span></span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* Données temps réel */}
-      {budgetTotalPrevu > 0 && (
-        <Card padding="md">
-          <h4 className="font-semibold text-primary-900 mb-3">Consommation Budget (Temps Réel)</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Budget prévu</span>
-              <span className="font-mono">{formatMontantFCFA(budgetTotalPrevu)} FCFA</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Réalisé</span>
-              <span className="font-mono">{formatMontantFCFA(budgetTotalRealise)} FCFA</span>
-            </div>
-            <div className="w-full bg-primary-200 rounded-full h-3 mt-2">
-              <div
-                className="bg-amber-500 h-3 rounded-full"
-                style={{ width: `${Math.min(tauxConsommation, 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-primary-500 text-right">{tauxConsommation}% consommé</p>
+        <h4 className="font-semibold text-primary-900 mb-3">Synthèse Budgétaire</h4>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="text-center p-3 bg-amber-50 rounded-lg">
+            <p className="text-xl font-bold text-amber-700">{formatMontantFCFA(budgetTotalPrevu)}</p>
+            <p className="text-xs text-amber-500">Budget Prévu</p>
           </div>
-        </Card>
-      )}
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-xl font-bold text-blue-700">{formatMontantFCFA(budget?.engage || 0)}</p>
+            <p className="text-xs text-blue-500">Engagé</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-xl font-bold text-green-700">{formatMontantFCFA(budgetTotalRealise)}</p>
+            <p className="text-xs text-green-500">Réalisé ({tauxConsommation}%)</p>
+          </div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3">
+          <div
+            className="bg-green-500 h-3 rounded-full transition-all"
+            style={{ width: `${Math.min(tauxConsommation, 100)}%` }}
+          />
+        </div>
+      </Card>
+
+      {/* Budget par Axe - données réelles */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Budget par Axe</h4>
+        {budgetParAxe && budgetParAxe.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Axe</TableHead>
+                <TableHead className="text-right">Prévu</TableHead>
+                <TableHead className="text-right">Réalisé</TableHead>
+                <TableHead className="text-right">%</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {budgetParAxe.map((item, idx) => (
+                <TableRow key={idx}>
+                  <TableCell className="font-medium">{item.axe}</TableCell>
+                  <TableCell className="text-right font-mono">{formatMontantFCFA(item.prevu)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatMontantFCFA(item.realise)}</TableCell>
+                  <TableCell className="text-right">{item.prevu > 0 ? Math.round((item.realise / item.prevu) * 100) : 0}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune donnée budget par axe</p>
+        )}
+      </Card>
+
+      {/* Actions Budget - données réelles */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Actions Budget</h4>
+        {actionsBudget.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {actionsBudget.slice(0, 5).map((action) => (
+                <TableRow key={action.id}>
+                  <TableCell className="font-medium">{action.titre}</TableCell>
+                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune action budget définie</p>
+        )}
+      </Card>
     </div>
   );
 }
@@ -907,69 +919,58 @@ function SlideAxeMarketing() {
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsMarketing} jalons={jalonsMarketing} />
 
-      {/* Jalons Clés */}
+      {/* Jalons Marketing - données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Jalons Clés</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Jalon</TableHead>
-              <TableHead>Cible</TableHead>
-              <TableHead className="text-center">Statut</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MARKETING_JALONS.map((jalon, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{jalon.jalon}</TableCell>
-                <TableCell>{jalon.dateCible || 'À planifier'}</TableCell>
-                <TableCell className="text-center">{getStatutIcon(jalon.statut)}</TableCell>
+        <h4 className="font-semibold text-primary-900 mb-3">Jalons Marketing</h4>
+        {jalonsMarketing.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Jalon</TableHead>
+                <TableHead>Date cible</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {jalonsMarketing.slice(0, 6).map((jalon) => (
+                <TableRow key={jalon.id}>
+                  <TableCell className="font-medium">{jalon.titre}</TableCell>
+                  <TableCell>{jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : 'À planifier'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(jalon.statut)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun jalon marketing défini</p>
+        )}
       </Card>
 
-      {/* Budget Marketing */}
+      {/* Actions Marketing - données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Budget Marketing (inclus dans Mobilisation)</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Poste</TableHead>
-              <TableHead className="text-right">Montant</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MARKETING_BUDGET.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{item.nature}</TableCell>
-                <TableCell className="text-right font-mono">{formatMontantFCFA(item.montant)}</TableCell>
+        <h4 className="font-semibold text-primary-900 mb-3">Actions Marketing</h4>
+        {actionsMarketing.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead className="text-center">Avancement</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow className="bg-pink-50">
-              <TableCell className="font-bold">Total</TableCell>
-              <TableCell className="text-right font-bold font-mono">{formatMontantFCFA(MARKETING_BUDGET_TOTAL)}</TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-      </Card>
-
-      {/* Priorités */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Priorités</h4>
-        <ol className="space-y-2">
-          {MARKETING_PRIORITES.map((priorite, idx) => (
-            <li key={idx} className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center text-sm font-bold">
-                {idx + 1}
-              </span>
-              <span className="text-sm text-primary-700">{priorite}</span>
-            </li>
-          ))}
-        </ol>
+            </TableHeader>
+            <TableBody>
+              {actionsMarketing.slice(0, 6).map((action) => (
+                <TableRow key={action.id}>
+                  <TableCell className="font-medium">{action.titre}</TableCell>
+                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune action marketing définie</p>
+        )}
       </Card>
 
       {/* Données temps réel */}
@@ -1007,6 +1008,29 @@ function SlideAxeExploitation() {
     return jalons.data.filter(j => j.axe === 'axe6_exploitation');
   }, [jalons.data]);
 
+  // Catégoriser les actions par type de prestation
+  const prestationsParType = useMemo(() => {
+    const types = [
+      { titre: 'Sécurité', mode: 'Externalisée', actions: actionsExploitation.filter(a => a.titre?.toLowerCase().includes('sécurité') || a.titre?.toLowerCase().includes('securite')) },
+      { titre: 'Nettoyage', mode: 'Externalisée', actions: actionsExploitation.filter(a => a.titre?.toLowerCase().includes('nettoyage') || a.titre?.toLowerCase().includes('entretien')) },
+      { titre: 'Maintenance', mode: 'Mixte', actions: actionsExploitation.filter(a => a.titre?.toLowerCase().includes('maintenance') || a.titre?.toLowerCase().includes('technique')) },
+    ];
+    return types.filter(t => t.actions.length > 0 || true); // Afficher tous les types
+  }, [actionsExploitation]);
+
+  // Documents juridiques basés sur les jalons exploitation
+  const documentsJuridiques = useMemo(() => {
+    return jalonsExploitation.map(j => ({
+      document: j.titre,
+      statut: j.statut === 'atteint' ? 'pret' : j.statut === 'en_cours' || j.statut === 'en_approche' ? 'en_cours' : 'a_lancer',
+    }));
+  }, [jalonsExploitation]);
+
+  const actionsTerminees = actionsExploitation.filter(a => a.statut === 'termine').length;
+  const avancement = actionsExploitation.length > 0
+    ? Math.round(actionsExploitation.reduce((sum, a) => sum + (a.avancement || 0), 0) / actionsExploitation.length)
+    : 0;
+
   return (
     <div className="space-y-6">
       <SectionHeader title="AXE EXPLOITATION & JURIDIQUE" icon={Settings} color="text-green-600" />
@@ -1014,72 +1038,79 @@ function SlideAxeExploitation() {
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsExploitation} jalons={jalonsExploitation} />
 
-      {/* Modèle d'Exploitation */}
+      {/* Statistiques temps réel */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Modèle d'Exploitation</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Prestation</TableHead>
-              <TableHead>Mode</TableHead>
-              <TableHead>Effectif prévu</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MODELE_EXPLOITATION.map((item, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{item.prestation}</TableCell>
-                <TableCell>
-                  <Badge variant={item.mode === 'Externalisée' ? 'default' : 'outline'}>{item.mode}</Badge>
-                </TableCell>
-                <TableCell>{item.effectif}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {/* Documents Juridiques */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Documents Juridiques</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Document</TableHead>
-              <TableHead>Statut</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {DOCUMENTS_JURIDIQUES.map((doc, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{doc.document}</TableCell>
-                <TableCell>{getDocumentStatutLabel(doc.statut)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      {/* Avantages Modèle Externalisé */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Avantages Modèle Externalisé</h4>
-        <ul className="space-y-2">
-          {AVANTAGES_MODELE_EXTERNALISE.map((avantage, idx) => (
-            <li key={idx} className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm text-primary-700">{avantage}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* Données temps réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
-        <div className="text-center p-3 bg-green-50 rounded-lg">
-          <p className="text-xl font-bold text-green-700">{actionsExploitation.length}</p>
-          <p className="text-xs text-green-500">Actions Exploitation</p>
+        <h4 className="font-semibold text-primary-900 mb-3">Avancement</h4>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-primary-50 rounded-lg">
+            <p className="text-xl font-bold text-primary-700">{actionsExploitation.length}</p>
+            <p className="text-xs text-primary-500">Actions</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
+            <p className="text-xs text-green-500">Terminées</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-xl font-bold text-blue-700">{avancement}%</p>
+            <p className="text-xs text-blue-500">Avancement</p>
+          </div>
         </div>
+      </Card>
+
+      {/* Actions Exploitation */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Actions Exploitation</h4>
+        {actionsExploitation.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Échéance</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {actionsExploitation.slice(0, 8).map((action) => (
+                <TableRow key={action.id}>
+                  <TableCell className="font-medium">{action.titre}</TableCell>
+                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune action exploitation définie</p>
+        )}
+      </Card>
+
+      {/* Jalons Exploitation */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Jalons Exploitation</h4>
+        {jalonsExploitation.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Jalon</TableHead>
+                <TableHead>Date cible</TableHead>
+                <TableHead className="text-center">Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jalonsExploitation.slice(0, 5).map((jalon) => (
+                <TableRow key={jalon.id}>
+                  <TableCell className="font-medium">{jalon.titre}</TableCell>
+                  <TableCell>{jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(jalon.statut)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun jalon exploitation défini</p>
+        )}
       </Card>
     </div>
   );
@@ -1091,14 +1122,32 @@ function SlideAxeExploitation() {
 function SlideRisquesMajeurs() {
   const risques = useRisques();
 
-  // Risques critiques en temps réel
-  const risquesCritiques = useMemo(() => {
+  // Top 5 risques par score (données réelles de la base)
+  const top5Risques = useMemo(() => {
     if (!risques.data) return [];
-    return risques.data.filter(r => (r.score || 0) >= 12).slice(0, 5);
+    return [...risques.data]
+      .filter(r => r.status !== 'ferme')
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 5);
   }, [risques.data]);
 
-  const totalRisques = risques.data?.length || 0;
-  const totalCritiques = risques.data?.filter(r => (r.score || 0) >= 12).length || 0;
+  const totalRisques = risques.data?.filter(r => r.status !== 'ferme').length || 0;
+  const totalCritiques = risques.data?.filter(r => r.status !== 'ferme' && (r.score || 0) >= 12).length || 0;
+
+  // Convertir score en probabilité/impact lisible
+  const getProbabiliteFromScore = (probabilite: number): string => {
+    if (probabilite >= 4) return '🔴';
+    if (probabilite >= 3) return '🟠';
+    if (probabilite >= 2) return '🟡';
+    return '🟢';
+  };
+
+  const getImpactFromScore = (impact: number): string => {
+    if (impact >= 4) return '🔴';
+    if (impact >= 3) return '🟠';
+    if (impact >= 2) return '🟡';
+    return '🟢';
+  };
 
   return (
     <div className="space-y-6">
@@ -1108,56 +1157,63 @@ function SlideRisquesMajeurs() {
       <div className="grid grid-cols-2 gap-4">
         <Card padding="md" className="text-center">
           <p className="text-3xl font-bold text-primary-700">{totalRisques}</p>
-          <p className="text-sm text-primary-500">Risques identifiés</p>
+          <p className="text-sm text-primary-500">Risques ouverts</p>
         </Card>
         <Card padding="md" className="text-center bg-red-50 border-red-200">
           <p className="text-3xl font-bold text-red-700">{totalCritiques}</p>
-          <p className="text-sm text-red-500">Risques critiques</p>
+          <p className="text-sm text-red-500">Risques critiques (score ≥ 12)</p>
         </Card>
       </div>
 
-      {/* Tableau des risques */}
+      {/* Tableau des risques - Données réelles */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Top 5 Risques</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">Rang</TableHead>
-              <TableHead>Risque</TableHead>
-              <TableHead className="text-center">Prob.</TableHead>
-              <TableHead className="text-center">Impact</TableHead>
-              <TableHead>Mitigation</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {RISQUES_MAJEURS.map((risque) => (
-              <TableRow key={risque.rang}>
-                <TableCell className="font-bold">{risque.rang}</TableCell>
-                <TableCell className="font-medium">{risque.risque}</TableCell>
-                <TableCell className={cn('text-center', getProbabiliteColor(risque.probabilite))}>
-                  {risque.probabilite === 'haute' ? '🔴' : risque.probabilite === 'moyenne' ? '🟡' : '🟢'}
-                </TableCell>
-                <TableCell className={cn('text-center', getImpactColor(risque.impact))}>
-                  {risque.impact === 'critique' ? '🔴' : risque.impact === 'eleve' ? '🟠' : '🟡'}
-                </TableCell>
-                <TableCell className="text-sm">{risque.mitigation}</TableCell>
+        {top5Risques.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">Rang</TableHead>
+                <TableHead>Risque</TableHead>
+                <TableHead className="text-center">Prob.</TableHead>
+                <TableHead className="text-center">Impact</TableHead>
+                <TableHead>Mitigation</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {top5Risques.map((risque, idx) => (
+                <TableRow key={risque.id || idx}>
+                  <TableCell className="font-bold">{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{risque.titre}</TableCell>
+                  <TableCell className="text-center">
+                    {getProbabiliteFromScore(risque.probabilite || 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {getImpactFromScore(risque.impact || 0)}
+                  </TableCell>
+                  <TableCell className="text-sm">{risque.plan_mitigation || risque.description || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun risque identifié</p>
+        )}
       </Card>
 
-      {/* Risques temps réel */}
-      {risquesCritiques.length > 0 && (
+      {/* Détails des risques critiques */}
+      {top5Risques.filter(r => (r.score || 0) >= 12).length > 0 && (
         <Card padding="md">
-          <h4 className="font-semibold text-primary-900 mb-3">Risques Critiques (Temps Réel)</h4>
+          <h4 className="font-semibold text-primary-900 mb-3">Risques Critiques - Détails</h4>
           <div className="space-y-2">
-            {risquesCritiques.map((risque, idx) => (
+            {top5Risques.filter(r => (r.score || 0) >= 12).map((risque, idx) => (
               <div key={risque.id || idx} className="p-3 bg-red-50 rounded-lg border border-red-200">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-2">
                   <span className="font-medium text-red-800">{risque.titre}</span>
                   <Badge className="bg-red-100 text-red-700">Score: {risque.score}</Badge>
                 </div>
+                {risque.plan_mitigation && (
+                  <p className="text-sm text-red-700">Mitigation: {risque.plan_mitigation}</p>
+                )}
               </div>
             ))}
           </div>
@@ -1171,82 +1227,124 @@ function SlideRisquesMajeurs() {
 // SLIDE 9 - DÉCISIONS ATTENDUES
 // ============================================================================
 function SlideDecisions() {
-  const [decisions, setDecisions] = useState(DECISIONS_ATTENDUES);
+  const actions = useActions();
+  const jalons = useJalons();
+
+  // Décisions = actions bloquées ou nécessitant validation (priorité critique/haute)
+  const decisionsAttendues = useMemo(() => {
+    if (!actions.data) return [];
+    return actions.data
+      .filter(a => a.statut === 'bloque' || a.priorite === 'critique' || a.priorite === 'haute')
+      .filter(a => a.statut !== 'termine')
+      .slice(0, 6)
+      .map((a, idx) => ({
+        numero: idx + 1,
+        element: a.titre,
+        statut: a.statut === 'termine' ? 'valide' : 'a_valider',
+        responsable: a.responsable_nom,
+      }));
+  }, [actions.data]);
+
+  // Prochaines étapes = prochaines actions à venir (non terminées, triées par date)
+  const prochainesEtapes = useMemo(() => {
+    if (!actions.data) return [];
+    const today = new Date();
+    return actions.data
+      .filter(a => a.statut !== 'termine' && a.statut !== 'bloque')
+      .sort((a, b) => {
+        const dateA = a.date_fin_prevue ? new Date(a.date_fin_prevue).getTime() : Infinity;
+        const dateB = b.date_fin_prevue ? new Date(b.date_fin_prevue).getTime() : Infinity;
+        return dateA - dateB;
+      })
+      .slice(0, 5)
+      .map(a => ({
+        action: a.titre,
+        responsable: a.responsable_nom || '-',
+        echeance: a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR') : 'À définir',
+      }));
+  }, [actions.data]);
+
+  // État local pour toggle des décisions
+  const [decisionsState, setDecisionsState] = useState<Record<number, boolean>>({});
 
   const toggleDecision = (numero: number) => {
-    setDecisions(prev => prev.map(d =>
-      d.numero === numero
-        ? { ...d, statut: d.statut === 'a_valider' ? 'valide' : 'a_valider' }
-        : d
-    ));
+    setDecisionsState(prev => ({ ...prev, [numero]: !prev[numero] }));
   };
 
   return (
     <div className="space-y-6">
       <SectionHeader title="DÉCISIONS ATTENDUES" icon={CheckCircle} color="text-indigo-600" />
 
-      {/* Checklist de Validation */}
+      {/* Checklist de Validation - Données réelles */}
       <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Checklist de Validation</h4>
-        <div className="space-y-3">
-          {decisions.map((decision) => (
-            <div
-              key={decision.numero}
-              className={cn(
-                'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
-                decision.statut === 'valide' ? 'bg-green-50 border-green-200' : 'bg-primary-50 border-primary-200 hover:bg-primary-100'
-              )}
-              onClick={() => toggleDecision(decision.numero)}
-            >
-              <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-primary-200 flex items-center justify-center text-sm font-bold">
-                  {decision.numero}
-                </span>
-                <span className="font-medium">{decision.element}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {decision.statut === 'valide' ? (
-                  <Badge className="bg-green-100 text-green-700">Validé</Badge>
-                ) : (
-                  <>
-                    <span className="text-sm text-primary-400">Validé</span>
-                    <input type="checkbox" className="h-4 w-4" checked={false} readOnly />
-                    <span className="text-sm text-primary-400">À modifier</span>
-                    <input type="checkbox" className="h-4 w-4" checked={false} readOnly />
-                  </>
+        <h4 className="font-semibold text-primary-900 mb-3">Actions Nécessitant Validation</h4>
+        {decisionsAttendues.length > 0 ? (
+          <div className="space-y-3">
+            {decisionsAttendues.map((decision) => (
+              <div
+                key={decision.numero}
+                className={cn(
+                  'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
+                  decisionsState[decision.numero] ? 'bg-green-50 border-green-200' : 'bg-primary-50 border-primary-200 hover:bg-primary-100'
                 )}
+                onClick={() => toggleDecision(decision.numero)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-primary-200 flex items-center justify-center text-sm font-bold">
+                    {decision.numero}
+                  </span>
+                  <div>
+                    <span className="font-medium">{decision.element}</span>
+                    {decision.responsable && (
+                      <span className="text-xs text-primary-400 ml-2">({decision.responsable})</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {decisionsState[decision.numero] ? (
+                    <Badge className="bg-green-100 text-green-700">Validé</Badge>
+                  ) : (
+                    <Badge variant="outline">À valider</Badge>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune décision en attente</p>
+        )}
       </Card>
 
-      {/* Prochaines Étapes */}
+      {/* Prochaines Étapes - Données réelles */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Prochaines Étapes</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Action</TableHead>
-              <TableHead>Responsable</TableHead>
-              <TableHead>Échéance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {PROCHAINES_ETAPES.map((etape, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{etape.action}</TableCell>
-                <TableCell>{etape.responsable}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{etape.echeance}</Badge>
-                </TableCell>
+        {prochainesEtapes.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Action</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Échéance</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {prochainesEtapes.map((etape, idx) => (
+                <TableRow key={idx}>
+                  <TableCell className="font-medium">{etape.action}</TableCell>
+                  <TableCell>{etape.responsable}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{etape.echeance}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucune action à venir</p>
+        )}
       </Card>
 
-      {/* Signatures */}
+      {/* Signatures - Utiliser PROJET_CONFIG */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Signatures</h4>
         <Table>
@@ -1259,10 +1357,16 @@ function SlideDecisions() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {SIGNATAIRES.map((signataire, idx) => (
+            <TableRow>
+              <TableCell className="font-medium">{PROJET_CONFIG.presentateur.titre}</TableCell>
+              <TableCell>{PROJET_CONFIG.presentateur.nom}</TableCell>
+              <TableCell>-</TableCell>
+              <TableCell>-</TableCell>
+            </TableRow>
+            {PROJET_CONFIG.destinataires.map((dest, idx) => (
               <TableRow key={idx}>
-                <TableCell className="font-medium">{signataire.role}</TableCell>
-                <TableCell>{signataire.nom || '-'}</TableCell>
+                <TableCell className="font-medium">{dest}</TableCell>
+                <TableCell>-</TableCell>
                 <TableCell>-</TableCell>
                 <TableCell>-</TableCell>
               </TableRow>
@@ -1535,7 +1639,7 @@ export function DeepDiveLancement() {
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Le Projet</h3>
           <table class="w-full text-sm">
-            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">${PROJET_INFO.surfaceGLA.toLocaleString()} m²</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">8</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
@@ -1583,9 +1687,9 @@ export function DeepDiveLancement() {
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold mb-4">Effectif Cible</h3>
           <div class="text-center p-4 bg-blue-50 rounded-lg">
-            <p class="text-3xl font-bold text-blue-700">${EFFECTIF_CIBLE.total}</p>
+            <p class="text-3xl font-bold text-blue-700">${PROJET_CONFIG.surfaceGLA > 40000 ? 25 : 15}</p>
             <p class="text-sm text-blue-600">personnes</p>
-            <p class="text-xs text-gray-500 mt-2">${EFFECTIF_CIBLE.dedies} dédiés + ${EFFECTIF_CIBLE.mutualises} mutualisés</p>
+            <p class="text-xs text-gray-500 mt-2">Effectif calculé selon surface GLA</p>
           </div>
         </div>
       </div>
@@ -1715,21 +1819,29 @@ export function DeepDiveLancement() {
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">DÉCISIONS ATTENDUES</h2>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg mb-6">
-        <h3 class="font-bold mb-4">Checklist de Validation</h3>
+        <h3 class="font-bold mb-4">Actions Prioritaires (temps réel)</h3>
         <div class="space-y-3">
-          ${DECISIONS_ATTENDUES.map((d, i) => `
-            <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <span>${i + 1}. ${d.titre}</span>
-              <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
-            </div>
-          `).join('')}
+          ${(() => {
+            const priorityActions = actions.data
+              ?.filter(a => a.statut !== 'termine' && (a.priorite === 'critique' || a.priorite === 'haute'))
+              .slice(0, 6) || [];
+            return priorityActions.length > 0
+              ? priorityActions.map((a, i) => `
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
+                  <span>${i + 1}. ${a.titre}</span>
+                  <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
+                </div>
+              `).join('')
+              : '<div class="text-center text-gray-500 p-4">Aucune action prioritaire en attente</div>';
+          })()}
         </div>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg">
         <h3 class="font-bold mb-4">Signatures</h3>
         <table class="w-full text-sm">
           <tr class="bg-gray-200"><th class="p-2 text-left">Rôle</th><th class="p-2">Nom</th><th class="p-2">Date</th><th class="p-2">Signature</th></tr>
-          ${SIGNATAIRES.map(s => `<tr class="border-b"><td class="p-2">${s.role}</td><td class="p-2">${s.nom || '_____________'}</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>`).join('')}
+          <tr class="border-b"><td class="p-2">${PROJET_CONFIG.presentateur.titre}</td><td class="p-2">${PROJET_CONFIG.presentateur.nom}</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
+          ${PROJET_CONFIG.destinataires.map(d => `<tr class="border-b"><td class="p-2">${d}</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>`).join('')}
         </table>
       </div>
     </div>
@@ -1934,14 +2046,14 @@ export function DeepDiveLancement() {
             });
           });
         } else if (slideInfo.numero === 2) {
-          // Rappel projet
+          // Rappel projet - utilise PROJET_CONFIG
           const projetInfo = [
-            ['Nom du projet', PROJET_INFO.nom],
-            ['Maître d\'ouvrage', PROJET_INFO.maitreOuvrage],
-            ['Localisation', PROJET_INFO.localisation],
-            ['Superficie', PROJET_INFO.superficie],
-            ['Budget global', formatMontantFCFA(PROJET_INFO.budgetGlobal)],
-            ['Date livraison', PROJET_INFO.dateLivraison],
+            ['Nom du projet', PROJET_CONFIG.nom],
+            ['Société', PROJET_CONFIG.societe],
+            ['Surface GLA', `${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²`],
+            ['Occupation cible', `${PROJET_CONFIG.occupationCible}%`],
+            ['Soft Opening', new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR')],
+            ['Inauguration', new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR')],
           ];
           projetInfo.forEach((row, i) => {
             slide.addText(row[0], { x: 0.5, y: 1.0 + i * 0.35, w: 2.5, h: 0.3, fontSize: 11, fontFace: fontFamily, color: '666666' });

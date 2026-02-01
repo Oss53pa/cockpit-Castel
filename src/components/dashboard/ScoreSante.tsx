@@ -235,45 +235,50 @@ export function ScoreSante() {
     return () => observer.disconnect();
   }, []);
 
-  // Calculate health factors
+  // Calculate health factors - VALEURS RÉELLES (pas de transformation)
   const factors = useMemo<ScoreFactor[]>(() => {
-    // 1. Avancement global vs prévu
+    // 1. Avancement global RÉEL (moyenne des avancements de toutes les actions)
+    const avancementReel = Math.round(avancementGlobal);
+
+    // 2. Jalons - % de jalons atteints
+    const today = new Date();
+    const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
+    const jalonsTotal = jalons.length || 1;
+    const jalonsScore = Math.round((jalonsAtteints / jalonsTotal) * 100);
+
+    // 3. Budget - % consommé (inversé: 100 = tout dépensé, 0 = rien dépensé)
+    const budgetScore = kpis.budgetTotal > 0
+      ? Math.round((kpis.budgetConsomme / kpis.budgetTotal) * 100)
+      : 0;
+
+    // 4. Occupation rate RÉEL
+    const occupationScore = Math.round(kpis.tauxOccupation);
+
+    // 5. Vélocité - % d'actions terminées
+    const actionsTerminees = avancementsAxes.reduce((acc, a) => {
+      // Estimer basé sur avancement moyen de l'axe
+      return acc + (a.actuel >= 100 ? 1 : 0);
+    }, 0);
+    const velocityScore = avancementsAxes.length > 0
+      ? Math.round((actionsTerminees / avancementsAxes.length) * 100)
+      : 0;
+
+    // Tendances basées sur données réelles
     const avgPrevu = avancementsAxes.length > 0
       ? avancementsAxes.reduce((acc, a) => acc + a.prevu, 0) / avancementsAxes.length
       : 0;
     const ecartAvancement = avancementGlobal - avgPrevu;
-    const avancementScore = Math.max(0, Math.min(100, 50 + ecartAvancement * 2));
-
-    // 2. Jalons on time
-    const today = new Date();
     const jalonsEnRetard = jalons.filter((j) => {
       const date = new Date(j.date_prevue);
-      return date < today && (j.avancement_prealables || 0) < 100;
+      return date < today && j.statut !== 'atteint';
     }).length;
-    const jalonsTotal = jalons.length || 1;
-    const jalonsScore = Math.max(0, 100 - (jalonsEnRetard / jalonsTotal) * 100);
-
-    // 3. Budget health
-    const budgetPercent = kpis.budgetTotal > 0
-      ? (kpis.budgetConsomme / kpis.budgetTotal) * 100
-      : 0;
-    const expectedBudgetPercent = avancementGlobal; // Budget should track progress
-    const budgetScore = budgetPercent <= expectedBudgetPercent + 10
-      ? 100
-      : Math.max(0, 100 - (budgetPercent - expectedBudgetPercent - 10) * 2);
-
-    // 4. Occupation rate
-    const occupationScore = kpis.tauxOccupation;
-
-    // 5. Team velocity (based on trend)
     const trendsUp = avancementsAxes.filter((a) => a.tendance === 'up').length;
     const trendsDown = avancementsAxes.filter((a) => a.tendance === 'down').length;
-    const velocityScore = 50 + (trendsUp - trendsDown) * 10;
 
     return [
       {
         label: 'Avancement',
-        score: avancementScore,
+        score: avancementReel,
         weight: 30,
         trend: ecartAvancement > 0 ? 'up' : ecartAvancement < -5 ? 'down' : 'stable',
         icon: Activity,
@@ -287,10 +292,10 @@ export function ScoreSante() {
       },
       {
         label: 'Budget',
-        score: Math.min(100, budgetScore),
+        score: budgetScore,
         weight: 20,
-        trend: budgetPercent <= expectedBudgetPercent ? 'up' : 'down',
-        icon: budgetPercent > expectedBudgetPercent + 20 ? AlertTriangle : CheckCircle,
+        trend: budgetScore <= avancementReel ? 'up' : 'down',
+        icon: budgetScore > avancementReel + 20 ? AlertTriangle : CheckCircle,
       },
       {
         label: 'Occupation',
@@ -301,7 +306,7 @@ export function ScoreSante() {
       },
       {
         label: 'Vélocité',
-        score: Math.max(0, Math.min(100, velocityScore)),
+        score: velocityScore,
         weight: 10,
         trend: trendsUp > trendsDown ? 'up' : trendsUp < trendsDown ? 'down' : 'stable',
         icon: TrendingUp,
