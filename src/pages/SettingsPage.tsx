@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
-import { generateAlertesAutomatiques } from '@/hooks';
+import { generateAlertesAutomatiques, resetBudgetEngagements } from '@/hooks';
 import { resetAndSeedDatabase } from '@/data/cosmosAngre';
 import { TeamManagement } from '@/components/settings/TeamManagement';
 import { UserManagement } from '@/components/settings/UserManagement';
@@ -57,6 +57,24 @@ export function SettingsPage() {
   const handleGenerateAlertes = async () => {
     await generateAlertesAutomatiques();
     alert('Alertes generees avec succes');
+  };
+
+  const handleResetBudgetEngagements = async () => {
+    if (
+      confirm(
+        'Cette action va mettre à 0 tous les montants engagés et réalisés du budget.\n\n' +
+        'À utiliser car le budget n\'est pas encore validé.\n\n' +
+        'Continuer ?'
+      )
+    ) {
+      try {
+        const count = await resetBudgetEngagements();
+        alert(`✅ ${count} lignes budgétaires mises à jour.\n\nEngagé = 0\nRéalisé = 0`);
+      } catch (error) {
+        console.error('Reset budget error:', error);
+        alert('Erreur lors de la réinitialisation du budget');
+      }
+    }
   };
 
   const handleResetDatabase = async () => {
@@ -305,6 +323,21 @@ export function SettingsPage() {
                   <Button variant="secondary" onClick={handleResetDatabase} disabled={resetting}>
                     <RotateCcw className="h-4 w-4 mr-2" />
                     {resetting ? 'Réinitialisation...' : 'Réinitialiser'}
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-info-50 rounded-lg">
+                  <div>
+                    <h4 className="font-medium text-info-900">
+                      Réinitialiser engagements budget
+                    </h4>
+                    <p className="text-sm text-info-600">
+                      Mettre Engagé = 0 et Réalisé = 0 (budget non validé)
+                    </p>
+                  </div>
+                  <Button variant="secondary" onClick={handleResetBudgetEngagements}>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Réinitialiser
                   </Button>
                 </div>
 

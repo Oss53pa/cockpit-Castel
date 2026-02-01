@@ -727,20 +727,17 @@ export async function seedDatabaseV2(): Promise<{
     const now = new Date().toISOString();
 
     // Budget 2026
+    // NOTE: montantEngage et montantRealise = 0 car budget non encore validé
     for (const poste of BUDGET_EXPLOITATION_2026.postes) {
       if (!existingBudgetLabels.has(poste.poste)) {
-        const tauxConsommation = 0.08;
-        const montantEngage = Math.round(poste.budgetAnnuel * tauxConsommation * 1.2);
-        const montantRealise = Math.round(poste.budgetAnnuel * tauxConsommation * 0.9);
-
         const budgetItem: Omit<BudgetItem, 'id'> = {
           libelle: poste.poste,
           categorie: CATEGORIE_MAPPING[poste.categorie],
           axe: CATEGORIE_AXE_MAPPING[poste.categorie],
           projectPhase: 'phase2_mobilisation',
           montantPrevu: poste.budgetAnnuel,
-          montantEngage,
-          montantRealise,
+          montantEngage: 0, // Budget non validé
+          montantRealise: 0, // Budget non validé
           commentaire: poste.details || `Budget ${BUDGET_EXPLOITATION_2026.annee} - ${poste.categorie}`,
           createdAt: now,
           updatedAt: now,

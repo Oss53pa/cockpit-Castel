@@ -112,6 +112,29 @@ export async function deleteBudgetItem(id: number): Promise<void> {
   await db.budget.delete(id);
 }
 
+/**
+ * Réinitialiser les montants engagés et réalisés à 0
+ * À utiliser quand le budget n'est pas encore validé
+ */
+export async function resetBudgetEngagements(): Promise<number> {
+  const items = await db.budget.toArray();
+  const now = new Date().toISOString();
+  let updated = 0;
+
+  for (const item of items) {
+    if (item.montantEngage !== 0 || item.montantRealise !== 0) {
+      await db.budget.update(item.id!, {
+        montantEngage: 0,
+        montantRealise: 0,
+        updatedAt: now,
+      });
+      updated++;
+    }
+  }
+
+  return updated;
+}
+
 // EVM (Earned Value Management) Calculations
 export function calculateEVM(
   budgetItems: BudgetItem[],
