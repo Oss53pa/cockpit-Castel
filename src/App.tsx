@@ -62,18 +62,31 @@ function AppContent() {
     async function initApp() {
       console.log('[App] Début initApp...');
       try {
-        // ÉTAPE 1: Site par défaut
+        // Timeout de sécurité pour éviter blocage infini
+        const withTimeout = <T,>(promise: Promise<T>, ms: number, name: string): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) =>
+              setTimeout(() => reject(new Error(`[App] Timeout: ${name} après ${ms}ms`)), ms)
+            )
+          ]);
+        };
+
+        // ÉTAPE 1: Site par défaut (max 5s)
         console.log('[App] initializeDefaultSite...');
-        await initializeDefaultSite();
+        await withTimeout(initializeDefaultSite(), 5000, 'initializeDefaultSite');
+        console.log('[App] initializeDefaultSite OK');
 
-        // ÉTAPE 2: Database init (rapide si déjà fait)
+        // ÉTAPE 2: Database init (max 10s)
         console.log('[App] initializeDatabase...');
-        const initResult = await initializeDatabase();
+        const initResult = await withTimeout(initializeDatabase(), 10000, 'initializeDatabase');
+        console.log('[App] initializeDatabase OK');
 
-        // Seed seulement si nécessaire
+        // Seed seulement si nécessaire (max 15s)
         if (!initResult.seeded) {
           console.log('[App] seedDatabase...');
-          await seedDatabase();
+          await withTimeout(seedDatabase(), 15000, 'seedDatabase');
+          console.log('[App] seedDatabase OK');
         }
 
         console.log('[App] Prêt!');
@@ -92,8 +105,9 @@ function AppContent() {
           }
         }, 3000);
 
-      } catch (error) {
-        console.error('[App] Erreur initApp:', error);
+      } catch (error: any) {
+        console.error('[App] Erreur initApp:', error?.message || error);
+        // Afficher l'app même en cas d'erreur pour ne pas bloquer
         if (isMounted) setIsReady(true);
       }
     }
