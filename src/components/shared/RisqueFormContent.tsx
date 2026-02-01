@@ -208,7 +208,29 @@ export function RisqueFormContent({
   );
   const [planMitigation, setPlanMitigation] = useState(risque.plan_mitigation || '');
   const [notesMiseAJour, setNotesMiseAJour] = useState((risque as any).notes_mise_a_jour || '');
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<Comment[]>(() => {
+    // Priorité: commentaires_externes (sync Firebase) > commentaires existants
+    const externesStr = (risque as any).commentaires_externes;
+    if (externesStr) {
+      try {
+        const parsed = JSON.parse(externesStr);
+        return parsed.map((c: any) => ({
+          id: c.id || crypto.randomUUID(),
+          texte: c.texte,
+          auteur: c.auteur,
+          date: c.date,
+        }));
+      } catch (e) {
+        console.warn('Erreur parsing commentaires_externes risque:', e);
+      }
+    }
+    return (risque as any).commentaires?.map((c: any) => ({
+      id: c.id || crypto.randomUUID(),
+      texte: c.texte,
+      auteur: c.auteur,
+      date: c.date,
+    })) || [];
+  });
   const [newComment, setNewComment] = useState('');
 
   // Calcul automatique du statut

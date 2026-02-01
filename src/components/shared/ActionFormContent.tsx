@@ -168,12 +168,29 @@ export function ActionFormContent({
     url: d.url,
     dateAjout: d.dateAjout || new Date().toISOString(),
   })) || []);
-  const [notes, setNotes] = useState<Note[]>(action.commentaires?.map(c => ({
-    id: c.id || crypto.randomUUID(),
-    texte: c.texte,
-    auteur: c.auteur,
-    date: c.date,
-  })) || []);
+  const [notes, setNotes] = useState<Note[]>(() => {
+    // Priorité: commentaires_externes (sync Firebase) > commentaires existants
+    const externesStr = (action as any).commentaires_externes;
+    if (externesStr) {
+      try {
+        const parsed = JSON.parse(externesStr);
+        return parsed.map((c: any) => ({
+          id: c.id || crypto.randomUUID(),
+          texte: c.texte,
+          auteur: c.auteur,
+          date: c.date,
+        }));
+      } catch (e) {
+        console.warn('Erreur parsing commentaires_externes:', e);
+      }
+    }
+    return action.commentaires?.map(c => ({
+      id: c.id || crypto.randomUUID(),
+      texte: c.texte,
+      auteur: c.auteur,
+      date: c.date,
+    })) || [];
+  });
   const [newNote, setNewNote] = useState('');
   const [notesMiseAJour, setNotesMiseAJour] = useState((action as any).notes_mise_a_jour || '');
 

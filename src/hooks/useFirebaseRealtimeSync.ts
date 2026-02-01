@@ -35,7 +35,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
   const [isListening, setIsListening] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<ExternalUpdateData | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
-  const { showToast } = useToast();
+  const { addToast } = useToast();
   const initAttempted = useRef(false);
 
   // Callback quand une mise à jour est reçue
@@ -56,7 +56,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
             ? 'Jalon'
             : 'Risque';
 
-        showToast({
+        addToast({
           type: 'success',
           title: `Mise à jour reçue`,
           message: `${update.response?.submittedBy?.name || update.recipientName} a mis à jour ${entityType.toLowerCase()} "${update.entitySnapshot.titre}"`,
@@ -64,7 +64,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
         });
       }
     },
-    [showToast]
+    [addToast]
   );
 
   // Initialisation
@@ -89,7 +89,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
           onUpdateReceived: handleUpdateReceived,
           onError: error => {
             console.error('Realtime sync error:', error);
-            showToast({
+            addToast({
               type: 'error',
               title: 'Erreur de synchronisation',
               message: 'La connexion temps réel a été interrompue',
@@ -114,7 +114,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
         const { synced, errors } = await syncAllPendingUpdates();
         if (synced > 0) {
           console.log(`Synced ${synced} pending updates`);
-          showToast({
+          addToast({
             type: 'info',
             title: 'Synchronisation',
             message: `${synced} mise(s) à jour en attente synchronisée(s)`,
@@ -128,7 +128,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
       setIsConnected(false);
       setIsListening(false);
     }
-  }, [handleUpdateReceived, showToast]);
+  }, [handleUpdateReceived, addToast]);
 
   // Synchroniser les mises à jour en attente
   const syncPending = useCallback(async () => {
@@ -136,14 +136,14 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
     setPendingCount(errors);
 
     if (synced > 0) {
-      showToast({
+      addToast({
         type: 'success',
         title: 'Synchronisation terminée',
         message: `${synced} mise(s) à jour synchronisée(s)`,
         duration: 3000,
       });
     }
-  }, [showToast]);
+  }, [addToast]);
 
   // Reconnecter
   const reconnect = useCallback(async () => {

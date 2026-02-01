@@ -99,7 +99,29 @@ export function JalonFormContent({
   const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
   const [preuveUrl, setPreuveUrl] = useState(jalon.preuve_url || '');
   const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any).notes_mise_a_jour || '');
-  const [comments, setComments] = useState<Comment[]>(jalon.commentaires || []);
+  const [comments, setComments] = useState<Comment[]>(() => {
+    // Priorité: commentaires_externes (sync Firebase) > commentaires existants
+    const externesStr = (jalon as any).commentaires_externes;
+    if (externesStr) {
+      try {
+        const parsed = JSON.parse(externesStr);
+        return parsed.map((c: any) => ({
+          id: c.id || crypto.randomUUID(),
+          texte: c.texte,
+          auteur: c.auteur,
+          date: c.date,
+        }));
+      } catch (e) {
+        console.warn('Erreur parsing commentaires_externes jalon:', e);
+      }
+    }
+    return jalon.commentaires?.map((c: any) => ({
+      id: c.id || crypto.randomUUID(),
+      texte: c.texte,
+      auteur: c.auteur,
+      date: c.date,
+    })) || [];
+  });
   const [newComment, setNewComment] = useState('');
 
   // Calculs
