@@ -71,7 +71,10 @@ export function HomePage() {
             <Sparkles className="h-4 w-4" />
             Proph3t {problemesCount > 0 && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{problemesCount}</span>}
           </button>
-          <span className="text-xl font-bold text-primary-900">Soft-Opening: J-{daysUntilOpening}</span>
+          <span className="flex items-center gap-2">
+            <span className="text-sm text-primary-600">Soft-Opening:</span>
+            <span className="text-2xl font-bold text-primary-900">J-{daysUntilOpening}</span>
+          </span>
           <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 px-4 py-2 bg-primary-900 text-white text-sm rounded-full hover:bg-primary-800 transition-colors"
