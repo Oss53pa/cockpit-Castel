@@ -1944,17 +1944,17 @@ export function DeepDiveLaunch() {
   // Helper functions pour récupérer les données par axe
   const getActionsForAxe = (axe: AxeType) => {
     const dbCode = axeToDbCode[axe];
-    return (actions.data || []).filter((a) => a.axe === dbCode);
+    return (actions || []).filter((a) => a.axe === dbCode);
   };
 
   const getJalonsForAxe = (axe: AxeType) => {
     const dbCode = axeToDbCode[axe];
-    return (jalons.data || []).filter((j) => j.axe === dbCode);
+    return (jalons || []).filter((j) => j.axe === dbCode);
   };
 
   const getRisquesForAxe = (axe: AxeType) => {
     const dbCode = axeToDbCode[axe];
-    return (risques.data || []).filter((r) => r.axe === dbCode);
+    return (risques || []).filter((r) => r.axe === dbCode);
   };
 
   const getBudgetForAxe = (axe: AxeType) => {
@@ -2002,7 +2002,7 @@ export function DeepDiveLaunch() {
         avancement,
       };
     });
-  }, [actions.data, jalons.data, risques.data, budgetParAxe]);
+  }, [actions, jalons, risques, budgetParAxe]);
 
   // State
   const [activeTab, setActiveTab] = useState<ViewTab>('config');
@@ -2905,13 +2905,13 @@ export function DeepDiveLaunch() {
       const budgetStatus = tauxConsommation > 100 ? 'Dépassement' : tauxConsommation > 80 ? 'Attention' : 'Sur budget';
       const budgetColor = tauxConsommation > 100 ? '#EF4444' : tauxConsommation > 80 ? '#F59E0B' : '#10B981';
 
-      const totalRisques = risques.data?.length || 0;
-      const risquesCritiques = (risques.data || []).filter(r => (r.score || 0) >= 12).length;
+      const totalRisques = (risques || []).length;
+      const risquesCritiques = (risques || []).filter(r => (r.score || 0) >= 12).length;
       const risquesStatus = risquesCritiques > 0 ? `${risquesCritiques} critique${risquesCritiques > 1 ? 's' : ''}` : `${totalRisques} identifié${totalRisques > 1 ? 's' : ''}`;
       const risquesColor = risquesCritiques > 0 ? '#EF4444' : totalRisques > 5 ? '#F59E0B' : '#10B981';
 
-      const totalActions = actions.data?.length || 0;
-      const actionsTerminees = (actions.data || []).filter(a => a.statut === 'termine').length;
+      const totalActions = (actions || []).length;
+      const actionsTerminees = (actions || []).filter(a => a.statut === 'termine').length;
       const qualiteStatus = totalActions > 0 ? `${Math.round((actionsTerminees / totalActions) * 100)}% complété` : 'En démarrage';
 
       return (
@@ -2963,7 +2963,7 @@ export function DeepDiveLaunch() {
 
     // === JALONS MAJEURS ===
     if (slideItem.id === 'launch_13') {
-      const upcomingJalons = jalons.data?.slice(0, 6) || [];
+      const upcomingJalons = (jalons || []).slice(0, 6);
       const daysToOpening = Math.ceil((new Date(projectEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       const openingDate = new Date(projectEndDate);
       const quarter = Math.ceil((openingDate.getMonth() + 1) / 3);
@@ -3175,7 +3175,7 @@ export function DeepDiveLaunch() {
 
     // === BUDGET GLOBAL ===
     if (slideItem.id === 'launch_16') {
-      const budgetData = budget.data;
+      const budgetData = budget;
       return (
         <div style={baseStyles} className="h-full flex flex-col">
           {headerStyle !== 'none' && (
@@ -3227,7 +3227,7 @@ export function DeepDiveLaunch() {
 
     // === MATRICE RISQUES ===
     if (slideItem.id === 'launch_44') {
-      const topRisques = risques.data?.slice(0, 5) || [];
+      const topRisques = (risques || []).slice(0, 5);
       return (
         <div style={baseStyles} className="h-full flex flex-col">
           {headerStyle !== 'none' && (
