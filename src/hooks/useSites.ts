@@ -63,20 +63,31 @@ export async function getSiteById(id: number): Promise<Site | undefined> {
 
 // Initialize default site if none exists
 export async function initializeDefaultSite(): Promise<void> {
-  const count = await db.sites.count();
-  if (count === 0) {
-    const now = new Date().toISOString();
-    await db.sites.add({
-      code: 'COSMOS',
-      nom: 'COSMOS ANGRE',
-      description: 'Centre commercial Cosmos Angré - Abidjan',
-      localisation: 'Abidjan, Côte d\'Ivoire',
-      dateOuverture: '2026-11-01',
-      surface: 45000,
-      couleur: '#18181b',
-      actif: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+  console.log('[initializeDefaultSite] Début...');
+  try {
+    console.log('[initializeDefaultSite] Ouverture DB...');
+    await db.open();
+    console.log('[initializeDefaultSite] DB ouverte, count sites...');
+    const count = await db.sites.count();
+    console.log('[initializeDefaultSite] Count:', count);
+    if (count === 0) {
+      const now = new Date().toISOString();
+      console.log('[initializeDefaultSite] Ajout site par défaut...');
+      await db.sites.add({
+        code: 'COSMOS',
+        nom: 'COSMOS ANGRE',
+        description: 'Centre commercial Cosmos Angré - Abidjan',
+        localisation: 'Abidjan, Côte d\'Ivoire',
+        dateOuverture: '2026-11-01',
+        surface: 45000,
+        couleur: '#18181b',
+        actif: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      console.log('[initializeDefaultSite] Site ajouté!');
+    }
+  } catch (err) {
+    console.error('[initializeDefaultSite] Erreur:', err);
   }
 }
