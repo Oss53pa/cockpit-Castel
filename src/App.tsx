@@ -46,12 +46,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Composant séparé pour le recalcul (ne se monte qu'après isReady)
+function AutoRecalculateInitializer() {
+  useAutoRecalculate();
+  return null;
+}
+
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
-  // Activer le recalcul automatique des statuts
-  useAutoRecalculate();
 
   useEffect(() => {
     let isMounted = true;
@@ -162,6 +165,9 @@ function AppContent() {
 
       {/* Firebase Realtime Sync - seulement si connecté */}
       {isAuthenticated && <FirebaseRealtimeSyncInitializer />}
+
+      {/* Auto-recalcul des statuts - seulement après chargement */}
+      <AutoRecalculateInitializer />
     </>
   );
 }
