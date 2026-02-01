@@ -1359,7 +1359,7 @@ function VueSyntheseEditable({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-primary-900">Synthèse Budget Mobilisation</h3>
-            <p className="text-sm text-primary-500">Cliquez sur une ligne pour modifier les montants</p>
+            <p className="text-sm text-primary-500">Récapitulatif calculé depuis les détails (lecture seule)</p>
           </div>
         </div>
         <Table>
@@ -1371,7 +1371,6 @@ function VueSyntheseEditable({
               <TableHead className="text-right">Consommé</TableHead>
               <TableHead className="text-right">Disponible</TableHead>
               <TableHead className="w-32">% Conso.</TableHead>
-              <TableHead className="w-16"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1379,29 +1378,13 @@ function VueSyntheseEditable({
               const tauxConso = ligne.montantPrevu > 0 ? (ligne.montantConsomme / ligne.montantPrevu) * 100 : 0;
               const disponible = ligne.montantPrevu - ligne.montantConsomme;
               return (
-                <TableRow
-                  key={ligne.id}
-                  className="hover:bg-primary-50 cursor-pointer transition-colors"
-                  onClick={() => onEdit(ligne)}
-                >
+                <TableRow key={ligne.id}>
                   <TableCell className="font-medium">{ligne.poste}</TableCell>
                   <TableCell className="text-right">{formatMontant(ligne.montantPrevu)}</TableCell>
                   <TableCell className="text-right text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
                   <TableCell className="text-right text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
                   <TableCell className="text-right text-orange-600">{formatMontant(disponible)}</TableCell>
                   <TableCell><ProgressBar value={Math.round(tauxConso)} /></TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(ligne);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 text-primary-600" />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               );
             })}
@@ -1414,7 +1397,6 @@ function VueSyntheseEditable({
               <TableCell className="text-right font-bold text-green-700">{formatMontant(totaux.consomme)}</TableCell>
               <TableCell className="text-right font-bold text-orange-700">{formatMontant(totaux.reste)}</TableCell>
               <TableCell className="font-bold"><ProgressBar value={Math.round(tauxConsommation)} /></TableCell>
-              <TableCell></TableCell>
             </TableRow>
           </TableFooter>
         </Table>
