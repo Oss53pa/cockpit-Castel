@@ -60,24 +60,26 @@ function AppContent() {
     let isMounted = true;
 
     async function initApp() {
+      console.log('[App] Début initApp...');
       try {
-        // ÉTAPE 1: Opérations critiques minimales
+        // ÉTAPE 1: Site par défaut
+        console.log('[App] initializeDefaultSite...');
         await initializeDefaultSite();
 
-        // Initialiser la base (vérifie si vide avant de seeder)
+        // ÉTAPE 2: Database init (rapide si déjà fait)
+        console.log('[App] initializeDatabase...');
         const initResult = await initializeDatabase();
 
-        // Seed cosmosAngre seulement si initializeDatabase n'a pas seedé
+        // Seed seulement si nécessaire
         if (!initResult.seeded) {
+          console.log('[App] seedDatabase...');
           await seedDatabase();
-        } else {
-          console.log('[App] Base seedée v2.0, skip cosmosAngre');
         }
 
-        // App prête à afficher
+        console.log('[App] Prêt!');
         if (isMounted) setIsReady(true);
 
-        // ÉTAPE 2: Opérations différées (non-bloquantes)
+        // Opérations différées en background
         setTimeout(async () => {
           if (!isMounted) return;
           try {
@@ -86,12 +88,12 @@ function AppContent() {
             await migrateEmailConfig();
             await initDefaultTemplates();
           } catch (err) {
-            console.error('[App] Erreur initialisation différée:', err);
+            console.error('[App] Erreur init différée:', err);
           }
-        }, 1500);
+        }, 3000);
 
       } catch (error) {
-        console.error('Error initializing app:', error);
+        console.error('[App] Erreur initApp:', error);
         if (isMounted) setIsReady(true);
       }
     }
@@ -166,8 +168,8 @@ function AppContent() {
       {/* Firebase Realtime Sync - seulement si connecté */}
       {isAuthenticated && <FirebaseRealtimeSyncInitializer />}
 
-      {/* Auto-recalcul des statuts - seulement après chargement */}
-      <AutoRecalculateInitializer />
+      {/* Auto-recalcul des statuts - TEMPORAIREMENT DÉSACTIVÉ pour debug perf */}
+      {/* <AutoRecalculateInitializer /> */}
     </>
   );
 }
