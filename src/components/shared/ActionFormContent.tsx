@@ -33,6 +33,7 @@ import {
   SelectOption,
   Label,
   Badge,
+  PercentInput,
 } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AXE_LABELS, type Action, type Axe } from '@/types';
@@ -157,8 +158,8 @@ export function ActionFormContent({
   const [activeTab, setActiveTab] = useState('general');
 
   // État du formulaire
-  const [statut, setStatut] = useState<StatutAction>((action.statut as StatutAction) || 'a_faire');
   const [avancement, setAvancement] = useState(action.avancement ?? 0);
+  const [isBloque, setIsBloque] = useState((action.statut as StatutAction) === 'bloque');
   const [sousTaches, setSousTaches] = useState<SousTache[]>((action as any).sous_taches || []);
   const [preuves, setPreuves] = useState<Preuve[]>(action.documents?.map(d => ({
     id: d.id || crypto.randomUUID(),
@@ -175,6 +176,15 @@ export function ActionFormContent({
   })) || []);
   const [newNote, setNewNote] = useState('');
   const [notesMiseAJour, setNotesMiseAJour] = useState((action as any).notes_mise_a_jour || '');
+
+  // Calcul automatique du statut basé sur l'avancement
+  const statut: StatutAction = isBloque
+    ? 'bloque'
+    : avancement === 0
+      ? 'a_faire'
+      : avancement === 100
+        ? 'fait'
+        : 'en_cours';
 
   // Calculs
   const selectedJalon = action.jalonId ? jalons.find(j => j.id === action.jalonId) : null;
@@ -193,24 +203,33 @@ export function ActionFormContent({
     ? Math.ceil((new Date(action.date_fin_prevue).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
-  // Calcul avancement auto selon sous-tâches
+  // Calcul avancement auto selon sous-tâches (uniquement si pas bloqué)
   useEffect(() => {
-    if (sousTaches.length > 0 && statut === 'en_cours') {
-      const newAvancement = calculerPourcentageAction(statut, sousTaches, avancement);
+    if (sousTaches.length > 0 && !isBloque) {
+      const faites = sousTaches.filter(st => st.fait).length;
+      const newAvancement = Math.round((faites / sousTaches.length) * 100);
       if (newAvancement !== avancement) {
         setAvancement(newAvancement);
         onAvancementChange?.(newAvancement);
       }
     }
-  }, [sousTaches, statut]);
+  }, [sousTaches, isBloque]);
 
-  // Handlers statut
-  const handleStatutChange = (newStatut: StatutAction) => {
-    setStatut(newStatut);
-    const newAvancement = calculerPourcentageAction(newStatut, sousTaches, avancement);
-    setAvancement(newAvancement);
-    onStatutChange?.(newStatut);
+  // Notifier les changements de statut
+  useEffect(() => {
+    onStatutChange?.(statut);
+  }, [statut]);
+
+  // Handler avancement manuel
+  const handleAvancementChange = (newAvancement: number) => {
+    if (isBloque) return; // Pas de changement si bloqué
+    setAvancement(Math.max(0, Math.min(100, newAvancement)));
     onAvancementChange?.(newAvancement);
+  };
+
+  // Handler bloqué
+  const handleBloqueToggle = () => {
+    setIsBloque(!isBloque);
   };
 
   // Handlers sous-tâches
@@ -277,30 +296,82 @@ export function ActionFormContent({
     });
   };
 
+  const StatutIcon = STATUT_CONFIG[statut].icon;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Statut rapide - Toujours visible */}
-      <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg flex-shrink-0 mb-4">
-        <span className="text-sm font-medium text-neutral-600">Statut:</span>
-        <div className="flex gap-1 flex-1 flex-wrap">
-          {(Object.entries(STATUT_CONFIG) as [StatutAction, typeof STATUT_CONFIG[StatutAction]][]).map(([key, config]) => {
-            const Icon = config.icon;
-            const isActive = statut === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => isEditing && handleStatutChange(key)}
-                disabled={!isEditing}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                  isActive ? `${config.color} ring-2 ring-offset-1` : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
-                } ${!isEditing ? 'cursor-default' : 'cursor-pointer'}`}
-              >
-                <Icon className="w-4 h-4" />
-                {config.label}
-              </button>
-            );
-          })}
+      {/* Avancement & Statut - Toujours visible */}
+      <div className="p-4 bg-neutral-50 rounded-lg flex-shrink-0 mb-4 space-y-3">
+        {/* Statut auto-calculé (lecture seule) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-neutral-600">Statut:</span>
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium ${STATUT_CONFIG[statut].color}`}>
+              <StatutIcon className="w-4 h-4" />
+              {STATUT_CONFIG[statut].label}
+            </div>
+            <span className="text-xs text-neutral-400 italic">(auto-calculé)</span>
+          </div>
+          {/* Toggle Bloqué */}
+          {isEditing && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isBloque}
+                onChange={handleBloqueToggle}
+                className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+              />
+              <span className={`text-sm font-medium ${isBloque ? 'text-red-600' : 'text-neutral-500'}`}>
+                <XCircle className="w-4 h-4 inline mr-1" />
+                Bloqué
+              </span>
+            </label>
+          )}
+        </div>
+
+        {/* Avancement modifiable */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-neutral-600">Avancement:</span>
+            <span className={`text-lg font-bold ${avancement === 100 ? 'text-green-600' : avancement === 0 ? 'text-neutral-400' : 'text-blue-600'}`}>
+              {avancement}%
+            </span>
+          </div>
+          {isEditing && !isBloque && sousTaches.length === 0 ? (
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={avancement}
+                onChange={(e) => handleAvancementChange(parseInt(e.target.value))}
+                className="flex-1 h-2 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <PercentInput
+                value={avancement}
+                onChange={handleAvancementChange}
+                className="w-20 text-center text-sm"
+              />
+            </div>
+          ) : (
+            <div className="w-full bg-neutral-200 rounded-full h-2.5">
+              <div
+                className={`h-2.5 rounded-full transition-all ${isBloque ? 'bg-red-500' : avancement === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                style={{ width: `${avancement}%` }}
+              />
+            </div>
+          )}
+          {sousTaches.length > 0 && !isBloque && (
+            <p className="text-xs text-neutral-500 italic">
+              Avancement calculé automatiquement selon les sous-tâches ({sousTaches.filter(st => st.fait).length}/{sousTaches.length} terminées)
+            </p>
+          )}
+          {isBloque && (
+            <p className="text-xs text-red-500 italic">
+              Action bloquée - l'avancement est gelé
+            </p>
+          )}
         </div>
       </div>
 

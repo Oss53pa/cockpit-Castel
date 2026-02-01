@@ -32,7 +32,7 @@ import {
 import { detectPhaseForDate, resolveActionEcheance, computeDateFromPhase, computeEcheance } from '@/lib/dateCalculations';
 import { detectPhaseForAction, calculateDureeEstimee } from '@/lib/phaseAutoDetect';
 import type { ProjectConfig } from '@/components/settings/ProjectSettings';
-import { SendReminderModal, ShareExternalModal } from '@/components/shared';
+import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
 import type { Action, ActionFilters } from '@/types';
 import { Flag } from 'lucide-react';
 
@@ -212,6 +212,9 @@ function ActionRow({
         {formatDate(echeance)}
       </TableCell>
       <TableCell>
+        <ModificationCell entiteType="action" entiteId={action.id!} />
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -317,6 +320,7 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
               <TableHead>Responsable</TableHead>
               <TableHead>Avancement</TableHead>
               <TableHead>Échéance</TableHead>
+              <TableHead className="w-12 text-center" title="Modifications récentes">Modif</TableHead>
               <TableHead className="w-20"></TableHead>
             </TableRow>
           </TableHeader>

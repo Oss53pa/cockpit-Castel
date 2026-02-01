@@ -8,6 +8,7 @@ import { SYNC_CONFIG } from '@/config/syncConfig';
 import type {
   SyncStatusResult,
   CategoryProgress,
+  CategoryActionItem,
   SyncSnapshot,
   SyncAlert,
   SyncAction,
@@ -94,10 +95,10 @@ export async function calculateAxeProgress(siteId: number, axe: Axe): Promise<{
   completedItems: number;
   actions: Action[];
 }> {
+  // Note: siteId parameter kept for API compatibility, but actions don't have siteId
   const actions = await db.actions
-    .where('siteId')
-    .equals(siteId)
-    .filter(a => a.axe === axe)
+    .where('axe')
+    .equals(axe)
     .toArray();
 
   if (actions.length === 0) {
@@ -139,9 +140,8 @@ export async function calculatePhaseProgress(siteId: number, phase: ProjectPhase
   completedItems: number;
   jalons: Jalon[];
 }> {
+  // Note: siteId parameter kept for API compatibility, but jalons don't have siteId
   const jalons = await db.jalons
-    .where('siteId')
-    .equals(siteId)
     .filter(j => j.projectPhase === phase)
     .toArray();
 
@@ -366,20 +366,42 @@ export function generateSyncCategories(): SyncCategory[] {
 export async function getConstructionCategoryDetails(siteId: number): Promise<CategoryProgress[]> {
   const result: CategoryProgress[] = [];
 
-  // Récupérer le jalon du Centre Commercial (buildingCode = 'CC')
-  const ccJalon = await db.jalons
-    .filter(j => j.axe === 'axe7_construction' && j.buildingCode === 'CC')
-    .first();
+  // Récupérer TOUTES les actions (siteId n'existe pas sur les actions)
+  const allSiteActions = await db.actions.toArray();
 
-  if (!ccJalon) {
-    // Pas de jalon CC trouvé - retourner vide
-    return [];
+  // Debug: log pour voir ce qu'on a
+  console.log('[SyncService] Total actions:', allSiteActions.length);
+  console.log('[SyncService] Axes présents:', [...new Set(allSiteActions.map(a => a.axe))]);
+  console.log('[SyncService] BuildingCodes présents:', [...new Set(allSiteActions.map(a => a.buildingCode).filter(Boolean))]);
+
+  // Filtrer les actions du Centre Commercial uniquement
+  // Priorité: buildingCode === 'CC', sinon id_action contient CON-1, sinon titre contient "Centre Commercial"
+  let ccActions = allSiteActions.filter(a => a.buildingCode === 'CC');
+
+  // Si pas de buildingCode CC, chercher par id_action
+  if (ccActions.length === 0) {
+    ccActions = allSiteActions.filter(a =>
+      a.id_action?.startsWith('A-CON-1') || // Convention: CON-1.x = Centre Commercial
+      a.id_action?.includes('CC-')
+    );
   }
 
-  // Récupérer toutes les actions liées au jalon CC
-  const ccActions = await db.actions
-    .filter(a => a.jalonId === ccJalon.id || (a.axe === 'axe7_construction' && a.id_action?.includes('CON-1')))
-    .toArray();
+  // Si toujours rien, chercher par titre
+  if (ccActions.length === 0) {
+    ccActions = allSiteActions.filter(a =>
+      a.titre?.toLowerCase().includes('centre commercial') ||
+      (a.axe === 'axe7_construction' && a.titre?.includes('- Centre Commercial'))
+    );
+  }
+
+  // Si toujours rien, prendre toutes les actions de construction (axe7)
+  if (ccActions.length === 0) {
+    ccActions = allSiteActions.filter(a => a.axe === 'axe7_construction');
+  }
+
+  console.log('[SyncService] Actions CC filtrées:', ccActions.length);
+
+  const allConstructionActions = ccActions;
 
   // Configuration des phases de construction du CC
   const phaseConfig: Record<string, { name: string; color: string; order: number }> = {
@@ -392,20 +414,32 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
     'reception_definitive': { name: 'Réception définitive', color: '#22C55E', order: 7 },
   };
 
-  // Mapper les actions vers les phases basées sur leur titre
-  const actionsByPhase = new Map<string, typeof ccActions>();
+  const actionsToProcess = allConstructionActions;
 
-  for (const action of ccActions) {
+  // Si pas d'actions de construction, retourner vide
+  if (actionsToProcess.length === 0) {
+    return [];
+  }
+
+  // Mapper les actions vers les phases basées sur leur titre ou catégorie
+  const actionsByPhase = new Map<string, typeof actionsToProcess>();
+
+  for (const action of actionsToProcess) {
     let phase = 'autre';
-    const titre = action.titre.toLowerCase();
+    const titre = (action.titre || '').toLowerCase();
+    const categorie = (action.categorie || '').toLowerCase();
 
-    if (titre.includes('gros') && titre.includes('uvre')) phase = 'gros_oeuvre';
-    else if (titre.includes('second') && titre.includes('uvre')) phase = 'second_oeuvre';
-    else if (titre.includes('lots') && titre.includes('technique')) phase = 'lots_techniques';
-    else if (titre.includes('aménagement') || titre.includes('amenagement') || titre.includes('externe')) phase = 'amenagement_externe';
-    else if (titre.includes('pré-réception') || titre.includes('pre-reception')) phase = 'pre_reception';
+    // Essayer de détecter la phase par le titre ou la catégorie
+    if (titre.includes('gros') && titre.includes('uvre') || categorie.includes('gros')) phase = 'gros_oeuvre';
+    else if (titre.includes('second') && titre.includes('uvre') || categorie.includes('second')) phase = 'second_oeuvre';
+    else if (titre.includes('lots') && titre.includes('technique') || categorie.includes('technique')) phase = 'lots_techniques';
+    else if (titre.includes('aménagement') || titre.includes('amenagement') || titre.includes('externe') || categorie.includes('externe')) phase = 'amenagement_externe';
+    else if (titre.includes('pré-réception') || titre.includes('pre-reception') || categorie.includes('réception')) phase = 'pre_reception';
     else if (titre.includes('réception') && titre.includes('provisoire')) phase = 'reception_provisoire';
     else if (titre.includes('réception') && titre.includes('définitive')) phase = 'reception_definitive';
+    // Si aucune phase détectée, utiliser la catégorie de l'action ou "Actions CC"
+    else if (action.categorie) phase = action.categorie;
+    else phase = 'actions_cc';
 
     if (!actionsByPhase.has(phase)) {
       actionsByPhase.set(phase, []);
@@ -413,12 +447,29 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
     actionsByPhase.get(phase)!.push(action);
   }
 
-  // Calculer la progression pour chaque phase
+  // Récupérer toutes les sous-tâches en une seule requête pour éviter N+1 queries
+  const allSousTaches = await db.sousTaches.toArray();
+  const sousTachesByActionId = new Map<string, typeof allSousTaches>();
+  for (const st of allSousTaches) {
+    if (!sousTachesByActionId.has(st.actionId)) {
+      sousTachesByActionId.set(st.actionId, []);
+    }
+    sousTachesByActionId.get(st.actionId)!.push(st);
+  }
+
+  // Récupérer les utilisateurs pour les noms des responsables
+  const users = await db.users.toArray();
+  const usersById = new Map(users.map(u => [u.id, u]));
+
+  // Calculer la progression pour chaque phase/groupe
   for (const [phaseCode, actions] of actionsByPhase.entries()) {
-    const config = phaseConfig[phaseCode] || { name: phaseCode, color: '#9CA3AF', order: 99 };
+    const config = phaseConfig[phaseCode] || { name: phaseCode === 'actions_cc' ? 'Actions CC' : phaseCode, color: '#9CA3AF', order: 99 };
 
     let totalProgress = 0;
     let completedCount = 0;
+
+    // Construire les items avec leurs sous-tâches
+    const items: CategoryActionItem[] = [];
 
     for (const action of actions) {
       const progress = getActionProgress(action);
@@ -426,6 +477,25 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
       if (action.statut === 'termine') {
         completedCount++;
       }
+
+      // Récupérer les sous-tâches de cette action
+      const actionSousTaches = sousTachesByActionId.get(action.id_action) || [];
+      const responsable = action.responsableId ? usersById.get(action.responsableId) : undefined;
+
+      items.push({
+        id: action.id!,
+        id_action: action.id_action,
+        titre: action.titre,
+        avancement: action.avancement,
+        statut: action.statut,
+        responsable: responsable?.nom,
+        date_fin_prevue: action.date_fin_prevue,
+        sousTaches: actionSousTaches.map(st => ({
+          id: st.id!,
+          libelle: st.libelle,
+          fait: st.fait,
+        })).sort((a, b) => a.id - b.id),
+      });
     }
 
     const avgProgress = actions.length > 0 ? totalProgress / actions.length : 0;
@@ -437,6 +507,7 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
       progress: Math.round(avgProgress * 100) / 100,
       itemsCount: actions.length,
       completedCount,
+      items, // Ajouter les items avec leurs sous-tâches
     });
   }
 
@@ -457,8 +528,43 @@ export async function getMobilisationCategoryDetails(siteId: number): Promise<Ca
   const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
   const result: CategoryProgress[] = [];
 
+  // Récupérer toutes les sous-tâches et utilisateurs pour éviter N+1 queries
+  const allSousTaches = await db.sousTaches.toArray();
+  const sousTachesByActionId = new Map<string, typeof allSousTaches>();
+  for (const st of allSousTaches) {
+    if (!sousTachesByActionId.has(st.actionId)) {
+      sousTachesByActionId.set(st.actionId, []);
+    }
+    sousTachesByActionId.get(st.actionId)!.push(st);
+  }
+
+  const users = await db.users.toArray();
+  const usersById = new Map(users.map(u => [u.id, u]));
+
   for (const axe of mobilisationAxes) {
     const axeData = await calculateAxeProgress(siteId, axe);
+
+    // Construire les items avec leurs sous-tâches
+    const items: CategoryActionItem[] = axeData.actions.map(action => {
+      const actionSousTaches = sousTachesByActionId.get(action.id_action) || [];
+      const responsable = action.responsableId ? usersById.get(action.responsableId) : undefined;
+
+      return {
+        id: action.id!,
+        id_action: action.id_action,
+        titre: action.titre,
+        avancement: action.avancement,
+        statut: action.statut,
+        responsable: responsable?.nom,
+        date_fin_prevue: action.date_fin_prevue,
+        sousTaches: actionSousTaches.map(st => ({
+          id: st.id!,
+          libelle: st.libelle,
+          fait: st.fait,
+        })).sort((a, b) => a.id - b.id),
+      };
+    });
+
     result.push({
       categoryId: `MOB-${axe}`,
       categoryCode: axe,
@@ -466,6 +572,7 @@ export async function getMobilisationCategoryDetails(siteId: number): Promise<Ca
       progress: axeData.progress,
       itemsCount: axeData.totalItems,
       completedCount: axeData.completedItems,
+      items,
     });
   }
 
@@ -782,13 +889,13 @@ export async function getSyncStatsV2(siteId: number): Promise<{
   axeEnRetard: string | null;
   phaseEnRetard: string | null;
 }> {
-  // Jalons
-  const jalons = await db.jalons.where('siteId').equals(siteId).toArray();
+  // Jalons (siteId not used - jalons don't have this field)
+  const jalons = await db.jalons.toArray();
   const jalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
 
-  // Actions
-  const actions = await db.actions.where('siteId').equals(siteId).toArray();
-  const actionsTerminees = actions.filter(a => a.status === 'termine').length;
+  // Actions (siteId not used - actions don't have this field)
+  const actions = await db.actions.toArray();
+  const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
 
   // Calculer progression moyenne
   const syncStatus = await calculateSyncStatusV2(siteId);

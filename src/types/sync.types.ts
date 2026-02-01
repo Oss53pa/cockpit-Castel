@@ -92,6 +92,22 @@ export interface SyncItem {
 // SNAPSHOTS DE SYNCHRONISATION
 // ============================================================================
 
+// Item simplifié pour l'affichage dans CategoryProgress
+export interface CategoryActionItem {
+  id: number;
+  id_action: string;
+  titre: string;
+  avancement: number;
+  statut: string;
+  responsable?: string;
+  date_fin_prevue?: string;
+  sousTaches?: Array<{
+    id: number;
+    libelle: string;
+    fait: boolean;
+  }>;
+}
+
 export interface CategoryProgress {
   categoryId: string;
   categoryCode: string;
@@ -99,6 +115,8 @@ export interface CategoryProgress {
   progress: number;
   itemsCount: number;
   completedCount: number;
+  // Actions détaillées (optionnel, pour affichage dans la vue expandée)
+  items?: CategoryActionItem[];
 }
 
 export interface SyncSnapshot {

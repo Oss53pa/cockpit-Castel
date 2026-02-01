@@ -17,6 +17,8 @@ import {
   Clock,
   X,
   Plus,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import {
   Button,
@@ -77,6 +79,7 @@ export interface JalonFormSaveData {
   preuve_url?: string;
   notes_mise_a_jour?: string;
   commentaires_externes?: string;
+  date_validation?: string | null;
 }
 
 // ============================================================================
@@ -93,7 +96,7 @@ export function JalonFormContent({
   isSaving = false,
 }: JalonFormContentProps) {
   // État du formulaire
-  const [statut, setStatut] = useState<StatutJalon>((jalon.statut as StatutJalon) || 'a_venir');
+  const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
   const [preuveUrl, setPreuveUrl] = useState(jalon.preuve_url || '');
   const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any).notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(jalon.commentaires || []);
@@ -104,6 +107,28 @@ export function JalonFormContent({
     ? Math.ceil((new Date(jalon.date_prevue).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
+  // Calcul automatique du statut
+  const calculerStatutAuto = useCallback((): StatutJalon => {
+    // Si validé → atteint
+    if (dateValidation) return 'atteint';
+
+    if (!jalon.date_prevue) return 'a_venir';
+
+    const now = new Date();
+    const echeance = new Date(jalon.date_prevue);
+
+    // Si échéance dépassée → dépassé
+    if (echeance < now) return 'depasse';
+
+    // Si proche de l'échéance (< 7 jours) → en danger
+    if (joursRestants !== null && joursRestants <= 7) return 'en_danger';
+
+    // Sinon → à venir
+    return 'a_venir';
+  }, [jalon.date_prevue, joursRestants, dateValidation]);
+
+  const statut = calculerStatutAuto();
+
   const calculerMeteo = useCallback((): MeteoJalon => {
     if (!jalon.date_prevue) return 'SOLEIL';
     if (joursRestants && joursRestants < 0) return 'ORAGEUX';
@@ -113,10 +138,20 @@ export function JalonFormContent({
 
   const meteo = calculerMeteo();
 
-  // Handlers
-  const handleStatutChange = (newStatut: StatutJalon) => {
-    setStatut(newStatut);
-    onStatutChange?.(newStatut);
+  // Notifier les changements de statut
+  useEffect(() => {
+    onStatutChange?.(statut);
+  }, [statut]);
+
+  // Handler validation
+  const handleValiderJalon = () => {
+    if (dateValidation) {
+      // Annuler la validation
+      setDateValidation(null);
+    } else {
+      // Valider le jalon
+      setDateValidation(new Date().toISOString());
+    }
   };
 
   const handleAddComment = () => {
@@ -142,32 +177,62 @@ export function JalonFormContent({
       preuve_url: preuveUrl,
       notes_mise_a_jour: notesMiseAJour,
       commentaires_externes: JSON.stringify(comments),
+      date_validation: dateValidation,
     });
   };
 
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Statut rapide */}
-      <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg">
-        <span className="text-sm font-medium text-neutral-600">Statut:</span>
-        <div className="flex gap-1 flex-1 flex-wrap">
-          {(Object.entries(STATUT_CONFIG) as [StatutJalon, typeof STATUT_CONFIG[StatutJalon]][]).map(([key, config]) => {
-            const isActive = statut === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => isEditing && handleStatutChange(key)}
-                disabled={!isEditing}
-                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                  isActive ? `${config.color} ring-2 ring-offset-1` : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
-                } ${!isEditing ? 'cursor-default' : 'cursor-pointer'}`}
-              >
-                {config.label}
-              </button>
-            );
-          })}
+      {/* Statut auto-calculé + Validation */}
+      <div className="p-4 bg-neutral-50 rounded-lg space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-neutral-600">Statut:</span>
+            <div className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${STATUT_CONFIG[statut].color}`}>
+              {STATUT_CONFIG[statut].label}
+            </div>
+            <span className="text-xs text-neutral-400 italic">(auto-calculé)</span>
+          </div>
+
+          {/* Bouton Valider/Invalider */}
+          {isEditing && (
+            <Button
+              type="button"
+              variant={dateValidation ? 'outline' : 'default'}
+              size="sm"
+              onClick={handleValiderJalon}
+              className={dateValidation ? 'border-orange-300 text-orange-600 hover:bg-orange-50' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {dateValidation ? (
+                <>
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Annuler validation
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Valider le jalon
+                </>
+              )}
+            </Button>
+          )}
         </div>
+
+        {/* Info validation */}
+        {dateValidation && (
+          <div className="flex items-center gap-2 p-2 bg-green-100 rounded-lg text-sm text-green-800">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Jalon validé le {new Date(dateValidation).toLocaleDateString('fr-FR')}</span>
+          </div>
+        )}
+
+        {/* Explication du statut */}
+        <p className="text-xs text-neutral-500">
+          {statut === 'atteint' && 'Le jalon a été validé.'}
+          {statut === 'depasse' && 'L\'échéance est dépassée. Validez le jalon une fois atteint.'}
+          {statut === 'en_danger' && 'L\'échéance approche (< 7 jours).'}
+          {statut === 'a_venir' && 'Le jalon est planifié pour une date future.'}
+        </p>
       </div>
 
       {/* Champs obligatoires (lecture seule) */}

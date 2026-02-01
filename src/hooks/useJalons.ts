@@ -10,6 +10,7 @@ import {
   calculerStatutJalon,
   calculerMeteoJalon,
 } from '@/lib/calculations';
+import { autoUpdateJalonStatus } from '@/services/autoCalculationService';
 
 export function useJalons(filters?: JalonFilters) {
   const jalons = useLiveQuery(async () => {
@@ -100,18 +101,24 @@ export async function updateJalon(
 
 /**
  * Update a jalon and optionally propagate date changes to linked actions.
+ * Par défaut, la propagation est activée (propagateToActions = true).
  */
 export async function updateJalonWithPropagation(
   id: number,
   updates: Partial<Jalon>,
-  options: { propagateToActions?: boolean } = {}
+  options: { propagateToActions?: boolean } = { propagateToActions: true }
 ): Promise<{ actionsUpdated: number }> {
   await updateJalon(id, updates);
 
   let actionsUpdated = 0;
-  if (options.propagateToActions && updates.date_prevue) {
+  // Propagation activée par défaut
+  const shouldPropagate = options.propagateToActions !== false;
+  if (shouldPropagate && updates.date_prevue) {
     actionsUpdated = await recalculateActionsForJalon(id, updates.date_prevue);
   }
+
+  // Auto-recalculer le statut du jalon après mise à jour
+  await autoUpdateJalonStatus(id);
 
   return { actionsUpdated };
 }

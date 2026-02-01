@@ -15,6 +15,7 @@ import { SiteManagement } from '@/components/settings/SiteManagement';
 import { BackupManagement } from '@/components/settings/BackupManagement';
 import { DataInitialization } from '@/components/settings/DataInitialization';
 import { FirebaseSyncSettings } from '@/components/settings/FirebaseSyncSettings';
+import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
 
 const SETTINGS_PASSWORD = 'Atokp0879*';
 
@@ -189,6 +190,10 @@ export function SettingsPage() {
             <Flame className="h-4 w-4" />
             Firebase
           </TabsTrigger>
+          <TabsTrigger value="gdrive" className="flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Google Drive
+          </TabsTrigger>
           <TabsTrigger value="data" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Sauvegardes
@@ -246,6 +251,11 @@ export function SettingsPage() {
         {/* Firebase Tab */}
         <TabsContent value="firebase">
           <FirebaseSyncSettings />
+        </TabsContent>
+
+        {/* Google Drive Tab */}
+        <TabsContent value="gdrive">
+          <GoogleDriveSync />
         </TabsContent>
 
         {/* Data Tab */}

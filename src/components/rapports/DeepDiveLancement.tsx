@@ -120,7 +120,7 @@ import {
 import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
-type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation';
+type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'construction' | 'divers';
 
 // Configuration des axes
 const AXES_CONFIG: Record<AxeType, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
@@ -130,6 +130,8 @@ const AXES_CONFIG: Record<AxeType, { label: string; icon: React.ElementType; col
   budget: { label: 'Budget & Finances', icon: DollarSign, color: 'text-amber-600', bgColor: 'bg-amber-100' },
   marketing: { label: 'Marketing & Communication', icon: Megaphone, color: 'text-pink-600', bgColor: 'bg-pink-100' },
   exploitation: { label: 'Exploitation & Juridique', icon: Settings, color: 'text-green-600', bgColor: 'bg-green-100' },
+  construction: { label: 'Construction', icon: Building2, color: 'text-red-600', bgColor: 'bg-red-100' },
+  divers: { label: 'Divers', icon: Target, color: 'text-gray-600', bgColor: 'bg-gray-100' },
 };
 
 // Mapping axe vers code DB
@@ -140,6 +142,8 @@ const axeToDbCode: Record<AxeType, string> = {
   budget: 'axe4_budget',
   marketing: 'axe5_marketing',
   exploitation: 'axe6_exploitation',
+  construction: 'axe7_construction',
+  divers: 'divers',
 };
 
 // Configuration météo
@@ -229,8 +233,19 @@ function SlideRappelProjet() {
         <h3 className="text-lg font-bold text-primary-900 mb-4">Météo par Axe</h3>
         <div className="space-y-3">
           {METEO_PAR_AXE.map((item) => {
-            const axeKey = item.axe.replace('axe1_', '').replace('axe2_', '').replace('axe3_', '').replace('axe4_', '').replace('axe5_', '').replace('axe6_', '') as AxeType;
-            const config = AXES_CONFIG[axeKey === 'rh' ? 'rh' : axeKey === 'commercial' ? 'commercial' : axeKey === 'technique' ? 'technique' : axeKey === 'budget' ? 'budget' : axeKey === 'marketing' ? 'marketing' : 'exploitation'];
+            // Mapping axe code vers axe key
+            const axeMapping: Record<string, AxeType> = {
+              'axe1_rh': 'rh',
+              'axe2_commercial': 'commercial',
+              'axe3_technique': 'technique',
+              'axe4_budget': 'budget',
+              'axe5_marketing': 'marketing',
+              'axe6_exploitation': 'exploitation',
+              'axe7_construction': 'construction',
+              'divers': 'divers',
+            };
+            const axeKey = axeMapping[item.axe] || 'divers';
+            const config = AXES_CONFIG[axeKey];
 
             return (
               <div key={item.axe} className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
@@ -379,43 +394,6 @@ function SlideAxeRH() {
         </div>
       </Card>
 
-      {/* Organigramme */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Organigramme Cible</h4>
-        <div className="flex flex-col items-center">
-          <div className="p-3 bg-primary-100 rounded-lg font-bold text-center mb-2">DGA</div>
-          <div className="w-px h-4 bg-primary-300"></div>
-          <div className="flex gap-8 items-start">
-            <div className="flex flex-col items-center">
-              <div className="p-2 bg-blue-100 rounded-lg text-sm text-center">Center Mgr</div>
-              <div className="w-px h-4 bg-primary-300"></div>
-              <div className="flex gap-4">
-                <div className="p-1.5 bg-blue-50 rounded text-xs text-center">FSM</div>
-                <div className="p-1.5 bg-blue-50 rounded text-xs text-center">AFT</div>
-                <div className="p-1.5 bg-blue-50 rounded text-xs text-center">CTL</div>
-              </div>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="p-2 bg-amber-100 rounded-lg text-sm text-center">
-                AFM (25%)
-                <div className="text-xs text-amber-600">mutualisé</div>
-              </div>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="p-2 bg-amber-100 rounded-lg text-sm text-center">
-                MCM (25%)
-                <div className="text-xs text-amber-600">mutualisé</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 flex justify-center gap-4 text-sm">
-          <Badge>Effectif cible : {EFFECTIF_CIBLE.total} personnes</Badge>
-          <Badge variant="outline">Dédiés : {EFFECTIF_CIBLE.dedies}</Badge>
-          <Badge variant="outline">Mutualisés : {EFFECTIF_CIBLE.mutualises}</Badge>
-        </div>
-      </Card>
-
       {/* Planning Recrutement */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Planning Recrutement</h4>
@@ -458,6 +436,7 @@ function SlideAxeRH() {
 function SlideAxeCommercial() {
   const actions = useActions();
   const jalons = useJalons();
+  const risques = useRisques();
   const kpis = useDashboardKPIs();
 
   const actionsCommerciales = useMemo(() => {
@@ -465,77 +444,133 @@ function SlideAxeCommercial() {
     return actions.data.filter(a => a.axe === 'axe2_commercial');
   }, [actions.data]);
 
-  const actionsEnCours = useMemo(() => {
-    return actionsCommerciales.filter(a => a.statut === 'en_cours');
-  }, [actionsCommerciales]);
-
   const jalonsCommerciaux = useMemo(() => {
     if (!jalons.data) return [];
     return jalons.data.filter(j => j.axe === 'axe2_commercial');
   }, [jalons.data]);
+
+  const risquesCommerciaux = useMemo(() => {
+    if (!risques.data) return [];
+    return risques.data.filter(r => r.axe === 'axe2_commercial');
+  }, [risques.data]);
 
   const actionsTerminees = actionsCommerciales.filter(a => a.statut === 'termine').length;
   const tauxOccupationReel = kpis?.tauxOccupation || 0;
   const tauxCible = 85;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <SectionHeader title="AXE COMMERCIAL & LEASING" icon={Building2} color="text-indigo-600" />
 
       {/* Météo */}
-      <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
-        <Sun className="h-4 w-4 text-green-600" />
-        <span className="text-sm font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
+      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+        <Sun className="h-5 w-5 text-green-600" />
+        <span className="font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* KPIs avec réalisé vs cible */}
-        <Card padding="sm">
-          <h4 className="font-semibold text-primary-900 mb-2 text-sm">KPIs Clés</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-              <span className="text-xs font-medium">Taux d'occupation</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-bold ${tauxOccupationReel >= tauxCible ? 'text-green-600' : 'text-amber-600'}`}>
-                  {tauxOccupationReel.toFixed(1)}%
-                </span>
-                <span className="text-xs text-gray-400">/ {tauxCible}%</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-              <span className="text-xs font-medium">Actions terminées</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-green-600">{actionsTerminees}</span>
-                <span className="text-xs text-gray-400">/ {actionsCommerciales.length}</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
-              <span className="text-xs font-medium">Jalons</span>
-              <span className="text-sm font-bold text-blue-600">{jalonsCommerciaux.length}</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* Actions en cours réelles */}
-        <Card padding="sm">
-          <h4 className="font-semibold text-primary-900 mb-2 text-sm">Actions en Cours ({actionsEnCours.length})</h4>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {actionsEnCours.length > 0 ? (
-              actionsEnCours.slice(0, 5).map((action) => (
-                <div key={action.id} className="flex items-start gap-1 p-1 bg-indigo-50 rounded text-xs">
-                  <CircleDot className="h-3 w-3 text-indigo-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-primary-700 line-clamp-1">{action.titre}</span>
-                </div>
+      {/* Jalons Clés */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Jalons Clés</h4>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Jalon</TableHead>
+              <TableHead>Date cible</TableHead>
+              <TableHead className="text-center">Statut</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {jalonsCommerciaux.length > 0 ? (
+              jalonsCommerciaux.slice(0, 5).map((jalon) => (
+                <TableRow key={jalon.id}>
+                  <TableCell className="font-medium">{jalon.titre}</TableCell>
+                  <TableCell>{jalon.date_prevue ? new Date(jalon.date_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
+                  <TableCell className="text-center">{getStatutIcon(jalon.statut)} {jalon.statut.replace('_', ' ')}</TableCell>
+                </TableRow>
               ))
             ) : (
-              <p className="text-xs text-gray-400 italic">Aucune action en cours</p>
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-gray-400 italic">Aucun jalon défini</TableCell>
+              </TableRow>
             )}
-            {actionsEnCours.length > 5 && (
-              <p className="text-xs text-gray-400 italic">+{actionsEnCours.length - 5} autres...</p>
-            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Données Temps Réel */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-indigo-50 rounded-lg">
+            <p className="text-xl font-bold text-indigo-700">{actionsCommerciales.length}</p>
+            <p className="text-xs text-indigo-500">Actions</p>
           </div>
-        </Card>
-      </div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
+            <p className="text-xs text-green-500">Terminées</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <p className="text-xl font-bold text-blue-700">{jalonsCommerciaux.length}</p>
+            <p className="text-xs text-blue-500">Jalons</p>
+          </div>
+          <div className="text-center p-3 bg-red-50 rounded-lg">
+            <p className="text-xl font-bold text-red-700">{risquesCommerciaux.length}</p>
+            <p className="text-xs text-red-500">Risques</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* KPI Occupation */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Taux d'Occupation</h4>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${tauxOccupationReel >= tauxCible ? 'bg-green-500' : 'bg-amber-500'}`}
+                style={{ width: `${Math.min(tauxOccupationReel, 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className="text-right">
+            <span className={`text-2xl font-bold ${tauxOccupationReel >= tauxCible ? 'text-green-600' : 'text-amber-600'}`}>
+              {tauxOccupationReel.toFixed(1)}%
+            </span>
+            <span className="text-sm text-gray-400 ml-2">/ {tauxCible}% cible</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Points d'Attention */}
+      <Card padding="md">
+        <h4 className="font-semibold text-primary-900 mb-3">Points d'Attention</h4>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Sujet</TableHead>
+              <TableHead>Responsable</TableHead>
+              <TableHead>Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium">Négociations locataires ancres</TableCell>
+              <TableCell>MCM</TableCell>
+              <TableCell>Suivi hebdomadaire</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">Pipeline prospects Big Box</TableCell>
+              <TableCell>MCM</TableCell>
+              <TableCell>Relances actives</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium">BEFA standards</TableCell>
+              <TableCell>DGA/Juridique</TableCell>
+              <TableCell>Finalisation</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -568,9 +603,9 @@ function SlideAxeTechnique() {
       <SectionHeader title="AXE TECHNIQUE & HANDOVER" icon={Wrench} color="text-purple-600" />
 
       {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
-        <Cloud className="h-5 w-5 text-orange-600" />
-        <span className="font-medium text-orange-800">À surveiller - Bassin de rétention en cours</span>
+      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <CloudSun className="h-5 w-5 text-amber-600" />
+        <span className="font-medium text-amber-800">Préparation handover en cours</span>
       </div>
 
       {/* Jalons Clés */}

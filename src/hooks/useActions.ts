@@ -1,6 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { Action, ActionFilters, ActionStatus, Axe } from '@/types';
+import {
+  autoUpdateActionStatus,
+  autoUpdateJalonStatus,
+  propagateDateChangeToSuccessors,
+} from '@/services/autoCalculationService';
 
 export function useActions(filters?: ActionFilters) {
   const actions = useLiveQuery(async () => {
@@ -94,10 +99,30 @@ export async function updateAction(
   id: number,
   updates: Partial<Action>
 ): Promise<void> {
+  // Récupérer l'action actuelle pour comparaison
+  const currentAction = await db.actions.get(id);
+
+  // 1. Appliquer les updates
   await db.actions.update(id, {
     ...updates,
     updatedAt: new Date().toISOString(),
   });
+
+  // 2. Si avancement change → vérifier transition statut automatique
+  if (updates.avancement !== undefined && updates.avancement !== currentAction?.avancement) {
+    await autoUpdateActionStatus(id);
+  }
+
+  // 3. Si date_fin_prevue change → propager aux successeurs
+  if (updates.date_fin_prevue && updates.date_fin_prevue !== currentAction?.date_fin_prevue) {
+    await propagateDateChangeToSuccessors(id, updates.date_fin_prevue, updates.date_debut_prevue);
+  }
+
+  // 4. Mettre à jour le jalon parent si lié
+  const action = await db.actions.get(id);
+  if (action?.jalonId) {
+    await autoUpdateJalonStatus(action.jalonId);
+  }
 }
 
 export async function deleteAction(id: number): Promise<void> {

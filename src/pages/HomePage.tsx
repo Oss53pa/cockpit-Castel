@@ -6,8 +6,9 @@ import {
   AlertTriangle,
   FileText,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
-import { useDashboardKPIs, useAvancementGlobal } from '@/hooks';
+import { useDashboardKPIs, useAvancementGlobal, useAlertes } from '@/hooks';
 
 function getDaysUntilOpening(): number {
   const opening = new Date('2026-11-15');
@@ -20,6 +21,10 @@ export function HomePage() {
   const kpis = useDashboardKPIs();
   const avancementGlobal = useAvancementGlobal();
   const daysUntilOpening = getDaysUntilOpening();
+  const { alertes = [] } = useAlertes();
+
+  // Nombre de problèmes remontés (alertes non traitées)
+  const problemesCount = (alertes || []).filter(a => !a.traitee).length;
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -27,9 +32,12 @@ export function HomePage() {
       <header className="flex items-center justify-between px-12 py-6">
         <span className="text-lg font-semibold text-primary-900">Cosmos Angre</span>
 
-        <nav className="flex items-center gap-8">
-          <span className="text-sm text-primary-400">Avancement {avancementGlobal.toFixed(2)}%</span>
-          <span className="text-sm text-primary-400">J-{daysUntilOpening}</span>
+        <nav className="flex items-center gap-6">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-red-500">
+            <Sparkles className="h-4 w-4" />
+            Proph3t {problemesCount}
+          </span>
+          <span className="text-xl font-bold text-primary-900">J-{daysUntilOpening}</span>
           <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 px-4 py-2 bg-primary-900 text-white text-sm rounded-full hover:bg-primary-800 transition-colors"

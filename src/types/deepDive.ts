@@ -109,6 +109,11 @@ export interface DeepDive {
   presentedTo?: string;
   tags?: string[];
   notes?: string;
+  // Champs pour le Journal
+  periode?: string;
+  sharedWith?: string[];
+  lastSentAt?: string;
+  siteId?: number;
 }
 
 export const WEATHER_CONFIG: Record<ProjectWeather, { label: string; emoji: string; color: string; bgColor: string }> = {

@@ -240,7 +240,7 @@ export function exportCOPILToPDF(data: COPILExportData): void {
         `${i + 1}`,
         r.score.toString(),
         r.titre.substring(0, 40) + (r.titre.length > 40 ? '...' : ''),
-        `${r.probabilite_actuelle}×${r.impact_actuel}`,
+        `${r.probabilite_actuelle ?? r.probabilite}×${r.impact_actuel ?? r.impact}`,
         r.proprietaire || 'N/A',
       ]),
       margin: { left: margin, right: margin },

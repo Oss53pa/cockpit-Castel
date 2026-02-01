@@ -356,7 +356,7 @@ function FaitsMarquantsCOPILSection() {
         id: `risque-${r.id}`,
         type: 'attention',
         titre: r.titre,
-        description: `Score: ${r.score} (P:${r.probabilite_actuelle} x I:${r.impact_actuel})`,
+        description: `Score: ${r.score} (P:${r.probabilite_actuelle ?? r.probabilite} x I:${r.impact_actuel ?? r.impact})`,
         impact: 'negatif',
       });
     });
@@ -639,7 +639,7 @@ function Top5RisquesSection() {
                   {risque.titre}
                 </p>
                 <p className="text-xs text-primary-500">
-                  P:{risque.probabilite_actuelle} × I:{risque.impact_actuel} •{' '}
+                  P:{risque.probabilite_actuelle ?? risque.probabilite} × I:{risque.impact_actuel ?? risque.impact} •{' '}
                   {risque.proprietaire || 'Non assigné'}
                 </p>
               </div>

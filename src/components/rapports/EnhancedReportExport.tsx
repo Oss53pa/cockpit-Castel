@@ -208,14 +208,13 @@ export function EnhancedReportExport() {
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
-    const months = ['Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'];
     const lastDay = new Date(year, month + 1, 0).getDate();
     return {
-      type: 'month',
-      label: months[month],
+      type: 'custom',
+      label: 'Personnalisé',
       startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
       endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
-      displayText: `${months[month]} ${year}`,
+      displayText: `Du 01/${String(month + 1).padStart(2, '0')}/${year} au ${lastDay}/${String(month + 1).padStart(2, '0')}/${year}`,
     };
   });
 
@@ -1054,8 +1053,8 @@ export function EnhancedReportExport() {
         const riskMatrixData = risques
           .filter(r => r.status !== 'closed')
           .map(r => ({
-            probability: r.probabilite_actuelle || 1,
-            impact: r.impact_actuel || 1,
+            probability: r.probabilite_actuelle ?? r.probabilite ?? 1,
+            impact: r.impact_actuel ?? r.impact ?? 1,
           }));
 
         currentY = drawRiskMatrix(doc, margin, currentY, 60, riskMatrixData);
@@ -1087,8 +1086,8 @@ export function EnhancedReportExport() {
             r.id_risque || String(r.id || ''),
             r.titre.substring(0, 25) + (r.titre.length > 25 ? '...' : ''),
             RISQUE_CATEGORY_LABELS[r.categorie] || r.categorie,
-            r.probabilite_actuelle?.toString() || '-',
-            r.impact_actuel?.toString() || '-',
+            (r.probabilite_actuelle ?? r.probabilite)?.toString() || '-',
+            (r.impact_actuel ?? r.impact)?.toString() || '-',
             r.score?.toString() || '-',
             getRisqueStatusLabel(r.status),
             r.proprietaire?.substring(0, 10) || '-',
@@ -1468,8 +1467,8 @@ export function EnhancedReportExport() {
             'Description': r.description,
             'Categorie': RISQUE_CATEGORY_LABELS[r.categorie] || r.categorie,
             'Statut': getRisqueStatusLabel(r.status),
-            'Probabilite': r.probabilite_actuelle,
-            'Impact': r.impact_actuel,
+            'Probabilite': r.probabilite_actuelle ?? r.probabilite,
+            'Impact': r.impact_actuel ?? r.impact,
             'Score': r.score,
             'Proprietaire': r.proprietaire,
             'Plan mitigation': r.plan_mitigation || '',

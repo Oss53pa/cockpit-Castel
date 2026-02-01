@@ -3,11 +3,13 @@
 // ============================================================================
 
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Trash2, CheckCircle, AlertTriangle, Info, Download, Upload, Wallet } from 'lucide-react';
+import { Database, RefreshCw, Trash2, CheckCircle, AlertTriangle, Info, Download, Upload, Wallet, Wrench, Copy } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { useSeedData } from '@/hooks/useSeedData';
 import { getDatabaseStats, forceReseed } from '@/lib/initDatabase';
 import { db } from '@/db';
+import { seedDatabase } from '@/data/cosmosAngre';
+import { cleanupAllBudgetDuplicates } from '@/hooks/useBudgetExploitation';
 
 interface DatabaseStats {
   users: number;
@@ -23,6 +25,10 @@ export function DataInitialization() {
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [forceReseeding, setForceReseeding] = useState(false);
+  const [repairingData, setRepairingData] = useState(false);
+  const [repairResult, setRepairResult] = useState<{ risques: number; budget: number } | null>(null);
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
+  const [duplicatesResult, setDuplicatesResult] = useState<{ totalRemoved: number } | null>(null);
 
   // Charger les statistiques au montage
   useEffect(() => {
@@ -87,6 +93,70 @@ export function DataInitialization() {
         console.error('Erreur suppression:', err);
         alert('Erreur lors de la suppression');
       }
+    }
+  };
+
+  const handleRepairMissingData = async () => {
+    setRepairingData(true);
+    setRepairResult(null);
+    try {
+      const { PRODUCTION_DATA } = await import('@/data/cosmosAngreProductionData');
+
+      let risquesAdded = 0;
+      let budgetAdded = 0;
+
+      // Vérifier et ajouter les risques manquants
+      const existingRisques = await db.risques.count();
+      if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
+        await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+        risquesAdded = PRODUCTION_DATA.risques.length;
+        console.log(`[RepairData] ${risquesAdded} risques ajoutés`);
+      }
+
+      // Vérifier et ajouter le budget manquant
+      const existingBudget = await db.budget.count();
+      if (existingBudget === 0 && PRODUCTION_DATA.budget?.length > 0) {
+        await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+        budgetAdded = PRODUCTION_DATA.budget.length;
+        console.log(`[RepairData] ${budgetAdded} entrées budget ajoutées`);
+      }
+
+      setRepairResult({ risques: risquesAdded, budget: budgetAdded });
+      await loadStats();
+
+      if (risquesAdded > 0 || budgetAdded > 0) {
+        alert(`Réparation terminée !\n- ${risquesAdded} risques ajoutés\n- ${budgetAdded} entrées budget ajoutées`);
+      } else {
+        alert('Aucune donnée manquante détectée. Les risques et le budget sont déjà présents.');
+      }
+    } catch (err) {
+      console.error('Erreur réparation:', err);
+      alert('Erreur lors de la réparation des données');
+    } finally {
+      setRepairingData(false);
+    }
+  };
+
+  const handleCleanBudgetDuplicates = async () => {
+    setCleaningDuplicates(true);
+    setDuplicatesResult(null);
+    try {
+      const result = await cleanupAllBudgetDuplicates();
+      setDuplicatesResult({ totalRemoved: result.totalRemoved });
+
+      if (result.totalRemoved > 0) {
+        const detailsStr = result.details
+          .map((d) => `${d.budgetType} ${d.annee}: ${d.removed} doublons`)
+          .join('\n');
+        alert(`Nettoyage terminé !\n${result.totalRemoved} doublons supprimés:\n${detailsStr}`);
+      } else {
+        alert('Aucun doublon détecté dans les budgets.');
+      }
+    } catch (err) {
+      console.error('Erreur nettoyage doublons:', err);
+      alert('Erreur lors du nettoyage des doublons');
+    } finally {
+      setCleaningDuplicates(false);
     }
   };
 
@@ -285,6 +355,72 @@ export function DataInitialization() {
                 <>
                   <Wallet className="h-4 w-4 mr-2" />
                   Charger budget
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Réparer les données manquantes */}
+          <div className="flex items-center justify-between p-4 bg-teal-50 rounded-lg">
+            <div>
+              <h5 className="font-medium text-teal-900">Réparer les données manquantes</h5>
+              <p className="text-sm text-teal-600">
+                Ajoute les risques et/ou le budget s'ils sont absents (ne modifie pas les données existantes)
+              </p>
+              {repairResult && (repairResult.risques > 0 || repairResult.budget > 0) && (
+                <p className="text-xs text-teal-700 mt-1">
+                  Dernière réparation : {repairResult.risques} risques, {repairResult.budget} budget
+                </p>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleRepairMissingData}
+              disabled={repairingData}
+              className="bg-teal-100 hover:bg-teal-200 text-teal-700"
+            >
+              {repairingData ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Réparation...
+                </>
+              ) : (
+                <>
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Réparer
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Nettoyer les doublons de budget */}
+          <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg">
+            <div>
+              <h5 className="font-medium text-amber-900">Nettoyer les doublons de budget</h5>
+              <p className="text-sm text-amber-600">
+                Supprime les lignes de budget en double (garde une seule occurrence par poste)
+              </p>
+              {duplicatesResult && duplicatesResult.totalRemoved > 0 && (
+                <p className="text-xs text-amber-700 mt-1">
+                  Dernier nettoyage : {duplicatesResult.totalRemoved} doublons supprimés
+                </p>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleCleanBudgetDuplicates}
+              disabled={cleaningDuplicates}
+              className="bg-amber-100 hover:bg-amber-200 text-amber-700"
+            >
+              {cleaningDuplicates ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Nettoyage...
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Nettoyer doublons
                 </>
               )}
             </Button>

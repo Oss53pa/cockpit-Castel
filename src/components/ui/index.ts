@@ -9,6 +9,7 @@ export * from './dialog';
 export * from './dropdown-menu';
 export * from './empty-state';
 export * from './input';
+export * from './number-input';
 export * from './label';
 export * from './progress';
 export * from './scroll-area';

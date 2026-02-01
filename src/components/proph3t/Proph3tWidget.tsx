@@ -18,6 +18,13 @@ import {
   Lightbulb,
   Activity,
   Settings,
+  Zap,
+  X,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Badge } from '@/components/ui';
@@ -29,6 +36,7 @@ import {
   useProph3tQuickAnalysis,
   useProjectContext,
 } from '@/hooks';
+import { useProph3tProactive } from '@/hooks/useProph3tProactive';
 import ReactMarkdown from 'react-markdown';
 import { Proph3tConfigModal } from './Proph3tConfigModal';
 
@@ -42,6 +50,7 @@ interface Proph3tWidgetProps {
   showChat?: boolean;
   showHealth?: boolean;
   showRecommendations?: boolean;
+  showProactive?: boolean;
 }
 
 export function Proph3tWidget({
@@ -50,10 +59,12 @@ export function Proph3tWidget({
   showChat = true,
   showHealth = true,
   showRecommendations = true,
+  showProactive = true,
 }: Proph3tWidgetProps) {
-  const [activeTab, setActiveTab] = useState<'chat' | 'health' | 'recommendations'>('health');
+  const [activeTab, setActiveTab] = useState<'proactive' | 'chat' | 'health' | 'recommendations'>('proactive');
   const [isExpanded, setIsExpanded] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const { criticalCount, warningCount } = useProph3tProactive();
 
   if (variant === 'inline') {
     return <Proph3tInlineStatus className={className} />;
@@ -78,6 +89,20 @@ export function Proph3tWidget({
           <Badge variant="secondary" className="bg-accent-500/20 text-accent-300 text-xs">
             IA
           </Badge>
+          {(criticalCount > 0 || warningCount > 0) && (
+            <div className="flex items-center gap-1">
+              {criticalCount > 0 && (
+                <span className="flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                  {criticalCount}
+                </span>
+              )}
+              {warningCount > 0 && (
+                <span className="flex items-center justify-center w-5 h-5 bg-yellow-500 text-white text-xs font-bold rounded-full">
+                  {warningCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Proph3tProviderBadge />
@@ -102,6 +127,25 @@ export function Proph3tWidget({
         <>
           {/* Tabs */}
           <div className="flex border-b border-primary-200">
+            {showProactive && (
+              <button
+                onClick={() => setActiveTab('proactive')}
+                className={cn(
+                  'flex-1 px-4 py-2 text-sm font-medium transition-colors relative',
+                  activeTab === 'proactive'
+                    ? 'text-primary-900 border-b-2 border-primary-900'
+                    : 'text-primary-500 hover:text-primary-700'
+                )}
+              >
+                <Zap className="h-4 w-4 inline mr-1" />
+                Alertes
+                {(criticalCount + warningCount) > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {criticalCount + warningCount}
+                  </span>
+                )}
+              </button>
+            )}
             {showHealth && (
               <button
                 onClick={() => setActiveTab('health')}
@@ -148,6 +192,7 @@ export function Proph3tWidget({
 
           {/* Content */}
           <div className={cn('p-4', variant === 'full' && 'h-[calc(100%-100px)] overflow-auto')}>
+            {activeTab === 'proactive' && <Proph3tProactivePanel />}
             {activeTab === 'health' && <Proph3tHealthPanel />}
             {activeTab === 'recommendations' && <Proph3tRecommendationsPanel />}
             {activeTab === 'chat' && <Proph3tChatPanel />}
@@ -581,6 +626,253 @@ function Proph3tChatPanel() {
           Effacer la conversation
         </button>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// PROACTIVE PANEL
+// ============================================================================
+
+function Proph3tProactivePanel() {
+  const {
+    insights,
+    criticalCount,
+    warningCount,
+    isScanning,
+    lastScanTime,
+    runScan,
+    dismissInsight,
+    config,
+    updateConfig,
+  } = useProph3tProactive();
+
+  const severityConfig = {
+    critical: {
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      text: 'text-red-800',
+      icon: AlertCircle,
+      iconColor: 'text-red-500',
+    },
+    warning: {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      text: 'text-amber-800',
+      icon: AlertTriangle,
+      iconColor: 'text-amber-500',
+    },
+    info: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      text: 'text-blue-800',
+      icon: Info,
+      iconColor: 'text-blue-500',
+    },
+    success: {
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      text: 'text-green-800',
+      icon: CheckCircle,
+      iconColor: 'text-green-500',
+    },
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header avec config et scan */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Zap className={cn('h-5 w-5', config.hybridMode ? 'text-purple-500' : 'text-primary-500')} />
+          <span className="text-sm font-medium">
+            Mode {config.hybridMode ? 'Hybride' : 'Local'}
+          </span>
+          {config.hybridMode && (
+            <Badge variant="info" className="text-xs">Local + IA</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => updateConfig({ hybridMode: !config.hybridMode })}
+            className={cn(
+              'px-2 py-1 text-xs rounded transition-colors',
+              config.hybridMode
+                ? 'bg-purple-100 text-purple-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            )}
+            title="Basculer mode hybride"
+          >
+            {config.hybridMode ? 'Hybride ON' : 'Hybride OFF'}
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runScan}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Dernier scan */}
+      {lastScanTime && (
+        <div className="flex items-center gap-1 text-xs text-primary-400">
+          <Clock className="h-3 w-3" />
+          Dernier scan: {lastScanTime.toLocaleTimeString('fr-FR')}
+        </div>
+      )}
+
+      {/* Résumé */}
+      {(criticalCount > 0 || warningCount > 0) && (
+        <div className="flex gap-4 p-3 bg-gradient-to-r from-red-50 to-amber-50 rounded-lg">
+          {criticalCount > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold">{criticalCount}</span>
+              </div>
+              <span className="text-sm text-red-700">Critique{criticalCount > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {warningCount > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold">{warningCount}</span>
+              </div>
+              <span className="text-sm text-amber-700">Attention{warningCount > 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Liste des insights */}
+      <div className="space-y-2 max-h-80 overflow-y-auto">
+        {insights.length === 0 ? (
+          <div className="text-center py-8">
+            <CheckCircle className="h-12 w-12 text-success-500 mx-auto mb-2" />
+            <p className="text-success-700 font-medium">Tout va bien!</p>
+            <p className="text-sm text-primary-500">Aucun problème détecté.</p>
+          </div>
+        ) : (
+          insights.map(insight => {
+            const config = severityConfig[insight.severity];
+            const Icon = config.icon;
+
+            return (
+              <div
+                key={insight.id}
+                className={cn(
+                  'p-3 rounded-lg border transition-all',
+                  config.bg,
+                  config.border
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1">
+                    <Icon className={cn('h-5 w-5 mt-0.5 flex-shrink-0', config.iconColor)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn('font-medium text-sm', config.text)}>
+                          {insight.title}
+                        </span>
+                        {/* Catégorie badge */}
+                        {insight.category === 'velocity' && (
+                          <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">
+                            Vélocité
+                          </Badge>
+                        )}
+                        {insight.category === 'phase_sync' && (
+                          <Badge variant="secondary" className="text-xs bg-cyan-100 text-cyan-700">
+                            Synchro Phase
+                          </Badge>
+                        )}
+                        {insight.category === 'postponement' && (
+                          <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                            Report suggéré
+                          </Badge>
+                        )}
+                        {insight.source === 'hybrid' && (
+                          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                            IA
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-primary-600 mt-1">
+                        {insight.description}
+                      </p>
+                      {insight.suggestion && (
+                        <div className="mt-2 p-2 bg-white/50 rounded text-xs flex items-start gap-1">
+                          <Lightbulb className="h-3 w-3 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-primary-700">{insight.suggestion}</span>
+                        </div>
+                      )}
+                      {insight.aiEnhanced && (
+                        <div className="mt-2 p-2 bg-purple-100/50 rounded text-xs flex items-start gap-1">
+                          <Sparkles className="h-3 w-3 text-purple-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-purple-800">{insight.aiEnhanced}</span>
+                        </div>
+                      )}
+                      {insight.entityTitle && (
+                        <div className="mt-1 flex items-center gap-1 text-xs text-primary-500">
+                          <Target className="h-3 w-3" />
+                          {insight.entityTitle}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => dismissInsight(insight.id)}
+                    className="p-1 hover:bg-white/50 rounded text-primary-400 hover:text-primary-600"
+                    title="Ignorer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Config rapide */}
+      <div className="pt-3 border-t space-y-2">
+        <div className="flex items-center justify-between text-xs text-primary-500">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.autoSuggest}
+              onChange={(e) => updateConfig({ autoSuggest: e.target.checked })}
+              className="w-4 h-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500"
+            />
+            Suggestions automatiques
+          </label>
+          <span>Scan: {config.scanIntervalMinutes}min</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-primary-500">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.velocityAnalysis}
+              onChange={(e) => updateConfig({ velocityAnalysis: e.target.checked })}
+              className="w-4 h-4 rounded border-primary-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Analyse vélocité
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.phaseSyncAnalysis}
+              onChange={(e) => updateConfig({ phaseSyncAnalysis: e.target.checked })}
+              className="w-4 h-4 rounded border-primary-300 text-cyan-600 focus:ring-cyan-500"
+            />
+            Synchro phases
+          </label>
+        </div>
+      </div>
     </div>
   );
 }

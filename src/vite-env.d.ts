@@ -1,1 +1,18 @@
 /// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_APP_PASSWORD: string;
+  readonly VITE_EMAILJS_SERVICE_ID: string;
+  readonly VITE_EMAILJS_TEMPLATE_ID: string;
+  readonly VITE_EMAILJS_PUBLIC_KEY: string;
+  readonly VITE_GOOGLE_CLIENT_ID: string;
+  readonly VITE_OPENROUTER_API_KEY?: string;
+  readonly VITE_ANTHROPIC_API_KEY?: string;
+  readonly VITE_WORKER_URL?: string;
+  readonly VITE_PROJECT_NAME?: string;
+  readonly VITE_OPENING_DATE?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

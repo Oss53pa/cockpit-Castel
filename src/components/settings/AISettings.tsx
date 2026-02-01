@@ -123,6 +123,12 @@ export function AISettings() {
 
   const providers: { id: AIProvider; label: string; description: string; icon: React.ElementType }[] = [
     {
+      id: 'hybrid',
+      label: 'Hybride (Recommande)',
+      description: 'Local + OpenRouter en parallele pour des analyses completes',
+      icon: Zap,
+    },
+    {
       id: 'local',
       label: 'Algorithme Local',
       description: 'Analyse basee sur des regles, fonctionne hors-ligne',
@@ -244,8 +250,41 @@ export function AISettings() {
           </div>
         </Card>
 
+        {/* Hybrid Mode Info */}
+        {config.provider === 'hybrid' && (
+          <Card padding="md">
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+              <h3 className="text-lg font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Mode Hybride Active
+              </h3>
+              <p className="text-sm text-purple-700 mb-3">
+                Ce mode execute l'algorithme local ET OpenRouter en parallele pour des analyses completes.
+              </p>
+              <ul className="space-y-1 text-sm text-purple-600">
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-success-500" />
+                  Analyse locale instantanee (hors-ligne)
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-success-500" />
+                  Enrichissement IA via OpenRouter
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-success-500" />
+                  Suggestions proactives automatiques
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-success-500" />
+                  Fallback automatique si API indisponible
+                </li>
+              </ul>
+            </div>
+          </Card>
+        )}
+
         {/* OpenRouter Configuration */}
-        {config.provider === 'openrouter' && (
+        {(config.provider === 'openrouter' || config.provider === 'hybrid') && (
           <Card padding="md">
             <h3 className="text-lg font-semibold text-primary-900 mb-4">
               Configuration OpenRouter

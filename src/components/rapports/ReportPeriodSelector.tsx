@@ -26,12 +26,12 @@ interface ReportPeriodSelectorProps {
 }
 
 const PERIOD_TYPE_LABELS: Record<PeriodType, string> = {
+  custom: '📅 Plage de dates',
   week: 'Semaine',
   month: 'Mois',
   quarter: 'Trimestre',
   semester: 'Semestre',
   year: 'Année',
-  custom: 'Personnalisé',
 };
 
 const MONTHS = [
@@ -48,14 +48,22 @@ export function ReportPeriodSelector({
   className,
   compact = false,
 }: ReportPeriodSelectorProps) {
-  const [periodType, setPeriodType] = useState<PeriodType>(value?.type || 'month');
+  const [periodType, setPeriodType] = useState<PeriodType>(value?.type || 'custom');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedWeek, setSelectedWeek] = useState(getWeekNumber(new Date()));
   const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(new Date().getMonth() / 3));
   const [selectedSemester, setSelectedSemester] = useState(new Date().getMonth() < 6 ? 0 : 1);
-  const [customStart, setCustomStart] = useState('');
-  const [customEnd, setCustomEnd] = useState('');
+  // Initialize custom dates with current month range
+  const [customStart, setCustomStart] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+  });
 
   // Generate years (current year - 2 to current year + 1)
   const years = useMemo(() => {
@@ -303,9 +311,14 @@ export function ReportPeriodSelector({
 
   return (
     <div className={cn('p-4 bg-primary-50 rounded-lg border border-primary-200', className)}>
-      <div className="flex items-center gap-2 mb-4">
-        <Calendar className="h-5 w-5 text-primary-600" />
-        <h4 className="font-semibold text-primary-900">Période du rapport</h4>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary-600" />
+          <h4 className="font-semibold text-primary-900">Période du rapport</h4>
+        </div>
+        <p className="text-xs text-primary-500">
+          Sélectionnez une plage de dates ou une période prédéfinie
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -482,7 +495,7 @@ export function ReportPeriodSelector({
           <>
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
-                Date de début
+                Du (date de début)
               </label>
               <Input
                 type="date"
@@ -493,7 +506,7 @@ export function ReportPeriodSelector({
             </div>
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
-                Date de fin
+                Au (date de fin)
               </label>
               <Input
                 type="date"
@@ -504,13 +517,91 @@ export function ReportPeriodSelector({
             </div>
           </>
         )}
+      </div>
 
-        {/* Bouton appliquer */}
-        <div className="flex items-end">
-          <Button onClick={handleApply} className="w-full">
-            Appliquer
-          </Button>
+      {/* Raccourcis pour plages de dates courantes */}
+      {periodType === 'custom' && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="text-xs text-primary-500 self-center mr-1">Raccourcis :</span>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+              const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+              const end = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+              setCustomStart(start);
+              setCustomEnd(end);
+            }}
+            className="px-2 py-1 text-xs rounded bg-primary-100 hover:bg-primary-200 text-primary-700 transition-colors"
+          >
+            Ce mois
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+              const start = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}-01`;
+              const lastDay = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0).getDate();
+              const end = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}-${lastDay}`;
+              setCustomStart(start);
+              setCustomEnd(end);
+            }}
+            className="px-2 py-1 text-xs rounded bg-primary-100 hover:bg-primary-200 text-primary-700 transition-colors"
+          >
+            Mois dernier
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const dayOfWeek = now.getDay();
+              const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+              const monday = new Date(now);
+              monday.setDate(now.getDate() + mondayOffset);
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate() + 6);
+              setCustomStart(monday.toISOString().split('T')[0]);
+              setCustomEnd(sunday.toISOString().split('T')[0]);
+            }}
+            className="px-2 py-1 text-xs rounded bg-primary-100 hover:bg-primary-200 text-primary-700 transition-colors"
+          >
+            Cette semaine
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const startQ = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+              const endQ = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
+              setCustomStart(startQ.toISOString().split('T')[0]);
+              setCustomEnd(endQ.toISOString().split('T')[0]);
+            }}
+            className="px-2 py-1 text-xs rounded bg-primary-100 hover:bg-primary-200 text-primary-700 transition-colors"
+          >
+            Ce trimestre
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const now = new Date();
+              const start30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+              setCustomStart(start30.toISOString().split('T')[0]);
+              setCustomEnd(now.toISOString().split('T')[0]);
+            }}
+            className="px-2 py-1 text-xs rounded bg-primary-100 hover:bg-primary-200 text-primary-700 transition-colors"
+          >
+            30 derniers jours
+          </button>
         </div>
+      )}
+
+      {/* Bouton appliquer */}
+      <div className="flex justify-end mt-4">
+        <Button onClick={handleApply}>
+          Appliquer la période
+        </Button>
       </div>
 
       {/* Affichage de la période sélectionnée */}

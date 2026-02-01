@@ -259,7 +259,7 @@ export function RapportsPage() {
     templateIds: string[]; // Support multiple templates
     period: ReportPeriod | null;
   }>(() => {
-    // Default period = current month
+    // Default period = current month with custom type for date range selection
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
@@ -270,11 +270,11 @@ export function RapportsPage() {
       type: 'RAPPORT_MENSUEL' as ReportType,
       templateIds: [], // Array for multiple selection
       period: {
-        type: 'month',
-        label: months[month],
+        type: 'custom',
+        label: 'Personnalisé',
         startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
         endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
-        displayText: `${months[month]} ${year}`,
+        displayText: `Du 01/${String(month + 1).padStart(2, '0')}/${year} au ${lastDay}/${String(month + 1).padStart(2, '0')}/${year}`,
       },
     };
   });
@@ -311,18 +311,17 @@ export function RapportsPage() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedReportForShare, setSelectedReportForShare] = useState<number | null>(null);
   const [sharePeriod, setSharePeriod] = useState<ReportPeriod | null>(() => {
-    // Default period = current month
+    // Default period = current month with custom type for date range selection
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     const lastDay = new Date(year, month + 1, 0).getDate();
     return {
-      type: 'month',
-      label: months[month],
+      type: 'custom',
+      label: 'Personnalisé',
       startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
       endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
-      displayText: `${months[month]} ${year}`,
+      displayText: `Du 01/${String(month + 1).padStart(2, '0')}/${year} au ${lastDay}/${String(month + 1).padStart(2, '0')}/${year}`,
     };
   });
   const [shareSettings, setShareSettings] = useState({
@@ -430,25 +429,28 @@ export function RapportsPage() {
       author: 'Utilisateur',
       contentTree: { sections: mergedSections },
       designSettings,
+      // Période du rapport
+      periodStart: newReportData.period?.startDate,
+      periodEnd: newReportData.period?.endDate,
+      periodLabel: newReportData.period?.displayText,
     });
 
     setShowNewReportModal(false);
-    // Reset avec période par défaut (mois courant)
+    // Reset avec période par défaut (plage de dates du mois courant)
     const now = new Date();
     const month = now.getMonth();
     const year = now.getFullYear();
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     const lastDay = new Date(year, month + 1, 0).getDate();
     setNewReportData({
       title: '',
       type: 'RAPPORT_MENSUEL',
       templateIds: [],
       period: {
-        type: 'month',
-        label: months[month],
+        type: 'custom',
+        label: 'Personnalisé',
         startDate: `${year}-${String(month + 1).padStart(2, '0')}-01`,
         endDate: `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`,
-        displayText: `${months[month]} ${year}`,
+        displayText: `Du 01/${String(month + 1).padStart(2, '0')}/${year} au ${lastDay}/${String(month + 1).padStart(2, '0')}/${year}`,
       },
     });
     setEditingReportId(id);

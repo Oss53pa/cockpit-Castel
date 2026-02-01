@@ -182,6 +182,10 @@ export function ProphetChat() {
             alt="Proph3t"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform"
           />
+          {/* Sparkles indicator */}
+          <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-md animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
           <span
             className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-primary-900 text-sm opacity-0 group-hover:opacity-100 transition-opacity bg-white px-3 py-1 rounded-full shadow"
             style={{ fontFamily: "'Grand Hotel', cursive", fontSize: '18px' }}

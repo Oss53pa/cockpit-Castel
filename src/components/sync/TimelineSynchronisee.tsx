@@ -664,8 +664,8 @@ export function TimelineSynchronisee() {
       .slice(0, 5)
       .map(r => ({
         risque: r.titre.substring(0, 30),
-        probabilite: r.probabilite_actuelle <= 2 ? 'faible' as const : r.probabilite_actuelle === 3 ? 'moyenne' as const : 'elevee' as const,
-        impact: r.impact_actuel <= 2 ? 'modere' as const : r.impact_actuel === 3 ? 'fort' as const : 'critique' as const,
+        probabilite: (r.probabilite_actuelle ?? r.probabilite ?? 2) <= 2 ? 'faible' as const : (r.probabilite_actuelle ?? r.probabilite) === 3 ? 'moyenne' as const : 'elevee' as const,
+        impact: (r.impact_actuel ?? r.impact ?? 2) <= 2 ? 'modere' as const : (r.impact_actuel ?? r.impact) === 3 ? 'fort' as const : 'critique' as const,
         mitigation: r.plan_mitigation?.substring(0, 30) || 'À définir',
         responsable: r.proprietaire || 'Non assigné',
       }));

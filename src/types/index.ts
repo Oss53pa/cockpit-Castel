@@ -1581,7 +1581,7 @@ export interface Alerte {
   titre: string;
   message: string;
   criticite: Criticite;
-  entiteType: 'action' | 'jalon' | 'risque' | 'budget';
+  entiteType: 'action' | 'jalon' | 'risque' | 'budget' | 'alerte';
   entiteId: number;
   // Responsable de l'alerte
   responsableId?: number;

@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode } from '@/data/seedDataV2';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -54,10 +54,18 @@ export async function initializeDatabase(): Promise<{
         console.log('[initDatabase] Base de données vide, seed des données v2.0...');
         const result = await seedDatabaseV2(false);
         console.log('[initDatabase] Seed terminé:', result);
+        // Migration pour ajouter buildingCode aux actions de construction
+        const migratedCount = await migrateActionsBuildingCode();
+        console.log('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
       } else {
         console.log('[initDatabase] Base de données déjà initialisée');
+        // Toujours exécuter la migration pour mettre à jour les données existantes
+        const migratedCount = await migrateActionsBuildingCode();
+        if (migratedCount > 0) {
+          console.log('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
+        }
         isInitialized = true;
         return { wasEmpty: false, seeded: false };
       }

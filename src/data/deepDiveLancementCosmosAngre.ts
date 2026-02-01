@@ -151,10 +151,12 @@ export const METEO_ICONS: Record<MeteoType, string> = {
 export const METEO_PAR_AXE: MeteoAxe[] = [
   { axe: 'axe1_rh', label: 'RH & Organisation', meteo: 'soleil_nuage', statut: 'Organigramme à valider' },
   { axe: 'axe2_commercial', label: 'Commercial & Leasing', meteo: 'soleil', statut: 'Commercialisation démarrée 2024' },
-  { axe: 'axe3_technique', label: 'Technique & Handover', meteo: 'nuage', statut: 'Bassin rétention à surveiller' },
+  { axe: 'axe3_technique', label: 'Technique & Handover', meteo: 'soleil_nuage', statut: 'Préparation handover en cours' },
   { axe: 'axe4_budget', label: 'Budget & Finances', meteo: 'soleil_nuage', statut: 'Budgets à valider (ce Deep Dive)' },
   { axe: 'axe5_marketing', label: 'Marketing & Communication', meteo: 'soleil_nuage', statut: 'Identité marque à lancer' },
   { axe: 'axe6_exploitation', label: 'Exploitation & Juridique', meteo: 'soleil', statut: 'BEFA standard prêt' },
+  { axe: 'axe7_construction', label: 'Construction', meteo: 'soleil_nuage', statut: 'Chantier en cours - Livraison Q4 2026' },
+  { axe: 'divers' as Axe, label: 'Divers', meteo: 'soleil_nuage', statut: 'Dossier remboursement réhabilitation bassin rétention en cours' },
 ];
 
 // ============================================================================
@@ -214,8 +216,8 @@ export const COMMERCIAL_ACTIONS = [
 // ============================================================================
 
 export const TECHNIQUE_STATUS = {
-  statut: 'a_surveiller',
-  description: 'Bassin de rétention en cours',
+  statut: 'en_cours',
+  description: 'Préparation handover en cours',
 };
 
 export const TECHNIQUE_JALONS: JalonCleDD[] = [
@@ -226,8 +228,9 @@ export const TECHNIQUE_JALONS: JalonCleDD[] = [
 ];
 
 export const TECHNIQUE_POINTS_ATTENTION: PointAttention[] = [
-  { sujet: 'Bassin rétention', responsable: 'Cheick', action: 'Suivi hebdomadaire' },
   { sujet: 'Planning constructeur', responsable: 'FM/DGA', action: 'Réunions hebdo' },
+  { sujet: 'Réception provisoire', responsable: 'DGA', action: 'Coordination avec constructeur' },
+  { sujet: 'Documentation technique', responsable: 'FSM', action: 'Collecte DOE' },
 ];
 
 export const TECHNIQUE_RISQUE_PRINCIPAL = {

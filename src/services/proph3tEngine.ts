@@ -15,7 +15,7 @@ import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team } from '@/ty
 // TYPES
 // ============================================================================
 
-export type AIProvider = 'local' | 'openrouter' | 'anthropic';
+export type AIProvider = 'local' | 'openrouter' | 'anthropic' | 'hybrid';
 
 export interface Proph3tConfig {
   provider: AIProvider;
@@ -26,6 +26,8 @@ export interface Proph3tConfig {
   // Paramètres
   temperature?: number;
   maxTokens?: number;
+  // Mode hybride
+  hybridEnabled?: boolean;
 }
 
 export interface ProjectContext {
@@ -221,7 +223,7 @@ async function callAnthropic(
 }
 
 /**
- * Appel IA unifié avec fallback
+ * Appel IA unifié avec fallback et mode hybride
  */
 export async function callAI(
   prompt: string,
@@ -245,6 +247,17 @@ export async function callAI(
   try {
     let content: string;
     let model: string | undefined;
+
+    // Mode HYBRIDE: exécuter local + OpenRouter en parallèle
+    if (config.provider === 'hybrid' || config.hybridEnabled) {
+      const results = await callHybrid(prompt, messages, systemPrompt, config, context);
+      return {
+        content: results.content,
+        provider: 'hybrid',
+        model: results.model,
+        processingTime: Date.now() - startTime,
+      };
+    }
 
     switch (config.provider) {
       case 'openrouter':
@@ -287,6 +300,65 @@ export async function callAI(
 
     throw error;
   }
+}
+
+/**
+ * Mode Hybride: exécute local + OpenRouter en parallèle et combine les résultats
+ */
+async function callHybrid(
+  prompt: string,
+  messages: Array<{ role: string; content: string }>,
+  systemPrompt: string,
+  config: Proph3tConfig,
+  context?: ProjectContext
+): Promise<{ content: string; model: string }> {
+  // Exécuter local immédiatement
+  const localPromise = processWithLocalAlgorithm(prompt, context);
+
+  // Exécuter OpenRouter si configuré
+  let aiPromise: Promise<string> | null = null;
+  if (config.openrouterApiKey) {
+    aiPromise = callOpenRouter(messages, config).catch(e => {
+      console.warn('OpenRouter non disponible en mode hybride:', e);
+      return null;
+    });
+  } else if (config.anthropicApiKey) {
+    aiPromise = callAnthropic(messages, systemPrompt, config).catch(e => {
+      console.warn('Anthropic non disponible en mode hybride:', e);
+      return null;
+    });
+  }
+
+  // Attendre les deux résultats
+  const [localResult, aiResult] = await Promise.all([
+    localPromise,
+    aiPromise || Promise.resolve(null),
+  ]);
+
+  // Combiner les résultats
+  if (aiResult) {
+    // Si on a les deux, combiner intelligemment
+    const combined = `## Analyse Locale (Algorithme)
+
+${localResult}
+
+---
+
+## Analyse IA (${config.openrouterApiKey ? config.openrouterModel : config.anthropicModel})
+
+${aiResult}`;
+
+    return {
+      content: combined,
+      model: `hybrid (local + ${config.openrouterApiKey ? 'openrouter' : 'anthropic'})`,
+    };
+  }
+
+  // Si seulement local disponible
+  return {
+    content: localResult,
+    model: 'local-algorithm (hybrid-mode)',
+  };
 }
 
 // ============================================================================
@@ -577,7 +649,7 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
     report += `## Risques Critiques - Action Immediate\n\n`;
     critical.forEach(r => {
       report += `### ${r.titre}\n`;
-      report += `- Score: **${r.score}** (P: ${r.probabilite_actuelle} × I: ${r.impact_actuel})\n`;
+      report += `- Score: **${r.score}** (P: ${r.probabilite_actuelle ?? r.probabilite} × I: ${r.impact_actuel ?? r.impact})\n`;
       report += `- Categorie: ${r.categorie || 'Non classe'}\n`;
       if (r.plan_mitigation) report += `- Plan: ${r.plan_mitigation}\n`;
       report += '\n';
@@ -828,6 +900,294 @@ function generatePredictionsLocal(ctx: ProjectContext): string {
 }
 
 // ============================================================================
+// ASSISTANT RAPPORT - Génération honnête basée sur les données réelles
+// ============================================================================
+
+export interface ReportSection {
+  title: string;
+  content: string;
+  type: 'summary' | 'kpis' | 'actions' | 'risks' | 'budget' | 'milestones' | 'issues' | 'recommendations';
+  data?: Record<string, unknown>;
+}
+
+export interface HonestReportData {
+  generatedAt: string;
+  projectName: string;
+  healthScore: number;
+  healthStatus: 'vert' | 'jaune' | 'rouge';
+  truthStatement: string;
+  sections: ReportSection[];
+  rawMetrics: {
+    actions: { total: number; completed: number; inProgress: number; blocked: number; overdue: number; avgProgress: number };
+    milestones: { total: number; achieved: number; atRisk: number; overdue: number };
+    risks: { total: number; critical: number; high: number; open: number };
+    budget: { planned: number; spent: number; variance: number; cpi: number };
+    alerts: { total: number; untreated: number; critical: number };
+    evm: EVMMetrics;
+  };
+}
+
+/**
+ * Génère un rapport honnête et factuel basé sur les données réelles du projet.
+ * PROPH3T ne maquille jamais la réalité - il dit toujours la vérité.
+ */
+function generateHonestReport(ctx: ProjectContext): HonestReportData {
+  const now = new Date();
+  const evm = calculateEVMLocal(ctx);
+
+  // Calculs bruts et honnêtes
+  const actionsCompleted = ctx.actions.filter(a => a.statut === 'termine').length;
+  const actionsInProgress = ctx.actions.filter(a => a.statut === 'en_cours').length;
+  const actionsBlocked = ctx.actions.filter(a => a.statut === 'bloque').length;
+  const actionsOverdue = ctx.actions.filter(a => {
+    if (a.statut === 'termine') return false;
+    return a.date_fin_prevue && new Date(a.date_fin_prevue) < now;
+  }).length;
+  const avgProgress = ctx.actions.length > 0
+    ? Math.round(ctx.actions.reduce((s, a) => s + (a.avancement || 0), 0) / ctx.actions.length)
+    : 0;
+
+  const milestonesAchieved = ctx.jalons.filter(j => j.statut === 'atteint').length;
+  const milestonesAtRisk = ctx.jalons.filter(j => j.statut === 'en_danger').length;
+  const milestonesOverdue = ctx.jalons.filter(j => j.statut === 'depasse').length;
+
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12).length;
+  const highRisks = ctx.risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length;
+  const openRisks = ctx.risques.filter(r => r.statut !== 'ferme').length;
+
+  const budgetPlanned = ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
+  const budgetSpent = ctx.budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0);
+  const budgetVariance = budgetSpent - budgetPlanned;
+
+  const untreatedAlerts = ctx.alertes.filter(a => !a.traitee).length;
+  const criticalAlerts = ctx.alertes.filter(a => !a.traitee && a.criticite === 'critical').length;
+
+  // Score de santé honnête
+  const healthScore = Math.max(0, Math.min(100,
+    100
+    - (actionsBlocked * 15)
+    - (actionsOverdue * 10)
+    - (criticalRisks * 20)
+    - (criticalAlerts * 10)
+    - (evm.cpi < 0.9 ? 15 : 0)
+    - (evm.spi < 0.9 ? 10 : 0)
+  ));
+  const healthStatus = healthScore >= 70 ? 'vert' : healthScore >= 40 ? 'jaune' : 'rouge';
+
+  // Déclaration de vérité - PROPH3T dit toujours la vérité
+  let truthStatement = '';
+  if (healthScore >= 80) {
+    truthStatement = 'Le projet progresse bien. Les indicateurs sont favorables.';
+  } else if (healthScore >= 60) {
+    truthStatement = 'Le projet avance mais présente des points de vigilance à surveiller.';
+  } else if (healthScore >= 40) {
+    truthStatement = 'Le projet rencontre des difficultés significatives qui nécessitent une attention immédiate.';
+  } else {
+    truthStatement = 'ALERTE: Le projet est en situation critique. Des actions correctives urgentes sont nécessaires.';
+  }
+
+  // Ajout des problèmes spécifiques à la déclaration
+  const problems: string[] = [];
+  if (actionsBlocked > 0) problems.push(`${actionsBlocked} action(s) bloquée(s)`);
+  if (actionsOverdue > 0) problems.push(`${actionsOverdue} action(s) en retard`);
+  if (criticalRisks > 0) problems.push(`${criticalRisks} risque(s) critique(s)`);
+  if (evm.cpi < 0.9) problems.push(`dépassement budgétaire (CPI: ${evm.cpi.toFixed(2)})`);
+  if (evm.spi < 0.9) problems.push(`retard planning (SPI: ${evm.spi.toFixed(2)})`);
+
+  if (problems.length > 0) {
+    truthStatement += ` Problèmes identifiés: ${problems.join(', ')}.`;
+  }
+
+  // Sections du rapport
+  const sections: ReportSection[] = [
+    {
+      title: 'Synthèse Exécutive',
+      type: 'summary',
+      content: truthStatement,
+    },
+    {
+      title: 'Indicateurs Clés de Performance',
+      type: 'kpis',
+      content: `Score santé: ${healthScore}/100 | SPI: ${evm.spi.toFixed(2)} | CPI: ${evm.cpi.toFixed(2)} | Avancement: ${avgProgress}%`,
+      data: {
+        healthScore,
+        spi: evm.spi,
+        cpi: evm.cpi,
+        avgProgress,
+        completionRate: ctx.actions.length > 0 ? Math.round(actionsCompleted / ctx.actions.length * 100) : 0,
+      },
+    },
+    {
+      title: 'État des Actions',
+      type: 'actions',
+      content: `${actionsCompleted}/${ctx.actions.length} terminées | ${actionsInProgress} en cours | ${actionsBlocked} bloquées | ${actionsOverdue} en retard`,
+      data: {
+        total: ctx.actions.length,
+        completed: actionsCompleted,
+        inProgress: actionsInProgress,
+        blocked: actionsBlocked,
+        overdue: actionsOverdue,
+        blockedList: ctx.actions.filter(a => a.statut === 'bloque').map(a => ({ id: a.id, titre: a.titre })),
+        overdueList: ctx.actions.filter(a => a.statut !== 'termine' && a.date_fin_prevue && new Date(a.date_fin_prevue) < now).map(a => ({ id: a.id, titre: a.titre, dateFin: a.date_fin_prevue })),
+      },
+    },
+    {
+      title: 'Jalons',
+      type: 'milestones',
+      content: `${milestonesAchieved}/${ctx.jalons.length} atteints | ${milestonesAtRisk} en danger | ${milestonesOverdue} dépassés`,
+      data: {
+        total: ctx.jalons.length,
+        achieved: milestonesAchieved,
+        atRisk: milestonesAtRisk,
+        overdue: milestonesOverdue,
+        atRiskList: ctx.jalons.filter(j => j.statut === 'en_danger').map(j => ({ id: j.id, titre: j.titre, datePrevue: j.date_prevue })),
+      },
+    },
+    {
+      title: 'Risques',
+      type: 'risks',
+      content: `${openRisks} risques ouverts | ${criticalRisks} critiques | ${highRisks} élevés`,
+      data: {
+        total: ctx.risques.length,
+        open: openRisks,
+        critical: criticalRisks,
+        high: highRisks,
+        criticalList: ctx.risques.filter(r => (r.score || 0) >= 12 && r.statut !== 'ferme').map(r => ({ id: r.id, titre: r.titre, score: r.score })),
+      },
+    },
+    {
+      title: 'Budget',
+      type: 'budget',
+      content: `Prévu: ${budgetPlanned.toLocaleString('fr-FR')} FCFA | Réalisé: ${budgetSpent.toLocaleString('fr-FR')} FCFA | Écart: ${budgetVariance >= 0 ? '+' : ''}${budgetVariance.toLocaleString('fr-FR')} FCFA`,
+      data: {
+        planned: budgetPlanned,
+        spent: budgetSpent,
+        variance: budgetVariance,
+        cpi: evm.cpi,
+        consumptionRate: budgetPlanned > 0 ? Math.round(budgetSpent / budgetPlanned * 100) : 0,
+      },
+    },
+  ];
+
+  // Section problèmes si nécessaire
+  if (problems.length > 0) {
+    sections.push({
+      title: 'Points d\'Attention Critiques',
+      type: 'issues',
+      content: problems.map(p => `• ${p}`).join('\n'),
+      data: { problems },
+    });
+  }
+
+  // Recommandations basées sur les problèmes réels
+  const recommendations: string[] = [];
+  if (actionsBlocked > 0) {
+    recommendations.push('Organiser une réunion de déblocage immédiate pour les actions bloquées');
+  }
+  if (actionsOverdue > 0) {
+    recommendations.push('Revoir les priorités et réaffecter les ressources aux actions en retard');
+  }
+  if (criticalRisks > 0) {
+    recommendations.push('Activer les plans de mitigation pour les risques critiques');
+  }
+  if (evm.cpi < 0.9) {
+    recommendations.push('Analyser les dépassements budgétaires et identifier des économies');
+  }
+  if (evm.spi < 0.9) {
+    recommendations.push('Accélérer le rythme ou revoir le planning');
+  }
+
+  if (recommendations.length > 0) {
+    sections.push({
+      title: 'Recommandations',
+      type: 'recommendations',
+      content: recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n'),
+      data: { recommendations },
+    });
+  }
+
+  return {
+    generatedAt: now.toISOString(),
+    projectName: ctx.projectName || 'COSMOS ANGRE',
+    healthScore,
+    healthStatus,
+    truthStatement,
+    sections,
+    rawMetrics: {
+      actions: { total: ctx.actions.length, completed: actionsCompleted, inProgress: actionsInProgress, blocked: actionsBlocked, overdue: actionsOverdue, avgProgress },
+      milestones: { total: ctx.jalons.length, achieved: milestonesAchieved, atRisk: milestonesAtRisk, overdue: milestonesOverdue },
+      risks: { total: ctx.risques.length, critical: criticalRisks, high: highRisks, open: openRisks },
+      budget: { planned: budgetPlanned, spent: budgetSpent, variance: budgetVariance, cpi: evm.cpi },
+      alerts: { total: ctx.alertes.length, untreated: untreatedAlerts, critical: criticalAlerts },
+      evm,
+    },
+  };
+}
+
+/**
+ * Génère le contenu texte du rapport pour intégration dans le Report Studio
+ */
+function generateReportContentForStudio(ctx: ProjectContext): string {
+  const data = generateHonestReport(ctx);
+
+  let content = `# Rapport de Suivi - ${data.projectName}\n\n`;
+  content += `**Généré le:** ${new Date(data.generatedAt).toLocaleString('fr-FR')}\n\n`;
+  content += `---\n\n`;
+
+  // Synthèse avec indicateur visuel
+  const statusEmoji = data.healthStatus === 'vert' ? '🟢' : data.healthStatus === 'jaune' ? '🟡' : '🔴';
+  content += `## ${statusEmoji} Synthèse\n\n`;
+  content += `**Score de Santé: ${data.healthScore}/100**\n\n`;
+  content += `${data.truthStatement}\n\n`;
+
+  // Sections
+  data.sections.forEach(section => {
+    if (section.type !== 'summary') {
+      content += `## ${section.title}\n\n`;
+      content += `${section.content}\n\n`;
+    }
+  });
+
+  content += `---\n\n`;
+  content += `*Ce rapport a été généré automatiquement par PROPH3T sur la base des données réelles du projet. PROPH3T dit toujours la vérité.*\n`;
+
+  return content;
+}
+
+// ============================================================================
+// SYSTEM PROMPT AVEC PRINCIPE D'HONNÊTETÉ
+// ============================================================================
+
+export const PROPH3T_HONEST_SYSTEM_PROMPT = `Tu es PROPH3T, l'assistant IA du Cockpit de gestion de projet COSMOS ANGRE.
+
+## PRINCIPE FONDAMENTAL: L'HONNÊTETÉ ABSOLUE
+
+Tu dois TOUJOURS dire la vérité, même si elle est désagréable. Tu ne dois JAMAIS:
+- Maquiller ou embellir les résultats
+- Minimiser les problèmes
+- Rassurer faussement l'utilisateur
+- Omettre des informations négatives
+
+Si le projet va mal, tu dois le dire clairement. Si des actions sont bloquées, tu dois alerter. Si le budget dérape, tu dois avertir.
+
+## Tes responsabilités:
+- Analyser la santé réelle du projet basée sur les données
+- Identifier et signaler TOUS les problèmes et blocages
+- Évaluer les risques de manière objective
+- Donner des prévisions réalistes (pas optimistes)
+- Générer des rapports factuels et honnêtes
+- Faire des recommandations concrètes basées sur les faits
+
+## Format de réponse:
+- Sois direct et factuel
+- Utilise des chiffres précis
+- Structure tes réponses clairement
+- N'utilise pas de formules de politesse excessives
+- Va droit au but
+
+Rappel: La vérité est toujours préférable à une fausse assurance. Ton rôle est d'aider à prendre les bonnes décisions, pas de rassurer.`;
+
+// ============================================================================
 // EXPORTS PUBLICS
 // ============================================================================
 
@@ -849,6 +1209,11 @@ export const Proph3tEngine = {
   generateRecommendations: generateRecommendationsLocal,
   generatePredictions: generatePredictionsLocal,
   calculateEVM: calculateEVMLocal,
+
+  // Assistant Rapport (données réelles, honnêtes)
+  generateHonestReport,
+  generateReportContent: generateReportContentForStudio,
+  HONEST_SYSTEM_PROMPT: PROPH3T_HONEST_SYSTEM_PROMPT,
 
   // Utilitaires
   buildContext: buildContextSummary,

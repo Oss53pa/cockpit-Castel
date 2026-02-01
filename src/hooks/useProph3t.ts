@@ -95,19 +95,8 @@ export function useProph3tChat(): UseProph3tChatReturn {
     setError(null);
 
     try {
-      const systemPrompt = `Tu es PROPH3T, l'assistant IA du Cockpit de gestion de projet COSMOS ANGRE.
-Tu aides les chefs de projet à:
-- Analyser la santé du projet
-- Identifier les problèmes et blocages
-- Évaluer les risques
-- Optimiser le budget
-- Générer des rapports
-- Faire des recommandations intelligentes
-- Prédire les tendances
-
-Réponds de manière concise et structurée en utilisant le format Markdown.
-Utilise des emojis pour améliorer la lisibilité.
-Base tes analyses sur les données du projet fournies en contexte.`;
+      // Utiliser le system prompt honnête
+      const systemPrompt = Proph3tEngine.HONEST_SYSTEM_PROMPT;
 
       const response = await Proph3tEngine.call(message, systemPrompt, context || undefined);
 
@@ -413,4 +402,78 @@ export function useProph3tQuickAnalysis(): UseQuickAnalysisReturn {
   }, [context]);
 
   return { analysis, isLoading, error, runAnalysis };
+}
+
+// ============================================================================
+// HOOK: useProph3tReportAssistant
+// Assistant pour la génération de rapports honnêtes
+// ============================================================================
+
+interface HonestReportData {
+  generatedAt: string;
+  projectName: string;
+  healthScore: number;
+  healthStatus: 'vert' | 'jaune' | 'rouge';
+  truthStatement: string;
+  sections: Array<{
+    title: string;
+    content: string;
+    type: string;
+    data?: Record<string, unknown>;
+  }>;
+  rawMetrics: Record<string, unknown>;
+}
+
+interface UseReportAssistantReturn {
+  reportData: HonestReportData | null;
+  reportContent: string | null;
+  isGenerating: boolean;
+  error: string | null;
+  generateReport: () => void;
+  refreshData: () => void;
+}
+
+export function useProph3tReportAssistant(): UseReportAssistantReturn {
+  const [reportData, setReportData] = useState<HonestReportData | null>(null);
+  const [reportContent, setReportContent] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const context = useProjectContext();
+
+  const generateReport = useCallback(() => {
+    if (!context) {
+      setError('Données du projet non disponibles');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      // Générer le rapport honnête basé sur les données réelles
+      const data = Proph3tEngine.generateHonestReport(context);
+      const content = Proph3tEngine.generateReportContent(context);
+
+      setReportData(data as HonestReportData);
+      setReportContent(content);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la génération du rapport');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [context]);
+
+  const refreshData = useCallback(() => {
+    // Force la regénération avec les données fraîches
+    generateReport();
+  }, [generateReport]);
+
+  return {
+    reportData,
+    reportContent,
+    isGenerating,
+    error,
+    generateReport,
+    refreshData,
+  };
 }

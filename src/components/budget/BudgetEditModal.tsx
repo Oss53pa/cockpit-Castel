@@ -4,9 +4,9 @@
 
 import { useState, useEffect } from 'react';
 import { X, Save, RotateCcw, AlertTriangle } from 'lucide-react';
-import { Button, Input, Badge } from '@/components/ui';
+import { Button, Input, MoneyInput } from '@/components/ui';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface BudgetEditModalProps {
   ligne: LigneBudgetExploitation | null;
@@ -15,23 +15,10 @@ interface BudgetEditModalProps {
   onSave: (id: number, prevu: number, engage: number, consomme: number, note?: string) => Promise<void>;
 }
 
-// Formater un nombre en entrée (avec séparateurs de milliers)
-function formatInputValue(value: number): string {
-  if (value === 0) return '';
-  return value.toLocaleString('fr-FR');
-}
-
-// Parser une valeur formatée
-function parseInputValue(value: string): number {
-  const cleaned = value.replace(/\s/g, '').replace(/,/g, '.');
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : Math.round(parsed);
-}
-
 export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModalProps) {
-  const [prevu, setPrevu] = useState('');
-  const [engage, setEngage] = useState('');
-  const [consomme, setConsomme] = useState('');
+  const [prevu, setPrevu] = useState(0);
+  const [engage, setEngage] = useState(0);
+  const [consomme, setConsomme] = useState(0);
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +26,9 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
   // Mettre à jour les valeurs quand la ligne change
   useEffect(() => {
     if (ligne) {
-      setPrevu(formatInputValue(ligne.montantPrevu));
-      setEngage(formatInputValue(ligne.montantEngage));
-      setConsomme(formatInputValue(ligne.montantConsomme));
+      setPrevu(ligne.montantPrevu || 0);
+      setEngage(ligne.montantEngage || 0);
+      setConsomme(ligne.montantConsomme || 0);
       setNote(ligne.note || '');
       setError(null);
     }
@@ -54,24 +41,20 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
     setError(null);
 
     try {
-      const prevuVal = parseInputValue(prevu);
-      const engageVal = parseInputValue(engage);
-      const consommeVal = parseInputValue(consomme);
-
       // Validation
-      if (engageVal > prevuVal) {
+      if (engage > prevu) {
         setError('Le montant engagé ne peut pas dépasser le montant prévu');
         setIsSaving(false);
         return;
       }
 
-      if (consommeVal > engageVal) {
+      if (consomme > engage) {
         setError('Le montant consommé ne peut pas dépasser le montant engagé');
         setIsSaving(false);
         return;
       }
 
-      await onSave(ligne.id!, prevuVal, engageVal, consommeVal, note || undefined);
+      await onSave(ligne.id!, prevu, engage, consomme, note || undefined);
       onClose();
     } catch (err) {
       setError('Erreur lors de la sauvegarde');
@@ -81,18 +64,16 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
   };
 
   const handleReset = () => {
-    setPrevu(formatInputValue(ligne.montantPrevu));
-    setEngage(formatInputValue(ligne.montantEngage));
-    setConsomme(formatInputValue(ligne.montantConsomme));
+    setPrevu(ligne.montantPrevu || 0);
+    setEngage(ligne.montantEngage || 0);
+    setConsomme(ligne.montantConsomme || 0);
     setNote(ligne.note || '');
     setError(null);
   };
 
   // Calcul du reste
-  const prevuVal = parseInputValue(prevu);
-  const consommeVal = parseInputValue(consomme);
-  const reste = prevuVal - consommeVal;
-  const tauxConso = prevuVal > 0 ? (consommeVal / prevuVal) * 100 : 0;
+  const reste = prevu - consomme;
+  const tauxConso = prevu > 0 ? (consomme / prevu) * 100 : 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -137,39 +118,33 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
-                Montant Prévu (FCFA)
+                Montant Prévu
               </label>
-              <Input
-                type="text"
+              <MoneyInput
                 value={prevu}
-                onChange={(e) => setPrevu(e.target.value)}
-                placeholder="0"
+                onChange={setPrevu}
                 className="text-right font-mono text-lg"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
-                Montant Engagé (FCFA)
+                Montant Engagé
               </label>
-              <Input
-                type="text"
+              <MoneyInput
                 value={engage}
-                onChange={(e) => setEngage(e.target.value)}
-                placeholder="0"
+                onChange={setEngage}
                 className="text-right font-mono text-lg"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">
-                Montant Consommé (FCFA)
+                Montant Consommé
               </label>
-              <Input
-                type="text"
+              <MoneyInput
                 value={consomme}
-                onChange={(e) => setConsomme(e.target.value)}
-                placeholder="0"
+                onChange={setConsomme}
                 className="text-right font-mono text-lg"
               />
             </div>

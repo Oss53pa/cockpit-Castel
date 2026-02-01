@@ -29,6 +29,7 @@ import {
   Input,
   Label,
   Textarea,
+  MoneyInput,
 } from '@/components/ui';
 import { formatNumber } from '@/lib/utils';
 
@@ -280,12 +281,11 @@ export function LigneBudgetaireModal({
           {/* Montants */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label className="text-xs text-primary-500">Montant prévu (FCFA)</Label>
+              <Label className="text-xs text-primary-500">Montant prévu</Label>
               {mode === 'edit' ? (
-                <Input
-                  type="number"
+                <MoneyInput
                   value={editedLigne.prevu}
-                  onChange={(e) => handleFieldChange('prevu', Number(e.target.value))}
+                  onChange={(value) => handleFieldChange('prevu', value)}
                   className="mt-1"
                 />
               ) : (
@@ -293,12 +293,11 @@ export function LigneBudgetaireModal({
               )}
             </div>
             <div>
-              <Label className="text-xs text-primary-500">Montant engagé (FCFA)</Label>
+              <Label className="text-xs text-primary-500">Montant engagé</Label>
               {mode === 'edit' ? (
-                <Input
-                  type="number"
+                <MoneyInput
                   value={editedLigne.engage}
-                  onChange={(e) => handleFieldChange('engage', Number(e.target.value))}
+                  onChange={(value) => handleFieldChange('engage', value)}
                   className="mt-1"
                 />
               ) : (
@@ -306,12 +305,11 @@ export function LigneBudgetaireModal({
               )}
             </div>
             <div>
-              <Label className="text-xs text-primary-500">Montant consommé (FCFA)</Label>
+              <Label className="text-xs text-primary-500">Montant consommé</Label>
               {mode === 'edit' ? (
-                <Input
-                  type="number"
+                <MoneyInput
                   value={editedLigne.consomme}
-                  onChange={(e) => handleFieldChange('consomme', Number(e.target.value))}
+                  onChange={(value) => handleFieldChange('consomme', value)}
                   className="mt-1"
                 />
               ) : (
@@ -400,12 +398,11 @@ export function LigneBudgetaireModal({
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs">Montant (FCFA)</Label>
-                    <Input
-                      type="number"
+                    <Label className="text-xs">Montant</Label>
+                    <MoneyInput
                       placeholder="Montant"
-                      value={newDepense.montant || ''}
-                      onChange={(e) => setNewDepense({ ...newDepense, montant: Number(e.target.value) })}
+                      value={newDepense.montant || 0}
+                      onChange={(value) => setNewDepense({ ...newDepense, montant: value })}
                     />
                   </div>
                   <div>

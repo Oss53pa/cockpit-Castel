@@ -22,7 +22,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { initializeDatabase } from '@/lib/initDatabase';
-import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite, useFirebaseRealtimeSync } from '@/hooks';
+import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite, useFirebaseRealtimeSync, useAutoRecalculate } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
 import { ToastProvider } from '@/components/ui/toast';
 
@@ -49,6 +49,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  // Activer le recalcul automatique des statuts
+  useAutoRecalculate();
 
   useEffect(() => {
     async function initApp() {

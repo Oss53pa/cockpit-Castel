@@ -190,7 +190,8 @@ function createAction(
   responsable: string,
   description: string = '',
   jalonCode?: string,
-  projectPhase: ProjectPhase = 'phase2_mobilisation'
+  projectPhase: ProjectPhase = 'phase2_mobilisation',
+  buildingCode?: BuildingCode
 ): ActionWithJalonCode {
   const dateDebut = new Date(date_fin_prevue);
   dateDebut.setDate(dateDebut.getDate() - 14);
@@ -299,6 +300,7 @@ function createAction(
     date_modification: now,
     modifie_par: 'System',
     motif_modification: null,
+    buildingCode, // Code bâtiment (CC, BB1, etc.)
     _jalonCode: jalonCode, // Stocker temporairement pour le seed
   };
 }
@@ -557,13 +559,13 @@ export const JALONS_AXE7_CONSTRUCTION: Omit<Jalon, 'id'>[] = [
 // Actions par bâtiment (7 phases identiques)
 function createConstructionActions(batiment: string, code: string, buildingCode: BuildingCode): Omit<Action, 'id'>[] {
   return [
-    createAction(`A-CON-${code}.1`, `Gros œuvre - ${batiment}`, 'axe7_construction', '2026-02-28', 'Constructeur', '', `J-CON-${code}`, 'phase1_preparation'),
-    createAction(`A-CON-${code}.2`, `Second œuvre - ${batiment}`, 'axe7_construction', '2026-04-30', 'Constructeur', '', `J-CON-${code}`),
-    createAction(`A-CON-${code}.3`, `Lots techniques - ${batiment}`, 'axe7_construction', '2026-07-31', 'Constructeur', '', `J-CON-${code}`),
-    createAction(`A-CON-${code}.4`, `Aménagement externe - ${batiment}`, 'axe7_construction', '2026-08-31', 'Constructeur', '', `J-CON-${code}`),
-    createAction(`A-CON-${code}.5`, `Pré-réception - ${batiment}`, 'axe7_construction', '2026-09-30', 'Constructeur', '', `J-CON-${code}`),
-    createAction(`A-CON-${code}.6`, `Réception provisoire - ${batiment}`, 'axe7_construction', '2026-10-31', 'Constructeur', '', `J-CON-${code}`, 'phase3_lancement'),
-    createAction(`A-CON-${code}.7`, `Réception définitive - ${batiment}`, 'axe7_construction', '2026-11-30', 'Constructeur', '', `J-CON-${code}`, 'phase3_lancement'),
+    createAction(`A-CON-${code}.1`, `Gros œuvre - ${batiment}`, 'axe7_construction', '2026-02-28', 'Constructeur', '', `J-CON-${code}`, 'phase1_preparation', buildingCode),
+    createAction(`A-CON-${code}.2`, `Second œuvre - ${batiment}`, 'axe7_construction', '2026-04-30', 'Constructeur', '', `J-CON-${code}`, 'phase2_mobilisation', buildingCode),
+    createAction(`A-CON-${code}.3`, `Lots techniques - ${batiment}`, 'axe7_construction', '2026-07-31', 'Constructeur', '', `J-CON-${code}`, 'phase2_mobilisation', buildingCode),
+    createAction(`A-CON-${code}.4`, `Aménagement externe - ${batiment}`, 'axe7_construction', '2026-08-31', 'Constructeur', '', `J-CON-${code}`, 'phase2_mobilisation', buildingCode),
+    createAction(`A-CON-${code}.5`, `Pré-réception - ${batiment}`, 'axe7_construction', '2026-09-30', 'Constructeur', '', `J-CON-${code}`, 'phase2_mobilisation', buildingCode),
+    createAction(`A-CON-${code}.6`, `Réception provisoire - ${batiment}`, 'axe7_construction', '2026-10-31', 'Constructeur', '', `J-CON-${code}`, 'phase3_lancement', buildingCode),
+    createAction(`A-CON-${code}.7`, `Réception définitive - ${batiment}`, 'axe7_construction', '2026-11-30', 'Constructeur', '', `J-CON-${code}`, 'phase3_lancement', buildingCode),
   ];
 }
 
@@ -898,5 +900,64 @@ export async function seedBudgetOnly(): Promise<{ budgetCreated: number }> {
     }
   });
 
+  // ========================================================================
+  // MIGRATION - Mettre à jour les actions existantes avec buildingCode
+  // ========================================================================
+  await migrateActionsBuildingCode();
+
   return result;
+}
+
+/**
+ * Migration: Ajoute buildingCode aux actions de construction existantes
+ * basé sur leur id_action ou titre
+ */
+export async function migrateActionsBuildingCode(): Promise<number> {
+  let updated = 0;
+
+  const actions = await db.actions.toArray();
+
+  for (const action of actions) {
+    // Skip si déjà défini
+    if (action.buildingCode) continue;
+
+    let buildingCode: BuildingCode | undefined;
+
+    // Détecter par id_action (A-CON-1.x = CC, A-CON-2.x = MKT, etc.)
+    if (action.id_action?.startsWith('A-CON-1')) {
+      buildingCode = 'CC';
+    } else if (action.id_action?.startsWith('A-CON-2')) {
+      buildingCode = 'MKT';
+    } else if (action.id_action?.startsWith('A-CON-3')) {
+      buildingCode = 'BB1';
+    } else if (action.id_action?.startsWith('A-CON-4')) {
+      buildingCode = 'BB2';
+    } else if (action.id_action?.startsWith('A-CON-5')) {
+      buildingCode = 'BB3';
+    } else if (action.id_action?.startsWith('A-CON-6')) {
+      buildingCode = 'BB4';
+    }
+    // Détecter par titre
+    else if (action.titre?.toLowerCase().includes('centre commercial')) {
+      buildingCode = 'CC';
+    } else if (action.titre?.toLowerCase().includes('market')) {
+      buildingCode = 'MKT';
+    } else if (action.titre?.toLowerCase().includes('big box 1') || action.titre?.includes('BB1')) {
+      buildingCode = 'BB1';
+    } else if (action.titre?.toLowerCase().includes('big box 2') || action.titre?.includes('BB2')) {
+      buildingCode = 'BB2';
+    } else if (action.titre?.toLowerCase().includes('big box 3') || action.titre?.includes('BB3')) {
+      buildingCode = 'BB3';
+    } else if (action.titre?.toLowerCase().includes('big box 4') || action.titre?.includes('BB4')) {
+      buildingCode = 'BB4';
+    }
+
+    if (buildingCode && action.id) {
+      await db.actions.update(action.id, { buildingCode });
+      updated++;
+    }
+  }
+
+  console.log(`[Migration] ${updated} actions mises à jour avec buildingCode`);
+  return updated;
 }

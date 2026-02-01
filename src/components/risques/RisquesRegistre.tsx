@@ -20,7 +20,7 @@ import {
 } from '@/components/ui';
 import { useRisques, useUser, deleteRisque, getRisqueCriticiteColor } from '@/hooks';
 import { RISQUE_CATEGORY_LABELS, getRisqueStatusLabel, type Risque, type RisqueFilters } from '@/types';
-import { SendReminderModal, ShareExternalModal } from '@/components/shared';
+import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
 
 interface RisquesRegistreProps {
   filters: RisqueFilters;
@@ -92,6 +92,9 @@ function RisqueRow({
       </TableCell>
       <TableCell className="text-sm text-primary-500">
         {user ? `${user.prenom} ${user.nom}` : '-'}
+      </TableCell>
+      <TableCell>
+        <ModificationCell entiteType="risque" entiteId={risque.id!} />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
@@ -191,6 +194,7 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
               <TableHead>Criticité</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Responsable</TableHead>
+              <TableHead className="w-12 text-center" title="Modifications récentes">Modif</TableHead>
               <TableHead className="w-10"></TableHead>
             </TableRow>
           </TableHeader>

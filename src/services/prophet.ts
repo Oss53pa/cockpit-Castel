@@ -16,7 +16,7 @@
 import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team, EVMIndicators, DashboardKPIs } from '../types';
 import { API_ENDPOINTS } from '../lib/apiEndpoints';
 
-export type AIProvider = 'openrouter' | 'anthropic' | 'local';
+export type AIProvider = 'openrouter' | 'anthropic' | 'local' | 'hybrid';
 
 export interface AIConfig {
   provider: AIProvider;

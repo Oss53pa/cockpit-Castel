@@ -2,7 +2,7 @@
 // CONTENU FORMULAIRE RISQUE - Composant réutilisable (interne + externe)
 // ============================================================================
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Shield,
   Target,
@@ -14,6 +14,9 @@ import {
   X,
   Plus,
   MessageSquare,
+  CheckCircle,
+  Ban,
+  RotateCcw,
 } from 'lucide-react';
 import {
   Button,
@@ -193,7 +196,10 @@ export function RisqueFormContent({
   };
 
   // État du formulaire
-  const [statut, setStatut] = useState<Statut>(getStatutFromOld(risque.statut));
+  const [isClosed, setIsClosed] = useState<'FERME' | 'ACCEPTE' | null>(
+    risque.statut === 'ferme' || risque.statut === 'clos' ? 'FERME' :
+    risque.statut === 'accepte' ? 'ACCEPTE' : null
+  );
   const [probabilite, setProbabilite] = useState<Probabilite>(
     typeof risque.probabilite === 'number' ? getProbabiliteFromNum(risque.probabilite) : 'MOYENNE'
   );
@@ -205,6 +211,13 @@ export function RisqueFormContent({
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
 
+  // Calcul automatique du statut
+  const statut: Statut = isClosed
+    ? isClosed
+    : planMitigation.trim().length > 0
+      ? 'EN_TRAITEMENT'
+      : 'OUVERT';
+
   // Criticité auto-calculée
   const criticite = useMemo(() => calculerCriticite(probabilite, impact), [probabilite, impact]);
   const criticiteConfig = CRITICITE_CONFIG[criticite];
@@ -214,10 +227,18 @@ export function RisqueFormContent({
   const impactToNum: Record<Impact, number> = { FAIBLE: 1, MOYEN: 2, ELEVE: 3, CRITIQUE: 4 };
   const score = probabiliteToNum[probabilite] * impactToNum[impact];
 
-  // Handlers
-  const handleStatutChange = (newStatut: Statut) => {
-    setStatut(newStatut);
-    onStatutChange?.(newStatut);
+  // Notifier les changements de statut
+  useEffect(() => {
+    onStatutChange?.(statut);
+  }, [statut]);
+
+  // Handlers clôture
+  const handleCloseRisk = (type: 'FERME' | 'ACCEPTE') => {
+    if (isClosed === type) {
+      setIsClosed(null); // Réouvrir
+    } else {
+      setIsClosed(type);
+    }
   };
 
   const handleAddComment = () => {
@@ -269,27 +290,66 @@ export function RisqueFormContent({
         </div>
       </div>
 
-      {/* Statut rapide */}
-      <div className="flex items-center gap-2 p-3 bg-neutral-50 rounded-lg mb-4">
-        <span className="text-sm font-medium text-neutral-600">Statut:</span>
-        <div className="flex gap-1 flex-1 flex-wrap">
-          {(Object.entries(STATUT_CONFIG) as [Statut, typeof STATUT_CONFIG[Statut]][]).map(([key, config]) => {
-            const isActive = statut === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => isEditing && handleStatutChange(key)}
-                disabled={!isEditing}
-                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
-                  isActive ? `${config.color} ring-2 ring-offset-1` : 'bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50'
-                } ${!isEditing ? 'cursor-default' : 'cursor-pointer'}`}
-              >
-                {config.label}
-              </button>
-            );
-          })}
+      {/* Statut auto-calculé + Actions de clôture */}
+      <div className="p-4 bg-neutral-50 rounded-lg mb-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-neutral-600">Statut:</span>
+            <div className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${STATUT_CONFIG[statut].color}`}>
+              {STATUT_CONFIG[statut].label}
+            </div>
+            <span className="text-xs text-neutral-400 italic">(auto-calculé)</span>
+          </div>
+
+          {/* Boutons de clôture */}
+          {isEditing && (
+            <div className="flex gap-2">
+              {isClosed ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsClosed(null)}
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Réouvrir
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCloseRisk('FERME')}
+                    className="border-green-300 text-green-600 hover:bg-green-50"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Clôturer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCloseRisk('ACCEPTE')}
+                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    <Ban className="w-4 h-4 mr-1" />
+                    Accepter
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Explication du statut */}
+        <p className="text-xs text-neutral-500">
+          {statut === 'OUVERT' && 'Risque identifié, aucun plan de mitigation défini.'}
+          {statut === 'EN_TRAITEMENT' && 'Un plan de mitigation est en cours.'}
+          {statut === 'FERME' && 'Le risque a été traité et clôturé.'}
+          {statut === 'ACCEPTE' && 'Le risque a été accepté (pas de mitigation prévue).'}
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">

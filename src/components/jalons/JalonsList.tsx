@@ -32,7 +32,7 @@ import {
 import { detectPhaseForDate, resolveJalonEcheance, computeDateFromPhase } from '@/lib/dateCalculations';
 import { detectPhaseForJalon } from '@/lib/phaseAutoDetect';
 import type { ProjectConfig } from '@/components/settings/ProjectSettings';
-import { SendReminderModal, ShareExternalModal } from '@/components/shared';
+import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
 
 const statusConfig: Record<JalonStatus, { color: string; bgColor: string; icon: typeof Flag }> = {
   a_venir: { color: 'text-primary-600', bgColor: 'bg-primary-100', icon: Flag },
@@ -185,6 +185,9 @@ function JalonRow({
         ) : (
           <span className="text-sm text-primary-400">-</span>
         )}
+      </TableCell>
+      <TableCell>
+        <ModificationCell entiteType="jalon" entiteId={jalon.id!} />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
@@ -353,6 +356,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
               </TableHead>
               <TableHead>Avancement</TableHead>
               <TableHead>Responsable</TableHead>
+              <TableHead className="w-12 text-center" title="Modifications récentes">Modif</TableHead>
               <TableHead className="w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>

@@ -8433,60 +8433,79 @@ async function linkActionsToJalons(): Promise<number> {
 }
 
 export async function seedDatabase(): Promise<void> {
-  // Check if data already exists
-  const existingProject = await db.project.count();
-  if (existingProject > 0) {
-    return;
-  }
-
   // Import des vraies données de production exportées de IndexedDB
   const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
 
-  // Insert sites
-  if (PRODUCTION_DATA.sites?.length > 0) {
-    await db.sites.bulkAdd(PRODUCTION_DATA.sites);
-  }
+  // Vérifier si les données principales existent déjà
+  const existingProject = await db.project.count();
+  const isFullSeed = existingProject === 0;
 
-  // Insert project
-  if (PRODUCTION_DATA.project?.length > 0) {
-    await db.project.bulkAdd(PRODUCTION_DATA.project);
-  }
+  if (isFullSeed) {
+    // Seed complet si aucun projet n'existe
 
-  // Insert project settings
-  if (PRODUCTION_DATA.projectSettings?.length > 0) {
-    await db.projectSettings.bulkAdd(PRODUCTION_DATA.projectSettings);
-  }
+    // Insert sites
+    if (PRODUCTION_DATA.sites?.length > 0) {
+      await db.sites.bulkAdd(PRODUCTION_DATA.sites);
+    }
 
-  // Insert users
-  if (PRODUCTION_DATA.users?.length > 0) {
-    await db.users.bulkAdd(PRODUCTION_DATA.users);
-  }
+    // Insert project
+    if (PRODUCTION_DATA.project?.length > 0) {
+      await db.project.bulkAdd(PRODUCTION_DATA.project);
+    }
 
-  // Insert teams
-  if (PRODUCTION_DATA.teams?.length > 0) {
-    await db.teams.bulkAdd(PRODUCTION_DATA.teams);
-  }
+    // Insert project settings
+    if (PRODUCTION_DATA.projectSettings?.length > 0) {
+      await db.projectSettings.bulkAdd(PRODUCTION_DATA.projectSettings);
+    }
 
-  // Insert actions (102 vraies actions)
-  if (PRODUCTION_DATA.actions?.length > 0) {
-    await db.actions.bulkAdd(PRODUCTION_DATA.actions);
-  }
+    // Insert users
+    if (PRODUCTION_DATA.users?.length > 0) {
+      await db.users.bulkAdd(PRODUCTION_DATA.users);
+    }
 
-  // Insert jalons (19 vrais jalons)
-  if (PRODUCTION_DATA.jalons?.length > 0) {
-    await db.jalons.bulkAdd(PRODUCTION_DATA.jalons);
-  }
+    // Insert teams
+    if (PRODUCTION_DATA.teams?.length > 0) {
+      await db.teams.bulkAdd(PRODUCTION_DATA.teams);
+    }
 
-  // Insert risques (75 vrais risques)
-  if (PRODUCTION_DATA.risques?.length > 0) {
-    await db.risques.bulkAdd(PRODUCTION_DATA.risques);
-  }
+    // Insert actions (102 vraies actions)
+    if (PRODUCTION_DATA.actions?.length > 0) {
+      await db.actions.bulkAdd(PRODUCTION_DATA.actions);
+    }
 
-  // Insert budget
-  if (PRODUCTION_DATA.budget?.length > 0) {
-    await db.budget.bulkAdd(PRODUCTION_DATA.budget);
-  }
+    // Insert jalons (19 vrais jalons)
+    if (PRODUCTION_DATA.jalons?.length > 0) {
+      await db.jalons.bulkAdd(PRODUCTION_DATA.jalons);
+    }
 
+    // Insert risques (75 vrais risques)
+    if (PRODUCTION_DATA.risques?.length > 0) {
+      await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+    }
+
+    // Insert budget
+    if (PRODUCTION_DATA.budget?.length > 0) {
+      await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+    }
+  } else {
+    // Seed partiel: vérifier et ajouter les données manquantes
+
+    // Vérifier et seeder les risques si absents
+    const existingRisques = await db.risques.count();
+    if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
+      console.log('[seedDatabase] Risques manquants, seed des risques...');
+      await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+      console.log(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés`);
+    }
+
+    // Vérifier et seeder le budget si absent
+    const existingBudget = await db.budget.count();
+    if (existingBudget === 0 && PRODUCTION_DATA.budget?.length > 0) {
+      console.log('[seedDatabase] Budget manquant, seed du budget...');
+      await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+      console.log(`[seedDatabase] ${PRODUCTION_DATA.budget.length} entrées budget ajoutées`);
+    }
+  }
 }
 
 /**
