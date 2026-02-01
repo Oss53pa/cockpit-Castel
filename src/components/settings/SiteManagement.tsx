@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Building2, MapPin, Calendar, Ruler } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
-import { useSites, createSite, updateSite, deleteSite } from '@/hooks/useSites';
+import { useSites, createSite, updateSite, deleteSite, cleanupDuplicateSites } from '@/hooks/useSites';
 import { useSiteStore } from '@/stores/siteStore';
 import type { Site } from '@/types/site';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,15 @@ export function SiteManagement() {
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [formData, setFormData] = useState<SiteFormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Nettoyer les sites en double au chargement
+  useEffect(() => {
+    cleanupDuplicateSites().then((count) => {
+      if (count > 0) {
+        console.log(`[SiteManagement] ${count} site(s) en double nettoyé(s)`);
+      }
+    });
+  }, []);
 
   const handleAdd = () => {
     setEditingSite(null);

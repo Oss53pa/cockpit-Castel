@@ -65,8 +65,9 @@ export async function getSiteById(id: number): Promise<Site | undefined> {
 export async function initializeDefaultSite(): Promise<void> {
   try {
     await db.open();
-    const count = await db.sites.count();
-    if (count === 0) {
+    // Vérifier par code, pas juste par count (évite les doublons)
+    const existingSite = await db.sites.where('code').equals('COSMOS').first();
+    if (!existingSite) {
       const now = new Date().toISOString();
       await db.sites.add({
         code: 'COSMOS',
@@ -84,4 +85,35 @@ export async function initializeDefaultSite(): Promise<void> {
   } catch (err) {
     console.error('[initializeDefaultSite] Erreur:', err);
   }
+}
+
+/**
+ * Nettoyer les sites en double (garder le premier créé)
+ * Un site est considéré en double s'il a le même code
+ */
+export async function cleanupDuplicateSites(): Promise<number> {
+  const allSites = await db.sites.toArray();
+  const seenCodes = new Map<string, number>(); // code -> id du site à garder
+  const toDelete: number[] = [];
+
+  // Trier par date de création (plus ancien d'abord)
+  allSites.sort((a, b) =>
+    new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+  );
+
+  for (const site of allSites) {
+    if (seenCodes.has(site.code)) {
+      // C'est un doublon - marquer pour suppression (soft delete)
+      if (site.id) toDelete.push(site.id);
+    } else {
+      seenCodes.set(site.code, site.id!);
+    }
+  }
+
+  // Soft delete les doublons
+  for (const id of toDelete) {
+    await db.sites.update(id, { actif: false });
+  }
+
+  return toDelete.length;
 }
