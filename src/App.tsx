@@ -61,55 +61,35 @@ function AppContent() {
 
     async function initApp() {
       console.log('[App] Début initApp...');
-      try {
-        // Timeout de sécurité pour éviter blocage infini
-        const withTimeout = <T,>(promise: Promise<T>, ms: number, name: string): Promise<T> => {
-          return Promise.race([
-            promise,
-            new Promise<T>((_, reject) =>
-              setTimeout(() => reject(new Error(`[App] Timeout: ${name} après ${ms}ms`)), ms)
-            )
-          ]);
-        };
 
-        // ÉTAPE 1: Site par défaut (max 5s)
-        console.log('[App] initializeDefaultSite...');
-        await withTimeout(initializeDefaultSite(), 5000, 'initializeDefaultSite');
-        console.log('[App] initializeDefaultSite OK');
+      // Afficher l'app immédiatement, initialiser en background
+      if (isMounted) setIsReady(true);
 
-        // ÉTAPE 2: Database init (max 10s)
-        console.log('[App] initializeDatabase...');
-        const initResult = await withTimeout(initializeDatabase(), 10000, 'initializeDatabase');
-        console.log('[App] initializeDatabase OK');
+      // Initialisation en background (non-bloquante)
+      setTimeout(async () => {
+        if (!isMounted) return;
+        try {
+          console.log('[App] Init DB en background...');
+          await initializeDefaultSite();
+          console.log('[App] initializeDefaultSite OK');
 
-        // Seed seulement si nécessaire (max 15s)
-        if (!initResult.seeded) {
-          console.log('[App] seedDatabase...');
-          await withTimeout(seedDatabase(), 15000, 'seedDatabase');
-          console.log('[App] seedDatabase OK');
-        }
+          const initResult = await initializeDatabase();
+          console.log('[App] initializeDatabase OK');
 
-        console.log('[App] Prêt!');
-        if (isMounted) setIsReady(true);
-
-        // Opérations différées en background
-        setTimeout(async () => {
-          if (!isMounted) return;
-          try {
-            await cleanupDuplicateAlertes();
-            await generateAlertesAutomatiques();
-            await migrateEmailConfig();
-            await initDefaultTemplates();
-          } catch (err) {
-            console.error('[App] Erreur init différée:', err);
+          if (!initResult.seeded) {
+            await seedDatabase();
+            console.log('[App] seedDatabase OK');
           }
-        }, 3000);
 
-      } catch (error: any) {
-        console.error('[App] Erreur initApp:', error?.message || error);
-        // Afficher l'app même en cas d'erreur pour ne pas bloquer
-        if (isMounted) setIsReady(true);
-      }
+          await cleanupDuplicateAlertes();
+          await generateAlertesAutomatiques();
+          await migrateEmailConfig();
+          await initDefaultTemplates();
+          console.log('[App] Init complète!');
+        } catch (err) {
+          console.error('[App] Erreur init background:', err);
+        }
+      }, 100);
     }
 
     initApp();
