@@ -555,44 +555,37 @@ interface PhaseDetail {
 }
 
 // Données pour le graphique par phase avec détails
-const PHASES_DATA: PhaseDetail[] = [
+// NOTE: prevu, engage, consomme sont CALCULÉS depuis les lignes (jamais hardcodés)
+const PHASES_DATA_RAW: Omit<PhaseDetail, 'prevu' | 'engage' | 'consomme'>[] = [
   {
     phase: 'Pré-ouverture',
-    prevu: 280_000_000,
-    engage: 220_000_000,
-    consomme: 150_000_000,
     description: 'Phase de préparation intensive avant l\'ouverture : recrutement des équipes clés, aménagement des espaces et mise en place des systèmes.',
     periode: 'Janvier - Septembre 2026',
     responsable: 'Center Manager',
     lignes: [
-      { poste: 'Recrutement', description: 'Frais de recrutement et salaires équipe pilote', prevu: 118_000_000, engage: 112_000_000, consomme: 81_500_000, statut: 'en_cours' },
-      { poste: 'IT & Équipements', description: 'Systèmes informatiques et matériel', prevu: 72_000_000, engage: 67_000_000, consomme: 53_000_000, statut: 'en_cours' },
-      { poste: 'Aménagement', description: 'Mobilier et aménagement bureaux', prevu: 33_000_000, engage: 33_000_000, consomme: 30_000_000, statut: 'termine' },
-      { poste: 'Frais généraux', description: 'Déplacements, fournitures, assurances', prevu: 40_000_000, engage: 32_000_000, consomme: 25_000_000, statut: 'en_cours' },
+      { poste: 'Recrutement', description: 'Frais de recrutement et salaires équipe pilote', prevu: 118_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'IT & Équipements', description: 'Systèmes informatiques et matériel', prevu: 72_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Aménagement', description: 'Mobilier et aménagement bureaux', prevu: 33_000_000, engage: 0, consomme: 0, statut: 'termine' },
+      { poste: 'Frais généraux', description: 'Déplacements, fournitures, assurances', prevu: 40_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
       { poste: 'Provisions', description: 'Imprévus et aléas', prevu: 17_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
     ],
     risques: [
       'Retard recrutement postes clés',
       'Dépassement budget IT',
     ],
-    alertes: [
-      'Budget IT consommé à 74% - Surveiller',
-    ],
+    alertes: [],
   },
   {
     phase: 'Formation',
-    prevu: 120_000_000,
-    engage: 95_000_000,
-    consomme: 65_000_000,
     description: 'Formation complète des équipes : formation initiale interne, formations externes spécialisées (sécurité, accueil, caisse) et supports documentaires.',
     periode: 'Juillet - Octobre 2026',
     responsable: 'RH Manager',
     lignes: [
-      { poste: 'Formation interne', description: 'Formations initiales et supports', prevu: 20_000_000, engage: 17_000_000, consomme: 13_000_000, statut: 'en_cours' },
-      { poste: 'Formation externe', description: 'Prestataires spécialisés', prevu: 40_000_000, engage: 38_000_000, consomme: 28_000_000, statut: 'en_cours' },
-      { poste: 'Certifications', description: 'Habilitations et certifications obligatoires', prevu: 25_000_000, engage: 20_000_000, consomme: 12_000_000, statut: 'en_cours' },
-      { poste: 'Supports', description: 'Documentation et manuels', prevu: 15_000_000, engage: 12_000_000, consomme: 8_000_000, statut: 'en_cours' },
-      { poste: 'Logistique', description: 'Salles, repas, déplacements stagiaires', prevu: 20_000_000, engage: 8_000_000, consomme: 4_000_000, statut: 'a_venir' },
+      { poste: 'Formation interne', description: 'Formations initiales et supports', prevu: 20_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Formation externe', description: 'Prestataires spécialisés', prevu: 40_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Certifications', description: 'Habilitations et certifications obligatoires', prevu: 25_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Supports', description: 'Documentation et manuels', prevu: 15_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Logistique', description: 'Salles, repas, déplacements stagiaires', prevu: 20_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
     ],
     risques: [
       'Disponibilité formateurs externes',
@@ -602,17 +595,14 @@ const PHASES_DATA: PhaseDetail[] = [
   },
   {
     phase: 'Lancement',
-    prevu: 168_500_000,
-    engage: 84_000_000,
-    consomme: 45_500_000,
     description: 'Phase de lancement commercial : marketing pré-ouverture, événements (soft opening et inauguration), animations du premier mois.',
     periode: 'Octobre - Décembre 2026',
     responsable: 'Marketing Manager',
     lignes: [
-      { poste: 'Marketing', description: 'Campagne pré-ouverture et RP', prevu: 100_000_000, engage: 75_000_000, consomme: 48_000_000, statut: 'en_cours' },
-      { poste: 'Soft Opening', description: 'Événement VIP pré-ouverture', prevu: 25_000_000, engage: 15_000_000, consomme: 0, statut: 'a_venir' },
-      { poste: 'Inauguration', description: 'Cérémonie officielle', prevu: 45_000_000, engage: 20_000_000, consomme: 0, statut: 'a_venir' },
-      { poste: 'Animations M1', description: 'Animations premier mois', prevu: 30_000_000, engage: 10_000_000, consomme: 0, statut: 'a_venir' },
+      { poste: 'Marketing', description: 'Campagne pré-ouverture et RP', prevu: 100_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
+      { poste: 'Soft Opening', description: 'Événement VIP pré-ouverture', prevu: 25_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
+      { poste: 'Inauguration', description: 'Cérémonie officielle', prevu: 45_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
+      { poste: 'Animations M1', description: 'Animations premier mois', prevu: 30_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
       { poste: 'Provisions', description: 'Réserve lancement', prevu: 28_500_000, engage: 0, consomme: 0, statut: 'a_venir' },
     ],
     risques: [
@@ -620,11 +610,17 @@ const PHASES_DATA: PhaseDetail[] = [
       'Taux de participation événements',
       'Disponibilité personnalités VIP',
     ],
-    alertes: [
-      'Inauguration: réservation traiteur à confirmer',
-    ],
+    alertes: [],
   },
 ];
+
+// Calculer les totaux de phase depuis les lignes (synthèse = somme des détails)
+const PHASES_DATA: PhaseDetail[] = PHASES_DATA_RAW.map(phase => ({
+  ...phase,
+  prevu: phase.lignes.reduce((sum, l) => sum + l.prevu, 0),
+  engage: phase.lignes.reduce((sum, l) => sum + l.engage, 0),
+  consomme: phase.lignes.reduce((sum, l) => sum + l.consomme, 0),
+}));
 
 // Composant KPI Card
 function KPICard({ label, value, subValue, icon: Icon, color, bgColor }: {
