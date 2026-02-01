@@ -112,6 +112,7 @@ export function ExternalUpdateFirebasePage() {
       setLinkData(data);
 
       // Set users from Firebase data (for external responsible selection)
+      console.log('[ExternalUpdate] data.users from Firebase:', data.users);
       if (data.users && data.users.length > 0) {
         const usersFromFirebase: User[] = data.users.map(u => ({
           id: u.id,
@@ -122,7 +123,9 @@ export function ExternalUpdateFirebasePage() {
           actif: true,
         }));
         setUsers(usersFromFirebase);
-        console.log('[ExternalUpdate] Users chargés depuis Firebase:', usersFromFirebase.length);
+        console.log('[ExternalUpdate] Users chargés depuis Firebase:', usersFromFirebase.length, usersFromFirebase);
+      } else {
+        console.warn('[ExternalUpdate] Aucun utilisateur dans Firebase - le lien a été créé avant la mise à jour. Créez un nouveau lien.');
       }
 
       // Mark as accessed

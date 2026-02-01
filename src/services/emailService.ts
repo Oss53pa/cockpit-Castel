@@ -328,11 +328,13 @@ export async function createUpdateLink(
 
       // Récupérer la liste des utilisateurs pour l'inclure dans Firebase (pour sélection externe)
       const allUsers = await db.users.toArray();
+      console.log('[EmailService] Utilisateurs trouvés dans IndexedDB:', allUsers.length);
       const usersForFirebase = allUsers.map(u => ({
         id: u.id!,
         nom: u.nom,
         prenom: u.prenom,
       }));
+      console.log('[EmailService] Utilisateurs à sauvegarder dans Firebase:', usersForFirebase);
 
       const firebaseSaved = await createRealtimeLink(
         link.token,
