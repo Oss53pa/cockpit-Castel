@@ -130,6 +130,7 @@ export function ExternalUpdateFirebasePage() {
           sous_taches: snapshot.sous_taches || [],
           documents: snapshot.documents || [],
           commentaires: snapshot.commentaires || [],
+          points_attention: snapshot.points_attention || [],
         } as Action);
       } else if (type === 'jalon') {
         setEntity({
@@ -189,8 +190,10 @@ export function ExternalUpdateFirebasePage() {
         // Toujours inclure sousTaches même si vide (pour permettre suppression)
         response.changes.sousTaches = actionData.sousTaches || [];
         response.changes.preuves = actionData.preuves || [];
+        response.changes.pointsAttention = actionData.pointsAttention || [];
 
         console.log('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
+        console.log('[ExternalUpdate] Action - pointsAttention:', actionData.pointsAttention);
         console.log('[ExternalUpdate] Action - avancement:', actionData.avancement);
       }
 

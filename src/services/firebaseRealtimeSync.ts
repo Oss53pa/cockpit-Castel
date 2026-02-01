@@ -67,6 +67,13 @@ export interface ExternalUpdateData {
       auteur: string;
       date: string;
     }>;
+    points_attention?: Array<{
+      id: string;
+      sujet: string;
+      responsableId?: number | null;
+      responsableNom?: string;
+      dateCreation: string;
+    }>;
 
     // Jalon
     date_prevue?: string;
@@ -119,6 +126,13 @@ export interface ExternalUpdateData {
         dateAjout: string;
       }>;
       liens_documents?: string;    // JSON string des preuves
+      pointsAttention?: Array<{
+        id: string;
+        sujet: string;
+        responsableId?: number | null;
+        responsableNom?: string;
+        dateCreation: string;
+      }>;
 
       // Jalon
       preuve_url?: string;
@@ -296,6 +310,10 @@ export async function createUpdateLinkInFirebase(
       // Inclure les commentaires
       if ((action as any).commentaires) {
         entitySnapshot.commentaires = (action as any).commentaires;
+      }
+      // Inclure les points d'attention
+      if ((action as any).points_attention) {
+        entitySnapshot.points_attention = (action as any).points_attention;
       }
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
@@ -595,6 +613,10 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
         console.log('[SyncToLocal] Documents à sauvegarder:', changes.preuves?.length || 0);
       }
       if (changes.liens_documents) updateData.liens_documents = changes.liens_documents;
+      if (changes.pointsAttention !== undefined) {
+        updateData.points_attention = changes.pointsAttention;
+        console.log('[SyncToLocal] Points d\'attention à sauvegarder:', changes.pointsAttention?.length || 0);
+      }
 
       console.log('[SyncToLocal] UpdateData pour action:', JSON.stringify(updateData, null, 2));
       await db.actions.update(entityId, updateData);

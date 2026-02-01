@@ -25,6 +25,7 @@ import {
   FileIcon,
   Sparkles,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Button,
@@ -68,6 +69,14 @@ interface Note {
   date: string;
 }
 
+interface PointAttention {
+  id: string;
+  sujet: string;
+  responsableId: number | null;
+  responsableNom?: string;
+  dateCreation: string;
+}
+
 interface UserOption {
   id: number;
   nom: string;
@@ -97,6 +106,7 @@ type StatutAction = keyof typeof STATUT_CONFIG;
 const FORM_TABS = [
   { id: 'general', label: 'Général', icon: Target },
   { id: 'sousTaches', label: 'Sous-tâches', icon: ListChecks },
+  { id: 'pointsAttention', label: "Points d'Attention", icon: AlertTriangle },
   { id: 'complements', label: 'Compléments', icon: MessageSquare },
   { id: 'preuves', label: 'Preuves', icon: Paperclip },
 ];
@@ -136,6 +146,7 @@ export interface ActionFormSaveData {
   commentaires_externes?: string;
   sousTaches?: SousTache[];
   preuves?: Preuve[];
+  pointsAttention?: PointAttention[];
 }
 
 // ============================================================================
@@ -192,6 +203,9 @@ export function ActionFormContent({
     })) || [];
   });
   const [newNote, setNewNote] = useState('');
+  const [pointsAttention, setPointsAttention] = useState<PointAttention[]>(
+    (action as any).points_attention || []
+  );
   const [notesMiseAJour, setNotesMiseAJour] = useState((action as any).notes_mise_a_jour || '');
 
   // Calcul automatique du statut basé sur l'avancement
@@ -321,6 +335,34 @@ export function ActionFormContent({
     setNotes(notes.filter((_, i) => i !== index));
   };
 
+  // Handlers points d'attention
+  const handleAddPointAttention = () => {
+    setPointsAttention([...pointsAttention, {
+      id: crypto.randomUUID(),
+      sujet: '',
+      responsableId: null,
+      responsableNom: '',
+      dateCreation: new Date().toISOString(),
+    }]);
+  };
+
+  const handleUpdatePointAttention = (index: number, field: keyof PointAttention, value: any) => {
+    const updated = [...pointsAttention];
+    updated[index] = { ...updated[index], [field]: value };
+    // Si on change le responsableId, mettre à jour le nom aussi
+    if (field === 'responsableId' && value) {
+      const user = users.find(u => u.id === value);
+      if (user) {
+        updated[index].responsableNom = `${user.prenom} ${user.nom}`;
+      }
+    }
+    setPointsAttention(updated);
+  };
+
+  const handleRemovePointAttention = (index: number) => {
+    setPointsAttention(pointsAttention.filter((_, i) => i !== index));
+  };
+
   // Sauvegarde
   const handleSave = () => {
     onSave?.({
@@ -331,6 +373,7 @@ export function ActionFormContent({
       commentaires_externes: JSON.stringify(notes),
       sousTaches,
       preuves,
+      pointsAttention,
     });
   };
 
@@ -595,6 +638,104 @@ export function ActionFormContent({
               <Button type="button" variant="outline" onClick={handleAddSousTache} className="w-full">
                 <Plus className="w-4 h-4 mr-1" />
                 Ajouter une sous-tâche
+              </Button>
+            )}
+          </TabsContent>
+
+          {/* ONGLET POINTS D'ATTENTION */}
+          <TabsContent value="pointsAttention" className="space-y-3 m-0">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Points d'Attention
+                {pointsAttention.length > 0 && (
+                  <Badge variant="warning" className="ml-2">{pointsAttention.length}</Badge>
+                )}
+              </h3>
+              <p className="text-xs text-amber-600 mb-3">
+                Ces points seront consolidés dans le rapport DeepDive sous l'axe de cette action.
+              </p>
+            </div>
+
+            {pointsAttention.length > 0 && (
+              <div className="space-y-2">
+                {pointsAttention.map((pa, index) => (
+                  <div
+                    key={pa.id}
+                    className="p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                  >
+                    <div className="space-y-3">
+                      {/* Sujet */}
+                      <div>
+                        <Label className="text-xs text-amber-700 mb-1">Sujet</Label>
+                        {isEditing ? (
+                          <Input
+                            value={pa.sujet}
+                            onChange={(e) => handleUpdatePointAttention(index, 'sujet', e.target.value)}
+                            placeholder="Décrivez le point d'attention..."
+                            className="border-amber-300 focus:border-amber-500"
+                          />
+                        ) : (
+                          <p className="text-sm">{pa.sujet || 'Non renseigné'}</p>
+                        )}
+                      </div>
+
+                      {/* Responsable */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className="text-xs text-amber-700 mb-1">Responsable</Label>
+                          {isEditing && users.length > 0 ? (
+                            <Select
+                              value={pa.responsableId?.toString() || ''}
+                              onChange={(e) => handleUpdatePointAttention(index, 'responsableId', e.target.value ? parseInt(e.target.value) : null)}
+                            >
+                              <SelectOption value="">Sélectionner...</SelectOption>
+                              {users.map(user => (
+                                <SelectOption key={user.id} value={user.id.toString()}>
+                                  {user.prenom} {user.nom}
+                                </SelectOption>
+                              ))}
+                            </Select>
+                          ) : (
+                            <p className="text-sm flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              {pa.responsableNom || 'Non assigné'}
+                            </p>
+                          )}
+                        </div>
+
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePointAttention(index)}
+                            className="text-red-500 hover:text-red-700 p-1 mt-5"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {pointsAttention.length === 0 && (
+              <div className="text-center py-8 text-amber-600">
+                <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Aucun point d'attention</p>
+              </div>
+            )}
+
+            {isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddPointAttention}
+                className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Ajouter un point d'attention
               </Button>
             )}
           </TabsContent>
