@@ -279,6 +279,27 @@ export function ActionFormContent({
     }
   };
 
+  const handleAddFichier = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Convertir le fichier en base64 pour le stockage
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setPreuves([...preuves, {
+          id: crypto.randomUUID(),
+          type: 'fichier',
+          nom: file.name,
+          url: base64, // Stocke le fichier en base64
+          dateAjout: new Date().toISOString()
+        }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input pour permettre de re-sélectionner le même fichier
+    event.target.value = '';
+  };
+
   const handleRemovePreuve = (index: number) => {
     setPreuves(preuves.filter((_, i) => i !== index));
   };
@@ -673,10 +694,24 @@ export function ActionFormContent({
             )}
 
             {isEditing && (
-              <Button type="button" variant="outline" onClick={handleAddLien} className="w-full">
-                <LinkIcon className="w-4 h-4 mr-2" />
-                Ajouter un lien
-              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={handleAddLien} className="flex-1">
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  Ajouter un lien
+                </Button>
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleAddFichier}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  />
+                  <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors border border-primary-300 bg-transparent hover:bg-primary-100 active:bg-primary-200 h-10 px-4 w-full">
+                    <FileIcon className="w-4 h-4" />
+                    Joindre un fichier
+                  </span>
+                </label>
+              </div>
             )}
           </TabsContent>
         </div>
