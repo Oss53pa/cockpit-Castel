@@ -8,8 +8,11 @@ import {
   FileText,
   ArrowRight,
   Sparkles,
+  Brain,
 } from 'lucide-react';
 import { useDashboardKPIs, useAvancementGlobal, useAlertes } from '@/hooks';
+import { useProph3tHealth } from '@/hooks/useProph3t';
+import { cn } from '@/lib/utils';
 import { Proph3tWidget } from '@/components/proph3t/Proph3tWidget';
 
 function getDaysUntilOpening(): number {
@@ -25,9 +28,17 @@ export function HomePage() {
   const daysUntilOpening = getDaysUntilOpening();
   const { alertes = [] } = useAlertes();
   const [showProph3t, setShowProph3t] = useState(false);
+  const proph3tHealth = useProph3tHealth();
 
   // Nombre de problèmes remontés (alertes non traitées)
   const problemesCount = (alertes || []).filter(a => !a.traitee).length;
+
+  // Couleurs du score de santé
+  const healthColors: Record<string, string> = {
+    vert: 'bg-green-500',
+    jaune: 'bg-yellow-500',
+    rouge: 'bg-red-500',
+  };
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden relative">
@@ -43,6 +54,18 @@ export function HomePage() {
         <span className="text-lg font-semibold text-primary-900">Cosmos Angre</span>
 
         <nav className="flex items-center gap-6">
+          {/* Score de Santé PROPH3T */}
+          {proph3tHealth && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 rounded-full cursor-pointer hover:bg-primary-100 transition-colors"
+              onClick={() => setShowProph3t(!showProph3t)}
+              title="Score de santé du projet"
+            >
+              <Brain className="h-4 w-4 text-primary-600" />
+              <div className={cn('w-2 h-2 rounded-full', healthColors[proph3tHealth.status])} />
+              <span className="text-sm font-semibold text-primary-700">{proph3tHealth.score}</span>
+            </div>
+          )}
           <button
             onClick={() => setShowProph3t(!showProph3t)}
             className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
