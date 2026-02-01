@@ -55,17 +55,15 @@ export function HomePage() {
 
         <nav className="flex items-center gap-6">
           {/* Score de Santé PROPH3T */}
-          {proph3tHealth && (
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 rounded-full cursor-pointer hover:bg-primary-100 transition-colors"
-              onClick={() => setShowProph3t(!showProph3t)}
-              title="Score de santé du projet"
-            >
-              <Brain className="h-4 w-4 text-primary-600" />
-              <div className={cn('w-2 h-2 rounded-full', healthColors[proph3tHealth.status])} />
-              <span className="text-sm font-semibold text-primary-700">{proph3tHealth.score}</span>
-            </div>
-          )}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 rounded-full cursor-pointer hover:bg-primary-100 transition-colors"
+            onClick={() => setShowProph3t(!showProph3t)}
+            title="Score de santé du projet"
+          >
+            <Brain className="h-4 w-4 text-primary-600" />
+            <div className={cn('w-2 h-2 rounded-full', proph3tHealth ? healthColors[proph3tHealth.status] : 'bg-gray-400')} />
+            <span className="text-sm font-semibold text-primary-700">{proph3tHealth?.score ?? 0}</span>
+          </div>
           <button
             onClick={() => setShowProph3t(!showProph3t)}
             className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
@@ -73,7 +71,7 @@ export function HomePage() {
             <Sparkles className="h-4 w-4" />
             Proph3t {problemesCount > 0 && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{problemesCount}</span>}
           </button>
-          <span className="text-xl font-bold text-primary-900">J-{daysUntilOpening}</span>
+          <span className="text-xl font-bold text-primary-900">SoftOpening: J-{daysUntilOpening}</span>
           <button
             onClick={() => navigate('/dashboard')}
             className="flex items-center gap-2 px-4 py-2 bg-primary-900 text-white text-sm rounded-full hover:bg-primary-800 transition-colors"
