@@ -165,51 +165,106 @@ interface HealthData {
   issues: string[];
 }
 
+/**
+ * Hook unifié pour le score de santé - MÊME CALCUL que ScoreSante
+ * Utilise: Avancement, Jalons, Budget, Occupation, Vélocité
+ */
 export function useProph3tHealth(): HealthData | null {
-  const context = useProjectContext();
+  // Données réelles de la DB
+  const actionsData = useLiveQuery(() => db.actions.toArray());
+  const jalonsData = useLiveQuery(() => db.jalons.toArray());
+  const budgetData = useLiveQuery(() => db.budget.toArray());
+  const kpisData = useLiveQuery(() => db.kpis.toArray());
 
   return useMemo(() => {
-    if (!context) return null;
+    const actions = actionsData ?? [];
+    const jalons = jalonsData ?? [];
+    const budget = budgetData ?? [];
+    const kpis = kpisData ?? [];
 
-    const evm = Proph3tEngine.calculateEVM(context);
+    // Attendre que les données soient chargées
+    if (actions.length === 0 && jalons.length === 0) return null;
 
-    // Calcul des scores
-    const blocked = context.actions.filter(a => a.statut === 'bloque').length;
-    const overdue = context.actions.filter(a => {
+    // KPIs depuis la DB
+    const kpisMap = kpis.reduce((acc, k) => ({ ...acc, [k.code]: k.valeur }), {} as Record<string, number>);
+    const tauxOccupation = kpisMap['taux_occupation'] ?? 0;
+    const budgetTotal = kpisMap['budget_total'] ?? budget.reduce((s, b) => s + (b.montantPrevu || 0), 0);
+    const budgetConsomme = kpisMap['budget_consomme'] ?? budget.reduce((s, b) => s + (b.montantRealise || 0), 0);
+
+    // 1. Avancement global réel
+    const avancementGlobal = actions.length > 0
+      ? Math.round(actions.reduce((acc, a) => acc + (a.avancement || 0), 0) / actions.length)
+      : 0;
+    const avancementScore = Math.max(0, Math.min(100, avancementGlobal));
+
+    // 2. Jalons - score basé sur retard réel
+    const today = new Date();
+    const jalonsEnRetard = jalons.filter((j) => {
+      const date = new Date(j.date_prevue);
+      return date < today && j.statut !== 'atteint';
+    }).length;
+    const jalonsTotal = jalons.length || 1;
+    const jalonsScore = Math.max(0, 100 - (jalonsEnRetard / jalonsTotal) * 100);
+
+    // 3. Budget - score basé sur consommation réelle vs avancement
+    const budgetPercent = budgetTotal > 0 ? (budgetConsomme / budgetTotal) * 100 : 0;
+    const expectedBudgetPercent = avancementGlobal;
+    const budgetScore = budgetPercent <= expectedBudgetPercent + 10
+      ? 100
+      : Math.max(0, 100 - (budgetPercent - expectedBudgetPercent - 10) * 2);
+
+    // 4. Occupation
+    const occupationScore = tauxOccupation;
+
+    // 5. Vélocité (basé sur tendance)
+    const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
+    const velocityScore = actions.length > 0
+      ? Math.min(100, Math.round((actionsTerminees / actions.length) * 100))
+      : 50;
+
+    // Score global pondéré (même pondération que ScoreSante)
+    const weights = { avancement: 30, jalons: 25, budget: 20, occupation: 15, velocite: 10 };
+    const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+    const score = Math.round(
+      (avancementScore * weights.avancement +
+       jalonsScore * weights.jalons +
+       Math.min(100, budgetScore) * weights.budget +
+       occupationScore * weights.occupation +
+       velocityScore * weights.velocite) / totalWeight
+    );
+
+    const status = score >= 80 ? 'vert' : score >= 60 ? 'jaune' : 'rouge';
+
+    // Issues basées sur données réelles
+    const issues: string[] = [];
+    const blocked = actions.filter(a => a.statut === 'bloque').length;
+    const overdue = actions.filter(a => {
       if (a.statut === 'termine') return false;
       return a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date();
     }).length;
-    const criticalRisks = context.risques.filter(r => (r.score || 0) >= 12).length;
-    const untreatedAlerts = context.alertes.filter(a => !a.traitee && a.criticite === 'critical').length;
 
-    const planningScore = Math.max(0, 100 - (overdue * 10) - (blocked * 15));
-    const budgetScore = Math.min(100, Math.max(0, evm.cpi * 100));
-    const riskScore = Math.max(0, 100 - (criticalRisks * 25));
-    const alertScore = Math.max(0, 100 - (untreatedAlerts * 20));
-
-    const score = Math.round((planningScore + budgetScore + riskScore + alertScore) / 4);
-    const status = score >= 70 ? 'vert' : score >= 40 ? 'jaune' : 'rouge';
-
-    const issues: string[] = [];
     if (blocked > 0) issues.push(`${blocked} action(s) bloquée(s)`);
     if (overdue > 0) issues.push(`${overdue} action(s) en retard`);
-    if (criticalRisks > 0) issues.push(`${criticalRisks} risque(s) critique(s)`);
-    if (untreatedAlerts > 0) issues.push(`${untreatedAlerts} alerte(s) critique(s)`);
-    if (evm.cpi < 0.9) issues.push(`Dépassement budget (CPI: ${evm.cpi.toFixed(2)})`);
-    if (evm.spi < 0.9) issues.push(`Retard planning (SPI: ${evm.spi.toFixed(2)})`);
+    if (jalonsEnRetard > 0) issues.push(`${jalonsEnRetard} jalon(s) en retard`);
+    if (budgetPercent > expectedBudgetPercent + 20) issues.push(`Dépassement budget (${Math.round(budgetPercent)}%)`);
+    if (tauxOccupation < 50) issues.push(`Occupation faible (${tauxOccupation}%)`);
+
+    // SPI/CPI simplifiés
+    const spi = jalonsTotal > 0 ? (jalons.filter(j => j.statut === 'atteint').length / jalonsTotal) : 1;
+    const cpi = budgetTotal > 0 && budgetConsomme > 0 ? Math.min(2, budgetTotal / budgetConsomme) : 1;
 
     return {
       score,
       status,
-      planningScore,
-      budgetScore,
-      riskScore,
-      alertScore,
-      spi: evm.spi,
-      cpi: evm.cpi,
+      planningScore: avancementScore,
+      budgetScore: Math.min(100, budgetScore),
+      riskScore: jalonsScore,
+      alertScore: occupationScore,
+      spi,
+      cpi,
       issues,
     };
-  }, [context]);
+  }, [actionsData, jalonsData, budgetData, kpisData]);
 }
 
 // ============================================================================
