@@ -512,23 +512,21 @@ export function RisqueFormContent({
               )}
             </div>
 
-            {/* Notes de mise à jour (externe) */}
-            {isExternal && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Notes de mise à jour
-                </h3>
-                <textarea
-                  value={notesMiseAJour}
-                  onChange={(e) => setNotesMiseAJour(e.target.value)}
-                  placeholder="Ajoutez vos notes..."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  disabled={!isEditing}
-                />
-              </div>
-            )}
+            {/* Notes de mise à jour */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Notes de mise à jour
+              </h3>
+              <textarea
+                value={notesMiseAJour}
+                onChange={(e) => setNotesMiseAJour(e.target.value)}
+                placeholder="Ajoutez vos notes..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                disabled={!isEditing}
+              />
+            </div>
 
             {/* Commentaires */}
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">

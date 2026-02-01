@@ -489,22 +489,20 @@ export function ActionFormContent({
               </div>
             </div>
 
-            {/* Notes de mise à jour (externe) */}
-            {isExternal && (
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Notes de mise à jour
-                </h3>
-                <textarea
-                  value={notesMiseAJour}
-                  onChange={(e) => setNotesMiseAJour(e.target.value)}
-                  placeholder="Ajoutez vos notes, observations ou informations supplémentaires..."
-                  className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                  disabled={!isEditing}
-                />
-              </div>
-            )}
+            {/* Notes de mise à jour */}
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Notes de mise à jour
+              </h3>
+              <textarea
+                value={notesMiseAJour}
+                onChange={(e) => setNotesMiseAJour(e.target.value)}
+                placeholder="Ajoutez vos notes, observations ou informations supplémentaires..."
+                className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                disabled={!isEditing}
+              />
+            </div>
           </TabsContent>
 
           {/* ONGLET SOUS-TÂCHES */}
@@ -534,7 +532,7 @@ export function ActionFormContent({
                         disabled={!isEditing}
                         className="w-5 h-5 rounded border-neutral-300 text-green-600 focus:ring-green-500"
                       />
-                      {isEditing && !isExternal ? (
+                      {isEditing ? (
                         <Input
                           value={st.libelle}
                           onChange={(e) => handleUpdateSousTache(index, 'libelle', e.target.value)}
@@ -544,7 +542,7 @@ export function ActionFormContent({
                       ) : (
                         <span className={`flex-1 ${st.fait ? 'line-through text-neutral-400' : ''}`}>{st.libelle}</span>
                       )}
-                      {isEditing && !isExternal && (
+                      {isEditing && (
                         <button type="button" onClick={() => handleRemoveSousTache(index)} className="text-red-500 hover:text-red-700 p-1">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -555,7 +553,7 @@ export function ActionFormContent({
               </div>
             )}
 
-            {isEditing && !isExternal && (
+            {isEditing && (
               <Button type="button" variant="outline" onClick={handleAddSousTache} className="w-full">
                 <Plus className="w-4 h-4 mr-1" />
                 Ajouter une sous-tâche

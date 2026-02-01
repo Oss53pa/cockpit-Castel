@@ -97,7 +97,7 @@ export interface RealtimeSyncCallbacks {
 // CONSTANTS
 // ============================================================================
 
-const COLLECTION_UPDATE_LINKS = 'cockpit_update_links';
+const COLLECTION_UPDATE_LINKS = 'updateLinks';
 const APP_NAME = 'cockpit-realtime';
 
 // ============================================================================

@@ -1076,8 +1076,8 @@ export async function updateDefaultTemplates(): Promise<number> {
  * Réinitialise tous les templates (supprime et recrée)
  */
 export async function resetDefaultTemplates(): Promise<void> {
-  // Supprimer tous les templates par défaut
-  await db.emailTemplates.where('isDefault').equals(1).delete();
+  // Supprimer TOUS les templates (par défaut ou non)
+  await db.emailTemplates.clear();
 
   // Recréer les templates
   for (const template of DEFAULT_TEMPLATES) {
