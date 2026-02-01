@@ -26,15 +26,18 @@ export interface COPILTrends {
 
 export function useDashboardKPIs() {
   return useLiveQuery(async () => {
-    const [project, users, actions, jalons, budget] = await Promise.all([
+    const [project, users, actions, jalons, budget, sites, risques] = await Promise.all([
       db.project.toArray(),
       db.users.toArray(),
       db.actions.toArray(),
       db.jalons.toArray(),
       db.budget.toArray(),
+      db.sites.filter(s => !!s.actif).toArray(),
+      db.risques.toArray(),
     ]);
 
     const projectData = project[0];
+    const siteData = sites[0];
     const budgetTotal = budget.reduce((sum, b) => sum + b.montantPrevu, 0);
     const budgetConsomme = budget.reduce((sum, b) => sum + b.montantRealise, 0);
 
@@ -48,6 +51,9 @@ export function useDashboardKPIs() {
 
     const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
 
+    // Get project name from site first, then fallback to project table
+    const projectName = siteData?.nom ?? projectData?.name ?? '';
+
     return {
       tauxOccupation,
       budgetConsomme,
@@ -55,7 +61,10 @@ export function useDashboardKPIs() {
       jalonsAtteints,
       jalonsTotal: jalons.length,
       equipeTaille: users.length,
-      projectName: projectData?.name ?? 'COSMOS ANGRÉ',
+      projectName,
+      totalActions: actions.length,
+      totalJalons: jalons.length,
+      totalRisques: risques.filter(r => r.status !== 'closed').length,
     };
   }) ?? {
     tauxOccupation: 0,
@@ -64,7 +73,10 @@ export function useDashboardKPIs() {
     jalonsAtteints: 0,
     jalonsTotal: 0,
     equipeTaille: 0,
-    projectName: 'COSMOS ANGRÉ',
+    projectName: '',
+    totalActions: 0,
+    totalJalons: 0,
+    totalRisques: 0,
   };
 }
 

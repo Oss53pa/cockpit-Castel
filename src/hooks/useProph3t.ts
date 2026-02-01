@@ -23,6 +23,7 @@ export function useProjectContext(): ProjectContext | null {
   const usersData = useLiveQuery(() => db.users.toArray());
   const teamsData = useLiveQuery(() => db.teams.toArray());
   const projectData = useLiveQuery(() => db.project.toArray());
+  const sitesData = useLiveQuery(() => db.sites.filter(s => !!s.actif).toArray());
 
   const context = useMemo<ProjectContext | null>(() => {
     const actions = actionsData ?? [];
@@ -33,9 +34,13 @@ export function useProjectContext(): ProjectContext | null {
     const users = usersData ?? [];
     const teams = teamsData ?? [];
     const project = projectData ?? [];
+    const sites = sitesData ?? [];
 
     // Attendre que les données soient chargées
     if (actions.length === 0 && jalons.length === 0) return null;
+
+    // Get project name from site first, then fallback to project table
+    const projectName = sites[0]?.nom ?? project[0]?.name ?? '';
 
     return {
       actions: actions as Action[],
@@ -45,9 +50,9 @@ export function useProjectContext(): ProjectContext | null {
       alertes: alertes as Alerte[],
       users: users as User[],
       teams: teams as Team[],
-      projectName: project[0]?.name || 'COSMOS ANGRE',
+      projectName,
     };
-  }, [actionsData, jalonsData, risquesData, budgetData, alertesData, usersData, teamsData, projectData]);
+  }, [actionsData, jalonsData, risquesData, budgetData, alertesData, usersData, teamsData, projectData, sitesData]);
 
   return context;
 }
