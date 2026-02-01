@@ -60,8 +60,6 @@ function AppContent() {
     let isMounted = true;
 
     async function initApp() {
-      console.log('[App] Début initApp...');
-
       // Afficher l'app immédiatement, initialiser en background
       if (isMounted) setIsReady(true);
 
@@ -69,25 +67,19 @@ function AppContent() {
       setTimeout(async () => {
         if (!isMounted) return;
         try {
-          console.log('[App] Init DB en background...');
           await initializeDefaultSite();
-          console.log('[App] initializeDefaultSite OK');
-
           const initResult = await initializeDatabase();
-          console.log('[App] initializeDatabase OK');
 
           if (!initResult.seeded) {
             await seedDatabase();
-            console.log('[App] seedDatabase OK');
           }
 
           await cleanupDuplicateAlertes();
           await generateAlertesAutomatiques();
           await migrateEmailConfig();
           await initDefaultTemplates();
-          console.log('[App] Init complète!');
         } catch (err) {
-          console.error('[App] Erreur init background:', err);
+          console.error('[App] Erreur init:', err);
         }
       }, 100);
     }
@@ -162,8 +154,8 @@ function AppContent() {
       {/* Firebase Realtime Sync - seulement si connecté */}
       {isAuthenticated && <FirebaseRealtimeSyncInitializer />}
 
-      {/* Auto-recalcul des statuts - TEMPORAIREMENT DÉSACTIVÉ pour debug perf */}
-      {/* <AutoRecalculateInitializer /> */}
+      {/* Auto-recalcul des statuts */}
+      <AutoRecalculateInitializer />
     </>
   );
 }
