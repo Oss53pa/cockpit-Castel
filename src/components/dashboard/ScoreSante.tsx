@@ -1,14 +1,21 @@
 /**
  * Score de Santé Global du Projet
  * Widget avec jauge circulaire animée et décomposition des facteurs
- * UNIFIÉ avec useProph3tHealth pour cohérence
  */
 
-import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock, FileText, Shield } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useRef } from 'react';
-import { useProph3tHealth } from '@/hooks';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { useDashboardKPIs, useAvancementGlobal, useAvancementParAxe, useJalons } from '@/hooks';
+
+interface ScoreFactor {
+  label: string;
+  score: number;
+  weight: number;
+  trend: 'up' | 'down' | 'stable';
+  icon: typeof Activity;
+}
 
 // Animated circular gauge
 function CircularGauge({
@@ -45,16 +52,18 @@ function CircularGauge({
   }, [score, isVisible]);
 
   const getScoreColor = (s: number) => {
-    if (s >= 70) return { stroke: '#22c55e', text: 'text-green-500', bg: 'from-green-500/20' };
-    if (s >= 40) return { stroke: '#f59e0b', text: 'text-amber-500', bg: 'from-amber-500/20' };
+    if (s >= 80) return { stroke: '#22c55e', text: 'text-green-500', bg: 'from-green-500/20' };
+    if (s >= 60) return { stroke: '#f59e0b', text: 'text-amber-500', bg: 'from-amber-500/20' };
+    if (s >= 40) return { stroke: '#f97316', text: 'text-orange-500', bg: 'from-orange-500/20' };
     return { stroke: '#ef4444', text: 'text-red-500', bg: 'from-red-500/20' };
   };
 
   const colors = getScoreColor(animatedScore);
 
   const getScoreLabel = (s: number) => {
-    if (s >= 70) return 'Bon';
-    if (s >= 40) return 'Attention';
+    if (s >= 80) return 'Excellent';
+    if (s >= 60) return 'Bon';
+    if (s >= 40) return 'Modéré';
     return 'Critique';
   };
 
@@ -138,30 +147,33 @@ function CircularGauge({
 
 // Factor bar component
 function FactorBar({
-  label,
-  score,
-  icon,
+  factor,
   delay,
   isVisible,
 }: {
-  label: string;
-  score: number;
-  icon: React.ReactNode;
+  factor: ScoreFactor;
   delay: number;
   isVisible: boolean;
 }) {
   const [width, setWidth] = useState(0);
+  const TrendIcon =
+    factor.trend === 'up'
+      ? TrendingUp
+      : factor.trend === 'down'
+        ? TrendingDown
+        : Minus;
 
   useEffect(() => {
     if (isVisible) {
-      const timeout = setTimeout(() => setWidth(score), delay);
+      const timeout = setTimeout(() => setWidth(factor.score), delay);
       return () => clearTimeout(timeout);
     }
-  }, [score, delay, isVisible]);
+  }, [factor.score, delay, isVisible]);
 
-  const getBarColor = (s: number) => {
-    if (s >= 70) return 'bg-green-500';
-    if (s >= 40) return 'bg-amber-500';
+  const getBarColor = (score: number) => {
+    if (score >= 80) return 'bg-green-500';
+    if (score >= 60) return 'bg-amber-500';
+    if (score >= 40) return 'bg-orange-500';
     return 'bg-red-500';
   };
 
@@ -169,16 +181,28 @@ function FactorBar({
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <span className="text-neutral-400">{icon}</span>
-          <span className="text-neutral-700 font-medium">{label}</span>
+          <factor.icon className="w-4 h-4 text-neutral-400" />
+          <span className="text-neutral-700 font-medium">{factor.label}</span>
         </div>
-        <span className="text-neutral-900 font-semibold">{Math.round(score)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-neutral-900 font-semibold">{Math.round(factor.score)}</span>
+          <TrendIcon
+            className={cn(
+              'w-3 h-3',
+              factor.trend === 'up'
+                ? 'text-green-500'
+                : factor.trend === 'down'
+                  ? 'text-red-500'
+                  : 'text-neutral-400'
+            )}
+          />
+        </div>
       </div>
       <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
         <div
           className={cn(
             'h-full rounded-full transition-all duration-700 ease-out',
-            getBarColor(score)
+            getBarColor(factor.score)
           )}
           style={{ width: `${width}%` }}
         />
@@ -190,7 +214,11 @@ function FactorBar({
 export function ScoreSante() {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const health = useProph3tHealth();
+
+  const kpis = useDashboardKPIs();
+  const avancementGlobal = useAvancementGlobal();
+  const avancementsAxes = useAvancementParAxe();
+  const jalons = useJalons();
 
   // Intersection observer
   useEffect(() => {
@@ -207,20 +235,87 @@ export function ScoreSante() {
     return () => observer.disconnect();
   }, []);
 
-  if (!health) {
-    return (
-      <Card padding="md" className="animate-pulse">
-        <div className="h-64 bg-neutral-100 rounded" />
-      </Card>
-    );
-  }
+  // Calculate health factors
+  const factors = useMemo<ScoreFactor[]>(() => {
+    // 1. Avancement global vs prévu
+    const avgPrevu = avancementsAxes.length > 0
+      ? avancementsAxes.reduce((acc, a) => acc + a.prevu, 0) / avancementsAxes.length
+      : 0;
+    const ecartAvancement = avancementGlobal - avgPrevu;
+    const avancementScore = Math.max(0, Math.min(100, 50 + ecartAvancement * 2));
 
-  const factors = [
-    { label: 'Planning', score: health.planningScore, icon: <Clock className="w-4 h-4" /> },
-    { label: 'Budget', score: health.budgetScore, icon: <FileText className="w-4 h-4" /> },
-    { label: 'Risques', score: health.riskScore, icon: <Shield className="w-4 h-4" /> },
-    { label: 'Alertes', score: health.alertScore, icon: <AlertTriangle className="w-4 h-4" /> },
-  ];
+    // 2. Jalons on time
+    const today = new Date();
+    const jalonsEnRetard = jalons.filter((j) => {
+      const date = new Date(j.date_prevue);
+      return date < today && (j.avancement_prealables || 0) < 100;
+    }).length;
+    const jalonsTotal = jalons.length || 1;
+    const jalonsScore = Math.max(0, 100 - (jalonsEnRetard / jalonsTotal) * 100);
+
+    // 3. Budget health
+    const budgetPercent = kpis.budgetTotal > 0
+      ? (kpis.budgetConsomme / kpis.budgetTotal) * 100
+      : 0;
+    const expectedBudgetPercent = avancementGlobal; // Budget should track progress
+    const budgetScore = budgetPercent <= expectedBudgetPercent + 10
+      ? 100
+      : Math.max(0, 100 - (budgetPercent - expectedBudgetPercent - 10) * 2);
+
+    // 4. Occupation rate
+    const occupationScore = kpis.tauxOccupation;
+
+    // 5. Team velocity (based on trend)
+    const trendsUp = avancementsAxes.filter((a) => a.tendance === 'up').length;
+    const trendsDown = avancementsAxes.filter((a) => a.tendance === 'down').length;
+    const velocityScore = 50 + (trendsUp - trendsDown) * 10;
+
+    return [
+      {
+        label: 'Avancement',
+        score: avancementScore,
+        weight: 30,
+        trend: ecartAvancement > 0 ? 'up' : ecartAvancement < -5 ? 'down' : 'stable',
+        icon: Activity,
+      },
+      {
+        label: 'Jalons',
+        score: jalonsScore,
+        weight: 25,
+        trend: jalonsEnRetard === 0 ? 'up' : jalonsEnRetard > 3 ? 'down' : 'stable',
+        icon: jalonsEnRetard > 0 ? AlertTriangle : CheckCircle,
+      },
+      {
+        label: 'Budget',
+        score: Math.min(100, budgetScore),
+        weight: 20,
+        trend: budgetPercent <= expectedBudgetPercent ? 'up' : 'down',
+        icon: budgetPercent > expectedBudgetPercent + 20 ? AlertTriangle : CheckCircle,
+      },
+      {
+        label: 'Occupation',
+        score: occupationScore,
+        weight: 15,
+        trend: occupationScore >= 70 ? 'up' : occupationScore < 50 ? 'down' : 'stable',
+        icon: occupationScore >= 70 ? CheckCircle : Clock,
+      },
+      {
+        label: 'Vélocité',
+        score: Math.max(0, Math.min(100, velocityScore)),
+        weight: 10,
+        trend: trendsUp > trendsDown ? 'up' : trendsUp < trendsDown ? 'down' : 'stable',
+        icon: TrendingUp,
+      },
+    ];
+  }, [avancementGlobal, avancementsAxes, jalons, kpis]);
+
+  // Calculate overall score
+  const overallScore = useMemo(() => {
+    const totalWeight = factors.reduce((acc, f) => acc + f.weight, 0);
+    return Math.round(
+      factors.reduce((acc, f) => acc + (f.score * f.weight) / totalWeight, 0)
+    );
+  }, [factors]);
 
   return (
     <div
@@ -246,7 +341,7 @@ export function ScoreSante() {
         <div className="flex flex-col lg:flex-row items-center gap-6">
           {/* Circular gauge */}
           <div className="flex-shrink-0">
-            <CircularGauge score={health.score} isVisible={isVisible} />
+            <CircularGauge score={overallScore} isVisible={isVisible} />
           </div>
 
           {/* Factor breakdown */}
@@ -254,9 +349,7 @@ export function ScoreSante() {
             {factors.map((factor, index) => (
               <FactorBar
                 key={factor.label}
-                label={factor.label}
-                score={factor.score}
-                icon={factor.icon}
+                factor={factor}
                 delay={200 + index * 100}
                 isVisible={isVisible}
               />
@@ -264,59 +357,23 @@ export function ScoreSante() {
           </div>
         </div>
 
-        {/* EVM Indicators */}
-        <div className="mt-4 pt-4 border-t border-neutral-100">
-          <div className="flex justify-center gap-8">
-            <div className="text-center">
-              <div className={cn(
-                'text-xl font-bold',
-                health.spi >= 1 ? 'text-green-600' : health.spi >= 0.9 ? 'text-amber-600' : 'text-red-600'
-              )}>
-                {health.spi.toFixed(2)}
-              </div>
-              <div className="text-xs text-neutral-500">SPI (Planning)</div>
-            </div>
-            <div className="text-center">
-              <div className={cn(
-                'text-xl font-bold',
-                health.cpi >= 1 ? 'text-green-600' : health.cpi >= 0.9 ? 'text-amber-600' : 'text-red-600'
-              )}>
-                {health.cpi.toFixed(2)}
-              </div>
-              <div className="text-xs text-neutral-500">CPI (Budget)</div>
-            </div>
+        {/* Bottom summary */}
+        <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
+          <span>Mis à jour automatiquement</span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              Excellent (80+)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Bon (60-79)
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              Critique (-60)
+            </span>
           </div>
-        </div>
-
-        {/* Issues */}
-        {health.issues.length > 0 && (
-          <div className="mt-4 p-3 bg-error-50 rounded-lg">
-            <div className="text-xs font-semibold text-error-700 mb-1">Points d'attention:</div>
-            <ul className="text-xs text-error-600 space-y-0.5">
-              {health.issues.slice(0, 3).map((issue, i) => (
-                <li key={i}>• {issue}</li>
-              ))}
-              {health.issues.length > 3 && (
-                <li className="text-error-500">+{health.issues.length - 3} autres...</li>
-              )}
-            </ul>
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-center gap-4 text-xs text-neutral-500">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            Bon (70+)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            Attention (40-69)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500" />
-            Critique (-40)
-          </span>
         </div>
       </Card>
     </div>
