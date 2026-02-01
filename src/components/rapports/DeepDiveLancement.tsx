@@ -180,6 +180,60 @@ function MeteoBadge({ meteo, statut }: { meteo: MeteoType; statut: string }) {
   );
 }
 
+// Composant Météo Axe Dynamique - calcule la météo basée sur les données réelles
+function AxeMeteoBadge({ actions, jalons }: { actions: any[]; jalons: any[] }) {
+  const meteoData = useMemo(() => {
+    if (actions.length === 0 && jalons.length === 0) {
+      return { meteo: 'soleil_nuage' as MeteoType, statut: 'À démarrer' };
+    }
+
+    const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
+    const actionsBloquees = actions.filter(a => a.statut === 'bloque').length;
+    const actionsEnRetard = actions.filter(a => {
+      if (a.statut === 'termine') return false;
+      return a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date();
+    }).length;
+    const jalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
+    const jalonsEnDanger = jalons.filter(j => j.statut === 'en_danger' || j.statut === 'depasse').length;
+
+    const tauxCompletion = actions.length > 0 ? (actionsTerminees / actions.length) * 100 : 0;
+    const tauxJalons = jalons.length > 0 ? (jalonsAtteints / jalons.length) * 100 : 0;
+
+    // Calcul météo basé sur les indicateurs réels
+    if (actionsBloquees > 0 || actionsEnRetard > 2 || jalonsEnDanger > 1) {
+      return { meteo: 'pluie' as MeteoType, statut: `En difficulté - ${actionsBloquees > 0 ? `${actionsBloquees} bloquée(s)` : `${actionsEnRetard} en retard`}` };
+    } else if (tauxCompletion < 30 || actionsEnRetard > 0 || jalonsEnDanger > 0) {
+      return { meteo: 'nuage' as MeteoType, statut: `Vigilance - ${Math.round(tauxCompletion)}% complété` };
+    } else if (tauxCompletion < 70 || tauxJalons < 50) {
+      return { meteo: 'soleil_nuage' as MeteoType, statut: `En cours - ${Math.round(tauxCompletion)}% complété` };
+    } else {
+      return { meteo: 'soleil' as MeteoType, statut: `En avance - ${Math.round(tauxCompletion)}% complété` };
+    }
+  }, [actions, jalons]);
+
+  const config = METEO_CONFIG[meteoData.meteo];
+  const Icon = config.icon;
+  const bgColors = {
+    soleil: 'bg-green-50 border-green-200',
+    soleil_nuage: 'bg-amber-50 border-amber-200',
+    nuage: 'bg-orange-50 border-orange-200',
+    pluie: 'bg-red-50 border-red-200',
+  };
+  const textColors = {
+    soleil: 'text-green-800',
+    soleil_nuage: 'text-amber-800',
+    nuage: 'text-orange-800',
+    pluie: 'text-red-800',
+  };
+
+  return (
+    <div className={cn('flex items-center gap-2 p-3 rounded-lg border', bgColors[meteoData.meteo])}>
+      <Icon className={cn('h-5 w-5', config.color)} />
+      <span className={cn('font-medium', textColors[meteoData.meteo])}>{meteoData.statut}</span>
+    </div>
+  );
+}
+
 // ============================================================================
 // SLIDE 1 - RAPPEL PROJET & MÉTÉO GLOBALE
 // ============================================================================
@@ -369,11 +423,8 @@ function SlideAxeRH() {
     <div className="space-y-6">
       <SectionHeader title="AXE RH & ORGANISATION" icon={Users} color="text-blue-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-        <CloudSun className="h-5 w-5 text-amber-600" />
-        <span className="font-medium text-amber-800">Organigramme à valider</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsRH} jalons={jalonsRH} />
 
       {/* Avancement temps réel */}
       <Card padding="md">
@@ -462,11 +513,8 @@ function SlideAxeCommercial() {
     <div className="space-y-6">
       <SectionHeader title="AXE COMMERCIAL & LEASING" icon={Building2} color="text-indigo-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-        <Sun className="h-5 w-5 text-green-600" />
-        <span className="font-medium text-green-800">En avance - Commercialisation démarrée en 2024</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsCommerciales} jalons={jalonsCommerciaux} />
 
       {/* Jalons Clés */}
       <Card padding="md">
@@ -602,11 +650,8 @@ function SlideAxeTechnique() {
     <div className="space-y-6">
       <SectionHeader title="AXE TECHNIQUE & HANDOVER" icon={Wrench} color="text-purple-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-        <CloudSun className="h-5 w-5 text-amber-600" />
-        <span className="font-medium text-amber-800">Préparation handover en cours</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsTechniques} jalons={jalonsTechniques} />
 
       {/* Jalons Clés */}
       <Card padding="md">
@@ -693,6 +738,18 @@ function SlideAxeTechnique() {
 function SlideAxeBudget() {
   const budget = useBudgetSynthese();
   const budgetParAxe = useBudgetParAxe();
+  const actions = useActions();
+  const jalons = useJalons();
+
+  const actionsBudget = useMemo(() => {
+    if (!actions.data) return [];
+    return actions.data.filter(a => a.axe === 'axe4_budget');
+  }, [actions.data]);
+
+  const jalonsBudget = useMemo(() => {
+    if (!jalons.data) return [];
+    return jalons.data.filter(j => j.axe === 'axe4_budget');
+  }, [jalons.data]);
 
   // Calcul du budget total réel
   const budgetTotalPrevu = budget?.prevu || 0;
@@ -703,11 +760,8 @@ function SlideAxeBudget() {
     <div className="space-y-6">
       <SectionHeader title="AXE BUDGET & FINANCES" icon={DollarSign} color="text-amber-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-        <CloudSun className="h-5 w-5 text-amber-600" />
-        <span className="font-medium text-amber-800">Budgets à valider (ce Deep Dive)</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsBudget} jalons={jalonsBudget} />
 
       {/* Vue Synthétique 2026 */}
       <Card padding="md">
@@ -850,11 +904,8 @@ function SlideAxeMarketing() {
     <div className="space-y-6">
       <SectionHeader title="AXE MARKETING & COMMUNICATION" icon={Megaphone} color="text-pink-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-        <CloudSun className="h-5 w-5 text-amber-600" />
-        <span className="font-medium text-amber-800">En préparation - Identité de marque à lancer</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsMarketing} jalons={jalonsMarketing} />
 
       {/* Jalons Clés */}
       <Card padding="md">
@@ -951,15 +1002,17 @@ function SlideAxeExploitation() {
     return actions.data.filter(a => a.axe === 'axe6_exploitation');
   }, [actions.data]);
 
+  const jalonsExploitation = useMemo(() => {
+    if (!jalons.data) return [];
+    return jalons.data.filter(j => j.axe === 'axe6_exploitation');
+  }, [jalons.data]);
+
   return (
     <div className="space-y-6">
       <SectionHeader title="AXE EXPLOITATION & JURIDIQUE" icon={Settings} color="text-green-600" />
 
-      {/* Météo */}
-      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-        <Sun className="h-5 w-5 text-green-600" />
-        <span className="font-medium text-green-800">OK - BEFA standard prêt</span>
-      </div>
+      {/* Météo dynamique */}
+      <AxeMeteoBadge actions={actionsExploitation} jalons={jalonsExploitation} />
 
       {/* Modèle d'Exploitation */}
       <Card padding="md">
