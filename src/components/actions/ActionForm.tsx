@@ -74,7 +74,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg">

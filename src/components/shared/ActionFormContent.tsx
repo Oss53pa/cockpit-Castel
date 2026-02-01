@@ -26,6 +26,7 @@ import {
   Sparkles,
   X,
   AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 import {
   Button,
@@ -77,6 +78,12 @@ interface PointAttention {
   dateCreation: string;
 }
 
+interface DecisionAttendue {
+  id: string;
+  sujet: string;
+  dateCreation: string;
+}
+
 interface UserOption {
   id: number;
   nom: string;
@@ -107,6 +114,7 @@ const FORM_TABS = [
   { id: 'general', label: 'Général', icon: Target },
   { id: 'sousTaches', label: 'Sous-tâches', icon: ListChecks },
   { id: 'pointsAttention', label: "Points d'Attention", icon: AlertTriangle },
+  { id: 'decisionsAttendues', label: 'Décisions attendues', icon: HelpCircle },
   { id: 'complements', label: 'Compléments', icon: MessageSquare },
   { id: 'preuves', label: 'Preuves', icon: Paperclip },
 ];
@@ -147,6 +155,7 @@ export interface ActionFormSaveData {
   sousTaches?: SousTache[];
   preuves?: Preuve[];
   pointsAttention?: PointAttention[];
+  decisionsAttendues?: DecisionAttendue[];
 }
 
 // ============================================================================
@@ -205,6 +214,9 @@ export function ActionFormContent({
   const [newNote, setNewNote] = useState('');
   const [pointsAttention, setPointsAttention] = useState<PointAttention[]>(
     (action as any).points_attention || []
+  );
+  const [decisionsAttendues, setDecisionsAttendues] = useState<DecisionAttendue[]>(
+    (action as any).decisions_attendues || []
   );
   const [notesMiseAJour, setNotesMiseAJour] = useState((action as any).notes_mise_a_jour || '');
 
@@ -363,6 +375,25 @@ export function ActionFormContent({
     setPointsAttention(pointsAttention.filter((_, i) => i !== index));
   };
 
+  // Handlers décisions attendues
+  const handleAddDecisionAttendue = () => {
+    setDecisionsAttendues([...decisionsAttendues, {
+      id: crypto.randomUUID(),
+      sujet: '',
+      dateCreation: new Date().toISOString(),
+    }]);
+  };
+
+  const handleUpdateDecisionAttendue = (index: number, field: keyof DecisionAttendue, value: any) => {
+    const updated = [...decisionsAttendues];
+    updated[index] = { ...updated[index], [field]: value };
+    setDecisionsAttendues(updated);
+  };
+
+  const handleRemoveDecisionAttendue = (index: number) => {
+    setDecisionsAttendues(decisionsAttendues.filter((_, i) => i !== index));
+  };
+
   // Sauvegarde
   const handleSave = () => {
     onSave?.({
@@ -374,6 +405,7 @@ export function ActionFormContent({
       sousTaches,
       preuves,
       pointsAttention,
+      decisionsAttendues,
     });
   };
 
@@ -457,14 +489,14 @@ export function ActionFormContent({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        {/* Onglets */}
-        <TabsList className="flex-shrink-0 grid grid-cols-4">
+        {/* Onglets - 6 tabs en ligne */}
+        <TabsList className="flex-shrink-0 flex gap-0.5">
           {FORM_TABS.map((tab) => {
             const Icon = tab.icon;
             return (
-              <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1.5 text-xs sm:text-sm">
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+              <TabsTrigger key={tab.id} value={tab.id} className="flex-1 flex items-center justify-center gap-1 text-xs px-2 py-1.5">
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{tab.label}</span>
                 {tab.id === 'sousTaches' && sousTaches.length > 0 && (
                   <Badge variant="info" className="ml-1 text-xs">{sousTaches.filter(st => st.fait).length}/{sousTaches.length}</Badge>
                 )}
