@@ -46,7 +46,23 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
     try {
       const today = new Date().toISOString().split('T')[0];
 
+      // Trouver le nom du responsable si changé
+      let responsableNom: string | undefined;
+      if (data.responsableId !== undefined) {
+        const user = users.find(u => u.id === data.responsableId);
+        responsableNom = user ? `${user.prenom} ${user.nom}` : undefined;
+      }
+
       await updateAction(action.id, {
+        // Champs principaux (si modifiés)
+        ...(data.titre && { titre: data.titre }),
+        ...(data.jalonId !== undefined && { jalonId: data.jalonId }),
+        ...(data.responsableId !== undefined && {
+          responsableId: data.responsableId,
+          responsable: responsableNom,
+        }),
+        ...(data.date_fin_prevue !== undefined && { date_fin_prevue: data.date_fin_prevue }),
+        // Statut et avancement
         statut: data.statut,
         avancement: data.avancement,
         sous_taches: data.sousTaches,
@@ -62,7 +78,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         derniere_mise_a_jour: today,
       });
 
-      toast.success('Action mise à jour', `"${action.titre}" a été enregistrée`);
+      toast.success('Action mise à jour', `"${data.titre || action.titre}" a été enregistrée`);
       onSuccess();
       onClose();
     } catch (error) {

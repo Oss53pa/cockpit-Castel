@@ -147,6 +147,12 @@ export interface ActionFormContentProps {
 }
 
 export interface ActionFormSaveData {
+  // Champs principaux (modifiables en interne)
+  titre?: string;
+  jalonId?: number | null;
+  responsableId?: number | null;
+  date_fin_prevue?: string;
+  // Statut et avancement
   statut: StatutAction;
   avancement: number;
   notes_mise_a_jour?: string;
@@ -176,6 +182,12 @@ export function ActionFormContent({
   isSaving = false,
 }: ActionFormContentProps) {
   const [activeTab, setActiveTab] = useState('general');
+
+  // État des champs principaux (éditables en interne)
+  const [titre, setTitre] = useState(action.titre || '');
+  const [jalonId, setJalonId] = useState<number | null>(action.jalonId ?? null);
+  const [responsableId, setResponsableId] = useState<number | null>(action.responsableId ?? null);
+  const [echeance, setEcheance] = useState(action.date_fin_prevue || '');
 
   // État du formulaire
   const [avancement, setAvancement] = useState(action.avancement ?? 0);
@@ -230,7 +242,7 @@ export function ActionFormContent({
         : 'en_cours';
 
   // Calculs
-  const selectedJalon = action.jalonId ? jalons.find(j => j.id === action.jalonId) : null;
+  const selectedJalon = jalonId ? jalons.find(j => j.id === jalonId) : null;
   const axeHerite = selectedJalon?.axe || action.axe || null;
 
   const calculerPriorite = useCallback((echeance: string): 'haute' | 'moyenne' | 'basse' => {
@@ -399,6 +411,12 @@ export function ActionFormContent({
   // Sauvegarde
   const handleSave = () => {
     onSave?.({
+      // Champs principaux (si modifiés en interne)
+      titre: titre !== action.titre ? titre : undefined,
+      jalonId: jalonId !== action.jalonId ? jalonId : undefined,
+      responsableId: responsableId !== action.responsableId ? responsableId : undefined,
+      date_fin_prevue: echeance !== action.date_fin_prevue ? echeance : undefined,
+      // Statut et avancement
       statut,
       avancement,
       notes_mise_a_jour: notesMiseAJour,
@@ -514,11 +532,12 @@ export function ActionFormContent({
         <div className="flex-1 overflow-y-auto p-1 mt-4">
           {/* ONGLET GÉNÉRAL */}
           <TabsContent value="general" className="space-y-4 m-0">
-            {/* Champs obligatoires - Lecture seule en externe */}
+            {/* Champs obligatoires - Éditables en interne, lecture seule en externe */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4" />
                 Champs obligatoires
+                {isExternal && <span className="text-xs font-normal text-blue-600 ml-2">(lecture seule)</span>}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Jalon */}
@@ -527,9 +546,23 @@ export function ActionFormContent({
                     <Link2 className="w-4 h-4 text-purple-600" />
                     Jalon
                   </Label>
-                  <div className="p-2 bg-white rounded border text-sm">
-                    {selectedJalon ? `${selectedJalon.id_jalon} - ${selectedJalon.titre}` : action.jalonId || '-'}
-                  </div>
+                  {isEditing && !isExternal && jalons.length > 0 ? (
+                    <Select
+                      value={jalonId?.toString() || ''}
+                      onChange={(e) => setJalonId(e.target.value ? parseInt(e.target.value) : null)}
+                    >
+                      <SelectOption value="">Sélectionner un jalon...</SelectOption>
+                      {jalons.map(j => (
+                        <SelectOption key={j.id} value={j.id.toString()}>
+                          {j.id_jalon} - {j.titre}
+                        </SelectOption>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {selectedJalon ? `${selectedJalon.id_jalon} - ${selectedJalon.titre}` : action.jalonId || '-'}
+                    </div>
+                  )}
                 </div>
 
                 {/* Responsable */}
@@ -538,7 +571,21 @@ export function ActionFormContent({
                     <User className="w-4 h-4 text-green-600" />
                     Responsable
                   </Label>
-                  <div className="p-2 bg-white rounded border text-sm">{action.responsable || '-'}</div>
+                  {isEditing && !isExternal && users.length > 0 ? (
+                    <Select
+                      value={responsableId?.toString() || ''}
+                      onChange={(e) => setResponsableId(e.target.value ? parseInt(e.target.value) : null)}
+                    >
+                      <SelectOption value="">Sélectionner un responsable...</SelectOption>
+                      {users.map(u => (
+                        <SelectOption key={u.id} value={u.id.toString()}>
+                          {u.prenom} {u.nom}
+                        </SelectOption>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">{action.responsable || '-'}</div>
+                  )}
                 </div>
 
                 {/* Libellé */}
@@ -547,7 +594,15 @@ export function ActionFormContent({
                     <FileText className="w-4 h-4 text-blue-600" />
                     Libellé
                   </Label>
-                  <div className="p-2 bg-white rounded border text-sm font-medium">{action.titre || '-'}</div>
+                  {isEditing && !isExternal ? (
+                    <Input
+                      value={titre}
+                      onChange={(e) => setTitre(e.target.value)}
+                      placeholder="Titre de l'action"
+                    />
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm font-medium">{action.titre || '-'}</div>
+                  )}
                 </div>
 
                 {/* Échéance */}
@@ -556,9 +611,17 @@ export function ActionFormContent({
                     <Calendar className="w-4 h-4 text-orange-600" />
                     Échéance
                   </Label>
-                  <div className="p-2 bg-white rounded border text-sm">
-                    {action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}
-                  </div>
+                  {isEditing && !isExternal ? (
+                    <Input
+                      type="date"
+                      value={echeance}
+                      onChange={(e) => setEcheance(e.target.value)}
+                    />
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

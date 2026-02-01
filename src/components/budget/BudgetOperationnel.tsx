@@ -1471,16 +1471,14 @@ function VueParPhase({ annee }: { annee: 2026 | 2027 }) {
   );
 }
 
-// Vue Synthèse Éditable (avec données du hook)
+// Vue Synthèse (lecture seule - les modifications se font dans la vue Détail)
 function VueSyntheseEditable({
   lignes,
   totaux,
-  onEdit,
   annee,
 }: {
   lignes: LigneBudgetExploitation[];
   totaux: { prevu: number; engage: number; consomme: number; reste: number };
-  onEdit: (ligne: LigneBudgetExploitation) => void;
   annee: 2026 | 2027;
 }) {
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
@@ -1498,8 +1496,8 @@ function VueSyntheseEditable({
       <Card padding="md">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-primary-900">Postes budgétaires {annee}</h3>
-            <p className="text-sm text-primary-500">Cliquez sur une ligne pour modifier les montants</p>
+            <h3 className="text-lg font-semibold text-primary-900">Synthèse Budget Exploitation {annee}</h3>
+            <p className="text-sm text-primary-500">Récapitulatif calculé depuis les détails (lecture seule)</p>
           </div>
         </div>
         <Table>
@@ -1511,7 +1509,6 @@ function VueSyntheseEditable({
               <TableHead className="text-right">Engagé</TableHead>
               <TableHead className="text-right">Consommé</TableHead>
               <TableHead className="text-right">Part</TableHead>
-              <TableHead className="w-16"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1520,8 +1517,7 @@ function VueSyntheseEditable({
               return (
                 <TableRow
                   key={ligne.id}
-                  className="hover:bg-primary-50 cursor-pointer transition-colors"
-                  onClick={() => onEdit(ligne)}
+                  className="hover:bg-primary-50"
                 >
                   <TableCell className="text-primary-400">{idx + 1}</TableCell>
                   <TableCell>
@@ -1536,18 +1532,6 @@ function VueSyntheseEditable({
                   <TableCell className="text-right font-mono text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
                   <TableCell className="text-right font-mono text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
                   <TableCell className="text-right">{part}%</TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(ligne);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 text-primary-600" />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               );
             })}
@@ -1567,7 +1551,6 @@ function VueSyntheseEditable({
                 {formatMontant(totaux.consomme)}
               </TableCell>
               <TableCell className="text-right font-bold">100%</TableCell>
-              <TableCell></TableCell>
             </TableRow>
           </TableFooter>
         </Table>
@@ -1747,7 +1730,7 @@ export function BudgetOperationnel() {
         </TabsList>
 
         <TabsContent value="synthese">
-          <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} annee={annee} />
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} annee={annee} />
         </TabsContent>
 
         <TabsContent value="detail">
