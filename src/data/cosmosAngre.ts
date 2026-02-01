@@ -8445,47 +8445,47 @@ export async function seedDatabase(): Promise<void> {
 
     // Insert sites
     if (PRODUCTION_DATA.sites?.length > 0) {
-      await db.sites.bulkAdd(PRODUCTION_DATA.sites);
+      await db.sites.bulkPut(PRODUCTION_DATA.sites);
     }
 
     // Insert project
     if (PRODUCTION_DATA.project?.length > 0) {
-      await db.project.bulkAdd(PRODUCTION_DATA.project);
+      await db.project.bulkPut(PRODUCTION_DATA.project);
     }
 
     // Insert project settings
     if (PRODUCTION_DATA.projectSettings?.length > 0) {
-      await db.projectSettings.bulkAdd(PRODUCTION_DATA.projectSettings);
+      await db.projectSettings.bulkPut(PRODUCTION_DATA.projectSettings);
     }
 
     // Insert users
     if (PRODUCTION_DATA.users?.length > 0) {
-      await db.users.bulkAdd(PRODUCTION_DATA.users);
+      await db.users.bulkPut(PRODUCTION_DATA.users);
     }
 
     // Insert teams
     if (PRODUCTION_DATA.teams?.length > 0) {
-      await db.teams.bulkAdd(PRODUCTION_DATA.teams);
+      await db.teams.bulkPut(PRODUCTION_DATA.teams);
     }
 
     // Insert actions (102 vraies actions)
     if (PRODUCTION_DATA.actions?.length > 0) {
-      await db.actions.bulkAdd(PRODUCTION_DATA.actions);
+      await db.actions.bulkPut(PRODUCTION_DATA.actions);
     }
 
     // Insert jalons (19 vrais jalons)
     if (PRODUCTION_DATA.jalons?.length > 0) {
-      await db.jalons.bulkAdd(PRODUCTION_DATA.jalons);
+      await db.jalons.bulkPut(PRODUCTION_DATA.jalons);
     }
 
     // Insert risques (75 vrais risques)
     if (PRODUCTION_DATA.risques?.length > 0) {
-      await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+      await db.risques.bulkPut(PRODUCTION_DATA.risques);
     }
 
     // Insert budget
     if (PRODUCTION_DATA.budget?.length > 0) {
-      await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+      await db.budget.bulkPut(PRODUCTION_DATA.budget);
     }
   } else {
     // Seed partiel: vérifier et ajouter les données manquantes
@@ -8494,7 +8494,7 @@ export async function seedDatabase(): Promise<void> {
     const existingRisques = await db.risques.count();
     if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
       console.log('[seedDatabase] Risques manquants, seed des risques...');
-      await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+      await db.risques.bulkPut(PRODUCTION_DATA.risques);
       console.log(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés`);
     }
 
@@ -8502,7 +8502,7 @@ export async function seedDatabase(): Promise<void> {
     const existingBudget = await db.budget.count();
     if (existingBudget === 0 && PRODUCTION_DATA.budget?.length > 0) {
       console.log('[seedDatabase] Budget manquant, seed du budget...');
-      await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+      await db.budget.bulkPut(PRODUCTION_DATA.budget);
       console.log(`[seedDatabase] ${PRODUCTION_DATA.budget.length} entrées budget ajoutées`);
     }
   }
@@ -8539,7 +8539,7 @@ export async function migrateToV21(): Promise<{ success: boolean; message: strin
 
     // Insérer les nouveaux jalons V2.1
     const jalonsV21 = getAllJalonsV21();
-    const insertedJalonIds = await db.jalons.bulkAdd(jalonsV21 as Jalon[], { allKeys: true });
+    const insertedJalonIds = await db.jalons.bulkPut(jalonsV21 as Jalon[], { allKeys: true });
 
     // Créer le mapping jalonId V2.1 -> jalonId DB
     const jalonIdMapping = new Map<string, number>();
@@ -8557,7 +8557,7 @@ export async function migrateToV21(): Promise<{ success: boolean; message: strin
       }
       return action;
     });
-    await db.actions.bulkAdd(actionsV21 as Action[]);
+    await db.actions.bulkPut(actionsV21 as Action[]);
 
     const statsV21 = getStatsV21();
     const newJalonsCount = await db.jalons.count();
