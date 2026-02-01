@@ -418,6 +418,131 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       });
     }
   }
+
+  // ============================================================================
+  // AUTO-RÉSOLUTION DES ALERTES
+  // Marquer automatiquement comme traitées les alertes dont le problème est résolu
+  // ============================================================================
+  await autoResolveAlertes();
+}
+
+// ============================================================================
+// AUTO-RÉSOLUTION DES ALERTES
+// Marquer automatiquement comme traitées les alertes dont le problème est résolu
+// ============================================================================
+
+export async function autoResolveAlertes(): Promise<number> {
+  const alertesNonTraitees = await db.alertes.filter(a => !a.traitee).toArray();
+  let resolved = 0;
+
+  for (const alerte of alertesNonTraitees) {
+    let shouldResolve = false;
+    let resolutionMessage = '';
+
+    switch (alerte.type) {
+      case 'action_bloquee': {
+        // Résolu si l'action n'est plus bloquée
+        if (alerte.entiteId) {
+          const action = await db.actions.get(alerte.entiteId);
+          if (action && action.statut !== 'bloque') {
+            shouldResolve = true;
+            resolutionMessage = `Action débloquée (statut: ${action.statut})`;
+          }
+        }
+        break;
+      }
+
+      case 'echeance_action': {
+        // Résolu si l'action est terminée
+        if (alerte.entiteId) {
+          const action = await db.actions.get(alerte.entiteId);
+          if (action && action.statut === 'termine') {
+            shouldResolve = true;
+            resolutionMessage = 'Action terminée';
+          }
+        }
+        break;
+      }
+
+      case 'jalon_approche': {
+        // Résolu si le jalon est atteint
+        if (alerte.entiteId) {
+          const jalon = await db.jalons.get(alerte.entiteId);
+          if (jalon && jalon.statut === 'atteint') {
+            shouldResolve = true;
+            resolutionMessage = 'Jalon atteint';
+          }
+        }
+        break;
+      }
+
+      case 'risque_critique': {
+        // Résolu si le risque est fermé ou score < 12
+        if (alerte.entiteId) {
+          const risque = await db.risques.get(alerte.entiteId);
+          if (risque && (risque.status === 'closed' || risque.score < 12)) {
+            shouldResolve = true;
+            resolutionMessage = risque.status === 'closed'
+              ? 'Risque fermé'
+              : `Score réduit à ${risque.score}`;
+          }
+        }
+        break;
+      }
+
+      case 'depassement_budget': {
+        // Résolu si l'écart est revenu sous 5%
+        if (alerte.entiteId) {
+          const budgetItem = await db.budget.get(alerte.entiteId);
+          if (budgetItem) {
+            const ecart = budgetItem.montantPrevu > 0
+              ? ((budgetItem.montantRealise - budgetItem.montantPrevu) / budgetItem.montantPrevu) * 100
+              : 0;
+            if (ecart <= 5) {
+              shouldResolve = true;
+              resolutionMessage = `Écart budgétaire corrigé (${ecart.toFixed(1)}%)`;
+            }
+          }
+        }
+        break;
+      }
+
+      case 'desynchronisation_chantier_mobilisation': {
+        // Résolu si l'écart de synchronisation est revenu sous 20%
+        const actions = await db.actions.toArray();
+        const actionsTechniques = actions.filter(a => a.axe === 'axe3_technique');
+        const axesMobilisation = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+        const actionsMobilisation = actions.filter(a => axesMobilisation.includes(a.axe));
+
+        const avancementTechnique = actionsTechniques.length > 0
+          ? actionsTechniques.reduce((sum, a) => sum + a.avancement, 0) / actionsTechniques.length
+          : 0;
+        const avancementMobilisation = actionsMobilisation.length > 0
+          ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
+          : 0;
+        const ecartSync = Math.abs(avancementMobilisation - avancementTechnique);
+
+        if (ecartSync <= 20) {
+          shouldResolve = true;
+          resolutionMessage = `Synchronisation rétablie (écart: ${Math.round(ecartSync)}%)`;
+        }
+        break;
+      }
+    }
+
+    if (shouldResolve && alerte.id) {
+      await db.alertes.update(alerte.id, {
+        traitee: true,
+        traiteeAt: new Date().toISOString(),
+        traiteeParNom: 'Système (auto)',
+        lu: true, // Marquer aussi comme lu
+      });
+      resolved++;
+      console.log(`[Auto-Resolve] Alerte #${alerte.id} résolue: ${resolutionMessage}`);
+    }
+  }
+
+  return resolved;
 }
 
 // ============================================================================

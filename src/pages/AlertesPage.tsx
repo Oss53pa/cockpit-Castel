@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Bell,
   Check,
@@ -64,8 +64,35 @@ function AlerteCard({
   onSendEmail: () => void;
   isSendingEmail: boolean;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Auto-marquer comme lu quand l'alerte devient visible
+  useEffect(() => {
+    if (alerte.lu) return; // Déjà lu
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Attendre 1 seconde pour éviter les faux positifs (scroll rapide)
+          const timeout = setTimeout(() => {
+            onMarkRead();
+          }, 1000);
+          return () => clearTimeout(timeout);
+        }
+      },
+      { threshold: 0.5 } // Au moins 50% visible
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [alerte.lu, onMarkRead]);
+
   return (
     <Card
+      ref={cardRef}
       className={cn('card-hover', !alerte.lu && 'border-l-4 border-l-info-500')}
       padding="md"
     >
