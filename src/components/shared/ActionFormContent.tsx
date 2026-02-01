@@ -781,7 +781,7 @@ export function ActionFormContent({
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
                           <Label className="text-xs text-amber-700 mb-1">Responsable</Label>
-                          {isEditing && users.length > 0 ? (
+                          {isEditing ? (
                             <Select
                               value={pa.responsableId?.toString() || ''}
                               onChange={(e) => handleUpdatePointAttention(index, 'responsableId', e.target.value ? parseInt(e.target.value) : null)}
