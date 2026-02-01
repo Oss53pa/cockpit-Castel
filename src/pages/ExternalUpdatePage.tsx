@@ -124,6 +124,8 @@ export function ExternalUpdatePage() {
           score: updateLink.entityData.score,
           probabilite: updateLink.entityData.probabilite,
           impact: updateLink.entityData.impact,
+          // Inclure les sous-tâches si présentes
+          sous_taches: updateLink.entityData.sous_taches || [],
         } as ExtendedEntity;
       }
 
@@ -169,11 +171,55 @@ export function ExternalUpdatePage() {
       // Mise à jour locale si possible
       if (!isFirebaseMode) {
         if (type === 'action') {
-          await db.actions.update(link.entityId, updateData);
+          const actionData = data as ActionFormSaveData;
+          // Convertir les champs pour le format DB
+          const actionUpdate: Record<string, any> = {
+            statut: actionData.statut,
+            avancement: actionData.avancement,
+            notes_mise_a_jour: actionData.notes_mise_a_jour,
+            commentaires_externes: actionData.commentaires_externes,
+            liens_documents: actionData.liens_documents,
+            sous_taches: actionData.sousTaches,
+            updated_at: new Date().toISOString(),
+            derniere_mise_a_jour_externe: new Date().toISOString(),
+          };
+          // Convertir preuves en documents si présents
+          if (actionData.preuves) {
+            actionUpdate.documents = actionData.preuves.map(p => ({
+              id: p.id,
+              nom: p.nom,
+              type: p.type,
+              url: p.url || '',
+              dateAjout: p.dateAjout,
+            }));
+          }
+          await db.actions.update(link.entityId, actionUpdate);
         } else if (type === 'jalon') {
-          await db.jalons.update(link.entityId, updateData);
+          const jalonData = data as JalonFormSaveData;
+          const jalonUpdate: Record<string, any> = {
+            statut: jalonData.statut,
+            preuve_url: jalonData.preuve_url,
+            notes_mise_a_jour: jalonData.notes_mise_a_jour,
+            commentaires_externes: jalonData.commentaires_externes,
+            date_validation: jalonData.date_validation,
+            updated_at: new Date().toISOString(),
+            derniere_mise_a_jour_externe: new Date().toISOString(),
+          };
+          await db.jalons.update(link.entityId, jalonUpdate);
         } else if (type === 'risque') {
-          await db.risques.update(link.entityId, updateData);
+          const risqueData = data as RisqueFormSaveData;
+          const risqueUpdate: Record<string, any> = {
+            statut: risqueData.statut,
+            probabilite: risqueData.probabilite,
+            impact: risqueData.impact,
+            score: risqueData.score,
+            plan_mitigation: risqueData.plan_mitigation,
+            notes_mise_a_jour: risqueData.notes_mise_a_jour,
+            commentaires_externes: risqueData.commentaires_externes,
+            updated_at: new Date().toISOString(),
+            derniere_mise_a_jour_externe: new Date().toISOString(),
+          };
+          await db.risques.update(link.entityId, risqueUpdate);
         }
 
         await db.historique.add({

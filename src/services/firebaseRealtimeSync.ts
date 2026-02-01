@@ -42,13 +42,42 @@ export interface ExternalUpdateData {
   entitySnapshot: {
     titre: string;
     statut: string;
+    description?: string;
+
+    // Action
     avancement?: number;
-    date_prevue?: string;
     date_fin_prevue?: string;
+    sous_taches?: Array<{
+      id: string;
+      libelle: string;
+      responsableId?: number | null;
+      echeance?: string | null;
+      fait: boolean;
+    }>;
+    documents?: Array<{
+      id: string;
+      nom: string;
+      type: string;
+      url: string;
+      dateAjout: string;
+    }>;
+    commentaires?: Array<{
+      id: string;
+      texte: string;
+      auteur: string;
+      date: string;
+    }>;
+
+    // Jalon
+    date_prevue?: string;
+    preuve_url?: string;
+    date_validation?: string | null;
+
+    // Risque
     probabilite?: number;
     impact?: number;
     score?: number;
-    description?: string;
+    plan_mitigation?: string;
   };
 
   // Destinataire
@@ -68,13 +97,38 @@ export interface ExternalUpdateData {
       email?: string;
     };
     changes: {
+      // Commun à tous
       statut?: string;
+      notes?: string;              // notes_mise_a_jour
+      commentaires?: string;       // commentaires_externes (JSON string)
+
+      // Action
       avancement?: number;
+      sousTaches?: Array<{
+        id: string;
+        libelle: string;
+        responsableId?: number | null;
+        echeance?: string | null;
+        fait: boolean;
+      }>;
+      preuves?: Array<{
+        id: string;
+        type: 'fichier' | 'lien';
+        nom: string;
+        url?: string;
+        dateAjout: string;
+      }>;
+      liens_documents?: string;    // JSON string des preuves
+
+      // Jalon
+      preuve_url?: string;
+      date_validation?: string | null;
+
+      // Risque
       probabilite?: number;
       impact?: number;
       score?: number;
-      notes?: string;
-      commentaires?: string;
+      plan_mitigation?: string;
     };
     liens?: Array<{ id: string; title: string; url: string }>;
     comments?: Array<{ id: string; text: string; createdAt: string }>;
@@ -231,15 +285,37 @@ export async function createUpdateLinkInFirebase(
       const action = entity as Action;
       entitySnapshot.avancement = action.avancement;
       entitySnapshot.date_fin_prevue = action.date_fin_prevue;
+      // Inclure les sous-tâches si présentes
+      if ((action as any).sous_taches) {
+        entitySnapshot.sous_taches = (action as any).sous_taches;
+      }
+      // Inclure les documents/preuves
+      if (action.documents) {
+        entitySnapshot.documents = action.documents;
+      }
+      // Inclure les commentaires
+      if ((action as any).commentaires) {
+        entitySnapshot.commentaires = (action as any).commentaires;
+      }
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
-      entitySnapshot.avancement = jalon.avancement;
       entitySnapshot.date_prevue = jalon.date_prevue;
+      entitySnapshot.preuve_url = (jalon as any).preuve_url;
+      entitySnapshot.date_validation = (jalon as any).date_validation;
+      // Inclure les commentaires
+      if ((jalon as any).commentaires) {
+        entitySnapshot.commentaires = (jalon as any).commentaires;
+      }
     } else if (entityType === 'risque') {
       const risque = entity as Risque;
       entitySnapshot.probabilite = risque.probabilite;
       entitySnapshot.impact = risque.impact;
       entitySnapshot.score = risque.score;
+      entitySnapshot.plan_mitigation = (risque as any).plan_mitigation;
+      // Inclure les commentaires
+      if ((risque as any).commentaires) {
+        entitySnapshot.commentaires = (risque as any).commentaires;
+      }
     }
 
     const updateData: ExternalUpdateData = {
@@ -492,20 +568,37 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
       derniere_mise_a_jour_externe: response.submittedAt,
     };
 
-    // Appliquer les changements selon le type
+    // Appliquer les changements communs
     if (changes.statut) updateData.statut = changes.statut;
     if (changes.notes) updateData.notes_mise_a_jour = changes.notes;
+    if (changes.commentaires) updateData.commentaires_externes = changes.commentaires;
 
     if (entityType === 'action') {
+      // Champs Action
       if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
+      if (changes.sousTaches) updateData.sous_taches = changes.sousTaches;
+      if (changes.preuves) {
+        updateData.documents = changes.preuves.map(p => ({
+          id: p.id,
+          nom: p.nom,
+          type: p.type,
+          url: p.url || '',
+          dateAjout: p.dateAjout,
+        }));
+      }
+      if (changes.liens_documents) updateData.liens_documents = changes.liens_documents;
       await db.actions.update(entityId, updateData);
     } else if (entityType === 'jalon') {
-      if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
+      // Champs Jalon
+      if (changes.preuve_url) updateData.preuve_url = changes.preuve_url;
+      if (changes.date_validation !== undefined) updateData.date_validation = changes.date_validation;
       await db.jalons.update(entityId, updateData);
     } else if (entityType === 'risque') {
+      // Champs Risque
       if (changes.probabilite !== undefined) updateData.probabilite = changes.probabilite;
       if (changes.impact !== undefined) updateData.impact = changes.impact;
       if (changes.score !== undefined) updateData.score = changes.score;
+      if (changes.plan_mitigation) updateData.plan_mitigation = changes.plan_mitigation;
       await db.risques.update(entityId, updateData);
     }
 

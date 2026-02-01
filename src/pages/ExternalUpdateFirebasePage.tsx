@@ -127,12 +127,17 @@ export function ExternalUpdateFirebasePage() {
           ...baseEntity,
           avancement: snapshot.avancement || 0,
           date_fin_prevue: snapshot.date_fin_prevue || '',
+          sous_taches: snapshot.sous_taches || [],
+          documents: snapshot.documents || [],
+          commentaires: snapshot.commentaires || [],
         } as Action);
       } else if (type === 'jalon') {
         setEntity({
           ...baseEntity,
-          avancement: snapshot.avancement || 0,
           date_prevue: snapshot.date_prevue || '',
+          preuve_url: snapshot.preuve_url || '',
+          date_validation: snapshot.date_validation || null,
+          commentaires: snapshot.commentaires || [],
         } as Jalon);
       } else if (type === 'risque') {
         setEntity({
@@ -140,7 +145,9 @@ export function ExternalUpdateFirebasePage() {
           probabilite: snapshot.probabilite || 1,
           impact: snapshot.impact || 1,
           score: snapshot.score || 1,
+          plan_mitigation: snapshot.plan_mitigation || '',
           proprietaire: data.recipientName,
+          commentaires: snapshot.commentaires || [],
         } as Risque);
       }
 
@@ -167,19 +174,37 @@ export function ExternalUpdateFirebasePage() {
         changes: {
           statut: formData.statut,
           notes: (formData as any).notes_mise_a_jour,
+          commentaires: (formData as any).commentaires_externes,
         },
       };
 
-      // Add type-specific changes
-      if (type === 'action' || type === 'jalon') {
-        response.changes.avancement = (formData as ActionFormSaveData).avancement;
+      // Champs spécifiques aux actions
+      if (type === 'action') {
+        const actionData = formData as ActionFormSaveData;
+        response.changes.avancement = actionData.avancement;
+        response.changes.liens_documents = actionData.liens_documents;
+        if (actionData.sousTaches) {
+          response.changes.sousTaches = actionData.sousTaches;
+        }
+        if (actionData.preuves) {
+          response.changes.preuves = actionData.preuves;
+        }
       }
 
+      // Champs spécifiques aux jalons
+      if (type === 'jalon') {
+        const jalonData = formData as JalonFormSaveData;
+        response.changes.preuve_url = jalonData.preuve_url;
+        response.changes.date_validation = jalonData.date_validation;
+      }
+
+      // Champs spécifiques aux risques
       if (type === 'risque') {
         const risqueData = formData as RisqueFormSaveData;
         response.changes.probabilite = risqueData.probabilite;
         response.changes.impact = risqueData.impact;
         response.changes.score = risqueData.score;
+        response.changes.plan_mitigation = risqueData.plan_mitigation;
       }
 
       // Submit to Firebase
