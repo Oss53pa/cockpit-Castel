@@ -456,7 +456,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
     return {
       risques: sortedRisques.map(r => ({
         id: r.id?.toString() || '',
-        code: r.code || r.id?.toString() || '',
+        code: r.id_risque || r.id?.toString() || '',
         titre: r.titre,
         description: r.description || '',
         score: r.score_actuel || r.score_initial || 0,
@@ -491,7 +491,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       })
       .map(r => ({
         id: r.id?.toString() || '',
-        code: r.code || r.id_risque || '',
+        code: r.id_risque || '',
         titre: r.titre,
         score: r.score_actuel || r.score_initial || 0,
         axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
@@ -503,7 +503,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       .filter(r => r.statut === 'ferme')
       .map(r => ({
         id: r.id?.toString() || '',
-        code: r.code || r.id_risque || '',
+        code: r.id_risque || '',
         titre: r.titre,
         scoreFinal: r.score_actuel || r.score_initial || 0,
         axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',

@@ -53,7 +53,7 @@ interface FicheRisque {
 // Convertir un risque DB en FicheRisque
 function convertToFicheRisque(risque: Risque): FicheRisque {
   return {
-    id: risque.code || risque.id_risque || `R-${risque.id}`,
+    id: risque.id_risque || `R-${risque.id}`,
     titre: risque.titre,
     description: risque.description || '',
     categorie: risque.categorie,
@@ -357,7 +357,7 @@ export function FichesRisquesTop10() {
   // Convertir les risques DB en fiches et prendre le top 10 par score
   const fichesRisques = useMemo(() => {
     return [...risquesData]
-      .filter(r => r.status !== 'ferme')
+      .filter(r => r.status !== 'closed')
       .sort((a, b) => (b.score || 0) - (a.score || 0))
       .slice(0, 10)
       .map(convertToFicheRisque);

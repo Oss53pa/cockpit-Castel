@@ -99,7 +99,7 @@ export function RisquesSynthese() {
   // Top 10 risques critiques (triés par score décroissant)
   const risquesCritiques = useMemo(() => {
     return [...risquesData]
-      .filter(r => r.status !== 'ferme')
+      .filter(r => r.status !== 'closed')
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
   }, [risquesData]);
@@ -256,7 +256,7 @@ export function RisquesSynthese() {
               {risquesCritiques.map((risque, index) => (
                 <tr key={risque.id} className={index % 2 === 0 ? 'bg-white' : 'bg-primary-50/50'}>
                   <td className="px-3 py-2 font-bold text-primary-600">{index + 1}</td>
-                  <td className="px-3 py-2 font-mono text-primary-700">{risque.code || `R-${risque.id}`}</td>
+                  <td className="px-3 py-2 font-mono text-primary-700">{risque.id_risque || `R-${risque.id}`}</td>
                   <td className="px-3 py-2 text-primary-800">{risque.titre}</td>
                   <td className="px-3 py-2 text-center">
                     <Badge variant="error" className="font-bold">{risque.score}</Badge>

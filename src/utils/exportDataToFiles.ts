@@ -114,7 +114,7 @@ export async function exportRisquesForDataFiles(): Promise<void> {
     count: risques.length,
     risques: risques.map(r => ({
       id: r.id,
-      code: r.code,
+      code: r.id_risque,
       titre: r.titre,
       description: r.description,
       categorie: r.categorie,
