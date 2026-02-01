@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertTriangle,
   TrendingUp,
@@ -15,14 +15,19 @@ import {
 } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import {
-  SYNTHESE_RISQUES,
-  REGISTRE_RISQUES_COSMOS_ANGRE,
-  getRisquesByCategorie,
-  getRisquesCritiques,
-  type RisqueNiveau,
-} from '@/data/risquesCosmosAngre';
-import { seedRisquesCosmosAngre, areRisquesSeeded, getRisquesStats, clearRisques } from '@/data/seedRisques';
+import { useRisques, useRisquesCritiques } from '@/hooks';
+import type { Risque, RisqueCategory } from '@/types';
+
+// Type pour le niveau de risque
+type RisqueNiveau = 'critique' | 'majeur' | 'modere' | 'faible';
+
+// Fonction pour déterminer le niveau d'un risque basé sur son score
+function getNiveauRisque(score: number): RisqueNiveau {
+  if (score >= 12) return 'critique';
+  if (score >= 8) return 'majeur';
+  if (score >= 4) return 'modere';
+  return 'faible';
+}
 
 // Configuration des axes avec icônes
 const AXES_CONFIG = [
@@ -48,78 +53,56 @@ const getNiveauConfig = (niveau: RisqueNiveau) => {
 };
 
 export function RisquesSynthese() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [seedStatus, setSeedStatus] = useState<{ success: boolean; message: string } | null>(null);
-  const [dbStats, setDbStats] = useState<{ total: number; parNiveau: Record<string, number> } | null>(null);
+  // Données depuis la base de données
+  const risquesData = useRisques();
+  const risquesCritiquesData = useRisquesCritiques();
 
-  // Statistiques du registre par catégorie
-  const statsByCategorie = AXES_CONFIG.map((axe) => {
-    const risques = getRisquesByCategorie(axe.id as any);
-    const critiques = risques.filter(r => r.niveau === 'critique').length;
-    const majeurs = risques.filter(r => r.niveau === 'majeur').length;
-    return {
-      ...axe,
-      total: risques.length,
-      critiques,
-      majeurs,
+  // Calcul des statistiques depuis les données réelles
+  const syntheseRisques = useMemo(() => {
+    const parNiveau = {
+      critique: 0,
+      majeur: 0,
+      modere: 0,
+      faible: 0,
     };
-  });
 
-  // Top 10 risques critiques
-  const risquesCritiques = getRisquesCritiques();
+    risquesData.forEach((r) => {
+      const niveau = getNiveauRisque(r.score);
+      parNiveau[niveau]++;
+    });
 
-  // Charger les données dans la base
-  const handleSeedData = async () => {
-    setIsLoading(true);
-    setSeedStatus(null);
-    try {
-      const result = await seedRisquesCosmosAngre(1, true);
-      if (result.success) {
-        setSeedStatus({ success: true, message: `${result.count} risques chargés avec succès` });
-        // Rafraîchir les stats
-        const stats = await getRisquesStats(1);
-        setDbStats({ total: stats.total, parNiveau: stats.parNiveau });
-      } else {
-        setSeedStatus({ success: false, message: `Erreurs: ${result.errors.join(', ')}` });
-      }
-    } catch (error) {
-      setSeedStatus({ success: false, message: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}` });
-    }
-    setIsLoading(false);
-  };
+    return {
+      total: risquesData.length,
+      parNiveau,
+    };
+  }, [risquesData]);
 
-  // Vérifier le statut de la base
-  const handleCheckStatus = async () => {
-    setIsLoading(true);
-    try {
-      const isSeeded = await areRisquesSeeded(1);
-      const stats = await getRisquesStats(1);
-      setDbStats({ total: stats.total, parNiveau: stats.parNiveau });
-      setSeedStatus({
-        success: isSeeded,
-        message: isSeeded
-          ? `Base initialisée avec ${stats.total} risques`
-          : `Base partiellement remplie: ${stats.total} risques sur ${REGISTRE_RISQUES_COSMOS_ANGRE.length}`,
-      });
-    } catch (error) {
-      setSeedStatus({ success: false, message: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}` });
-    }
-    setIsLoading(false);
-  };
+  // Statistiques par catégorie
+  const statsByCategorie = useMemo(() => {
+    return AXES_CONFIG.map((axe) => {
+      const risquesCategorie = risquesData.filter(
+        (r) => r.categorie === axe.id ||
+               (axe.id === 'financier' && r.categorie === 'budget') ||
+               (axe.id === 'operationnel' && r.categorie === 'exploitation')
+      );
+      const critiques = risquesCategorie.filter(r => getNiveauRisque(r.score) === 'critique').length;
+      const majeurs = risquesCategorie.filter(r => getNiveauRisque(r.score) === 'majeur').length;
+      return {
+        ...axe,
+        total: risquesCategorie.length,
+        critiques,
+        majeurs,
+      };
+    });
+  }, [risquesData]);
 
-  // Vider les risques
-  const handleClearData = async () => {
-    if (!confirm('Voulez-vous vraiment supprimer tous les risques de la base ?')) return;
-    setIsLoading(true);
-    try {
-      const count = await clearRisques(1);
-      setSeedStatus({ success: true, message: `${count} risques supprimés` });
-      setDbStats(null);
-    } catch (error) {
-      setSeedStatus({ success: false, message: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}` });
-    }
-    setIsLoading(false);
-  };
+  // Top 10 risques critiques (triés par score décroissant)
+  const risquesCritiques = useMemo(() => {
+    return [...risquesData]
+      .filter(r => r.status !== 'ferme')
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }, [risquesData]);
 
   return (
     <div className="space-y-6">
@@ -136,29 +119,29 @@ export function RisquesSynthese() {
             </p>
           </div>
           <Badge variant="secondary" className="text-lg">
-            {SYNTHESE_RISQUES.total} risques
+            {syntheseRisques.total} risques
           </Badge>
         </div>
 
         {/* Distribution par niveau */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-error-50 rounded-lg p-4 text-center border border-error-200">
-            <div className="text-3xl font-bold text-error-700">{SYNTHESE_RISQUES.parNiveau.critique}</div>
+            <div className="text-3xl font-bold text-error-700">{syntheseRisques.parNiveau.critique}</div>
             <div className="text-sm text-error-600 font-medium">Critiques</div>
             <div className="text-xs text-error-500 mt-1">Score 12-16</div>
           </div>
           <div className="bg-warning-50 rounded-lg p-4 text-center border border-warning-200">
-            <div className="text-3xl font-bold text-warning-700">{SYNTHESE_RISQUES.parNiveau.majeur}</div>
+            <div className="text-3xl font-bold text-warning-700">{syntheseRisques.parNiveau.majeur}</div>
             <div className="text-sm text-warning-600 font-medium">Majeurs</div>
             <div className="text-xs text-warning-500 mt-1">Score 8-11</div>
           </div>
           <div className="bg-info-50 rounded-lg p-4 text-center border border-info-200">
-            <div className="text-3xl font-bold text-info-700">{SYNTHESE_RISQUES.parNiveau.modere}</div>
+            <div className="text-3xl font-bold text-info-700">{syntheseRisques.parNiveau.modere}</div>
             <div className="text-sm text-info-600 font-medium">Modérés</div>
             <div className="text-xs text-info-500 mt-1">Score 4-7</div>
           </div>
           <div className="bg-success-50 rounded-lg p-4 text-center border border-success-200">
-            <div className="text-3xl font-bold text-success-700">{SYNTHESE_RISQUES.parNiveau.faible}</div>
+            <div className="text-3xl font-bold text-success-700">{syntheseRisques.parNiveau.faible}</div>
             <div className="text-sm text-success-600 font-medium">Faibles</div>
             <div className="text-xs text-success-500 mt-1">Score 1-3</div>
           </div>
@@ -171,11 +154,11 @@ export function RisquesSynthese() {
             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-error-500 rounded-full transition-all"
-                style={{ width: `${(SYNTHESE_RISQUES.parNiveau.critique / SYNTHESE_RISQUES.total) * 100}%` }}
+                style={{ width: `${syntheseRisques.total > 0 ? (syntheseRisques.parNiveau.critique / syntheseRisques.total) * 100 : 0}%` }}
               />
             </div>
             <div className="w-12 text-sm text-right text-primary-700 font-medium">
-              {Math.round((SYNTHESE_RISQUES.parNiveau.critique / SYNTHESE_RISQUES.total) * 100)}%
+              {syntheseRisques.total > 0 ? Math.round((syntheseRisques.parNiveau.critique / syntheseRisques.total) * 100) : 0}%
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -183,11 +166,11 @@ export function RisquesSynthese() {
             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-warning-500 rounded-full transition-all"
-                style={{ width: `${(SYNTHESE_RISQUES.parNiveau.majeur / SYNTHESE_RISQUES.total) * 100}%` }}
+                style={{ width: `${syntheseRisques.total > 0 ? (syntheseRisques.parNiveau.majeur / syntheseRisques.total) * 100 : 0}%` }}
               />
             </div>
             <div className="w-12 text-sm text-right text-primary-700 font-medium">
-              {Math.round((SYNTHESE_RISQUES.parNiveau.majeur / SYNTHESE_RISQUES.total) * 100)}%
+              {syntheseRisques.total > 0 ? Math.round((syntheseRisques.parNiveau.majeur / syntheseRisques.total) * 100) : 0}%
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -195,11 +178,11 @@ export function RisquesSynthese() {
             <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-info-500 rounded-full transition-all"
-                style={{ width: `${(SYNTHESE_RISQUES.parNiveau.modere / SYNTHESE_RISQUES.total) * 100}%` }}
+                style={{ width: `${syntheseRisques.total > 0 ? (syntheseRisques.parNiveau.modere / syntheseRisques.total) * 100 : 0}%` }}
               />
             </div>
             <div className="w-12 text-sm text-right text-primary-700 font-medium">
-              {Math.round((SYNTHESE_RISQUES.parNiveau.modere / SYNTHESE_RISQUES.total) * 100)}%
+              {syntheseRisques.total > 0 ? Math.round((syntheseRisques.parNiveau.modere / syntheseRisques.total) * 100) : 0}%
             </div>
           </div>
         </div>
@@ -266,19 +249,19 @@ export function RisquesSynthese() {
                 <th className="px-3 py-2 text-left font-medium text-primary-700">Code</th>
                 <th className="px-3 py-2 text-left font-medium text-primary-700">Risque</th>
                 <th className="px-3 py-2 text-center font-medium text-primary-700">Score</th>
-                <th className="px-3 py-2 text-left font-medium text-primary-700">Jalons clés</th>
+                <th className="px-3 py-2 text-left font-medium text-primary-700">Catégorie</th>
               </tr>
             </thead>
             <tbody>
-              {risquesCritiques.slice(0, 10).map((risque, index) => (
+              {risquesCritiques.map((risque, index) => (
                 <tr key={risque.id} className={index % 2 === 0 ? 'bg-white' : 'bg-primary-50/50'}>
                   <td className="px-3 py-2 font-bold text-primary-600">{index + 1}</td>
-                  <td className="px-3 py-2 font-mono text-primary-700">{risque.code}</td>
+                  <td className="px-3 py-2 font-mono text-primary-700">{risque.code || `R-${risque.id}`}</td>
                   <td className="px-3 py-2 text-primary-800">{risque.titre}</td>
                   <td className="px-3 py-2 text-center">
                     <Badge variant="error" className="font-bold">{risque.score}</Badge>
                   </td>
-                  <td className="px-3 py-2 text-primary-600">{risque.jalonsImpactes.slice(0, 2).join(', ')}</td>
+                  <td className="px-3 py-2 text-primary-600">{risque.categorie}</td>
                 </tr>
               ))}
             </tbody>
@@ -294,21 +277,21 @@ export function RisquesSynthese() {
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="error">Hebdomadaire</Badge>
             </div>
-            <p className="text-sm text-primary-700">Risques critiques ({SYNTHESE_RISQUES.parNiveau.critique})</p>
+            <p className="text-sm text-primary-700">Risques critiques ({syntheseRisques.parNiveau.critique})</p>
             <p className="text-xs text-primary-500 mt-1">Responsable: DGA</p>
           </div>
           <div className="bg-white rounded-lg p-3 border">
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="warning">Bi-mensuel</Badge>
             </div>
-            <p className="text-sm text-primary-700">Risques majeurs ({SYNTHESE_RISQUES.parNiveau.majeur})</p>
+            <p className="text-sm text-primary-700">Risques majeurs ({syntheseRisques.parNiveau.majeur})</p>
             <p className="text-xs text-primary-500 mt-1">Responsable: Managers</p>
           </div>
           <div className="bg-white rounded-lg p-3 border">
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="info">Mensuel</Badge>
             </div>
-            <p className="text-sm text-primary-700">Risques modérés ({SYNTHESE_RISQUES.parNiveau.modere})</p>
+            <p className="text-sm text-primary-700">Risques modérés ({syntheseRisques.parNiveau.modere})</p>
             <p className="text-xs text-primary-500 mt-1">Responsable: COPIL</p>
           </div>
           <div className="bg-white rounded-lg p-3 border">
@@ -321,65 +304,23 @@ export function RisquesSynthese() {
         </div>
       </Card>
 
-      {/* Gestion de la base de données */}
+      {/* Statistiques de la base */}
       <Card padding="md">
         <h4 className="text-md font-semibold text-primary-900 mb-4 flex items-center gap-2">
           <Database className="h-4 w-4 text-primary-600" />
-          Initialisation Base de Données
+          Données Base de Données
         </h4>
 
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          <Button
-            onClick={handleSeedData}
-            disabled={isLoading}
-            variant="primary"
-          >
-            {isLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Database className="h-4 w-4 mr-2" />}
-            Charger les 46 risques
-          </Button>
-          <Button
-            onClick={handleCheckStatus}
-            disabled={isLoading}
-            variant="secondary"
-          >
-            {isLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <BarChart3 className="h-4 w-4 mr-2" />}
-            Vérifier statut
-          </Button>
-          <Button
-            onClick={handleClearData}
-            disabled={isLoading}
-            variant="ghost"
-            className="text-error-600 hover:text-error-700"
-          >
-            Vider les risques
-          </Button>
+        <div className="p-3 bg-primary-50 rounded-lg">
+          <p className="text-sm text-primary-700 font-medium">Statistiques actuelles:</p>
+          <div className="flex flex-wrap gap-4 mt-2 text-sm">
+            <span>Total: <strong>{syntheseRisques.total}</strong></span>
+            <span>Critiques: <strong className="text-error-600">{syntheseRisques.parNiveau.critique}</strong></span>
+            <span>Majeurs: <strong className="text-warning-600">{syntheseRisques.parNiveau.majeur}</strong></span>
+            <span>Modérés: <strong className="text-info-600">{syntheseRisques.parNiveau.modere}</strong></span>
+            <span>Faibles: <strong className="text-success-600">{syntheseRisques.parNiveau.faible}</strong></span>
+          </div>
         </div>
-
-        {seedStatus && (
-          <div className={cn(
-            'flex items-center gap-2 p-3 rounded-lg',
-            seedStatus.success ? 'bg-success-50 text-success-700' : 'bg-error-50 text-error-700'
-          )}>
-            {seedStatus.success ? (
-              <CheckCircle className="h-5 w-5" />
-            ) : (
-              <XCircle className="h-5 w-5" />
-            )}
-            <span>{seedStatus.message}</span>
-          </div>
-        )}
-
-        {dbStats && (
-          <div className="mt-4 p-3 bg-primary-50 rounded-lg">
-            <p className="text-sm text-primary-700 font-medium">Statistiques base de données:</p>
-            <div className="flex flex-wrap gap-4 mt-2 text-sm">
-              <span>Total: <strong>{dbStats.total}</strong></span>
-              <span>Critiques: <strong className="text-error-600">{dbStats.parNiveau.critique || 0}</strong></span>
-              <span>Majeurs: <strong className="text-warning-600">{dbStats.parNiveau.majeur || 0}</strong></span>
-              <span>Modérés: <strong className="text-info-600">{dbStats.parNiveau.modere || 0}</strong></span>
-            </div>
-          </div>
-        )}
       </Card>
     </div>
   );

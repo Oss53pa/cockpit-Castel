@@ -1,18 +1,13 @@
 // ============================================================================
 // FICHE RISQUE DÉTAILLÉE - Composant d'affichage enrichi
+// Utilise les données de la base de données via useRisques()
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Accordion as _Accordion,
-  AccordionContent as _AccordionContent,
-  AccordionItem as _AccordionItem,
-  AccordionTrigger as _AccordionTrigger,
-} from '@/components/ui/accordion';
 import {
   Table,
   TableBody,
@@ -32,13 +27,47 @@ import {
   Shield,
   Bell,
   ArrowUpRight,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  FICHES_RISQUES_TOP10,
-  type FicheRisque,
-  type ActionMitigation,
-} from '@/data/cosmosAngreRef4';
+import { useRisques } from '@/hooks';
+import type { Risque, ActionMitigation } from '@/types';
+
+// Type adapté pour l'affichage des fiches risques
+interface FicheRisque {
+  id: string;
+  titre: string;
+  description: string;
+  categorie: string;
+  axe: string;
+  score: number;
+  probabilite: number;
+  impact: number;
+  responsableSuivi: string;
+  planMitigation: ActionMitigation[];
+  planContingence: string[];
+  indicateursAlerte: string[];
+  seuilEscalade: string;
+}
+
+// Convertir un risque DB en FicheRisque
+function convertToFicheRisque(risque: Risque): FicheRisque {
+  return {
+    id: risque.code || risque.id_risque || `R-${risque.id}`,
+    titre: risque.titre,
+    description: risque.description || '',
+    categorie: risque.categorie,
+    axe: risque.axe_impacte || 'Non défini',
+    score: risque.score || (risque.probabilite * risque.impact),
+    probabilite: risque.probabilite || risque.probabilite_actuelle || 1,
+    impact: risque.impact || risque.impact_actuel || 1,
+    responsableSuivi: risque.proprietaire || risque.responsable || 'Non assigné',
+    planMitigation: risque.actions_mitigation || [],
+    planContingence: risque.plan_contingence ? risque.plan_contingence.split('\n').filter(Boolean) : [],
+    indicateursAlerte: risque.declencheur_contingence ? risque.declencheur_contingence.split(',').map(s => s.trim()) : [],
+    seuilEscalade: risque.escalade_niveau3 || 'Direction Générale',
+  };
+}
 
 // Couleurs par score
 function getScoreColor(score: number): string {
@@ -68,13 +97,15 @@ const CATEGORIE_COLORS: Record<string, string> = {
 function ActionStatutBadge({ statut }: { statut?: ActionMitigation['statut'] }) {
   if (!statut) return null;
 
-  const config = {
-    fait: { icon: CheckCircle2, className: 'bg-green-100 text-green-800', label: 'Fait' },
-    en_cours: { icon: Clock, className: 'bg-blue-100 text-blue-800', label: 'En cours' },
+  const config: Record<string, { icon: typeof CheckCircle2; className: string; label: string }> = {
     planifie: { icon: Target, className: 'bg-gray-100 text-gray-800', label: 'Planifié' },
+    en_cours: { icon: Clock, className: 'bg-blue-100 text-blue-800', label: 'En cours' },
+    termine: { icon: CheckCircle2, className: 'bg-green-100 text-green-800', label: 'Terminé' },
+    annule: { icon: AlertCircle, className: 'bg-red-100 text-red-800', label: 'Annulé' },
   };
 
-  const { icon: Icon, className, label } = config[statut];
+  const statusConfig = config[statut] || config.planifie;
+  const { icon: Icon, className, label } = statusConfig;
 
   return (
     <Badge variant="outline" className={cn('gap-1', className)}>
@@ -191,11 +222,11 @@ export function FicheRisqueCard({ fiche, onSelect, compact = false }: FicheRisqu
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="causes" className="w-full">
+        <Tabs defaultValue="description" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="causes" className="gap-1">
+            <TabsTrigger value="description" className="gap-1">
               <AlertCircle className="h-4 w-4" />
-              Causes
+              Description
             </TabsTrigger>
             <TabsTrigger value="mitigation" className="gap-1">
               <Shield className="h-4 w-4" />
@@ -211,62 +242,47 @@ export function FicheRisqueCard({ fiche, onSelect, compact = false }: FicheRisqu
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="causes" className="mt-4">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  Causes potentielles
-                </h4>
-                <ul className="space-y-2">
-                  {fiche.causesPotentielles.map((cause, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-orange-500 mt-0.5">•</span>
-                      {cause}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  Conséquences
-                </h4>
-                <ul className="space-y-2">
-                  {fiche.consequences.map((consequence, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-red-500 mt-0.5">•</span>
-                      {consequence}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <TabsContent value="description" className="mt-4">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                Description du risque
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {fiche.description || 'Aucune description disponible.'}
+              </p>
             </div>
           </TabsContent>
 
           <TabsContent value="mitigation" className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Responsable</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead>Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fiche.planMitigation.map((action, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">{action.action}</TableCell>
-                    <TableCell>{action.responsable}</TableCell>
-                    <TableCell>{action.deadline}</TableCell>
-                    <TableCell>
-                      <ActionStatutBadge statut={action.statut} />
-                    </TableCell>
+            {fiche.planMitigation.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Responsable</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Statut</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {fiche.planMitigation.map((action, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{action.action}</TableCell>
+                      <TableCell>{action.responsable}</TableCell>
+                      <TableCell>{action.deadline}</TableCell>
+                      <TableCell>
+                        <ActionStatutBadge statut={action.statut} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                Aucune action de mitigation définie.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="contingence" className="mt-4">
@@ -274,16 +290,22 @@ export function FicheRisqueCard({ fiche, onSelect, compact = false }: FicheRisqu
               <h4 className="font-semibold mb-3">
                 Plan de contingence (si le risque se réalise)
               </h4>
-              <ul className="space-y-2">
-                {fiche.planContingence.map((action, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    {action}
-                  </li>
-                ))}
-              </ul>
+              {fiche.planContingence.length > 0 ? (
+                <ul className="space-y-2">
+                  {fiche.planContingence.map((action, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      {action}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Aucun plan de contingence défini.
+                </p>
+              )}
             </div>
           </TabsContent>
 
@@ -294,14 +316,20 @@ export function FicheRisqueCard({ fiche, onSelect, compact = false }: FicheRisqu
                   <Bell className="h-4 w-4 text-amber-500" />
                   Indicateurs d'alerte
                 </h4>
-                <ul className="space-y-2">
-                  {fiche.indicateursAlerte.map((indicateur, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm bg-amber-50 p-2 rounded">
-                      <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                      {indicateur}
-                    </li>
-                  ))}
-                </ul>
+                {fiche.indicateursAlerte.length > 0 ? (
+                  <ul className="space-y-2">
+                    {fiche.indicateursAlerte.map((indicateur, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm bg-amber-50 p-2 rounded">
+                        <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        {indicateur}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun indicateur d'alerte défini.
+                  </p>
+                )}
               </div>
               <div className="bg-red-50 p-4 rounded-lg">
                 <h4 className="font-semibold mb-2 flex items-center gap-2 text-red-800">
@@ -323,22 +351,44 @@ export function FichesRisquesTop10() {
   const [selectedFiche, setSelectedFiche] = useState<FicheRisque | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Récupérer les risques depuis la base de données
+  const risquesData = useRisques();
+
+  // Convertir les risques DB en fiches et prendre le top 10 par score
+  const fichesRisques = useMemo(() => {
+    return [...risquesData]
+      .filter(r => r.status !== 'ferme')
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 10)
+      .map(convertToFicheRisque);
+  }, [risquesData]);
+
   const handleSelect = (fiche: FicheRisque) => {
     setSelectedFiche(fiche);
-    setCurrentIndex(FICHES_RISQUES_TOP10.findIndex((f) => f.id === fiche.id));
+    setCurrentIndex(fichesRisques.findIndex((f) => f.id === fiche.id));
   };
 
   const handlePrevious = () => {
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : FICHES_RISQUES_TOP10.length - 1;
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : fichesRisques.length - 1;
     setCurrentIndex(newIndex);
-    setSelectedFiche(FICHES_RISQUES_TOP10[newIndex]);
+    setSelectedFiche(fichesRisques[newIndex]);
   };
 
   const handleNext = () => {
-    const newIndex = currentIndex < FICHES_RISQUES_TOP10.length - 1 ? currentIndex + 1 : 0;
+    const newIndex = currentIndex < fichesRisques.length - 1 ? currentIndex + 1 : 0;
     setCurrentIndex(newIndex);
-    setSelectedFiche(FICHES_RISQUES_TOP10[newIndex]);
+    setSelectedFiche(fichesRisques[newIndex]);
   };
+
+  // Loading state
+  if (risquesData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <span className="ml-2 text-primary-600">Chargement des risques...</span>
+      </div>
+    );
+  }
 
   if (selectedFiche) {
     return (
@@ -353,7 +403,7 @@ export function FichesRisquesTop10() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm text-muted-foreground">
-              {currentIndex + 1} / {FICHES_RISQUES_TOP10.length}
+              {currentIndex + 1} / {fichesRisques.length}
             </span>
             <Button variant="outline" size="icon" onClick={handleNext}>
               <ChevronRight className="h-4 w-4" />
@@ -377,16 +427,16 @@ export function FichesRisquesTop10() {
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="gap-1">
             <AlertTriangle className="h-3 w-3" />
-            {FICHES_RISQUES_TOP10.filter((f) => f.score >= 15).length} critiques
+            {fichesRisques.filter((f) => f.score >= 15).length} critiques
           </Badge>
           <Badge variant="default" className="gap-1">
-            {FICHES_RISQUES_TOP10.filter((f) => f.score >= 10 && f.score < 15).length} élevés
+            {fichesRisques.filter((f) => f.score >= 10 && f.score < 15).length} élevés
           </Badge>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        {FICHES_RISQUES_TOP10.map((fiche) => (
+        {fichesRisques.map((fiche) => (
           <FicheRisqueCard key={fiche.id} fiche={fiche} onSelect={handleSelect} compact />
         ))}
       </div>
