@@ -51,6 +51,7 @@ interface Proph3tWidgetProps {
   showHealth?: boolean;
   showRecommendations?: boolean;
   showProactive?: boolean;
+  onClose?: () => void;
 }
 
 export function Proph3tWidget({
@@ -60,6 +61,7 @@ export function Proph3tWidget({
   showHealth = true,
   showRecommendations = true,
   showProactive = true,
+  onClose,
 }: Proph3tWidgetProps) {
   const [activeTab, setActiveTab] = useState<'proactive' | 'chat' | 'health' | 'recommendations'>('proactive');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -116,7 +118,20 @@ export function Proph3tWidget({
           >
             <Settings className="h-4 w-4" />
           </button>
-          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {onClose ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+              title="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : (
+            isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+          )}
         </div>
       </div>
 

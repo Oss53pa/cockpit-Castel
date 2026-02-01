@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -9,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useDashboardKPIs, useAvancementGlobal, useAlertes } from '@/hooks';
+import { Proph3tWidget } from '@/components/proph3t/Proph3tWidget';
 
 function getDaysUntilOpening(): number {
   const opening = new Date('2026-11-15');
@@ -22,21 +24,32 @@ export function HomePage() {
   const avancementGlobal = useAvancementGlobal();
   const daysUntilOpening = getDaysUntilOpening();
   const { alertes = [] } = useAlertes();
+  const [showProph3t, setShowProph3t] = useState(false);
 
   // Nombre de problèmes remontés (alertes non traitées)
   const problemesCount = (alertes || []).filter(a => !a.traitee).length;
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-white flex flex-col overflow-hidden relative">
+      {/* PROPH3T Widget */}
+      {showProph3t && (
+        <div className="absolute top-20 right-8 z-50">
+          <Proph3tWidget onClose={() => setShowProph3t(false)} />
+        </div>
+      )}
+
       {/* Header */}
       <header className="flex items-center justify-between px-12 py-6">
         <span className="text-lg font-semibold text-primary-900">Cosmos Angre</span>
 
         <nav className="flex items-center gap-6">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-red-500">
+          <button
+            onClick={() => setShowProph3t(!showProph3t)}
+            className="flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"
+          >
             <Sparkles className="h-4 w-4" />
-            Proph3t {problemesCount}
-          </span>
+            Proph3t {problemesCount > 0 && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{problemesCount}</span>}
+          </button>
           <span className="text-xl font-bold text-primary-900">J-{daysUntilOpening}</span>
           <button
             onClick={() => navigate('/dashboard')}
