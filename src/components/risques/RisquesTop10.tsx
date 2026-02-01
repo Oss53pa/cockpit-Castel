@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertTriangle,
   Shield,
@@ -16,15 +16,23 @@ import {
   CheckCircle2,
   Clock,
   FileWarning,
+  Loader2,
 } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import {
-  getTop10Risques,
-  SYNTHESE_RISQUES,
-  type RisqueCosmosAngre,
-  type RisqueNiveau,
-} from '@/data/risquesCosmosAngre';
+import { useRisques } from '@/hooks';
+import type { Risque } from '@/types';
+
+// Types pour la compatibilité
+type RisqueNiveau = 'critique' | 'majeur' | 'modere' | 'faible';
+
+// Fonction pour déterminer le niveau du risque
+const getNiveauRisque = (score: number): RisqueNiveau => {
+  if (score >= 12) return 'critique';
+  if (score >= 8) return 'majeur';
+  if (score >= 4) return 'modere';
+  return 'faible';
+};
 
 // Score color helper based on niveau
 const getScoreConfig = (niveau: RisqueNiveau) => {
@@ -76,19 +84,20 @@ const getStatusBadge = (statut?: string) => {
   }
 };
 
-// Single Risk Card Component
+// Single Risk Card Component - utilise les données de la DB
 function RiskCardDetail({
   risk,
   rank,
   isExpanded,
   onToggle,
 }: {
-  risk: RisqueCosmosAngre;
+  risk: Risque;
   rank: number;
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const scoreConfig = getScoreConfig(risk.niveau);
+  const niveau = getNiveauRisque(risk.score || 0);
+  const scoreConfig = getScoreConfig(niveau);
 
   return (
     <Card className={cn('overflow-hidden', scoreConfig.border, 'border-l-4')}>
@@ -107,17 +116,17 @@ function RiskCardDetail({
             </div>
             {/* Score */}
             <div className={cn('w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-lg', scoreConfig.bg)}>
-              {risk.score}
+              {risk.score || 0}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <Badge variant="secondary" className="text-xs font-mono">{risk.code}</Badge>
+                <Badge variant="secondary" className="text-xs font-mono">{risk.id_risque || risk.code_wbs}</Badge>
                 <Badge variant="secondary" className="text-xs">{getCategoryLabel(risk.categorie)}</Badge>
                 <Badge
-                  variant={risk.niveau === 'critique' ? 'error' : risk.niveau === 'majeur' ? 'warning' : 'secondary'}
+                  variant={niveau === 'critique' ? 'error' : niveau === 'majeur' ? 'warning' : 'secondary'}
                   className="text-xs uppercase"
                 >
-                  {risk.niveau}
+                  {niveau}
                 </Badge>
               </div>
               <h3 className="font-semibold text-primary-900">{risk.titre}</h3>
@@ -132,7 +141,7 @@ function RiskCardDetail({
                 </span>
                 <span className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  {risk.proprietaire}
+                  {risk.proprietaire || '-'}
                 </span>
               </div>
             </div>
@@ -146,18 +155,16 @@ function RiskCardDetail({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t">
-          {/* Phase & Axe */}
+          {/* Phase & Catégorie */}
           <div className="px-4 py-2 bg-primary-50 border-b flex items-center gap-4 flex-wrap">
             <span className="text-sm font-medium text-primary-700 flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              {getPhaseLabel(risk.phase)}
+              {risk.phase_projet ? getPhaseLabel(risk.phase_projet) : 'Non défini'}
             </span>
-            {risk.axe && (
-              <span className="text-sm font-medium text-primary-700 flex items-center gap-1">
-                <Target className="h-4 w-4" />
-                {risk.axe}
-              </span>
-            )}
+            <span className="text-sm font-medium text-primary-700 flex items-center gap-1">
+              <Target className="h-4 w-4" />
+              {getCategoryLabel(risk.categorie)}
+            </span>
           </div>
 
           <div className="p-4 space-y-6">
@@ -167,82 +174,39 @@ function RiskCardDetail({
                 <FileWarning className="h-4 w-4 text-primary-500" />
                 Description
               </h4>
-              <p className="text-sm text-primary-700">{risk.description}</p>
+              <p className="text-sm text-primary-700">{risk.description || 'Aucune description'}</p>
             </div>
 
-            {/* Jalons impactés */}
-            <div>
-              <h4 className="font-semibold text-primary-900 mb-2 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-purple-500" />
-                Jalons impactés
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {risk.jalonsImpactes.map((jalon, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {jalon}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Mitigation Plan */}
-            {risk.mitigations.length > 0 && (
+            {/* Plan de mitigation */}
+            {risk.plan_mitigation && (
               <div>
                 <h4 className="font-semibold text-primary-900 mb-3 flex items-center gap-2">
                   <Shield className="h-4 w-4 text-info-500" />
                   Plan de mitigation
                 </h4>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-primary-50">
-                        <th className="px-3 py-2 text-left font-medium text-primary-700">Action</th>
-                        <th className="px-3 py-2 text-left font-medium text-primary-700 w-32">Responsable</th>
-                        <th className="px-3 py-2 text-left font-medium text-primary-700 w-32">Deadline</th>
-                        <th className="px-3 py-2 text-left font-medium text-primary-700 w-24">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {risk.mitigations.map((action, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-primary-50/50'}>
-                          <td className="px-3 py-2 text-primary-800">{action.action}</td>
-                          <td className="px-3 py-2 text-primary-600">{action.responsable}</td>
-                          <td className="px-3 py-2 text-primary-600">{action.deadline}</td>
-                          <td className="px-3 py-2">{getStatusBadge(action.statut)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <p className="text-sm text-primary-700">{risk.plan_mitigation}</p>
               </div>
             )}
 
-            {/* Indicateurs de déclenchement */}
-            {risk.indicateursDeclenchement && risk.indicateursDeclenchement.length > 0 && (
+            {/* Stratégie de réponse */}
+            {risk.strategie_reponse && (
+              <div className="bg-info-50 rounded-lg p-4">
+                <h4 className="font-semibold text-info-800 mb-2 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Stratégie de réponse
+                </h4>
+                <Badge variant="info" className="capitalize">{risk.strategie_reponse}</Badge>
+              </div>
+            )}
+
+            {/* Indicateurs */}
+            {risk.indicateurs_declenchement && (
               <div className="bg-warning-50 rounded-lg p-4">
                 <h4 className="font-semibold text-warning-800 mb-2 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
-                  Indicateurs de déclenchement (Triggers)
+                  Indicateurs de déclenchement
                 </h4>
-                <ul className="space-y-1">
-                  {risk.indicateursDeclenchement.map((indicator, i) => (
-                    <li key={i} className="text-sm text-warning-700 flex items-start gap-2">
-                      <span className="text-warning-500 mt-1">!</span>
-                      {indicator}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Action immédiate */}
-            {risk.actionImmediate && (
-              <div className="bg-error-50 rounded-lg p-4">
-                <h4 className="font-semibold text-error-800 mb-1 flex items-center gap-2">
-                  <ArrowUpCircle className="h-4 w-4" />
-                  Action immédiate si déclenchement
-                </h4>
-                <p className="text-sm text-error-700">{risk.actionImmediate}</p>
+                <p className="text-sm text-warning-700">{risk.indicateurs_declenchement}</p>
               </div>
             )}
           </div>
@@ -252,12 +216,42 @@ function RiskCardDetail({
   );
 }
 
-// Main Component
+// Main Component - utilise les données de la DB via useRisques()
 export function RisquesTop10() {
-  const top10Risks = getTop10Risques();
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set([top10Risks[0]?.id]));
+  const { data: risquesData, isLoading } = useRisques();
 
-  const toggleExpand = (id: string) => {
+  // Top 10 risques par score (données réelles de la base)
+  const top10Risks = useMemo(() => {
+    if (!risquesData) return [];
+    return [...risquesData]
+      .filter(r => r.status !== 'ferme')
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 10);
+  }, [risquesData]);
+
+  // Synthèse calculée depuis les données réelles
+  const synthese = useMemo(() => {
+    if (!risquesData) return { total: 0, critique: 0, majeur: 0, modere: 0, faible: 0 };
+    const actifs = risquesData.filter(r => r.status !== 'ferme');
+    return {
+      total: actifs.length,
+      critique: actifs.filter(r => (r.score || 0) >= 12).length,
+      majeur: actifs.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length,
+      modere: actifs.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8).length,
+      faible: actifs.filter(r => (r.score || 0) < 4).length,
+    };
+  }, [risquesData]);
+
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  // Expand first risk when data loads
+  useMemo(() => {
+    if (top10Risks.length > 0 && expandedIds.size === 0 && top10Risks[0]?.id) {
+      setExpandedIds(new Set([top10Risks[0].id]));
+    }
+  }, [top10Risks]);
+
+  const toggleExpand = (id: number) => {
     const newSet = new Set(expandedIds);
     if (newSet.has(id)) {
       newSet.delete(id);
@@ -268,18 +262,28 @@ export function RisquesTop10() {
   };
 
   const expandAll = () => {
-    setExpandedIds(new Set(top10Risks.map(r => r.id)));
+    setExpandedIds(new Set(top10Risks.map(r => r.id!).filter(Boolean)));
   };
 
   const collapseAll = () => {
     setExpandedIds(new Set());
   };
 
-  // Stats
-  const criticalCount = top10Risks.filter(r => r.niveau === 'critique').length;
-  const majeurCount = top10Risks.filter(r => r.niveau === 'majeur').length;
-  const totalMitigations = top10Risks.reduce((sum, r) => sum + r.mitigations.length, 0);
-  const avgScore = Math.round(top10Risks.reduce((sum, r) => sum + r.score, 0) / top10Risks.length);
+  // Stats calculées depuis données réelles
+  const criticalCount = top10Risks.filter(r => (r.score || 0) >= 12).length;
+  const majeurCount = top10Risks.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length;
+  const avgScore = top10Risks.length > 0
+    ? Math.round(top10Risks.reduce((sum, r) => sum + (r.score || 0), 0) / top10Risks.length)
+    : 0;
+
+  if (isLoading) {
+    return (
+      <Card padding="lg" className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <span className="ml-2 text-primary-600">Chargement des risques...</span>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -289,10 +293,10 @@ export function RisquesTop10() {
           <div>
             <h3 className="text-lg font-semibold text-primary-900 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-error-500" />
-              Top 10 Risques Critiques - Cosmos Angré
+              Top 10 Risques Critiques
             </h3>
             <p className="text-sm text-primary-500 mt-1">
-              Registre aligné sur les 19 jalons du Référentiel de Mobilisation | {SYNTHESE_RISQUES.total} risques identifiés
+              Données temps réel | {synthese.total} risques actifs identifiés
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -316,8 +320,8 @@ export function RisquesTop10() {
             <div className="text-xs text-warning-600">Majeurs (Score 8-11)</div>
           </div>
           <div className="bg-primary-50 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-primary-700">{totalMitigations}</div>
-            <div className="text-xs text-primary-600">Actions de mitigation</div>
+            <div className="text-2xl font-bold text-primary-700">{synthese.total}</div>
+            <div className="text-xs text-primary-600">Total risques</div>
           </div>
           <div className="bg-info-50 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-info-700">{avgScore}</div>
@@ -330,19 +334,19 @@ export function RisquesTop10() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-primary-500">Total registre:</span>
-              <span className="ml-2 font-semibold">{SYNTHESE_RISQUES.total} risques</span>
+              <span className="ml-2 font-semibold">{synthese.total} risques</span>
             </div>
             <div>
               <span className="text-error-500">Critiques:</span>
-              <span className="ml-2 font-semibold">{SYNTHESE_RISQUES.parNiveau.critique}</span>
+              <span className="ml-2 font-semibold">{synthese.critique}</span>
             </div>
             <div>
               <span className="text-warning-500">Majeurs:</span>
-              <span className="ml-2 font-semibold">{SYNTHESE_RISQUES.parNiveau.majeur}</span>
+              <span className="ml-2 font-semibold">{synthese.majeur}</span>
             </div>
             <div>
               <span className="text-info-500">Modérés:</span>
-              <span className="ml-2 font-semibold">{SYNTHESE_RISQUES.parNiveau.modere}</span>
+              <span className="ml-2 font-semibold">{synthese.modere}</span>
             </div>
           </div>
         </div>
@@ -394,15 +398,22 @@ export function RisquesTop10() {
 
       {/* Risk Cards */}
       <div className="space-y-4">
-        {top10Risks.map((risk, index) => (
-          <RiskCardDetail
-            key={risk.id}
-            risk={risk}
-            rank={index + 1}
-            isExpanded={expandedIds.has(risk.id)}
-            onToggle={() => toggleExpand(risk.id)}
-          />
-        ))}
+        {top10Risks.length > 0 ? (
+          top10Risks.map((risk, index) => (
+            <RiskCardDetail
+              key={risk.id || index}
+              risk={risk}
+              rank={index + 1}
+              isExpanded={expandedIds.has(risk.id!)}
+              onToggle={() => toggleExpand(risk.id!)}
+            />
+          ))
+        ) : (
+          <Card padding="lg" className="text-center">
+            <AlertTriangle className="h-12 w-12 text-primary-300 mx-auto mb-4" />
+            <p className="text-primary-500">Aucun risque identifié dans la base de données</p>
+          </Card>
+        )}
       </div>
     </div>
   );

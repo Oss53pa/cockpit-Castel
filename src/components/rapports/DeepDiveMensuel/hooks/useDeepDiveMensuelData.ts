@@ -13,8 +13,7 @@ import {
   useRisques,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
-import { JALONS_V21, ACTIONS_V21 } from '@/data/cosmosAngreRefV21';
-import { REGISTRE_RISQUES_COSMOS_ANGRE, getTop10Risques } from '@/data/risquesCosmosAngre';
+// Utilise uniquement les configurations, pas les données hardcodées
 import { PROJET_CONFIG, SEUILS_METEO, SEUILS_UI } from '@/data/constants';
 import type {
   AxeType,
@@ -596,29 +595,21 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
   // ============================================================================
 
   const gantt = useMemo((): GanttSimplifiedData => {
-    const allJalons = JALONS_V21; // Utiliser les jalons officiels V21
-
+    // Utilise les jalons de la base de données au lieu des données hardcodées
     return {
-      jalons: allJalons.map(j => {
-        // Trouver le statut dans la DB
-        const jalonDb = jalonsDb.find(jdb =>
-          jdb.code === j.id || jdb.titre === j.titre
-        );
-
-        return {
-          id: j.id,
-          titre: j.titre,
-          dateDebut: j.date,
-          dateFin: j.date,
-          avancement: jalonDb?.statut === 'atteint' ? 100 : 0,
-          axe: dbCodeToAxe[j.axe] || 'general',
-          dependances: j.dependances || [],
-          estCritique: j.niveau === 'critique',
-          statut: jalonDb?.statut === 'atteint' ? 'atteint' :
-            jalonDb?.statut === 'en_danger' ? 'en_danger' :
-            new Date(j.date) <= new Date() ? 'en_cours' : 'a_venir',
-        };
-      }),
+      jalons: jalonsDb.map(j => ({
+        id: j.code || j.id?.toString() || '',
+        titre: j.titre,
+        dateDebut: j.date_prevue || '',
+        dateFin: j.date_prevue || '',
+        avancement: j.statut === 'atteint' ? 100 : 0,
+        axe: dbCodeToAxe[j.axe] || 'general',
+        dependances: [],
+        estCritique: j.criticite === 'critique',
+        statut: j.statut === 'atteint' ? 'atteint' :
+          j.statut === 'en_danger' || j.statut === 'depasse' ? 'en_danger' :
+          j.statut === 'en_cours' || j.statut === 'en_approche' ? 'en_cours' : 'a_venir',
+      })),
       // Dates depuis la configuration centralisée
       dateDebut: PROJET_CONFIG.dateDebut,
       dateFin: PROJET_CONFIG.dateFin,
