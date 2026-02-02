@@ -82,6 +82,7 @@ import {
   useBudget,
   useBudgetSynthese,
   useBudgetParAxe,
+  useEVMIndicators,
   useRisques,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
@@ -129,6 +130,8 @@ interface DesignSettings {
   headerStyle: 'full' | 'minimal' | 'none';
 }
 
+type AxeMeteo = 'sunny' | 'cloudy' | 'rainy' | 'stormy';
+
 interface AxeDetailData {
   actions: number;
   actionsTerminees: number;
@@ -141,6 +144,7 @@ interface AxeDetailData {
   budgetPrevu: number;
   budgetRealise: number;
   avancement: number;
+  meteo: AxeMeteo;
 }
 
 // Axes configuration - 6 axes alignés avec le modèle projet (Construction vs 5 axes Mobilisation)
@@ -538,6 +542,7 @@ export function DeepDive() {
   const jalons = useJalons();
   const budgetItems = useBudget(); // Items individuels pour calcul par axe
   const budget = useBudgetSynthese(); // Synthèse globale
+  const evmIndicators = useEVMIndicators(); // Indicateurs EVM calculés depuis les vraies données
   const risques = useRisques();
 
   // Sync data (new module)
@@ -567,6 +572,47 @@ export function DeepDive() {
     };
   });
   const [projectWeather, setProjectWeather] = useState<ProjectWeather>('yellow');
+
+  // Calcul automatique de la météo projet basé sur les données réelles
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Jalons en retard: date_prevue dépassée et statut != 'atteint'
+    const jalonsEnRetard = jalons.filter(j =>
+      j.date_prevue && j.date_prevue < today && j.statut !== 'atteint'
+    ).length;
+
+    // Actions en retard: date_fin_prevue dépassée et statut != 'termine'
+    const actionsEnRetard = actions.filter(a =>
+      a.date_fin_prevue && a.date_fin_prevue < today && a.statut !== 'termine'
+    ).length;
+
+    // Risques critiques (score >= 12 et non fermés)
+    const risquesCritiques = risques.filter(r =>
+      (r.score_actuel || r.score_initial || r.score || 0) >= 12 && r.status !== 'closed'
+    ).length;
+
+    // Calcul de la météo automatique
+    // Green: tout est dans les temps
+    // Yellow: retards mineurs (1-2 actions/jalons en retard)
+    // Orange: retards significatifs (3-5) ou 1 risque critique
+    // Red: situation critique (>5 retards ou >2 risques critiques)
+
+    let newWeather: ProjectWeather;
+
+    if (jalonsEnRetard === 0 && actionsEnRetard <= 1 && risquesCritiques === 0) {
+      newWeather = 'green';
+    } else if (jalonsEnRetard <= 1 && actionsEnRetard <= 3 && risquesCritiques <= 1) {
+      newWeather = 'yellow';
+    } else if (jalonsEnRetard <= 3 && actionsEnRetard <= 6 && risquesCritiques <= 2) {
+      newWeather = 'orange';
+    } else {
+      newWeather = 'red';
+    }
+
+    setProjectWeather(newWeather);
+  }, [jalons, actions, risques]);
+
   const [generating, setGenerating] = useState(false);
   const [previewSlideIndex, setPreviewSlideIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -742,18 +788,35 @@ export function DeepDive() {
         a.statut !== 'termine' && a.date_fin_prevue && a.date_fin_prevue < today
       ).length;
 
+      // Calculate météo for axis based on progress, delays, and risks
+      const jalonsAtteints = axeJalons.filter((j) => j.statut === 'atteint').length;
+      const risquesCritiques = axeRisques.filter((r) => (r.score_actuel || r.score_initial || 0) >= 12).length;
+
+      // Météo calculation: weighted score
+      // - 40% avancement vs expected, 30% actions en retard, 30% risques critiques
+      const progressScore = totalProgress >= 80 ? 100 : totalProgress >= 60 ? 75 : totalProgress >= 40 ? 50 : 25;
+      const delayScore = actionsEnRetard === 0 ? 100 : actionsEnRetard <= 2 ? 75 : actionsEnRetard <= 5 ? 50 : 25;
+      const riskScore = risquesCritiques === 0 ? 100 : risquesCritiques === 1 ? 75 : risquesCritiques <= 3 ? 50 : 25;
+      const globalScore = progressScore * 0.4 + delayScore * 0.3 + riskScore * 0.3;
+
+      let meteo: AxeMeteo = 'sunny';
+      if (globalScore < 40) meteo = 'stormy';
+      else if (globalScore < 60) meteo = 'rainy';
+      else if (globalScore < 80) meteo = 'cloudy';
+
       data[axe] = {
         actions: axeActions.length,
         actionsTerminees: axeActions.filter((a) => a.statut === 'termine').length,
         actionsEnCours: axeActions.filter((a) => a.statut === 'en_cours').length,
         actionsEnRetard: actionsEnRetard,
         jalons: axeJalons.length,
-        jalonsAtteints: axeJalons.filter((j) => j.statut === 'atteint').length,
+        jalonsAtteints: jalonsAtteints,
         risques: axeRisques.length,
-        risquesCritiques: axeRisques.filter((r) => (r.score_actuel || r.score_initial || 0) >= 12).length,
+        risquesCritiques: risquesCritiques,
         budgetPrevu: budgetPrevu,
         budgetRealise: budgetRealise,
         avancement: totalProgress,
+        meteo: meteo,
       };
     });
 
@@ -803,6 +866,43 @@ export function DeepDive() {
       .sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime())
       .slice(0, 6);
   }, [jalons]);
+
+  // Prochaines étapes = Top 5 actions les plus importantes du mois suivant
+  const prochainesEtapes = useMemo(() => {
+    if (!actions) return [];
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+    // Ordre de priorité
+    const priorityOrder: Record<string, number> = { critique: 1, haute: 2, moyenne: 3, basse: 4 };
+
+    return actions
+      .filter(a => {
+        if (a.statut === 'termine' || a.statut === 'annule') return false;
+        if (!a.date_fin_prevue) return false;
+        const dateEcheance = new Date(a.date_fin_prevue);
+        // Actions du mois suivant
+        return dateEcheance >= nextMonth && dateEcheance <= endOfNextMonth;
+      })
+      .sort((a, b) => {
+        // Trier par priorité (critique > haute > moyenne > basse)
+        const prioA = priorityOrder[a.priorite] || 5;
+        const prioB = priorityOrder[b.priorite] || 5;
+        if (prioA !== prioB) return prioA - prioB;
+        // Puis par date
+        const dateA = new Date(a.date_fin_prevue!).getTime();
+        const dateB = new Date(b.date_fin_prevue!).getTime();
+        return dateA - dateB;
+      })
+      .slice(0, 5)
+      .map(a => ({
+        action: a.titre,
+        responsable: a.responsable_nom || a.responsable || '-',
+        echeance: a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR') : 'À définir',
+        priorite: a.priorite,
+      }));
+  }, [actions]);
 
   // Handlers
   const addDecisionPoint = () => {
@@ -1522,12 +1622,30 @@ export function DeepDive() {
       const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
       const actionsEnRetard = axeActions.filter(a => a.statut === 'en_retard' || a.statut === 'bloque').length;
 
+      // Météo badge config
+      const meteoConfig: Record<AxeMeteo, { emoji: string; label: string; bgColor: string }> = {
+        sunny: { emoji: '☀️', label: 'Favorable', bgColor: 'rgba(34, 197, 94, 0.2)' },
+        cloudy: { emoji: '⛅', label: 'Attention', bgColor: 'rgba(234, 179, 8, 0.2)' },
+        rainy: { emoji: '🌧️', label: 'À risque', bgColor: 'rgba(249, 115, 22, 0.2)' },
+        stormy: { emoji: '⛈️', label: 'Critique', bgColor: 'rgba(239, 68, 68, 0.2)' },
+      };
+      const axeMeteo = data.meteo || 'cloudy';
+      const meteoStyle = meteoConfig[axeMeteo];
+
       return (
         <div style={baseStyles} className="h-full flex flex-col">
           <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: axeConfig.color }}>
             <div className="flex items-center gap-2">
               <axeConfig.icon className="h-5 w-5 text-white" />
               <h2 className="text-lg font-bold text-white">{axeConfig.label}</h2>
+              {/* Badge Météo */}
+              <span
+                className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                style={{ backgroundColor: meteoStyle.bgColor }}
+                title={`Météo ${axeConfig.label}: ${meteoStyle.label}`}
+              >
+                {meteoStyle.emoji} {meteoStyle.label}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-center">
@@ -2823,9 +2941,9 @@ export function DeepDive() {
       case '15': {
         // Actions par Jalons
         // Group actions by their target milestone
-        const actionsParJalon: Record<string, typeof actions.data> = {};
-        const actionsData = actions.data || [];
-        const jalonsData = jalons.data || [];
+        const actionsParJalon: Record<string, typeof actions> = {};
+        const actionsData = actions || [];
+        const jalonsData = jalons || [];
 
         // Create a map of jalon titles by ID
         const jalonTitlesMap: Record<number, string> = {};
@@ -2986,12 +3104,20 @@ export function DeepDive() {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold mb-3" style={{ color: primaryColor }}>Prochaines étapes</h3>
-                  <ol className="space-y-2 text-xs list-decimal list-inside">
-                    <li>Finaliser les arbitrages en attente</li>
-                    <li>Poursuivre la commercialisation</li>
-                    <li>Suivre la levée des réserves</li>
-                    <li>Préparer l'inauguration</li>
-                  </ol>
+                  {prochainesEtapes.length > 0 ? (
+                    <ol className="space-y-2 text-xs list-decimal list-inside">
+                      {prochainesEtapes.map((etape, idx) => (
+                        <li key={idx}>{etape.action} <span className="text-gray-400">({etape.echeance})</span></li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <ol className="space-y-2 text-xs list-decimal list-inside">
+                      <li>Finaliser les arbitrages en attente</li>
+                      <li>Poursuivre la commercialisation</li>
+                      <li>Suivre la levée des réserves</li>
+                      <li>Préparer l'inauguration</li>
+                    </ol>
+                  )}
                 </div>
               </div>
               {slideItem.comment && (
@@ -3270,22 +3396,22 @@ export function DeepDive() {
       }
 
       case '20': {
-        // Analyse EVM Détaillée
+        // Analyse EVM Détaillée - Utilisation des vraies données calculées
         const evmData = {
-          BAC: budget.prevu || 5000000000, // Budget at Completion
-          AC: budget.realise || 1600000000, // Actual Cost
-          PV: (budget.prevu || 5000000000) * 0.35, // Planned Value (35% du projet devrait être fait)
-          EV: (budget.prevu || 5000000000) * 0.32, // Earned Value (32% réellement accompli)
+          BAC: evmIndicators.BAC,
+          AC: evmIndicators.AC,
+          PV: evmIndicators.PV,
+          EV: evmIndicators.EV,
         };
 
-        const SPI = evmData.EV / evmData.PV; // Schedule Performance Index
-        const CPI = evmData.EV / evmData.AC; // Cost Performance Index
-        const SV = evmData.EV - evmData.PV; // Schedule Variance
-        const CV = evmData.EV - evmData.AC; // Cost Variance
-        const EAC = evmData.BAC / CPI; // Estimate at Completion
-        const ETC = EAC - evmData.AC; // Estimate to Complete
-        const VAC = evmData.BAC - EAC; // Variance at Completion
-        const TCPI = (evmData.BAC - evmData.EV) / (evmData.BAC - evmData.AC); // To-Complete Performance Index
+        const SPI = evmIndicators.SPI;
+        const CPI = evmIndicators.CPI;
+        const SV = evmIndicators.SV;
+        const CV = evmIndicators.CV;
+        const EAC = evmIndicators.EAC;
+        const ETC = evmIndicators.ETC;
+        const VAC = evmIndicators.VAC;
+        const TCPI = evmData.BAC > 0 && evmData.AC > 0 ? (evmData.BAC - evmData.EV) / (evmData.BAC - evmData.AC) : 1;
 
         const formatCurrency = (val: number) => {
           if (Math.abs(val) >= 1000000000) return `${(val / 1000000000).toFixed(1)} Mrd`;
@@ -3797,11 +3923,64 @@ export function DeepDive() {
       }
 
       case '25': {
-        // Analyse Comparative Périodes
+        // Analyse Comparative Périodes - Calculé depuis les vraies données
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Compter les actions terminées par période
+        const actionsTermineesCurrentWeek = actions.filter(a =>
+          a.statut === 'termine' && a.date_fin_reelle && new Date(a.date_fin_reelle) >= oneWeekAgo
+        ).length;
+        const actionsTermineesPreviousWeek = actions.filter(a =>
+          a.statut === 'termine' && a.date_fin_reelle &&
+          new Date(a.date_fin_reelle) >= twoWeeksAgo && new Date(a.date_fin_reelle) < oneWeekAgo
+        ).length;
+        const actionsTermineesLastMonth = actions.filter(a =>
+          a.statut === 'termine' && a.date_fin_reelle && new Date(a.date_fin_reelle) >= oneMonthAgo
+        ).length;
+
+        // Compter les jalons atteints
+        const jalonsAtteintsCurrentWeek = jalons.filter(j =>
+          j.statut === 'atteint' && j.date_reelle && new Date(j.date_reelle) >= oneWeekAgo
+        ).length;
+        const jalonsAtteintsPreviousWeek = jalons.filter(j =>
+          j.statut === 'atteint' && j.date_reelle &&
+          new Date(j.date_reelle) >= twoWeeksAgo && new Date(j.date_reelle) < oneWeekAgo
+        ).length;
+
+        // Compter les risques identifiés
+        const risquesCurrentWeek = risques.filter(r =>
+          r.date_identification && new Date(r.date_identification) >= oneWeekAgo
+        ).length;
+        const risquesPreviousWeek = risques.filter(r =>
+          r.date_identification &&
+          new Date(r.date_identification) >= twoWeeksAgo && new Date(r.date_identification) < oneWeekAgo
+        ).length;
+
         const periodsData = {
-          current: { label: 'Cette semaine', actions: 12, jalons: 2, risques: 1, budget: 85000000 },
-          previous: { label: 'Semaine -1', actions: 8, jalons: 1, risques: 2, budget: 72000000 },
-          monthAgo: { label: 'Mois -1', actions: 35, jalons: 4, risques: 3, budget: 320000000 },
+          current: {
+            label: 'Cette semaine',
+            actions: actionsTermineesCurrentWeek,
+            jalons: jalonsAtteintsCurrentWeek,
+            risques: risquesCurrentWeek,
+            budget: budget.engage || 0
+          },
+          previous: {
+            label: 'Semaine -1',
+            actions: actionsTermineesPreviousWeek,
+            jalons: jalonsAtteintsPreviousWeek,
+            risques: risquesPreviousWeek,
+            budget: Math.round((budget.engage || 0) * 0.9) // Approximation si pas d'historique
+          },
+          monthAgo: {
+            label: 'Mois -1',
+            actions: actionsTermineesLastMonth,
+            jalons: jalons.filter(j => j.statut === 'atteint').length,
+            risques: risques.length,
+            budget: budget.realise || 0
+          },
         };
 
         const calculateTrend = (current: number, previous: number) => {
@@ -4759,9 +4938,9 @@ export function DeepDive() {
             addSlideHeader(slide, 'Actions par Jalons');
 
             // Group actions by their target milestone
-            const pptActionsParJalon: Record<string, typeof actions.data> = {};
-            const pptActionsData = actions.data || [];
-            const pptJalonsData = jalons.data || [];
+            const pptActionsParJalon: Record<string, typeof actions> = {};
+            const pptActionsData = actions || [];
+            const pptJalonsData = jalons || [];
 
             // Create a map of jalon titles by ID
             const pptJalonTitlesMap: Record<number, string> = {};
@@ -4866,7 +5045,10 @@ export function DeepDive() {
               slide.addText(`• ${point}`, { x: 0.7, y: 1.6 + i * 0.4, w: 4, h: 0.35, fontSize: 12, fontFace: fontFamily, color: '444444' });
             });
             slide.addText('Prochaines étapes', { x: 5, y: 1.1, w: 4, h: 0.4, fontSize: 14, fontFace: fontFamily, color: primaryHex, bold: true });
-            ['Finaliser les arbitrages', 'Poursuivre commercialisation', 'Suivre levée réserves', 'Préparer inauguration'].forEach((step, i) => {
+            const stepsToShow = prochainesEtapes.length > 0
+              ? prochainesEtapes.map(e => `${e.action} (${e.echeance})`)
+              : ['Finaliser les arbitrages', 'Poursuivre commercialisation', 'Suivre levée réserves', 'Préparer inauguration'];
+            stepsToShow.forEach((step, i) => {
               slide.addText(`${i + 1}. ${step}`, { x: 5.2, y: 1.6 + i * 0.4, w: 4, h: 0.35, fontSize: 12, fontFace: fontFamily, color: '444444' });
             });
             addComment(slide, slideItem.comment, 4.0);

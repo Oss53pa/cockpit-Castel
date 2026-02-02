@@ -1,5 +1,7 @@
 import React from 'react';
+import { Info } from 'lucide-react';
 import { SYNC_CONFIG } from '@/config/syncConfig';
+import { Tooltip } from '@/components/ui';
 import type { SyncAlertLevel } from '@/types/sync.types';
 
 interface SyncGaugeProps {
@@ -66,6 +68,32 @@ export const SyncGauge: React.FC<SyncGaugeProps> = ({
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border">
+      {/* Header with explanation tooltip */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Synchronisation Projet / Mobilisation</h3>
+        <Tooltip
+          content={
+            <div className="max-w-xs p-2 text-sm">
+              <p className="font-semibold mb-2">Calcul du taux de synchronisation</p>
+              <p className="text-gray-300 mb-2">
+                L'écart représente la différence entre l'avancement du Projet (Construction CC)
+                et l'avancement de la Mobilisation opérationnelle.
+              </p>
+              <p className="text-xs text-gray-400 mb-2">
+                <strong>Formule :</strong> Écart = % Projet - % Mobilisation
+              </p>
+              <div className="text-xs space-y-1 border-t border-gray-600 pt-2 mt-2">
+                <p className="text-green-400">🟢 |Écart| ≤ 5% : Synchronisé</p>
+                <p className="text-yellow-400">🟡 5% &lt; |Écart| ≤ 15% : Attention requise</p>
+                <p className="text-red-400">🔴 |Écart| &gt; 15% : Désynchronisé</p>
+              </div>
+            </div>
+          }
+        >
+          <Info className="h-5 w-5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+        </Tooltip>
+      </div>
+
       <div className="flex items-center justify-center gap-8 lg:gap-12">
         {/* Project Gauge */}
         <CircularProgress

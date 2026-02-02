@@ -41,10 +41,10 @@ export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps
 
       await updateRisque(risque.id, {
         // Champs principaux (édition interne)
-        ...(data.titre && { titre: data.titre }),
+        ...(data.titre !== undefined && { titre: data.titre }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.categorie && { categorie: data.categorie }),
-        ...(data.proprietaire && { proprietaire: data.proprietaire }),
+        ...(data.categorie !== undefined && { categorie: data.categorie }),
+        ...(data.proprietaire !== undefined && { proprietaire: data.proprietaire }),
         // Évaluation
         statut: data.statut,
         probabilite: data.probabilite,
@@ -52,6 +52,9 @@ export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps
         score: data.score,
         // Plan de mitigation
         ...(data.plan_mitigation !== undefined && { plan_mitigation: data.plan_mitigation }),
+        // Notes et commentaires
+        ...(data.notes_mise_a_jour !== undefined && { notes_mise_a_jour: data.notes_mise_a_jour }),
+        ...(data.commentaires_externes !== undefined && { commentaires_externes: data.commentaires_externes }),
         // Métadonnées
         date_derniere_evaluation: today,
       });

@@ -1630,3 +1630,165 @@ export async function sendEmail(params: SimpleEmailParams): Promise<EmailResult>
     messageId: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
   };
 }
+
+// ============================================
+// RAPPORT MENSUEL MANAGER
+// ============================================
+
+const MONTHLY_REPORT_STORAGE_KEY = 'cockpit_monthly_report_settings';
+const MONTHLY_REPORT_HISTORY_KEY = 'cockpit_monthly_report_history';
+
+export interface MonthlyReportSettings {
+  enabled: boolean;
+  dayOfMonth: number;
+  hour: number;
+  minute: number;
+  midMonthReminder: boolean;
+  midMonthDay: number;
+  recipients: string[];
+}
+
+export interface MonthlyReportSendRecord {
+  id: string;
+  date: string;
+  type: 'monthly' | 'mid-month' | 'test';
+  periode: string;
+  recipients: string[];
+  successCount: number;
+  failureCount: number;
+  status: 'success' | 'partial' | 'failed';
+  errors?: string[];
+}
+
+/**
+ * Charge les paramètres d'envoi du rapport mensuel
+ */
+export function loadMonthlyReportSettings(): MonthlyReportSettings | null {
+  try {
+    const saved = localStorage.getItem(MONTHLY_REPORT_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Erreur chargement settings rapport mensuel:', e);
+  }
+  return null;
+}
+
+/**
+ * Sauvegarde les paramètres d'envoi du rapport mensuel
+ */
+export function saveMonthlyReportSettings(settings: MonthlyReportSettings): void {
+  localStorage.setItem(MONTHLY_REPORT_STORAGE_KEY, JSON.stringify(settings));
+}
+
+/**
+ * Sauvegarde un envoi de rapport mensuel dans l'historique
+ */
+export function saveMonthlyReportToHistory(record: Omit<MonthlyReportSendRecord, 'id' | 'date'>): void {
+  try {
+    const saved = localStorage.getItem(MONTHLY_REPORT_HISTORY_KEY);
+    const history: MonthlyReportSendRecord[] = saved ? JSON.parse(saved) : [];
+
+    history.unshift({
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      ...record,
+    });
+
+    // Garder les 100 derniers envois
+    const trimmed = history.slice(0, 100);
+    localStorage.setItem(MONTHLY_REPORT_HISTORY_KEY, JSON.stringify(trimmed));
+  } catch (e) {
+    console.error('Erreur sauvegarde historique rapport mensuel:', e);
+  }
+}
+
+/**
+ * Récupère l'historique des envois de rapports mensuels
+ */
+export function getMonthlyReportHistory(): MonthlyReportSendRecord[] {
+  try {
+    const saved = localStorage.getItem(MONTHLY_REPORT_HISTORY_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    console.error('Erreur lecture historique rapport mensuel:', e);
+    return [];
+  }
+}
+
+/**
+ * Envoie le rapport mensuel aux destinataires
+ */
+export async function sendMonthlyManagerReport(
+  emailContent: { subject: string; html: string },
+  recipients: string[],
+  type: 'monthly' | 'mid-month' | 'test',
+  periode: string
+): Promise<{ totalSent: number; totalFailed: number; errors: string[] }> {
+  const config = getEmailConfig();
+  const results: { success: boolean; recipient: string; error?: string }[] = [];
+
+  for (const recipient of recipients) {
+    try {
+      // Utiliser EmailJS si configuré
+      if (config.provider === 'emailjs' && config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
+        const templateParams = {
+          to_email: recipient,
+          to_name: recipient.split('@')[0],
+          from_name: config.fromName,
+          from_email: config.fromEmail,
+          subject: emailContent.subject,
+          message_html: emailContent.html,
+          reply_to: config.replyTo || config.fromEmail,
+        };
+
+        await emailjs.send(
+          config.emailjsServiceId,
+          config.emailjsTemplateId,
+          templateParams,
+          config.emailjsPublicKey
+        );
+
+        results.push({ success: true, recipient });
+      } else {
+        // Mode simulation
+        await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+
+        // Simuler occasionnellement un échec (5%)
+        if (Math.random() < 0.05) {
+          results.push({
+            success: false,
+            recipient,
+            error: 'Erreur de connexion SMTP (simulation)',
+          });
+        } else {
+          results.push({ success: true, recipient });
+        }
+      }
+    } catch (error) {
+      results.push({
+        success: false,
+        recipient,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    }
+  }
+
+  const totalSent = results.filter(r => r.success).length;
+  const totalFailed = results.filter(r => !r.success).length;
+  const errors = results.filter(r => !r.success).map(r => `${r.recipient}: ${r.error}`);
+
+  // Sauvegarder dans l'historique
+  saveMonthlyReportToHistory({
+    type,
+    periode,
+    recipients,
+    successCount: totalSent,
+    failureCount: totalFailed,
+    status: totalFailed === 0 ? 'success' : totalSent === 0 ? 'failed' : 'partial',
+    errors: errors.length > 0 ? errors : undefined,
+  });
+
+  return { totalSent, totalFailed, errors };
+}

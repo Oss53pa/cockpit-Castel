@@ -19,6 +19,7 @@ import {
   ExternalUpdateRouter,
   SynchronisationPage,
 } from '@/pages';
+import { MonthlyReportPage } from '@/components/rapports/ManagerEmail';
 import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { initializeDatabase } from '@/lib/initDatabase';
@@ -113,6 +114,9 @@ function AppContent() {
 
         {/* Shared Report Page - Standalone without layout (public) */}
         <Route path="/reports/share/:shareId" element={<SharedReportPage />} />
+
+        {/* Monthly Report Page - Standalone without layout (public via email link) */}
+        <Route path="/rapport/mensuel/:mois" element={<MonthlyReportPage />} />
 
         {/* External Update Page - Standalone without layout (public) */}
         <Route path="/update/:type/:token" element={<ExternalUpdateRouter />} />

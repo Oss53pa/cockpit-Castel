@@ -12,7 +12,6 @@ import {
   useBudgetParAxe,
   useRisques,
 } from '@/hooks';
-import { useSync } from '@/hooks/useSync';
 // Utilise uniquement les configurations, pas les données hardcodées
 import { PROJET_CONFIG, SEUILS_METEO, SEUILS_UI } from '@/data/constants';
 import type {
@@ -66,6 +65,31 @@ const dbCodeToAxe: Record<string, AxeType> = {
   'Exploitation': 'exploitation',
   'Tous': 'general',
 };
+
+// Mapping des catégories de risques vers les axes
+// Note: Les risques dans la DB de production utilisent "categorie" au lieu de "axe_impacte"
+const risqueCategorieToDbCode: Record<string, string> = {
+  'planning': 'axe3_technique',
+  'financier': 'axe4_budget',
+  'technique': 'axe3_technique',
+  'securite': 'axe6_exploitation',
+  'commercial': 'axe2_commercial',
+  'rh': 'axe1_rh',
+  'marketing': 'axe5_marketing',
+  'exploitation': 'axe6_exploitation',
+};
+
+// Helper pour obtenir le code axe d'un risque
+// Utilise axe_impacte si présent, sinon mappe la catégorie
+function getRisqueAxeCode(risque: any): string {
+  if (risque.axe_impacte) {
+    return risque.axe_impacte;
+  }
+  if (risque.categorie) {
+    return risqueCategorieToDbCode[risque.categorie] || 'general';
+  }
+  return 'general';
+}
 
 // ============================================================================
 // HELPERS - Calcul de météo automatique
@@ -136,13 +160,26 @@ export interface UseDeepDiveMensuelDataResult {
 
 export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMensuelDataResult {
   // Hooks de données existants
+  // Note: useLiveQuery retourne undefined pendant le chargement initial
   const kpis = useDashboardKPIs();
   const actionsDb = useActions();
   const jalonsDb = useJalons();
   const budgetItems = useBudget();
   const budgetSynthese = useBudgetSynthese();
   const risquesDb = useRisques();
-  const syncData = useSync('cosmos-angre');
+  // Note: useSync n'est pas utilisé pour le moment car les données sont calculées directement
+  // const syncData = useSync(1, 'cosmos-angre');
+
+  // Détection de l'état de chargement
+  // Note: Les hooks utilisent ?? [] donc ils retournent toujours un tableau
+  // On considère que les données ne sont pas prêtes si TOUS les tableaux sont vides
+  // ET que les KPIs montrent des totaux à 0 (la base n'est pas encore initialisée)
+  const hasNoData = actionsDb.length === 0 && jalonsDb.length === 0 && risquesDb.length === 0;
+  const kpisNotReady = kpis.totalActions === 0 && kpis.totalJalons === 0 && kpis.totalRisques === 0;
+
+  // isLoading est true seulement si on n'a aucune donnée ET les KPIs ne sont pas prêts
+  // Cela évite d'afficher "chargement" si la base est simplement vide
+  const isLoading = hasNoData && kpisNotReady && kpis.projectName === '';
 
   // Période actuelle
   const periode = useMemo(() => {
@@ -176,9 +213,9 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       const axeJalons = jalonsDb.filter(j => j.axe === dbCode);
       const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint').length;
 
-      // Risques filtrés par axe
-      const axeRisques = risquesDb.filter(r => r.axe_impacte === dbCode);
-      const risquesCritiques = axeRisques.filter(r => (r.score_actuel || r.score_initial || 0) >= 12).length;
+      // Risques filtrés par axe (utilise axe_impacte ou categorie)
+      const axeRisques = risquesDb.filter(r => getRisqueAxeCode(r) === dbCode);
+      const risquesCritiques = axeRisques.filter(r => (r.score_actuel || r.score_initial || r.score || 0) >= 12).length;
 
       // Budget filtré par axe
       const axeBudgetItems = budgetItems.filter(b => b.axe === dbCode);
@@ -196,7 +233,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       // Alerte principale (risque le plus critique ou action la plus en retard)
       let alertePrincipale: string | undefined;
       if (risquesCritiques > 0) {
-        const topRisque = axeRisques.sort((a, b) => (b.score_actuel || 0) - (a.score_actuel || 0))[0];
+        const topRisque = axeRisques.sort((a, b) => (b.score_actuel || b.score || 0) - (a.score_actuel || a.score || 0))[0];
         if (topRisque) alertePrincipale = topRisque.titre;
       } else if (actionsEnRetard > 0) {
         alertePrincipale = `${actionsEnRetard} action(s) en retard`;
@@ -243,8 +280,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       // Jalons
       const axeJalons = jalonsDb.filter(j => j.axe === dbCode);
 
-      // Risques
-      const axeRisques = risquesDb.filter(r => r.axe_impacte === dbCode);
+      // Risques (utilise axe_impacte ou categorie)
+      const axeRisques = risquesDb.filter(r => getRisqueAxeCode(r) === dbCode);
 
       // Budget
       const axeBudgetItems = budgetItems.filter(b => b.axe === dbCode);
@@ -309,10 +346,10 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         risques: axeRisques.map(r => ({
           id: r.id?.toString() || '',
           titre: r.titre,
-          score: r.score_actuel || r.score_initial || 0,
-          niveau: (r.score_actuel || 0) >= 12 ? 'critique' :
-            (r.score_actuel || 0) >= 8 ? 'majeur' :
-            (r.score_actuel || 0) >= 4 ? 'modere' : 'faible',
+          score: r.score_actuel || r.score_initial || r.score || 0,
+          niveau: (r.score_actuel || r.score || 0) >= 12 ? 'critique' :
+            (r.score_actuel || r.score || 0) >= 8 ? 'majeur' :
+            (r.score_actuel || r.score || 0) >= 4 ? 'modere' : 'faible',
           tendance: 'stable',
         })),
         pointsCles: [],
@@ -423,14 +460,14 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
     });
 
     // Risques critiques → Alertes
-    const risquesCritiques = risquesDb.filter(r => (r.score_actuel || r.score_initial || 0) >= 12);
+    const risquesCritiques = risquesDb.filter(r => (r.score_actuel || r.score_initial || r.score || 0) >= 12);
     risquesCritiques.slice(0, 3).forEach((r, idx) => {
       alertes.push({
         id: `alert_${idx}`,
         type: 'alerte',
         titre: r.titre,
         description: r.description || 'Risque critique à traiter en priorité',
-        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        axe: dbCodeToAxe[getRisqueAxeCode(r)] || 'general',
         impact: 'negatif',
       });
     });
@@ -450,7 +487,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
   const top5Risques = useMemo((): Top5RisquesData => {
     // Utiliser les données temps réel de la DB
     const sortedRisques = [...risquesDb]
-      .sort((a, b) => (b.score_actuel || b.score_initial || 0) - (a.score_actuel || a.score_initial || 0))
+      .sort((a, b) => (b.score_actuel || b.score_initial || b.score || 0) - (a.score_actuel || a.score_initial || a.score || 0))
       .slice(0, 5);
 
     return {
@@ -459,20 +496,20 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         code: r.id_risque || r.id?.toString() || '',
         titre: r.titre,
         description: r.description || '',
-        score: r.score_actuel || r.score_initial || 0,
+        score: r.score_actuel || r.score_initial || r.score || 0,
         scoreEvolution: 0, // TODO: calculer avec historique
         probabilite: r.probabilite || 2,
         impact: r.impact || 2,
-        niveau: (r.score_actuel || 0) >= 12 ? 'critique' :
-          (r.score_actuel || 0) >= 8 ? 'majeur' :
-          (r.score_actuel || 0) >= 4 ? 'modere' : 'faible',
-        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        niveau: (r.score_actuel || r.score || 0) >= 12 ? 'critique' :
+          (r.score_actuel || r.score || 0) >= 8 ? 'majeur' :
+          (r.score_actuel || r.score || 0) >= 4 ? 'modere' : 'faible',
+        axe: dbCodeToAxe[getRisqueAxeCode(r)] || 'general',
         proprietaire: r.proprietaire || 'Non assigné',
         mitigationPrincipale: r.action_mitigation || 'À définir',
         statutMitigation: 'en_cours',
         tendance: 'stable',
       })),
-      scoreGlobalRisques: risquesDb.reduce((sum, r) => sum + (r.score_actuel || r.score_initial || 0), 0),
+      scoreGlobalRisques: risquesDb.reduce((sum, r) => sum + (r.score_actuel || r.score_initial || r.score || 0), 0),
       tendanceGlobale: 'stable',
     };
   }, [risquesDb]);
@@ -493,8 +530,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         id: r.id?.toString() || '',
         code: r.id_risque || '',
         titre: r.titre,
-        score: r.score_actuel || r.score_initial || 0,
-        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        score: r.score_actuel || r.score_initial || r.score || 0,
+        axe: dbCodeToAxe[getRisqueAxeCode(r)] || 'general',
         dateIdentification: r.date_identification || '',
       }));
 
@@ -505,18 +542,18 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         id: r.id?.toString() || '',
         code: r.id_risque || '',
         titre: r.titre,
-        scoreFinal: r.score_actuel || r.score_initial || 0,
-        axe: dbCodeToAxe[r.axe_impacte || ''] || 'general',
+        scoreFinal: r.score_actuel || r.score_initial || r.score || 0,
+        axe: dbCodeToAxe[getRisqueAxeCode(r)] || 'general',
         dateFermeture: r.date_derniere_evaluation || '',
         motif: 'Risque traité ou mitigé',
       }));
 
     // Comptage par niveau
     const risquesOuverts = risquesDb.filter(r => r.statut !== 'ferme');
-    const critiques = risquesOuverts.filter(r => (r.score_actuel || 0) >= 12).length;
-    const majeurs = risquesOuverts.filter(r => (r.score_actuel || 0) >= 8 && (r.score_actuel || 0) < 12).length;
-    const moderes = risquesOuverts.filter(r => (r.score_actuel || 0) >= 4 && (r.score_actuel || 0) < 8).length;
-    const faibles = risquesOuverts.filter(r => (r.score_actuel || 0) < 4).length;
+    const critiques = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 12).length;
+    const majeurs = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 8 && (r.score_actuel || r.score || 0) < 12).length;
+    const moderes = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 4 && (r.score_actuel || r.score || 0) < 8).length;
+    const faibles = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) < 4).length;
 
     return {
       nouveaux,
@@ -679,7 +716,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
     planActionM1,
     gantt,
     courbeS,
-    isLoading: false,
+    isLoading,
     periode,
   };
 }

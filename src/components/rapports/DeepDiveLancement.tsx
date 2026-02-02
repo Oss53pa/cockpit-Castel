@@ -224,15 +224,15 @@ function SlideRappelProjet() {
 
   // Calcul des jalons atteints
   const jalonsAtteints = useMemo(() => {
-    if (!jalons.data) return 0;
-    return jalons.data.filter(j => j.statut === 'atteint').length;
-  }, [jalons.data]);
+    if (!jalons) return 0;
+    return jalons.filter(j => j.statut === 'atteint').length;
+  }, [jalons]);
 
-  const jalonsTotal = jalons.data?.length || 0;
+  const jalonsTotal = jalons?.length || 0;
 
   // Calcul dynamique de la météo par axe basé sur les vraies données
   const meteoParAxe = useMemo(() => {
-    if (!actions.data || !jalons.data) return [];
+    if (!actions || !jalons) return [];
 
     const axes: { code: string; key: AxeType; label: string }[] = [
       { code: 'axe1_rh', key: 'rh', label: 'RH & Organisation' },
@@ -244,8 +244,8 @@ function SlideRappelProjet() {
     ];
 
     return axes.map(axe => {
-      const axeActions = actions.data!.filter(a => a.axe === axe.code);
-      const axeJalons = jalons.data!.filter(j => j.axe === axe.code);
+      const axeActions = actions!.filter(a => a.axe === axe.code);
+      const axeJalons = jalons!.filter(j => j.axe === axe.code);
 
       const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
       const actionsBloquees = axeActions.filter(a => a.statut === 'bloque').length;
@@ -279,15 +279,15 @@ function SlideRappelProjet() {
 
       return { axe: axe.code, key: axe.key, label: axe.label, meteo, statut };
     });
-  }, [actions.data, jalons.data]);
+  }, [actions, jalons]);
 
   // Calcul effectif depuis les actions RH
   const effectifCible = useMemo(() => {
-    if (!actions.data) return 25; // Valeur par défaut
-    const actionsRH = actions.data.filter(a => a.axe === 'axe1_rh');
+    if (!actions) return 25; // Valeur par défaut
+    const actionsRH = actions.filter(a => a.axe === 'axe1_rh');
     // Chercher une action qui mentionne l'effectif ou utiliser la config
     return PROJET_CONFIG.surfaceGLA > 40000 ? 25 : 15;
-  }, [actions.data]);
+  }, [actions]);
 
   return (
     <div className="space-y-6">
@@ -352,7 +352,7 @@ function SlideRappelProjet() {
             <p className="text-xs text-green-600">Jalons atteints</p>
           </div>
           <div className="p-4 bg-amber-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-amber-700">{actions.data?.length || 0}</p>
+            <p className="text-2xl font-bold text-amber-700">{actions?.length || 0}</p>
             <p className="text-xs text-amber-600">Actions totales</p>
           </div>
           <div className="p-4 bg-purple-50 rounded-lg text-center">
@@ -430,14 +430,14 @@ function SlideAxeRH() {
 
   // Données réelles pour l'axe RH
   const actionsRH = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe1_rh');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe1_rh');
+  }, [actions]);
 
   const jalonsRH = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe1_rh');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe1_rh');
+  }, [jalons]);
 
   const actionsTerminees = actionsRH.filter(a => a.statut === 'termine').length;
   const avancement = actionsRH.length > 0
@@ -539,14 +539,14 @@ function SlideAxeCommercial() {
   const kpis = useDashboardKPIs();
 
   const actionsCommerciales = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe2_commercial');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe2_commercial');
+  }, [actions]);
 
   const jalonsCommerciaux = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe2_commercial');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe2_commercial');
+  }, [jalons]);
 
   const risquesCommerciaux = useMemo(() => {
     if (!risques.data) return [];
@@ -680,14 +680,14 @@ function SlideAxeTechnique() {
   const risques = useRisques();
 
   const actionsTechniques = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe3_technique');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe3_technique');
+  }, [actions]);
 
   const jalonsTechniques = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe3_technique');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe3_technique');
+  }, [jalons]);
 
   const risquesTechniques = useMemo(() => {
     if (!risques.data) return [];
@@ -794,14 +794,14 @@ function SlideAxeBudget() {
   const jalons = useJalons();
 
   const actionsBudget = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe4_budget');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe4_budget');
+  }, [actions]);
 
   const jalonsBudget = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe4_budget');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe4_budget');
+  }, [jalons]);
 
   // Calcul du budget total réel
   const budgetTotalPrevu = budget?.prevu || 0;
@@ -907,14 +907,14 @@ function SlideAxeMarketing() {
   const jalons = useJalons();
 
   const actionsMarketing = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe5_marketing');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe5_marketing');
+  }, [actions]);
 
   const jalonsMarketing = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe5_marketing');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe5_marketing');
+  }, [jalons]);
 
   return (
     <div className="space-y-6">
@@ -1003,14 +1003,14 @@ function SlideAxeExploitation() {
   const jalons = useJalons();
 
   const actionsExploitation = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data.filter(a => a.axe === 'axe6_exploitation');
-  }, [actions.data]);
+    if (!actions) return [];
+    return actions.filter(a => a.axe === 'axe6_exploitation');
+  }, [actions]);
 
   const jalonsExploitation = useMemo(() => {
-    if (!jalons.data) return [];
-    return jalons.data.filter(j => j.axe === 'axe6_exploitation');
-  }, [jalons.data]);
+    if (!jalons) return [];
+    return jalons.filter(j => j.axe === 'axe6_exploitation');
+  }, [jalons]);
 
   // Catégoriser les actions par type de prestation
   const prestationsParType = useMemo(() => {
@@ -1234,39 +1234,57 @@ function SlideDecisions() {
   const actions = useActions();
   const jalons = useJalons();
 
-  // Décisions = actions bloquées ou nécessitant validation (priorité critique/haute)
+  // Décisions = actions de type "decision" ou "validation" non terminées
   const decisionsAttendues = useMemo(() => {
-    if (!actions.data) return [];
-    return actions.data
-      .filter(a => a.statut === 'bloque' || a.priorite === 'critique' || a.priorite === 'haute')
-      .filter(a => a.statut !== 'termine')
+    if (!actions) return [];
+    return actions
+      .filter(a => a.type_action === 'decision' || a.type_action === 'validation' || a.statut === 'en_validation')
+      .filter(a => a.statut !== 'termine' && a.statut !== 'annule')
       .slice(0, 6)
       .map((a, idx) => ({
         numero: idx + 1,
         element: a.titre,
         statut: a.statut === 'termine' ? 'valide' : 'a_valider',
-        responsable: a.responsable_nom,
+        responsable: a.responsable_nom || a.responsable,
       }));
-  }, [actions.data]);
+  }, [actions]);
 
-  // Prochaines étapes = prochaines actions à venir (non terminées, triées par date)
+  // Prochaines étapes = Top 5 actions les plus importantes du mois suivant
   const prochainesEtapes = useMemo(() => {
-    if (!actions.data) return [];
+    if (!actions) return [];
     const today = new Date();
-    return actions.data
-      .filter(a => a.statut !== 'termine' && a.statut !== 'bloque')
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+
+    // Ordre de priorité
+    const priorityOrder: Record<string, number> = { critique: 1, haute: 2, moyenne: 3, basse: 4 };
+
+    return actions
+      .filter(a => {
+        if (a.statut === 'termine' || a.statut === 'annule') return false;
+        if (!a.date_fin_prevue) return false;
+        const dateEcheance = new Date(a.date_fin_prevue);
+        // Actions du mois suivant
+        return dateEcheance >= nextMonth && dateEcheance <= endOfNextMonth;
+      })
       .sort((a, b) => {
-        const dateA = a.date_fin_prevue ? new Date(a.date_fin_prevue).getTime() : Infinity;
-        const dateB = b.date_fin_prevue ? new Date(b.date_fin_prevue).getTime() : Infinity;
+        // Trier par priorité (critique > haute > moyenne > basse)
+        const prioA = priorityOrder[a.priorite] || 5;
+        const prioB = priorityOrder[b.priorite] || 5;
+        if (prioA !== prioB) return prioA - prioB;
+        // Puis par date
+        const dateA = new Date(a.date_fin_prevue!).getTime();
+        const dateB = new Date(b.date_fin_prevue!).getTime();
         return dateA - dateB;
       })
       .slice(0, 5)
       .map(a => ({
         action: a.titre,
-        responsable: a.responsable_nom || '-',
+        responsable: a.responsable_nom || a.responsable || '-',
         echeance: a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR') : 'À définir',
+        priorite: a.priorite,
       }));
-  }, [actions.data]);
+  }, [actions]);
 
   // État local pour toggle des décisions
   const [decisionsState, setDecisionsState] = useState<Record<number, boolean>>({});
@@ -1381,8 +1399,8 @@ export function DeepDiveLancement() {
 
   // Données calculées à partir des hooks
   const cockpitData = useMemo(() => {
-    const actionsData = actions.data || [];
-    const jalonsData = jalons.data || [];
+    const actionsData = actions || [];
+    const jalonsData = jalons || [];
     const risquesData = risques || [];
 
     // Actions par axe
@@ -1455,7 +1473,7 @@ export function DeepDiveLancement() {
       actionsByAxe,
       jalonsByAxe,
     };
-  }, [kpis, actions.data, jalons.data, risques, budgetSynthese]);
+  }, [kpis, actions, jalons, risques, budgetSynthese]);
 
   const slides = [
     { numero: 1, titre: 'Agenda', component: SlideAgenda },
@@ -1793,20 +1811,20 @@ export function DeepDiveLancement() {
         <h2 class="text-2xl font-bold text-[#1C3163] mt-1">DÉCISIONS ATTENDUES</h2>
       </div>
       <div class="bg-gray-50 p-6 rounded-lg mb-6">
-        <h3 class="font-bold mb-4">Actions Prioritaires (temps réel)</h3>
+        <h3 class="font-bold mb-4">Décisions Attendues (temps réel)</h3>
         <div class="space-y-3">
           ${(() => {
-            const priorityActions = actions.data
-              ?.filter(a => a.statut !== 'termine' && (a.priorite === 'critique' || a.priorite === 'haute'))
+            const decisionsActions = actions
+              ?.filter(a => (a.type_action === 'decision' || a.type_action === 'validation' || a.statut === 'en_validation') && a.statut !== 'termine' && a.statut !== 'annule')
               .slice(0, 6) || [];
-            return priorityActions.length > 0
-              ? priorityActions.map((a, i) => `
+            return decisionsActions.length > 0
+              ? decisionsActions.map((a, i) => `
                 <div class="flex items-center justify-between p-3 bg-white rounded-lg border">
                   <span>${i + 1}. ${a.titre}</span>
                   <span class="text-gray-400">☐ Validé  ☐ À modifier</span>
                 </div>
               `).join('')
-              : '<div class="text-center text-gray-500 p-4">Aucune action prioritaire en attente</div>';
+              : '<div class="text-center text-gray-500 p-4">Aucune décision en attente</div>';
           })()}
         </div>
       </div>

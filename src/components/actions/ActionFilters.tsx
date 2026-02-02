@@ -1,6 +1,6 @@
-import { Search, X, Calendar } from 'lucide-react';
+import { Search, X, Calendar, Flag } from 'lucide-react';
 import { Input, Select, SelectOption, Button } from '@/components/ui';
-import { useUsers } from '@/hooks';
+import { useUsers, useJalons } from '@/hooks';
 import { useAppStore } from '@/stores';
 import {
   AXES,
@@ -18,6 +18,7 @@ import {
 export function ActionFiltersBar() {
   const { actionFilters, setActionFilters, resetActionFilters } = useAppStore();
   const users = useUsers();
+  const jalons = useJalons();
 
   const activeFiltersCount = Object.values(actionFilters).filter(Boolean).length;
 
@@ -66,6 +67,24 @@ export function ActionFiltersBar() {
         {AXES.map((axe) => (
           <SelectOption key={axe} value={axe}>
             {AXE_LABELS[axe]}
+          </SelectOption>
+        ))}
+      </Select>
+
+      {/* Jalon filter */}
+      <Select
+        value={actionFilters.jalonId?.toString() ?? ''}
+        onChange={(e) =>
+          setActionFilters({
+            jalonId: e.target.value ? parseInt(e.target.value) : undefined,
+          })
+        }
+        className="w-48"
+      >
+        <SelectOption value="">Tous les jalons</SelectOption>
+        {jalons.map((jalon) => (
+          <SelectOption key={jalon.id} value={jalon.id}>
+            {jalon.titre}
           </SelectOption>
         ))}
       </Select>

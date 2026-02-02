@@ -73,6 +73,9 @@ import { DeepDiveLaunch } from '@/components/rapports/DeepDiveLaunch';
 import { DeepDiveLancement } from '@/components/rapports/DeepDiveLancement';
 import { ImportIA } from '@/components/rapports/ImportIA';
 import { Journal } from '@/components/rapports/Journal';
+import { WeeklyReport } from '@/components/reports/WeeklyReport';
+import { MonthlyReport } from '@/components/reports/MonthlyReport';
+import { MonthlyReportPage as RappelActionsReport } from '@/components/rapports/ManagerEmail';
 import { ReportPeriodSelector, type ReportPeriod } from '@/components/rapports/ReportPeriodSelector';
 import { ReportGenerator } from '@/components/rapports/ReportGenerator';
 import {
@@ -153,7 +156,7 @@ const statusColors: Record<ReportStatus, string> = {
 
 const CHART_COLORS = ['#1C3163', '#D4AF37', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal' | 'auto_generation';
+type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal' | 'auto_generation' | 'weekly_report' | 'monthly_report' | 'rappel_actions';
 
 // Type pour les commentaires de section
 interface ReportComment {
@@ -673,6 +676,18 @@ export function RapportsPage() {
           <TabsTrigger value="auto_generation" className="gap-2">
             <Zap className="h-4 w-4" />
             Génération Auto
+          </TabsTrigger>
+          <TabsTrigger value="weekly_report" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Rapport Hebdo
+          </TabsTrigger>
+          <TabsTrigger value="monthly_report" className="gap-2">
+            <BarChart2 className="h-4 w-4" />
+            Rapport Mensuel
+          </TabsTrigger>
+          <TabsTrigger value="rappel_actions" className="gap-2">
+            <Mail className="h-4 w-4" />
+            Rappel Actions
           </TabsTrigger>
           <TabsTrigger value="deep_dive" className="gap-2">
             <Presentation className="h-4 w-4" />
@@ -1434,6 +1449,21 @@ export function RapportsPage() {
               setViewMode('html_reports');
             }}
           />
+        </TabsContent>
+
+        {/* Weekly Report */}
+        <TabsContent value="weekly_report">
+          <WeeklyReport />
+        </TabsContent>
+
+        {/* Monthly Report */}
+        <TabsContent value="monthly_report">
+          <MonthlyReport />
+        </TabsContent>
+
+        {/* Rappel des Actions */}
+        <TabsContent value="rappel_actions">
+          <RappelActionsReport />
         </TabsContent>
 
         {/* Deep Dive */}

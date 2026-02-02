@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Wallet,
   CheckCircle,
@@ -23,6 +23,9 @@ import {
   Pencil,
   RotateCcw,
   Loader2,
+  Plus,
+  Trash2,
+  X,
 } from 'lucide-react';
 import {
   BarChart,
@@ -56,6 +59,8 @@ import {
   Badge,
   Button,
   Progress,
+  Input,
+  MoneyInput,
 } from '@/components/ui';
 import { formatNumber } from '@/lib/utils';
 import { BudgetImportExport } from './BudgetImportExport';
@@ -1471,15 +1476,21 @@ function VueParPhase({ annee }: { annee: 2026 | 2027 }) {
   );
 }
 
-// Vue Synthèse (lecture seule - les modifications se font dans la vue Détail)
+// Vue Synthèse (avec édition, ajout et suppression)
 function VueSyntheseEditable({
   lignes,
   totaux,
   annee,
+  onEdit,
+  onAdd,
+  onDelete,
 }: {
   lignes: LigneBudgetExploitation[];
   totaux: { prevu: number; engage: number; consomme: number; reste: number };
   annee: 2026 | 2027;
+  onEdit: (ligne: LigneBudgetExploitation) => void;
+  onAdd: () => void;
+  onDelete: (id: number) => void;
 }) {
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
 
@@ -1493,11 +1504,19 @@ function VueSyntheseEditable({
 
   return (
     <div className="space-y-6">
+      {/* Bouton Ajouter */}
+      <div className="flex justify-end">
+        <Button variant="primary" onClick={onAdd}>
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter une ligne
+        </Button>
+      </div>
+
       <Card padding="md">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-primary-900">Synthèse Budget Exploitation {annee}</h3>
-            <p className="text-sm text-primary-500">Récapitulatif calculé depuis les détails (lecture seule)</p>
+            <p className="text-sm text-primary-500">Récapitulatif éditable - Cliquez sur une ligne pour modifier</p>
           </div>
         </div>
         <Table>
@@ -1509,6 +1528,7 @@ function VueSyntheseEditable({
               <TableHead className="text-right">Engagé</TableHead>
               <TableHead className="text-right">Consommé</TableHead>
               <TableHead className="text-right">Part</TableHead>
+              <TableHead className="w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1532,6 +1552,16 @@ function VueSyntheseEditable({
                   <TableCell className="text-right font-mono text-blue-600">{formatMontant(ligne.montantEngage)}</TableCell>
                   <TableCell className="text-right font-mono text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
                   <TableCell className="text-right">{part}%</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1 justify-end">
+                      <Button size="sm" variant="ghost" onClick={() => onEdit(ligne)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-error-600 hover:bg-error-50" onClick={() => ligne.id && onDelete(ligne.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -1551,6 +1581,7 @@ function VueSyntheseEditable({
                 {formatMontant(totaux.consomme)}
               </TableCell>
               <TableCell className="text-right font-bold">100%</TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableFooter>
         </Table>
@@ -1576,6 +1607,251 @@ function VueSyntheseEditable({
   );
 }
 
+// Modal d'ajout de nouvelle ligne budgétaire
+function BudgetAddModalOperationnel({
+  open,
+  onClose,
+  onSave,
+  annee,
+  nextOrdre,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (ligne: Omit<LigneBudgetExploitation, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  annee: 2026 | 2027;
+  nextOrdre: number;
+}) {
+  const [poste, setPoste] = useState('');
+  const [description, setDescription] = useState('');
+  const [categorie, setCategorie] = useState<CategorieExploitation | ''>('');
+  const [prevu, setPrevu] = useState(0);
+  const [engage, setEngage] = useState(0);
+  const [consomme, setConsomme] = useState(0);
+  const [couleur, setCouleur] = useState('#3B82F6');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Catégories disponibles
+  const CATEGORIES: { id: CategorieExploitation; label: string }[] = [
+    { id: 'masse_salariale', label: 'Masse salariale' },
+    { id: 'prestations', label: 'Prestations' },
+    { id: 'fluides', label: 'Fluides & Énergies' },
+    { id: 'assurances', label: 'Assurances' },
+    { id: 'fonctionnement', label: 'Fonctionnement' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'provisions', label: 'Provisions' },
+    { id: 'contingence', label: 'Contingence' },
+  ];
+
+  // Couleurs par défaut par catégorie
+  const DEFAULT_COLORS: Record<string, string> = {
+    masse_salariale: '#3B82F6',
+    prestations: '#10B981',
+    fluides: '#F59E0B',
+    assurances: '#8B5CF6',
+    fonctionnement: '#6366F1',
+    marketing: '#EC4899',
+    provisions: '#14B8A6',
+    contingence: '#F97316',
+  };
+
+  // Mettre à jour la couleur quand la catégorie change
+  useEffect(() => {
+    if (categorie && DEFAULT_COLORS[categorie]) {
+      setCouleur(DEFAULT_COLORS[categorie]);
+    }
+  }, [categorie]);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setPoste('');
+      setDescription('');
+      setCategorie('');
+      setPrevu(0);
+      setEngage(0);
+      setConsomme(0);
+      setCouleur('#3B82F6');
+      setError(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleSave = async () => {
+    setError(null);
+
+    // Validation
+    if (!poste.trim()) {
+      setError('Le nom du poste est obligatoire');
+      return;
+    }
+    if (!categorie) {
+      setError('La catégorie est obligatoire');
+      return;
+    }
+    if (engage > prevu) {
+      setError('Le montant engagé ne peut pas dépasser le montant prévu');
+      return;
+    }
+    if (consomme > engage) {
+      setError('Le montant consommé ne peut pas dépasser le montant engagé');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave({
+        budgetType: 'operationnel',
+        annee,
+        ordre: nextOrdre,
+        poste: poste.trim(),
+        description: description.trim() || undefined,
+        categorie,
+        montantPrevu: prevu,
+        montantEngage: engage,
+        montantConsomme: consomme,
+        couleur,
+      });
+      onClose();
+    } catch (err) {
+      setError('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Ajouter une ligne budgétaire</h2>
+              <p className="text-primary-100 text-sm">Budget Opérationnel {annee}</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+          {/* Erreur */}
+          {error && (
+            <div className="p-3 bg-error-50 border border-error-200 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-error-500" />
+              <p className="text-sm text-error-700">{error}</p>
+            </div>
+          )}
+
+          {/* Nom du poste */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Nom du poste *
+            </label>
+            <Input
+              type="text"
+              value={poste}
+              onChange={(e) => setPoste(e.target.value)}
+              placeholder="Ex: Fournitures bureau"
+            />
+          </div>
+
+          {/* Catégorie */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Catégorie *
+            </label>
+            <select
+              value={categorie}
+              onChange={(e) => setCategorie(e.target.value as CategorieExploitation | '')}
+              className="w-full text-sm border border-primary-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Sélectionner une catégorie</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Description
+            </label>
+            <Input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description détaillée (optionnel)"
+            />
+          </div>
+
+          {/* Montants */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Prévu
+              </label>
+              <MoneyInput value={prevu} onChange={setPrevu} className="text-right font-mono" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Engagé
+              </label>
+              <MoneyInput value={engage} onChange={setEngage} className="text-right font-mono" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Consommé
+              </label>
+              <MoneyInput value={consomme} onChange={setConsomme} className="text-right font-mono" />
+            </div>
+          </div>
+
+          {/* Couleur */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Couleur
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={couleur}
+                onChange={(e) => setCouleur(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border border-primary-200"
+              />
+              <div
+                className="px-3 py-1 rounded text-white text-sm"
+                style={{ backgroundColor: couleur }}
+              >
+                Aperçu
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t px-6 py-4 bg-primary-50 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+            <Plus className="h-4 w-4 mr-2" />
+            {isSaving ? 'Ajout...' : 'Ajouter'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Composant principal Budget Opérationnel
 export function BudgetOperationnel() {
   const [activeTab, setActiveTab] = useState('synthese');
@@ -1592,11 +1868,16 @@ export function BudgetOperationnel() {
     error,
     totaux,
     updateLigne,
+    addLigne,
+    deleteLigne,
     resetToDefaults,
   } = useBudgetExploitation({
     budgetType: 'operationnel',
     annee,
   });
+
+  // State pour le modal d'ajout
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Handler de sauvegarde
   const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string) => {
@@ -1606,6 +1887,20 @@ export function BudgetOperationnel() {
       montantConsomme: consomme,
       note,
     });
+  };
+
+  // Handler d'ajout
+  const handleAdd = async (ligne: Omit<LigneBudgetExploitation, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await addLigne(ligne);
+    setIsAddModalOpen(false);
+  };
+
+  // Handler de suppression
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette ligne budgétaire ?')) {
+      return;
+    }
+    await deleteLigne(id);
   };
 
   // Handler de reset
@@ -1730,7 +2025,7 @@ export function BudgetOperationnel() {
         </TabsList>
 
         <TabsContent value="synthese">
-          <VueSyntheseEditable lignes={lignes} totaux={totaux} annee={annee} />
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} annee={annee} onEdit={setEditingLigne} onAdd={() => setIsAddModalOpen(true)} onDelete={handleDelete} />
         </TabsContent>
 
         <TabsContent value="detail">
@@ -1752,6 +2047,15 @@ export function BudgetOperationnel() {
         open={!!editingLigne}
         onClose={() => setEditingLigne(null)}
         onSave={handleSave}
+      />
+
+      {/* Modal d'ajout */}
+      <BudgetAddModalOperationnel
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleAdd}
+        annee={annee}
+        nextOrdre={lignes.length + 1}
       />
     </div>
   );

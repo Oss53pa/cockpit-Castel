@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Wallet,
   CheckCircle,
@@ -54,6 +54,8 @@ import {
   TableCell,
   Badge,
   Button,
+  Input,
+  MoneyInput,
 } from '@/components/ui';
 import { formatNumber } from '@/lib/utils';
 import {
@@ -77,416 +79,11 @@ interface PosteBudgetaire {
   tauxConso: number;
 }
 
-// Données complètes des lignes budgétaires avec dépenses et pièces jointes
-const LIGNES_BUDGETAIRES_COMPLETES: LigneBudgetaireComplete[] = [
-  {
-    id: '1',
-    poste: 'Recrutement',
-    description: 'Frais de recrutement (annonces, cabinets, tests)',
-    note: 'Cabinet RH sélectionné: Talent Africa. 3 postes clés en cours.',
-    prevu: 25_000_000,
-    engage: 22_000_000,
-    consomme: 18_000_000,
-    reste: 7_000_000,
-    avancement: 72,
-    depenses: [
-      { id: 'd1', date: '2024-01-10', description: 'Acompte cabinet Talent Africa', fournisseur: 'Talent Africa', reference: 'FA-2024-001', montant: 8_000_000, statut: 'paye' },
-      { id: 'd2', date: '2024-01-25', description: 'Publication annonces LinkedIn Premium', fournisseur: 'LinkedIn', reference: 'INV-45678', montant: 1_500_000, statut: 'paye' },
-      { id: 'd3', date: '2024-02-01', description: 'Tests psychométriques (lot 1)', fournisseur: 'AssessFirst', reference: 'AF-2024-123', montant: 2_500_000, statut: 'paye' },
-      { id: 'd4', date: '2024-02-05', description: 'Frais de déplacement candidats', fournisseur: 'Divers', reference: 'N° facture', montant: 1_200_000, statut: 'paye' },
-      { id: 'd5', date: '2024-02-10', description: 'Honoraires recrutement poste DG', fournisseur: 'Talent Africa', reference: 'FA-2024-015', montant: 4_800_000, statut: 'paye' },
-      { id: 'd6', date: '2024-02-20', description: 'Solde cabinet Talent Africa', fournisseur: 'Talent Africa', reference: 'FA-2024-022', montant: 4_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [
-      { id: 'pj1', nom: 'Contrat_Cabinet_RH.pdf', taille: '245 Ko', dateAjout: '2024-01-15', type: 'pdf' },
-      { id: 'pj2', nom: 'Grille_Salaires.xlsx', taille: '45 Ko', dateAjout: '2024-01-20', type: 'excel' },
-    ],
-    derniereModification: '2024-02-10',
-  },
-  {
-    id: '2',
-    poste: 'Recrutement',
-    description: 'Salaires pré-ouverture (équipe pilote)',
-    note: 'Équipe pilote de 8 personnes recrutée. Salaires versés M-3 à M-1.',
-    prevu: 85_000_000,
-    engage: 85_000_000,
-    consomme: 60_000_000,
-    reste: 25_000_000,
-    avancement: 71,
-    depenses: [
-      { id: 'd7', date: '2024-01-31', description: 'Salaires janvier 2024', fournisseur: 'Paie interne', reference: 'PAY-2024-01', montant: 20_000_000, statut: 'paye' },
-      { id: 'd8', date: '2024-02-29', description: 'Salaires février 2024', fournisseur: 'Paie interne', reference: 'PAY-2024-02', montant: 20_000_000, statut: 'paye' },
-      { id: 'd9', date: '2024-03-31', description: 'Salaires mars 2024', fournisseur: 'Paie interne', reference: 'PAY-2024-03', montant: 20_000_000, statut: 'paye' },
-      { id: 'd10', date: '2024-04-30', description: 'Salaires avril 2024 (prévisionnel)', fournisseur: 'Paie interne', reference: 'PAY-2024-04', montant: 25_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-15',
-  },
-  {
-    id: '3',
-    poste: 'Recrutement',
-    description: 'Déplacements et hébergement candidats',
-    prevu: 8_000_000,
-    engage: 5_000_000,
-    consomme: 3_500_000,
-    reste: 4_500_000,
-    avancement: 44,
-    depenses: [
-      { id: 'd11', date: '2024-01-20', description: 'Billets avion candidat DG', fournisseur: 'Air Côte d\'Ivoire', reference: 'ACI-4567', montant: 1_500_000, statut: 'paye' },
-      { id: 'd12', date: '2024-02-05', description: 'Hôtel candidats (3 nuits)', fournisseur: 'Sofitel Abidjan', reference: 'SOF-2024-089', montant: 2_000_000, statut: 'paye' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-02-10',
-  },
-  {
-    id: '4',
-    poste: 'Formation',
-    description: 'Formation initiale équipe (interne)',
-    note: 'Programme formation 3 semaines validé. Démarrage prévu S-6.',
-    prevu: 15_000_000,
-    engage: 12_000_000,
-    consomme: 8_000_000,
-    reste: 7_000_000,
-    avancement: 53,
-    depenses: [
-      { id: 'd13', date: '2024-02-15', description: 'Location salle de formation', fournisseur: 'Business Center', reference: 'BC-2024-034', montant: 3_000_000, statut: 'paye' },
-      { id: 'd14', date: '2024-02-20', description: 'Matériel pédagogique', fournisseur: 'Office Plus', reference: 'OP-2024-112', montant: 2_000_000, statut: 'paye' },
-      { id: 'd15', date: '2024-03-01', description: 'Formateur interne - honoraires', fournisseur: 'Consultant', reference: 'CONS-2024-01', montant: 3_000_000, statut: 'paye' },
-      { id: 'd16', date: '2024-03-15', description: 'Repas et pauses café', fournisseur: 'Traiteur Express', reference: 'TE-2024-067', montant: 4_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [
-      { id: 'pj3', nom: 'Programme_Formation.pdf', taille: '180 Ko', dateAjout: '2024-02-10', type: 'pdf' },
-    ],
-    derniereModification: '2024-03-01',
-  },
-  {
-    id: '5',
-    poste: 'Formation',
-    description: 'Formation externe (prestataires spécialisés)',
-    prevu: 20_000_000,
-    engage: 18_000_000,
-    consomme: 10_000_000,
-    reste: 10_000_000,
-    avancement: 50,
-    depenses: [
-      { id: 'd17', date: '2024-02-28', description: 'Formation sécurité incendie', fournisseur: 'SecuriForm', reference: 'SF-2024-023', montant: 5_000_000, statut: 'paye' },
-      { id: 'd18', date: '2024-03-10', description: 'Formation accueil client', fournisseur: 'Excellence Service', reference: 'ES-2024-045', montant: 5_000_000, statut: 'paye' },
-      { id: 'd19', date: '2024-03-25', description: 'Formation gestion de caisse', fournisseur: 'Retail Academy', reference: 'RA-2024-018', montant: 8_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-10',
-  },
-  {
-    id: '6',
-    poste: 'Formation',
-    description: 'Supports et documentation',
-    prevu: 5_000_000,
-    engage: 5_000_000,
-    consomme: 5_000_000,
-    reste: 0,
-    avancement: 100,
-    depenses: [
-      { id: 'd20', date: '2024-02-15', description: 'Impression manuels de procédures', fournisseur: 'Imprimerie Nationale', reference: 'IN-2024-089', montant: 2_500_000, statut: 'paye' },
-      { id: 'd21', date: '2024-02-25', description: 'Badges et supports de présentation', fournisseur: 'SignaPub', reference: 'SP-2024-034', montant: 2_500_000, statut: 'paye' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-02-25',
-  },
-  {
-    id: '7',
-    poste: 'Marketing',
-    description: 'Identité visuelle et charte graphique',
-    note: 'Charte graphique finalisée et validée par le siège.',
-    prevu: 12_000_000,
-    engage: 12_000_000,
-    consomme: 12_000_000,
-    reste: 0,
-    avancement: 100,
-    depenses: [
-      { id: 'd22', date: '2024-01-15', description: 'Création logo et charte', fournisseur: 'Agence Créative', reference: 'AC-2024-001', montant: 8_000_000, statut: 'paye' },
-      { id: 'd23', date: '2024-01-30', description: 'Déclinaisons et guide de marque', fournisseur: 'Agence Créative', reference: 'AC-2024-002', montant: 4_000_000, statut: 'paye' },
-    ],
-    piecesJointes: [
-      { id: 'pj4', nom: 'Charte_Graphique_V2.pdf', taille: '15 Mo', dateAjout: '2024-01-30', type: 'pdf' },
-      { id: 'pj5', nom: 'Logo_Declinaisons.zip', taille: '8 Mo', dateAjout: '2024-01-30', type: 'image' },
-    ],
-    derniereModification: '2024-01-30',
-  },
-  {
-    id: '8',
-    poste: 'Marketing',
-    description: 'Site web et réseaux sociaux',
-    prevu: 8_000_000,
-    engage: 8_000_000,
-    consomme: 6_000_000,
-    reste: 2_000_000,
-    avancement: 75,
-    depenses: [
-      { id: 'd24', date: '2024-02-01', description: 'Développement site web', fournisseur: 'WebAgency', reference: 'WA-2024-015', montant: 5_000_000, statut: 'paye' },
-      { id: 'd25', date: '2024-02-15', description: 'Création contenu réseaux sociaux', fournisseur: 'SocialMedia Pro', reference: 'SMP-2024-008', montant: 1_000_000, statut: 'paye' },
-      { id: 'd26', date: '2024-03-01', description: 'Maintenance et hébergement', fournisseur: 'WebAgency', reference: 'WA-2024-020', montant: 2_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-02-20',
-  },
-  {
-    id: '9',
-    poste: 'Marketing',
-    description: 'Campagne pré-ouverture (média, affichage)',
-    note: 'Campagne radio + affichage 4x3. Démarrage J-30.',
-    prevu: 65_000_000,
-    engage: 45_000_000,
-    consomme: 25_000_000,
-    reste: 40_000_000,
-    avancement: 38,
-    depenses: [
-      { id: 'd27', date: '2024-03-01', description: 'Acompte spots radio RTI', fournisseur: 'RTI Publicité', reference: 'RTI-2024-056', montant: 15_000_000, statut: 'paye' },
-      { id: 'd28', date: '2024-03-10', description: 'Affichage 4x3 Abidjan (25 panneaux)', fournisseur: 'JCDecaux CI', reference: 'JCD-2024-089', montant: 10_000_000, statut: 'paye' },
-      { id: 'd29', date: '2024-03-15', description: 'Solde campagne radio', fournisseur: 'RTI Publicité', reference: 'RTI-2024-078', montant: 20_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [
-      { id: 'pj6', nom: 'Plan_Media_2024.xlsx', taille: '120 Ko', dateAjout: '2024-02-28', type: 'excel' },
-    ],
-    derniereModification: '2024-03-15',
-  },
-  {
-    id: '10',
-    poste: 'Marketing',
-    description: 'Relations presse et RP',
-    prevu: 15_000_000,
-    engage: 10_000_000,
-    consomme: 5_000_000,
-    reste: 10_000_000,
-    avancement: 33,
-    depenses: [
-      { id: 'd30', date: '2024-02-20', description: 'Agence RP - forfait mensuel', fournisseur: 'RP Conseil', reference: 'RPC-2024-012', montant: 5_000_000, statut: 'paye' },
-      { id: 'd31', date: '2024-03-20', description: 'Organisation conférence de presse', fournisseur: 'RP Conseil', reference: 'RPC-2024-025', montant: 5_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-02-25',
-  },
-  {
-    id: '11',
-    poste: 'Événements',
-    description: 'Soft Opening (événement VIP)',
-    prevu: 25_000_000,
-    engage: 15_000_000,
-    consomme: 0,
-    reste: 25_000_000,
-    avancement: 0,
-    depenses: [
-      { id: 'd32', date: '2024-03-25', description: 'Acompte traiteur VIP', fournisseur: 'Gourmet Events', reference: 'GE-2024-034', montant: 10_000_000, statut: 'engage' },
-      { id: 'd33', date: '2024-03-28', description: 'Location mobilier événementiel', fournisseur: 'Event Déco', reference: 'ED-2024-015', montant: 5_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-25',
-  },
-  {
-    id: '12',
-    poste: 'Événements',
-    description: 'Inauguration officielle',
-    note: 'Présence ministre confirmée. Traiteur en cours de sélection.',
-    prevu: 45_000_000,
-    engage: 20_000_000,
-    consomme: 0,
-    reste: 45_000_000,
-    avancement: 0,
-    depenses: [
-      { id: 'd34', date: '2024-03-30', description: 'Réservation traiteur inauguration', fournisseur: 'Prestige Catering', reference: 'PC-2024-012', montant: 20_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-30',
-  },
-  {
-    id: '13',
-    poste: 'Événements',
-    description: 'Animations ouverture (1er mois)',
-    prevu: 30_000_000,
-    engage: 10_000_000,
-    consomme: 0,
-    reste: 30_000_000,
-    avancement: 0,
-    depenses: [
-      { id: 'd35', date: '2024-03-28', description: 'Acompte animation DJ/Artistes', fournisseur: 'Show Events', reference: 'SE-2024-007', montant: 10_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-28',
-  },
-  {
-    id: '14',
-    poste: 'IT & Équipements',
-    description: 'Systèmes informatiques (ERP, caisse)',
-    note: 'ERP Sage X3 installé. Formation utilisateurs en cours.',
-    prevu: 35_000_000,
-    engage: 35_000_000,
-    consomme: 28_000_000,
-    reste: 7_000_000,
-    avancement: 80,
-    depenses: [
-      { id: 'd36', date: '2024-01-15', description: 'Licence Sage X3', fournisseur: 'Sage CI', reference: 'SAGE-2024-001', montant: 15_000_000, statut: 'paye' },
-      { id: 'd37', date: '2024-02-01', description: 'Installation et paramétrage', fournisseur: 'Sage CI', reference: 'SAGE-2024-008', montant: 8_000_000, statut: 'paye' },
-      { id: 'd38', date: '2024-02-15', description: 'Logiciel caisse', fournisseur: 'RetailSoft', reference: 'RS-2024-034', montant: 5_000_000, statut: 'paye' },
-      { id: 'd39', date: '2024-03-01', description: 'Formation utilisateurs ERP', fournisseur: 'Sage CI', reference: 'SAGE-2024-015', montant: 7_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-01',
-  },
-  {
-    id: '15',
-    poste: 'IT & Équipements',
-    description: 'Matériel bureautique et téléphonie',
-    prevu: 12_000_000,
-    engage: 12_000_000,
-    consomme: 10_000_000,
-    reste: 2_000_000,
-    avancement: 83,
-    depenses: [
-      { id: 'd40', date: '2024-02-10', description: 'PC et imprimantes', fournisseur: 'Tech Store', reference: 'TS-2024-089', montant: 6_000_000, statut: 'paye' },
-      { id: 'd41', date: '2024-02-20', description: 'Standard téléphonique', fournisseur: 'Orange Business', reference: 'OB-2024-045', montant: 4_000_000, statut: 'paye' },
-      { id: 'd42', date: '2024-03-05', description: 'Accessoires et périphériques', fournisseur: 'Tech Store', reference: 'TS-2024-102', montant: 2_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-05',
-  },
-  {
-    id: '16',
-    poste: 'IT & Équipements',
-    description: 'Signalétique et PLV',
-    prevu: 25_000_000,
-    engage: 20_000_000,
-    consomme: 15_000_000,
-    reste: 10_000_000,
-    avancement: 60,
-    depenses: [
-      { id: 'd43', date: '2024-02-25', description: 'Enseignes extérieures', fournisseur: 'SignaPub', reference: 'SP-2024-056', montant: 10_000_000, statut: 'paye' },
-      { id: 'd44', date: '2024-03-10', description: 'Signalétique intérieure', fournisseur: 'SignaPub', reference: 'SP-2024-078', montant: 5_000_000, statut: 'paye' },
-      { id: 'd45', date: '2024-03-20', description: 'PLV et kakemonos', fournisseur: 'PrintExpress', reference: 'PE-2024-034', montant: 5_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-20',
-  },
-  {
-    id: '17',
-    poste: 'Aménagement',
-    description: 'Mobilier bureaux et espaces staff',
-    prevu: 18_000_000,
-    engage: 18_000_000,
-    consomme: 18_000_000,
-    reste: 0,
-    avancement: 100,
-    depenses: [
-      { id: 'd46', date: '2024-02-01', description: 'Bureaux et chaises', fournisseur: 'Office Design', reference: 'OD-2024-023', montant: 12_000_000, statut: 'paye' },
-      { id: 'd47', date: '2024-02-15', description: 'Rangements et accessoires', fournisseur: 'Office Design', reference: 'OD-2024-034', montant: 6_000_000, statut: 'paye' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-02-20',
-  },
-  {
-    id: '18',
-    poste: 'Aménagement',
-    description: 'Aménagement accueil et direction',
-    prevu: 15_000_000,
-    engage: 15_000_000,
-    consomme: 12_000_000,
-    reste: 3_000_000,
-    avancement: 80,
-    depenses: [
-      { id: 'd48', date: '2024-02-20', description: 'Mobilier accueil premium', fournisseur: 'Luxury Furniture', reference: 'LF-2024-012', montant: 8_000_000, statut: 'paye' },
-      { id: 'd49', date: '2024-03-01', description: 'Bureau direction et salle réunion', fournisseur: 'Luxury Furniture', reference: 'LF-2024-018', montant: 4_000_000, statut: 'paye' },
-      { id: 'd50', date: '2024-03-15', description: 'Décoration et finitions', fournisseur: 'Déco Intérieur', reference: 'DI-2024-007', montant: 3_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-15',
-  },
-  {
-    id: '19',
-    poste: 'Frais généraux',
-    description: 'Déplacements et missions',
-    prevu: 20_000_000,
-    engage: 15_000_000,
-    consomme: 10_000_000,
-    reste: 10_000_000,
-    avancement: 50,
-    depenses: [
-      { id: 'd51', date: '2024-01-20', description: 'Missions Paris - Siège', fournisseur: 'Agence Voyage', reference: 'AV-2024-034', montant: 5_000_000, statut: 'paye' },
-      { id: 'd52', date: '2024-02-15', description: 'Déplacements locaux', fournisseur: 'Divers', reference: 'DIV-2024-012', montant: 2_500_000, statut: 'paye' },
-      { id: 'd53', date: '2024-03-01', description: 'Missions régionales', fournisseur: 'Agence Voyage', reference: 'AV-2024-056', montant: 2_500_000, statut: 'paye' },
-      { id: 'd54', date: '2024-03-20', description: 'Frais de représentation', fournisseur: 'Divers', reference: 'DIV-2024-025', montant: 5_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-20',
-  },
-  {
-    id: '20',
-    poste: 'Frais généraux',
-    description: 'Fournitures et consommables',
-    prevu: 8_000_000,
-    engage: 5_000_000,
-    consomme: 3_000_000,
-    reste: 5_000_000,
-    avancement: 38,
-    depenses: [
-      { id: 'd55', date: '2024-02-10', description: 'Fournitures de bureau', fournisseur: 'Office Supplies', reference: 'OS-2024-045', montant: 2_000_000, statut: 'paye' },
-      { id: 'd56', date: '2024-03-05', description: 'Consommables imprimantes', fournisseur: 'Office Supplies', reference: 'OS-2024-067', montant: 1_000_000, statut: 'paye' },
-      { id: 'd57', date: '2024-03-25', description: 'Stock fournitures ouverture', fournisseur: 'Office Supplies', reference: 'OS-2024-089', montant: 2_000_000, statut: 'engage' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-03-25',
-  },
-  {
-    id: '21',
-    poste: 'Frais généraux',
-    description: 'Assurances pré-ouverture',
-    prevu: 12_000_000,
-    engage: 12_000_000,
-    consomme: 12_000_000,
-    reste: 0,
-    avancement: 100,
-    depenses: [
-      { id: 'd58', date: '2024-01-10', description: 'Assurance multirisque', fournisseur: 'NSIA Assurances', reference: 'NSIA-2024-001', montant: 8_000_000, statut: 'paye' },
-      { id: 'd59', date: '2024-01-15', description: 'Assurance responsabilité civile', fournisseur: 'NSIA Assurances', reference: 'NSIA-2024-002', montant: 4_000_000, statut: 'paye' },
-    ],
-    piecesJointes: [],
-    derniereModification: '2024-01-20',
-  },
-  {
-    id: '22',
-    poste: 'Provisions',
-    description: 'Imprévus et aléas',
-    prevu: 45_000_000,
-    engage: 0,
-    consomme: 0,
-    reste: 45_000_000,
-    avancement: 0,
-    depenses: [],
-    piecesJointes: [],
-  },
-  {
-    id: '23',
-    poste: 'Provisions',
-    description: 'Réserve de trésorerie',
-    prevu: 20_500_000,
-    engage: 0,
-    consomme: 0,
-    reste: 20_500_000,
-    avancement: 0,
-    depenses: [],
-    piecesJointes: [],
-  },
-];
+// NOTE: Les données budgétaires sont maintenant chargées depuis la base de données
+// via le hook useBudgetExploitation. Les constantes ci-dessous servent uniquement
+// de fallback pendant le chargement initial.
 
-// Calcul des totaux des lignes
-const TOTAUX_LIGNES = LIGNES_BUDGETAIRES_COMPLETES.reduce(
-  (acc, ligne) => ({
-    prevu: acc.prevu + ligne.prevu,
-    engage: acc.engage + ligne.engage,
-    consomme: acc.consomme + ligne.consomme,
-    reste: acc.reste + ligne.reste,
-  }),
-  { prevu: 0, engage: 0, consomme: 0, reste: 0 }
-);
-
-// Données par poste (agrégation)
+// Données par poste (agrégation) - utilisées comme fallback
 const POSTES_BUDGET_MOBILISATION: PosteBudgetaire[] = [
   { id: 'recrutement', poste: 'Recrutement', budgetPrevu: 118_000_000, engage: 112_000_000, consomme: 81_500_000, disponible: 36_500_000, tauxConso: 69 },
   { id: 'formation', poste: 'Formation', budgetPrevu: 40_000_000, engage: 35_000_000, consomme: 23_000_000, disponible: 17_000_000, tauxConso: 57 },
@@ -554,73 +151,8 @@ interface PhaseDetail {
   alertes: string[];
 }
 
-// Données pour le graphique par phase avec détails
-// NOTE: prevu, engage, consomme sont CALCULÉS depuis les lignes (jamais hardcodés)
-const PHASES_DATA_RAW: Omit<PhaseDetail, 'prevu' | 'engage' | 'consomme'>[] = [
-  {
-    phase: 'Pré-ouverture',
-    description: 'Phase de préparation intensive avant l\'ouverture : recrutement des équipes clés, aménagement des espaces et mise en place des systèmes.',
-    periode: 'Janvier - Septembre 2026',
-    responsable: 'Center Manager',
-    lignes: [
-      { poste: 'Recrutement', description: 'Frais de recrutement et salaires équipe pilote', prevu: 118_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'IT & Équipements', description: 'Systèmes informatiques et matériel', prevu: 72_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Aménagement', description: 'Mobilier et aménagement bureaux', prevu: 33_000_000, engage: 0, consomme: 0, statut: 'termine' },
-      { poste: 'Frais généraux', description: 'Déplacements, fournitures, assurances', prevu: 40_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Provisions', description: 'Imprévus et aléas', prevu: 17_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
-    ],
-    risques: [
-      'Retard recrutement postes clés',
-      'Dépassement budget IT',
-    ],
-    alertes: [],
-  },
-  {
-    phase: 'Formation',
-    description: 'Formation complète des équipes : formation initiale interne, formations externes spécialisées (sécurité, accueil, caisse) et supports documentaires.',
-    periode: 'Juillet - Octobre 2026',
-    responsable: 'RH Manager',
-    lignes: [
-      { poste: 'Formation interne', description: 'Formations initiales et supports', prevu: 20_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Formation externe', description: 'Prestataires spécialisés', prevu: 40_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Certifications', description: 'Habilitations et certifications obligatoires', prevu: 25_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Supports', description: 'Documentation et manuels', prevu: 15_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Logistique', description: 'Salles, repas, déplacements stagiaires', prevu: 20_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
-    ],
-    risques: [
-      'Disponibilité formateurs externes',
-      'Taux de rétention post-formation',
-    ],
-    alertes: [],
-  },
-  {
-    phase: 'Lancement',
-    description: 'Phase de lancement commercial : marketing pré-ouverture, événements (soft opening et inauguration), animations du premier mois.',
-    periode: 'Octobre - Décembre 2026',
-    responsable: 'Marketing Manager',
-    lignes: [
-      { poste: 'Marketing', description: 'Campagne pré-ouverture et RP', prevu: 100_000_000, engage: 0, consomme: 0, statut: 'en_cours' },
-      { poste: 'Soft Opening', description: 'Événement VIP pré-ouverture', prevu: 25_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
-      { poste: 'Inauguration', description: 'Cérémonie officielle', prevu: 45_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
-      { poste: 'Animations M1', description: 'Animations premier mois', prevu: 30_000_000, engage: 0, consomme: 0, statut: 'a_venir' },
-      { poste: 'Provisions', description: 'Réserve lancement', prevu: 28_500_000, engage: 0, consomme: 0, statut: 'a_venir' },
-    ],
-    risques: [
-      'Conditions météo inauguration',
-      'Taux de participation événements',
-      'Disponibilité personnalités VIP',
-    ],
-    alertes: [],
-  },
-];
-
-// Calculer les totaux de phase depuis les lignes (synthèse = somme des détails)
-const PHASES_DATA: PhaseDetail[] = PHASES_DATA_RAW.map(phase => ({
-  ...phase,
-  prevu: phase.lignes.reduce((sum, l) => sum + l.prevu, 0),
-  engage: phase.lignes.reduce((sum, l) => sum + l.engage, 0),
-  consomme: phase.lignes.reduce((sum, l) => sum + l.consomme, 0),
-}));
+// NOTE: Les données de phases sont maintenant calculées dynamiquement dans VueParPhase
+// à partir des lignes budgétaires chargées depuis la base de données.
 
 // Composant KPI Card
 function KPICard({ label, value, subValue, icon: Icon, color, bgColor }: {
@@ -659,296 +191,284 @@ function ProgressBar({ value, size = 'sm' }: { value: number; size?: 'sm' | 'md'
   );
 }
 
-// Vue Synthèse
-function VueSynthese() {
-  const tauxEngagement = (TOTAUX_MOBILISATION.engage / TOTAUX_MOBILISATION.budgetPrevu) * 100;
-  const tauxConsommation = (TOTAUX_MOBILISATION.consomme / TOTAUX_MOBILISATION.budgetPrevu) * 100;
+// NOTE: VueSynthese et VueDetail ont été remplacés par VueSyntheseEditable et VueDetailEditable
+// qui utilisent les données du hook useBudgetExploitation (base de données)
 
-  return (
-    <div className="space-y-6">
-      <Card padding="md">
-        <h3 className="text-lg font-semibold text-primary-900 mb-4">Synthèse Budget Mobilisation</h3>
-        <p className="text-sm text-primary-500 mb-6">Récapitulatif par poste budgétaire</p>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Poste</TableHead>
-              <TableHead className="text-right">Budget Prévu</TableHead>
-              <TableHead className="text-right">Engagé</TableHead>
-              <TableHead className="text-right">Consommé</TableHead>
-              <TableHead className="text-right">Disponible</TableHead>
-              <TableHead className="w-32">% Conso.</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {POSTES_BUDGET_MOBILISATION.map((poste) => (
-              <TableRow key={poste.id}>
-                <TableCell className="font-medium">{poste.poste}</TableCell>
-                <TableCell className="text-right">{formatMontant(poste.budgetPrevu)}</TableCell>
-                <TableCell className="text-right">{formatMontant(poste.engage)}</TableCell>
-                <TableCell className="text-right">{formatMontant(poste.consomme)}</TableCell>
-                <TableCell className="text-right">{formatMontant(poste.disponible)}</TableCell>
-                <TableCell><ProgressBar value={poste.tauxConso} /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <TableFooter>
-            <TableRow className="bg-primary-100">
-              <TableCell className="font-bold">TOTAL</TableCell>
-              <TableCell className="text-right font-bold">{formatMontant(TOTAUX_MOBILISATION.budgetPrevu)}</TableCell>
-              <TableCell className="text-right font-bold">{formatMontant(TOTAUX_MOBILISATION.engage)}</TableCell>
-              <TableCell className="text-right font-bold">{formatMontant(TOTAUX_MOBILISATION.consomme)}</TableCell>
-              <TableCell className="text-right font-bold">{formatMontant(TOTAUX_MOBILISATION.disponible)}</TableCell>
-              <TableCell className="font-bold"><ProgressBar value={Math.round(tauxConsommation * 10) / 10} /></TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
-        <div className="grid grid-cols-2 gap-6 mt-6 pt-6 border-t">
-          <div>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-primary-600">Taux d'engagement</span>
-              <span className="font-semibold">{tauxEngagement.toFixed(1)}%</span>
-            </div>
-            <Progress value={tauxEngagement} variant="default" size="md" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-primary-600">Taux de consommation</span>
-              <span className="font-semibold">{tauxConsommation.toFixed(1)}%</span>
-            </div>
-            <Progress value={tauxConsommation} variant="success" size="md" />
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
+// Modal d'ajout de nouvelle ligne budgétaire
+function BudgetAddModal({
+  open,
+  onClose,
+  onSave,
+  existingCategories,
+  nextOrdre,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (ligne: Omit<LigneBudgetExploitation, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  existingCategories: string[];
+  nextOrdre: number;
+}) {
+  const [poste, setPoste] = useState('');
+  const [description, setDescription] = useState('');
+  const [categorie, setCategorie] = useState('');
+  const [prevu, setPrevu] = useState(0);
+  const [engage, setEngage] = useState(0);
+  const [consomme, setConsomme] = useState(0);
+  const [couleur, setCouleur] = useState('#3B82F6');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-// Vue Détail - Lignes budgétaires avec modal
-function VueDetail() {
-  const [filterPoste, setFilterPoste] = useState<string>('all');
-  const [selectedLigne, setSelectedLigne] = useState<LigneBudgetaireComplete | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'view' | 'edit'>('view');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [ligneToDelete, setLigneToDelete] = useState<string | null>(null);
-  const [lignes, setLignes] = useState<LigneBudgetaireComplete[]>(LIGNES_BUDGETAIRES_COMPLETES);
+  // Catégories disponibles
+  const CATEGORIES = [
+    { id: 'recrutement', label: 'Recrutement' },
+    { id: 'formation', label: 'Formation' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'evenements', label: 'Événements' },
+    { id: 'it_equipements', label: 'IT & Équipements' },
+    { id: 'amenagement', label: 'Aménagement' },
+    { id: 'frais_generaux', label: 'Frais généraux' },
+    { id: 'provisions', label: 'Provisions' },
+  ];
 
-  const postes = ['all', ...new Set(lignes.map(l => l.poste))];
-  const lignesFiltrees = filterPoste === 'all'
-    ? lignes
-    : lignes.filter(l => l.poste === filterPoste);
-
-  const handleView = (ligne: LigneBudgetaireComplete) => {
-    setSelectedLigne(ligne);
-    setModalMode('view');
-    setModalOpen(true);
+  // Couleurs par défaut par catégorie
+  const CATEGORY_COLORS: Record<string, string> = {
+    recrutement: '#3B82F6',
+    formation: '#22C55E',
+    marketing: '#8B5CF6',
+    evenements: '#F59E0B',
+    it_equipements: '#06B6D4',
+    amenagement: '#F97316',
+    frais_generaux: '#64748B',
+    provisions: '#71717A',
   };
 
-  const handleEdit = (ligne: LigneBudgetaireComplete) => {
-    setSelectedLigne(ligne);
-    setModalMode('edit');
-    setModalOpen(true);
-  };
-
-  const handleDeleteClick = (ligneId: string) => {
-    setLigneToDelete(ligneId);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (ligneToDelete) {
-      setLignes((prev) => prev.filter((l) => l.id !== ligneToDelete));
+  // Mettre à jour la couleur quand la catégorie change
+  useEffect(() => {
+    if (categorie && CATEGORY_COLORS[categorie]) {
+      setCouleur(CATEGORY_COLORS[categorie]);
     }
-    setDeleteModalOpen(false);
-    setLigneToDelete(null);
-  };
+  }, [categorie]);
 
-  const handleSave = (ligne: LigneBudgetaireComplete) => {
-    setLignes((prev) => prev.map((l) => (l.id === ligne.id ? ligne : l)));
-    setSelectedLigne(ligne);
-  };
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setPoste('');
+      setDescription('');
+      setCategorie('');
+      setPrevu(0);
+      setEngage(0);
+      setConsomme(0);
+      setCouleur('#3B82F6');
+      setError(null);
+    }
+  }, [open]);
 
-  const handleDelete = (id: string) => {
-    setLignes((prev) => prev.filter((l) => l.id !== id));
-    setModalOpen(false);
-    setSelectedLigne(null);
-  };
+  if (!open) return null;
 
-  const handleInfosClick = (ligne: LigneBudgetaireComplete) => {
-    setSelectedLigne(ligne);
-    setModalMode('view');
-    setModalOpen(true);
+  const handleSave = async () => {
+    setError(null);
+
+    // Validation
+    if (!poste.trim()) {
+      setError('Le nom du poste est obligatoire');
+      return;
+    }
+    if (!categorie) {
+      setError('La catégorie est obligatoire');
+      return;
+    }
+    if (engage > prevu) {
+      setError('Le montant engagé ne peut pas dépasser le montant prévu');
+      return;
+    }
+    if (consomme > engage) {
+      setError('Le montant consommé ne peut pas dépasser le montant engagé');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave({
+        budgetType: 'mobilisation',
+        annee: 2026,
+        ordre: nextOrdre,
+        poste: poste.trim(),
+        description: description.trim() || undefined,
+        categorie,
+        montantPrevu: prevu,
+        montantEngage: engage,
+        montantConsomme: consomme,
+        couleur,
+      });
+    } catch (err) {
+      setError('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <Card padding="md">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-primary-900">Détail des lignes budgétaires</h3>
-            <p className="text-sm text-primary-500">Suivi ligne par ligne du budget mobilisation</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-primary-400" />
-              <select
-                value={filterPoste}
-                onChange={(e) => setFilterPoste(e.target.value)}
-                className="text-sm border border-primary-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">Tous les postes</option>
-                {postes.filter(p => p !== 'all').map(poste => (
-                  <option key={poste} value={poste}>{poste}</option>
-                ))}
-              </select>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-lg m-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Ajouter une ligne budgétaire</h2>
+              <p className="text-primary-100 text-sm">Nouvelle entrée dans le budget mobilisation</p>
             </div>
-            <Button size="sm" variant="primary">
-              <Plus className="h-4 w-4 mr-1" />
-              Ajouter
-            </Button>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Poste</TableHead>
-                <TableHead className="min-w-[250px]">Description</TableHead>
-                <TableHead className="text-right">Prévu</TableHead>
-                <TableHead className="text-right">Engagé</TableHead>
-                <TableHead className="text-right">Consommé</TableHead>
-                <TableHead className="text-right">Reste</TableHead>
-                <TableHead className="w-[140px]">Avancement</TableHead>
-                <TableHead className="w-[80px] text-center">Infos</TableHead>
-                <TableHead className="w-[100px] text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lignesFiltrees.map((ligne) => {
-                const colors = POSTE_COLORS[ligne.poste] || POSTE_COLORS['Provisions'];
-                const hasInfos = (ligne.depenses?.length > 0) || (ligne.piecesJointes?.length > 0) || ligne.note;
-                return (
-                  <TableRow key={ligne.id} className="group">
-                    <TableCell>
-                      <Badge className={cn('text-xs', colors.badge)}>{ligne.poste}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-primary-900">{ligne.description}</p>
-                        {ligne.note && <p className="text-xs text-primary-500 mt-1">{ligne.note}</p>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{formatMontant(ligne.prevu)}</TableCell>
-                    <TableCell className="text-right text-blue-600">{formatMontant(ligne.engage)}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatMontant(ligne.consomme)}</TableCell>
-                    <TableCell className="text-right text-orange-600">{formatMontant(ligne.reste)}</TableCell>
-                    <TableCell><ProgressBar value={ligne.avancement} /></TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => handleInfosClick(ligne)}
-                        className={cn(
-                          'flex items-center justify-center gap-2 w-full py-1 rounded hover:bg-primary-100 transition-colors',
-                          hasInfos ? 'cursor-pointer' : 'cursor-default'
-                        )}
-                      >
-                        {ligne.depenses?.length > 0 && (
-                          <div className="flex items-center gap-0.5 text-primary-500">
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            <span className="text-xs">{ligne.depenses.length}</span>
-                          </div>
-                        )}
-                        {ligne.piecesJointes?.length > 0 && (
-                          <div className="flex items-center gap-0.5 text-primary-500">
-                            <Paperclip className="h-3.5 w-3.5" />
-                            <span className="text-xs">{ligne.piecesJointes.length}</span>
-                          </div>
-                        )}
-                        {!ligne.depenses?.length && !ligne.piecesJointes?.length && (
-                          <span className="text-primary-300">-</span>
-                        )}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => handleView(ligne)}
-                          className="p-1.5 hover:bg-primary-100 rounded transition-colors"
-                          title="Voir le détail"
-                        >
-                          <Eye className="h-4 w-4 text-primary-500" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(ligne)}
-                          className="p-1.5 hover:bg-primary-100 rounded transition-colors"
-                          title="Modifier"
-                        >
-                          <Pencil className="h-4 w-4 text-primary-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(ligne.id)}
-                          className="p-1.5 hover:bg-error-100 rounded transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-4 w-4 text-error-500" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-            <TableFooter>
-              <TableRow className="bg-primary-100">
-                <TableCell className="font-bold" colSpan={2}>Total</TableCell>
-                <TableCell className="text-right font-bold">{formatMontant(TOTAUX_LIGNES.prevu)}</TableCell>
-                <TableCell className="text-right font-bold text-blue-600">{formatMontant(TOTAUX_LIGNES.engage)}</TableCell>
-                <TableCell className="text-right font-bold text-green-600">{formatMontant(TOTAUX_LIGNES.consomme)}</TableCell>
-                <TableCell className="text-right font-bold text-orange-600">{formatMontant(TOTAUX_LIGNES.reste)}</TableCell>
-                <TableCell colSpan={3}></TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
+        {/* Content */}
+        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+          {/* Erreur */}
+          {error && (
+            <div className="p-3 bg-error-50 border border-error-200 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-error-500" />
+              <p className="text-sm text-error-700">{error}</p>
+            </div>
+          )}
+
+          {/* Nom du poste */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Nom du poste *
+            </label>
+            <Input
+              type="text"
+              value={poste}
+              onChange={(e) => setPoste(e.target.value)}
+              placeholder="Ex: Formation sécurité"
+            />
+          </div>
+
+          {/* Catégorie */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Catégorie *
+            </label>
+            <select
+              value={categorie}
+              onChange={(e) => setCategorie(e.target.value)}
+              className="w-full text-sm border border-primary-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Sélectionner une catégorie</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Description
+            </label>
+            <Input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description détaillée (optionnel)"
+            />
+          </div>
+
+          {/* Montants */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Prévu
+              </label>
+              <MoneyInput value={prevu} onChange={setPrevu} className="text-right font-mono" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Engagé
+              </label>
+              <MoneyInput value={engage} onChange={setEngage} className="text-right font-mono" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-700 mb-1">
+                Consommé
+              </label>
+              <MoneyInput value={consomme} onChange={setConsomme} className="text-right font-mono" />
+            </div>
+          </div>
+
+          {/* Couleur */}
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">
+              Couleur
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={couleur}
+                onChange={(e) => setCouleur(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border border-primary-200"
+              />
+              <div
+                className="px-3 py-1 rounded text-white text-sm"
+                style={{ backgroundColor: couleur }}
+              >
+                Aperçu
+              </div>
+            </div>
+          </div>
         </div>
-      </Card>
 
-      {/* Modal de détail/modification */}
-      <LigneBudgetaireModal
-        ligne={selectedLigne}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        mode={modalMode}
-      />
-
-      {/* Modal de confirmation de suppression */}
-      <ConfirmDeleteModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onConfirm={handleConfirmDelete}
-        title="Supprimer la ligne budgétaire"
-        description="Êtes-vous sûr de vouloir supprimer cette ligne budgétaire ? Cette action est irréversible et supprimera également toutes les dépenses et pièces jointes associées."
-      />
+        {/* Footer */}
+        <div className="border-t px-6 py-4 bg-primary-50 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={isSaving}>
+            <Plus className="h-4 w-4 mr-2" />
+            {isSaving ? 'Ajout...' : 'Ajouter'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Vue Graphiques
-function VueGraphiques() {
-  const chartData = POSTES_BUDGET_MOBILISATION.filter((p) => p.id !== 'provisions').map((poste) => ({
-    name: poste.poste,
-    prevu: poste.budgetPrevu / 1_000_000,
-    engage: poste.engage / 1_000_000,
-    consomme: poste.consomme / 1_000_000,
-  }));
+// Vue Graphiques - utilise les données du hook
+function VueGraphiques({ lignes }: { lignes: LigneBudgetExploitation[] }) {
+  // Transformer les données du hook pour les graphiques
+  const chartData = lignes
+    .filter((l) => l.categorie !== 'provisions')
+    .map((ligne) => ({
+      name: ligne.poste,
+      prevu: ligne.montantPrevu / 1_000_000,
+      engage: ligne.montantEngage / 1_000_000,
+      consomme: ligne.montantConsomme / 1_000_000,
+    }));
 
-  const pieData = POSTES_BUDGET_MOBILISATION.filter((p) => p.id !== 'provisions').map((poste, index) => ({
-    name: poste.poste,
-    value: poste.budgetPrevu,
-    color: COLORS[index % COLORS.length],
-  }));
+  const pieData = lignes
+    .filter((l) => l.categorie !== 'provisions')
+    .map((ligne, index) => ({
+      name: ligne.poste,
+      value: ligne.montantPrevu,
+      color: ligne.couleur || COLORS[index % COLORS.length],
+    }));
+
+  // Calculer le taux de consommation pour chaque poste
+  const tauxConsoData = lignes
+    .filter((l) => l.categorie !== 'provisions')
+    .map((ligne, index) => ({
+      id: ligne.id,
+      poste: ligne.poste,
+      tauxConso: ligne.montantPrevu > 0
+        ? Math.round((ligne.montantConsomme / ligne.montantPrevu) * 100)
+        : 0,
+      color: ligne.couleur || COLORS[index % COLORS.length],
+    }));
 
   return (
     <div className="space-y-6">
@@ -996,14 +516,14 @@ function VueGraphiques() {
         <Card padding="md">
           <h3 className="text-lg font-semibold text-primary-900 mb-4">Taux de consommation</h3>
           <div className="space-y-4">
-            {POSTES_BUDGET_MOBILISATION.filter((p) => p.id !== 'provisions').map((poste, index) => (
-              <div key={poste.id}>
+            {tauxConsoData.map((item) => (
+              <div key={item.id}>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-primary-600">{poste.poste}</span>
-                  <span className="font-medium">{poste.tauxConso}%</span>
+                  <span className="text-primary-600">{item.poste}</span>
+                  <span className="font-medium">{item.tauxConso}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-primary-100 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${poste.tauxConso}%`, backgroundColor: COLORS[index % COLORS.length] }} />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${item.tauxConso}%`, backgroundColor: item.color }} />
                 </div>
               </div>
             ))}
@@ -1241,10 +761,104 @@ function PhaseDetailModal({ phase, open, onClose }: { phase: PhaseDetail | null;
   );
 }
 
-// Vue Par Phase
-function VueParPhase() {
+// Vue Par Phase - utilise les données du hook
+function VueParPhase({ lignes }: { lignes: LigneBudgetExploitation[] }) {
   const [selectedPhase, setSelectedPhase] = useState<PhaseDetail | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Définition des mappings catégorie -> phase
+  const PHASE_MAPPING: Record<string, string> = {
+    'recrutement': 'Pré-ouverture',
+    'it_equipements': 'Pré-ouverture',
+    'amenagement': 'Pré-ouverture',
+    'frais_generaux': 'Pré-ouverture',
+    'formation': 'Formation',
+    'marketing': 'Lancement',
+    'evenements': 'Lancement',
+    'provisions': 'Pré-ouverture', // Les provisions sont généralement pré-ouverture
+  };
+
+  // Construire les données de phases depuis les lignes du hook
+  const phasesData = useMemo(() => {
+    const phaseMap: Record<string, { prevu: number; engage: number; consomme: number; lignes: typeof lignes }> = {
+      'Pré-ouverture': { prevu: 0, engage: 0, consomme: 0, lignes: [] },
+      'Formation': { prevu: 0, engage: 0, consomme: 0, lignes: [] },
+      'Lancement': { prevu: 0, engage: 0, consomme: 0, lignes: [] },
+    };
+
+    lignes.forEach((ligne) => {
+      const phaseName = PHASE_MAPPING[ligne.categorie] || 'Pré-ouverture';
+      if (phaseMap[phaseName]) {
+        phaseMap[phaseName].prevu += ligne.montantPrevu;
+        phaseMap[phaseName].engage += ligne.montantEngage;
+        phaseMap[phaseName].consomme += ligne.montantConsomme;
+        phaseMap[phaseName].lignes.push(ligne);
+      }
+    });
+
+    // Convertir en tableau avec métadonnées
+    const phases: PhaseDetail[] = [
+      {
+        phase: 'Pré-ouverture',
+        description: 'Phase de préparation : recrutement, aménagement, IT et frais généraux',
+        periode: 'Janvier - Septembre 2026',
+        responsable: 'Center Manager',
+        prevu: phaseMap['Pré-ouverture'].prevu,
+        engage: phaseMap['Pré-ouverture'].engage,
+        consomme: phaseMap['Pré-ouverture'].consomme,
+        lignes: phaseMap['Pré-ouverture'].lignes.map((l) => ({
+          poste: l.poste,
+          description: l.description || l.poste,
+          prevu: l.montantPrevu,
+          engage: l.montantEngage,
+          consomme: l.montantConsomme,
+          statut: l.montantConsomme >= l.montantPrevu ? 'termine' : l.montantConsomme > 0 ? 'en_cours' : 'a_venir',
+        })),
+        risques: [],
+        alertes: [],
+      },
+      {
+        phase: 'Formation',
+        description: 'Formation des équipes : formations internes et externes',
+        periode: 'Juillet - Octobre 2026',
+        responsable: 'RH Manager',
+        prevu: phaseMap['Formation'].prevu,
+        engage: phaseMap['Formation'].engage,
+        consomme: phaseMap['Formation'].consomme,
+        lignes: phaseMap['Formation'].lignes.map((l) => ({
+          poste: l.poste,
+          description: l.description || l.poste,
+          prevu: l.montantPrevu,
+          engage: l.montantEngage,
+          consomme: l.montantConsomme,
+          statut: l.montantConsomme >= l.montantPrevu ? 'termine' : l.montantConsomme > 0 ? 'en_cours' : 'a_venir',
+        })),
+        risques: [],
+        alertes: [],
+      },
+      {
+        phase: 'Lancement',
+        description: 'Marketing, événements et animations d\'ouverture',
+        periode: 'Octobre - Décembre 2026',
+        responsable: 'Marketing Manager',
+        prevu: phaseMap['Lancement'].prevu,
+        engage: phaseMap['Lancement'].engage,
+        consomme: phaseMap['Lancement'].consomme,
+        lignes: phaseMap['Lancement'].lignes.map((l) => ({
+          poste: l.poste,
+          description: l.description || l.poste,
+          prevu: l.montantPrevu,
+          engage: l.montantEngage,
+          consomme: l.montantConsomme,
+          statut: l.montantConsomme >= l.montantPrevu ? 'termine' : l.montantConsomme > 0 ? 'en_cours' : 'a_venir',
+        })),
+        risques: [],
+        alertes: [],
+      },
+    ];
+
+    return phases.filter((p) => p.prevu > 0); // Ne montrer que les phases avec budget
+  }, [lignes]);
 
   const handlePhaseClick = (phase: PhaseDetail) => {
     setSelectedPhase(phase);
@@ -1257,7 +871,7 @@ function VueParPhase() {
         <h3 className="text-lg font-semibold text-primary-900 mb-4">Budget par phase de mobilisation</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={PHASES_DATA} layout="vertical" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
+            <BarChart data={phasesData} layout="vertical" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
               <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e4e4e7' }} tickFormatter={(value) => `${value / 1_000_000}M`} />
               <YAxis type="category" dataKey="phase" tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e4e4e7' }} />
@@ -1272,9 +886,9 @@ function VueParPhase() {
       </Card>
 
       <div className="grid grid-cols-3 gap-6">
-        {PHASES_DATA.map((phase) => {
-          const tauxConso = (phase.consomme / phase.prevu) * 100;
-          const tauxEngagement = (phase.engage / phase.prevu) * 100;
+        {phasesData.map((phase) => {
+          const tauxConso = phase.prevu > 0 ? (phase.consomme / phase.prevu) * 100 : 0;
+          const tauxEngagement = phase.prevu > 0 ? (phase.engage / phase.prevu) * 100 : 0;
           return (
             <Card
               key={phase.phase}
@@ -1426,11 +1040,15 @@ function VueDetailEditable({
   lignes,
   totaux,
   onEdit,
+  onAdd,
+  onDelete,
   isLoading,
 }: {
   lignes: LigneBudgetExploitation[];
   totaux: { prevu: number; engage: number; consomme: number; reste: number };
   onEdit: (ligne: LigneBudgetExploitation) => void;
+  onAdd: () => void;
+  onDelete: (id: number) => void;
   isLoading?: boolean;
 }) {
   const [filterCategorie, setFilterCategorie] = useState<string>('all');
@@ -1457,7 +1075,7 @@ function VueDetailEditable({
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-semibold text-primary-900">Détail des lignes budgétaires</h3>
-            <p className="text-sm text-primary-500">Cliquez sur une ligne ou le bouton modifier pour éditer</p>
+            <p className="text-sm text-primary-500">Cliquez sur une ligne pour modifier ou utilisez les boutons d'action</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -1473,6 +1091,10 @@ function VueDetailEditable({
                 ))}
               </select>
             </div>
+            <Button size="sm" variant="primary" onClick={onAdd}>
+              <Plus className="h-4 w-4 mr-1" />
+              Ajouter une ligne
+            </Button>
           </div>
         </div>
 
@@ -1487,7 +1109,7 @@ function VueDetailEditable({
                 <TableHead className="text-right">Consommé</TableHead>
                 <TableHead className="text-right">Reste</TableHead>
                 <TableHead className="w-[120px]">Avancement</TableHead>
-                <TableHead className="w-[80px] text-center">Actions</TableHead>
+                <TableHead className="w-[100px] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1523,7 +1145,7 @@ function VueDetailEditable({
                     <TableCell className="text-right text-orange-600">{formatMontant(disponible)}</TableCell>
                     <TableCell><ProgressBar value={tauxConso} /></TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -1534,6 +1156,17 @@ function VueDetailEditable({
                           title="Modifier"
                         >
                           <Pencil className="h-4 w-4 text-primary-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (ligne.id) onDelete(ligne.id);
+                          }}
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4 text-error-500" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1564,6 +1197,9 @@ export function BudgetMobilisation() {
   const [editingLigne, setEditingLigne] = useState<LigneBudgetExploitation | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // State pour la modale d'ajout
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   // Hook pour les données persistées
   const {
     lignes,
@@ -1571,6 +1207,8 @@ export function BudgetMobilisation() {
     error,
     totaux,
     updateLigne,
+    addLigne,
+    deleteLigne,
     resetToDefaults,
   } = useBudgetExploitation({
     budgetType: 'mobilisation',
@@ -1585,6 +1223,20 @@ export function BudgetMobilisation() {
       montantConsomme: consomme,
       note,
     });
+  };
+
+  // Handler d'ajout de nouvelle ligne
+  const handleAdd = async (newLigne: Omit<LigneBudgetExploitation, 'id' | 'createdAt' | 'updatedAt'>) => {
+    await addLigne(newLigne);
+    setIsAddModalOpen(false);
+  };
+
+  // Handler de suppression
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette ligne budgétaire ?')) {
+      return;
+    }
+    await deleteLigne(id);
   };
 
   // Handler de reset
@@ -1678,10 +1330,17 @@ export function BudgetMobilisation() {
           <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} isLoading={isLoading} />
         </TabsContent>
         <TabsContent value="detail">
-          <VueDetailEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} isLoading={isLoading} />
+          <VueDetailEditable
+            lignes={lignes}
+            totaux={totaux}
+            onEdit={setEditingLigne}
+            onAdd={() => setIsAddModalOpen(true)}
+            onDelete={handleDelete}
+            isLoading={isLoading}
+          />
         </TabsContent>
-        <TabsContent value="graphiques"><VueGraphiques /></TabsContent>
-        <TabsContent value="par-phase"><VueParPhase /></TabsContent>
+        <TabsContent value="graphiques"><VueGraphiques lignes={lignes} /></TabsContent>
+        <TabsContent value="par-phase"><VueParPhase lignes={lignes} /></TabsContent>
       </Tabs>
 
       {/* Modal d'édition */}
@@ -1690,6 +1349,15 @@ export function BudgetMobilisation() {
         open={!!editingLigne}
         onClose={() => setEditingLigne(null)}
         onSave={handleSave}
+      />
+
+      {/* Modal d'ajout */}
+      <BudgetAddModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSave={handleAdd}
+        existingCategories={[...new Set(lignes.map(l => l.categorie))]}
+        nextOrdre={lignes.length > 0 ? Math.max(...lignes.map(l => l.ordre)) + 1 : 1}
       />
     </div>
   );

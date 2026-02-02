@@ -74,9 +74,11 @@ export type SousCategoriePrestation = (typeof SOUS_CATEGORIES_PRESTATION)[number
 
 /**
  * Item budgétaire stocké en base de données
+ * parentId permet de créer des sous-lignes hiérarchiques
  */
 export interface BudgetItem {
   id?: number;
+  parentId?: number | null;  // null = ligne principale, number = sous-ligne
   libelle: string;
   categorie: BudgetCategory;
   axe: Axe;

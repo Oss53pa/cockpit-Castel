@@ -47,6 +47,9 @@ export function useActions(filters?: ActionFilters) {
     if (filters?.buildingCode) {
       results = results.filter((a) => a.buildingCode === filters.buildingCode);
     }
+    if (filters?.jalonId) {
+      results = results.filter((a) => a.jalonId === filters.jalonId);
+    }
 
     return results;
   }, [filters]);

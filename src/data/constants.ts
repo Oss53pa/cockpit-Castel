@@ -44,6 +44,7 @@ export const AXES = {
   AXE5_MARKETING: 'axe5_marketing',
   AXE6_EXPLOITATION: 'axe6_exploitation',
   AXE7_CONSTRUCTION: 'axe7_construction',
+  AXE8_DIVERS: 'axe8_divers',
 } as const;
 
 // Alias pour compatibilité avec ancien code
@@ -247,6 +248,14 @@ export const AXES_CONFIG_FULL = {
     color: '#10B981',
     numero: 6,
     poids: 5
+  },
+  divers: {
+    code: 'axe8_divers',
+    label: 'Divers & Transverse',
+    labelCourt: 'DIV',
+    color: '#6B7280',
+    numero: 8,
+    poids: 0
   },
 } as const;
 

@@ -24,12 +24,28 @@ export function useBudgetSynthese() {
   return useLiveQuery(async () => {
     const items = await db.budget.toArray();
 
+    // Identifier les IDs des lignes parentes qui ont des enfants
+    const parentIdsWithChildren = new Set<number>();
+    items.forEach(item => {
+      if (item.parentId) {
+        parentIdsWithChildren.add(item.parentId);
+      }
+    });
+
+    // Ne compter que les lignes "feuilles" (sans enfants) ou les enfants
+    // Exclure les parents qui ont des enfants pour éviter le double-comptage
     const totals = items.reduce(
-      (acc, item) => ({
-        prevu: acc.prevu + item.montantPrevu,
-        engage: acc.engage + item.montantEngage,
-        realise: acc.realise + item.montantRealise,
-      }),
+      (acc, item) => {
+        // Si c'est un parent avec des enfants, ne pas compter (les enfants seront comptés)
+        if (item.id && parentIdsWithChildren.has(item.id)) {
+          return acc;
+        }
+        return {
+          prevu: acc.prevu + item.montantPrevu,
+          engage: acc.engage + item.montantEngage,
+          realise: acc.realise + item.montantRealise,
+        };
+      },
       { prevu: 0, engage: 0, realise: 0 }
     );
 
@@ -109,7 +125,96 @@ export async function updateBudgetItem(
 }
 
 export async function deleteBudgetItem(id: number): Promise<void> {
+  // Also delete all child items
+  const children = await db.budget.filter(item => item.parentId === id).toArray();
+  for (const child of children) {
+    await db.budget.delete(child.id!);
+  }
   await db.budget.delete(id);
+}
+
+// ============================================================================
+// SUPPORT HIÉRARCHIQUE - Sous-lignes budgétaires
+// ============================================================================
+
+export interface BudgetItemWithChildren extends BudgetItem {
+  children: BudgetItem[];
+  calculatedPrevu: number;
+  calculatedEngage: number;
+  calculatedRealise: number;
+}
+
+/**
+ * Hook pour récupérer le budget organisé en hiérarchie (parent/enfants)
+ */
+export function useBudgetHierarchical() {
+  return useLiveQuery(async () => {
+    const items = await db.budget.toArray();
+
+    // Séparer les lignes principales (parentId null/undefined) des sous-lignes
+    const rootItems = items.filter(item => !item.parentId);
+    const childItems = items.filter(item => item.parentId);
+
+    // Organiser en arbre
+    const hierarchy: BudgetItemWithChildren[] = rootItems.map(parent => {
+      const children = childItems.filter(child => child.parentId === parent.id);
+
+      // Si des enfants existent, calculer les totaux à partir des enfants
+      // Sinon utiliser les valeurs du parent
+      const hasChildren = children.length > 0;
+      const calculatedPrevu = hasChildren
+        ? children.reduce((sum, c) => sum + c.montantPrevu, 0)
+        : parent.montantPrevu;
+      const calculatedEngage = hasChildren
+        ? children.reduce((sum, c) => sum + c.montantEngage, 0)
+        : parent.montantEngage;
+      const calculatedRealise = hasChildren
+        ? children.reduce((sum, c) => sum + c.montantRealise, 0)
+        : parent.montantRealise;
+
+      return {
+        ...parent,
+        children,
+        calculatedPrevu,
+        calculatedEngage,
+        calculatedRealise,
+      };
+    });
+
+    return hierarchy;
+  }) ?? [];
+}
+
+/**
+ * Créer une sous-ligne budgétaire liée à une ligne parente
+ */
+export async function createSubBudgetItem(
+  parentId: number,
+  item: Omit<BudgetItem, 'id' | 'createdAt' | 'updatedAt' | 'parentId' | 'categorie' | 'axe'>
+): Promise<number> {
+  const parent = await db.budget.get(parentId);
+  if (!parent) throw new Error('Parent budget item not found');
+
+  const now = new Date().toISOString();
+  return db.budget.add({
+    ...item,
+    parentId,
+    categorie: parent.categorie,
+    axe: parent.axe,
+    projectPhase: parent.projectPhase,
+    createdAt: now,
+    updatedAt: now,
+  } as BudgetItem);
+}
+
+/**
+ * Récupérer les sous-lignes d'une ligne budgétaire
+ */
+export function useSubBudgetItems(parentId: number | undefined) {
+  return useLiveQuery(async () => {
+    if (!parentId) return [];
+    return db.budget.filter(item => item.parentId === parentId).toArray();
+  }, [parentId]) ?? [];
 }
 
 /**

@@ -71,68 +71,8 @@ interface SharedReportData {
   }[];
 }
 
-// Données de démonstration pour les rapports partagés
-const MOCK_SHARED_REPORTS: Record<string, SharedReportData> = {
-  'abc123xyz': {
-    id: 'abc123xyz',
-    title: 'Rapport Mensuel - Janvier 2025',
-    type: 'RAPPORT_MENSUEL',
-    author: 'Jean Martin',
-    createdAt: '2025-01-15',
-    period: 'Janvier 2025',
-    executiveSummary: `Le mois de janvier marque une **progression significative** du projet Handover Cosmos Angré. L'avancement global atteint désormais 68%, soit une hausse de 5 points par rapport au mois précédent, confirmant la dynamique positive engagée depuis le dernier trimestre.\n\nLes équipes ont particulièrement bien performé sur l'axe Gouvernance (+8 pts) et la Performance Financière (+6 pts). Le budget reste sous contrôle avec un taux de consommation conforme aux prévisions.\n\nCependant, des points de vigilance subsistent, notamment sur la migration du système d'information et quelques actions bloquées qui nécessitent une attention particulière.`,
-    comments: [
-      {
-        section: 'avancement',
-        author: 'Jean Martin',
-        date: '2025-01-15',
-        content: 'L\'accélération observée sur l\'AXE 3 (Gouvernance) est le résultat direct de la mise en place du nouveau comité de pilotage mensuel. Cette gouvernance renforcée a permis de débloquer plusieurs situations et d\'améliorer la coordination inter-équipes.',
-      },
-      {
-        section: 'actions',
-        author: 'Sophie Dupont',
-        date: '2025-01-14',
-        content: 'Les 3 actions bloquées concernent principalement des dépendances externes (validation juridique et livraison fournisseur). Des réunions de déblocage sont planifiées pour la semaine prochaine avec les parties prenantes concernées.',
-      },
-      {
-        section: 'risques',
-        author: 'Jean Martin',
-        date: '2025-01-15',
-        content: 'Le risque lié à la migration SI reste notre principale préoccupation. Un plan de contingence a été élaboré et sera présenté au COPIL du 25 janvier. Nous recommandons de provisionner 2 semaines supplémentaires dans le planning.',
-      },
-      {
-        section: 'budget',
-        author: 'Marie Koné',
-        date: '2025-01-12',
-        content: 'La ligne "Travaux" présente un écart favorable de 8% grâce à la renégociation des contrats de sous-traitance. Cette économie pourra être réallouée pour renforcer la formation des équipes locales.',
-      },
-    ],
-  },
-  'def456uvw': {
-    id: 'def456uvw',
-    title: 'Avancement Projet Handover - S03',
-    type: 'AVANCEMENT_PROJET',
-    author: 'Sophie Dupont',
-    createdAt: '2025-01-20',
-    period: 'Semaine 03 - 2025',
-    executiveSummary: `Cette semaine a été marquée par l'atteinte du jalon J2 "Plan de Transition" avec 100% de complétion. Les livrables ont été validés par le comité de pilotage.\n\nL'équipe se concentre maintenant sur la phase Formation (J3) qui progresse bien à 85%.`,
-    comments: [],
-  },
-  'ghi789rst': {
-    id: 'ghi789rst',
-    title: 'Flash Projet - Semaine 02',
-    type: 'FLASH_PROJET',
-    author: 'Jean Martin',
-    createdAt: '2025-01-10',
-    period: 'Semaine 02 - 2025',
-    executiveSummary: `Flash hebdomadaire : Semaine productive avec 5 actions clôturées. Focus sur la préparation du COPIL mensuel.`,
-    comments: [],
-  },
-};
-
-// Fonction pour charger les données du rapport (localStorage ou mock)
+// Fonction pour charger les données du rapport depuis localStorage uniquement (pas de données mock)
 function loadReportData(shareId: string): SharedReportData | null {
-  // D'abord, essayer de charger depuis localStorage
   const storedData = localStorage.getItem(`shared-report-${shareId}`);
   if (storedData) {
     try {
@@ -152,8 +92,8 @@ function loadReportData(shareId: string): SharedReportData | null {
     }
   }
 
-  // Sinon, utiliser les données mock
-  return MOCK_SHARED_REPORTS[shareId] || null;
+  // Pas de données mock - retourner null si pas trouvé
+  return null;
 }
 
 export function SharedReportPage() {
