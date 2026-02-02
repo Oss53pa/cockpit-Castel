@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Building2,
   Edit2,
@@ -384,48 +384,28 @@ function BuildingCard({ building, isExpanded, onToggle, onEdit, onDelete, onQuic
       {/* Expanded content */}
       {isExpanded && (
         <div className="border-t p-4 bg-gray-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="mb-4">
             {/* Info */}
-            <div>
-              <p className="text-sm text-primary-600 mb-2">{building.description}</p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {building.dateDebutTravaux && (
-                  <Badge variant="secondary">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Début: {new Date(building.dateDebutTravaux).toLocaleDateString('fr-FR')}
-                  </Badge>
-                )}
-                {building.dateLivraisonPrevue && (
-                  <Badge variant="info">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Livraison: {new Date(building.dateLivraisonPrevue).toLocaleDateString('fr-FR')}
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Zones */}
-            <div>
-              <h4 className="text-sm font-medium text-primary-700 mb-2">
-                Zones ({building.zones?.length || 0})
-              </h4>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {building.zones?.map((zone) => (
-                  <div
-                    key={zone.id}
-                    className="flex items-center justify-between text-xs bg-white p-2 rounded"
-                  >
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(zone.status)}
-                      <span>{zone.nom}</span>
-                      {zone.locataire && (
-                        <Badge variant="success" className="text-xs">{zone.locataire}</Badge>
-                      )}
-                    </div>
-                    <span className="text-primary-500">{zone.surface} m²</span>
-                  </div>
-                ))}
-              </div>
+            <p className="text-sm text-primary-600 mb-3">{building.description}</p>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {building.dateDebutTravaux && (
+                <Badge variant="secondary">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  Début: {new Date(building.dateDebutTravaux).toLocaleDateString('fr-FR')}
+                </Badge>
+              )}
+              {building.dateLivraisonPrevue && (
+                <Badge variant="info">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  Livraison: {new Date(building.dateLivraisonPrevue).toLocaleDateString('fr-FR')}
+                </Badge>
+              )}
+              {isAutoCalc && (
+                <Badge variant="success">
+                  <Calculator className="h-3 w-3 mr-1" />
+                  Avancement auto: {progress.actionsTerminees}/{progress.actionsCount} actions
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -527,31 +507,17 @@ function BuildingEditModal({ building, onSave, onClose }: BuildingEditModalProps
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">Type</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as BuildingType })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
-              >
-                {Object.entries(BUILDING_TYPE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">Statut</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as BuildingStatus })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
-              >
-                {Object.entries(BUILDING_STATUS_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Type</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as BuildingType })}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              {Object.entries(BUILDING_TYPE_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -564,7 +530,7 @@ function BuildingEditModal({ building, onSave, onClose }: BuildingEditModalProps
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-primary-700 mb-1">Surface (m²)</label>
               <input
@@ -584,16 +550,16 @@ function BuildingEditModal({ building, onSave, onClose }: BuildingEditModalProps
                 min={0}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-primary-700 mb-1">Avancement (%)</label>
-              <input
-                type="number"
-                value={formData.avancement}
-                onChange={(e) => setFormData({ ...formData, avancement: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500"
-                min={0}
-                max={100}
-              />
+          </div>
+
+          {/* Info avancement automatique */}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-blue-700">
+              <Calculator className="h-4 w-4" />
+              <span>
+                <strong>Avancement automatique :</strong> L'avancement et le statut sont calculés automatiquement
+                en fonction des actions liées à ce bâtiment (code: {formData.code || 'non défini'}).
+              </span>
             </div>
           </div>
 
@@ -981,6 +947,40 @@ export function BuildingsSettings() {
     }
   };
 
+  // Track pending saves for beforeunload protection
+  const pendingBuildingsRef = useRef<Building[] | null>(null);
+
+  // Save immediately (used for beforeunload and explicit saves)
+  const saveImmediately = useCallback(async (buildingsToSave: Building[]) => {
+    try {
+      const project = await db.project.toCollection().first();
+      if (project?.id) {
+        await db.project.update(project.id, {
+          buildings: buildingsToSave,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      pendingBuildingsRef.current = null;
+    } catch (error) {
+      console.error('Error saving building update:', error);
+    }
+  }, []);
+
+  // Protect against data loss on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pendingBuildingsRef.current) {
+        // Synchronous save attempt (best effort)
+        const project = db.project.toCollection().first();
+        if (project) {
+          saveImmediately(pendingBuildingsRef.current);
+        }
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveImmediately]);
+
   // Quick update for inline editing (with debounce)
   const handleQuickUpdate = useCallback(async (id: string, field: keyof Building, value: unknown) => {
     const buildingIndex = buildings.findIndex((b) => b.id === id);
@@ -992,23 +992,14 @@ export function BuildingsSettings() {
 
     // Update local state immediately for responsiveness
     setBuildings(newBuildings);
+    pendingBuildingsRef.current = newBuildings;
 
     // Debounce save to database
     clearTimeout((window as unknown as { _buildingSaveTimeout?: ReturnType<typeof setTimeout> })._buildingSaveTimeout);
     (window as unknown as { _buildingSaveTimeout?: ReturnType<typeof setTimeout> })._buildingSaveTimeout = setTimeout(async () => {
-      try {
-        const project = await db.project.toCollection().first();
-        if (project?.id) {
-          await db.project.update(project.id, {
-            buildings: newBuildings,
-            updatedAt: new Date().toISOString(),
-          });
-        }
-      } catch (error) {
-        console.error('Error saving building update:', error);
-      }
+      await saveImmediately(newBuildings);
     }, 500);
-  }, [buildings]);
+  }, [buildings, saveImmediately]);
 
   // Stats (basées sur les données affichées)
   const displayedBuildings = buildingsWithCalculatedProgress;
@@ -1040,7 +1031,7 @@ export function BuildingsSettings() {
               Bâtiments du Projet
             </h3>
             <p className="text-sm text-primary-500">
-              Gérez les 6 bâtiments du complexe COSMOS ANGRÉ (GLA: 45,000 m²)
+              Gérez les {buildings.length} bâtiments du complexe COSMOS ANGRÉ (GLA: {buildings.reduce((sum, b) => sum + b.surface, 0).toLocaleString('fr-FR')} m²)
             </p>
           </div>
           <div className="flex items-center gap-2">

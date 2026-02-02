@@ -92,6 +92,10 @@ function getStatutIcon(statut: string): string {
 
 // Import constantes centralisées
 import { PROJET_CONFIG } from '@/data/constants';
+import {
+  TECHNIQUE_POINTS_ATTENTION,
+  TECHNIQUE_RISQUE_PRINCIPAL,
+} from '@/data/deepDiveLancementCosmosAngre';
 
 // Types
 type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
@@ -1344,36 +1348,6 @@ function SlideDecisions() {
         )}
       </Card>
 
-      {/* Signatures - Utiliser PROJET_CONFIG */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Signatures</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Rôle</TableHead>
-              <TableHead>Nom</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Signature</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">{PROJET_CONFIG.presentateur.titre}</TableCell>
-              <TableCell>{PROJET_CONFIG.presentateur.nom}</TableCell>
-              <TableCell>-</TableCell>
-              <TableCell>-</TableCell>
-            </TableRow>
-            {PROJET_CONFIG.destinataires.map((dest, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{dest}</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
-                <TableCell>-</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
     </div>
   );
 }
@@ -1835,14 +1809,6 @@ export function DeepDiveLancement() {
               : '<div class="text-center text-gray-500 p-4">Aucune action prioritaire en attente</div>';
           })()}
         </div>
-      </div>
-      <div class="bg-gray-50 p-6 rounded-lg">
-        <h3 class="font-bold mb-4">Signatures</h3>
-        <table class="w-full text-sm">
-          <tr class="bg-gray-200"><th class="p-2 text-left">Rôle</th><th class="p-2">Nom</th><th class="p-2">Date</th><th class="p-2">Signature</th></tr>
-          <tr class="border-b"><td class="p-2">${PROJET_CONFIG.presentateur.titre}</td><td class="p-2">${PROJET_CONFIG.presentateur.nom}</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>
-          ${PROJET_CONFIG.destinataires.map(d => `<tr class="border-b"><td class="p-2">${d}</td><td class="p-2">_____________</td><td class="p-2">__/__/____</td><td class="p-2">_____________</td></tr>`).join('')}
-        </table>
       </div>
     </div>
   </div>
