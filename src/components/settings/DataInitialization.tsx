@@ -102,12 +102,41 @@ export function DataInitialization() {
     try {
       const { PRODUCTION_DATA } = await import('@/data/cosmosAngreProductionData');
 
+      let usersAdded = 0;
+      let jalonsAdded = 0;
+      let actionsAdded = 0;
       let risquesAdded = 0;
       let budgetAdded = 0;
 
       // Récupérer le siteId par défaut
       const defaultSite = await db.sites.toCollection().first();
       const siteId = defaultSite?.id || 1;
+
+      // Vérifier et ajouter les utilisateurs manquants
+      const existingUsers = await db.users.count();
+      if (existingUsers === 0 && PRODUCTION_DATA.users?.length > 0) {
+        await db.users.bulkAdd(PRODUCTION_DATA.users);
+        usersAdded = PRODUCTION_DATA.users.length;
+        console.log(`[RepairData] ${usersAdded} utilisateurs ajoutés`);
+      }
+
+      // Vérifier et ajouter les jalons manquants (AVEC siteId)
+      const existingJalons = await db.jalons.count();
+      if (existingJalons === 0 && PRODUCTION_DATA.jalons?.length > 0) {
+        const jalonsWithSiteId = PRODUCTION_DATA.jalons.map(j => ({ ...j, siteId }));
+        await db.jalons.bulkAdd(jalonsWithSiteId);
+        jalonsAdded = PRODUCTION_DATA.jalons.length;
+        console.log(`[RepairData] ${jalonsAdded} jalons ajoutés avec siteId=${siteId}`);
+      }
+
+      // Vérifier et ajouter les actions manquantes (AVEC siteId)
+      const existingActions = await db.actions.count();
+      if (existingActions === 0 && PRODUCTION_DATA.actions?.length > 0) {
+        const actionsWithSiteId = PRODUCTION_DATA.actions.map(a => ({ ...a, siteId }));
+        await db.actions.bulkAdd(actionsWithSiteId);
+        actionsAdded = PRODUCTION_DATA.actions.length;
+        console.log(`[RepairData] ${actionsAdded} actions ajoutées avec siteId=${siteId}`);
+      }
 
       // Vérifier et ajouter les risques manquants (AVEC siteId)
       const existingRisques = await db.risques.count();
@@ -130,10 +159,11 @@ export function DataInitialization() {
       setRepairResult({ risques: risquesAdded, budget: budgetAdded });
       await loadStats();
 
-      if (risquesAdded > 0 || budgetAdded > 0) {
-        alert(`Réparation terminée !\n- ${risquesAdded} risques ajoutés\n- ${budgetAdded} entrées budget ajoutées`);
+      const totalAdded = usersAdded + jalonsAdded + actionsAdded + risquesAdded + budgetAdded;
+      if (totalAdded > 0) {
+        alert(`Réparation terminée !\n- ${usersAdded} utilisateurs ajoutés\n- ${jalonsAdded} jalons ajoutés\n- ${actionsAdded} actions ajoutées\n- ${risquesAdded} risques ajoutés\n- ${budgetAdded} entrées budget ajoutées`);
       } else {
-        alert('Aucune donnée manquante détectée. Les risques et le budget sont déjà présents.');
+        alert('Aucune donnée manquante détectée. Toutes les données sont déjà présentes.');
       }
     } catch (err) {
       console.error('Erreur réparation:', err);
