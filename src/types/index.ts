@@ -47,6 +47,7 @@ export const AXES = [
   'axe5_marketing',
   'axe6_exploitation',
   'axe7_construction',
+  'axe8_divers',
 ] as const;
 export type Axe = (typeof AXES)[number];
 
@@ -58,6 +59,7 @@ export const AXE_LABELS: Record<Axe, string> = {
   axe5_marketing: 'AXE 5 - Marketing & Communication',
   axe6_exploitation: 'AXE 6 - Exploitation & Systèmes',
   axe7_construction: 'AXE 7 - Construction',
+  axe8_divers: 'AXE 8 - Divers & Transverse',
 };
 
 export const AXE_SHORT_LABELS: Record<Axe, string> = {
@@ -68,6 +70,7 @@ export const AXE_SHORT_LABELS: Record<Axe, string> = {
   axe5_marketing: 'Marketing & Comm.',
   axe6_exploitation: 'Exploitation & Systèmes',
   axe7_construction: 'Construction',
+  axe8_divers: 'Divers & Transverse',
 };
 
 // Configuration complète des axes selon spécifications v2.0
@@ -81,6 +84,7 @@ export const AXE_CONFIG: Record<Axe, { code: string; poids: number; couleur: str
   axe5_marketing: { code: 'MKT', poids: 10, couleur: '#EC4899', icone: 'Megaphone', syncCC: true },
   axe6_exploitation: { code: 'EXP', poids: 5, couleur: '#6366F1', icone: 'Settings', syncCC: true },
   axe7_construction: { code: 'CON', poids: 25, couleur: '#EF4444', icone: 'Building', syncCC: false },
+  axe8_divers: { code: 'DIV', poids: 0, couleur: '#6B7280', icone: 'MoreHorizontal', syncCC: false },
 };
 
 // Phases de construction (Centre Commercial uniquement)
@@ -1446,6 +1450,20 @@ export interface Risque {
   id?: number;
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // CHAMPS SIMPLIFIÉS (utilisés par le formulaire et les données)
+  // ═══════════════════════════════════════════════════════════════════════════
+  probabilite?: 1 | 2 | 3 | 4;     // Champ simplifié
+  impact?: 1 | 2 | 3 | 4;          // Champ simplifié
+  score?: number;                   // Champ simplifié (P × I)
+  status?: RisqueStatus;            // Champ simplifié pour le statut
+  responsable?: string;             // Champ simplifié pour le responsable
+  mesures_attenuation?: string;     // Alias pour plan_mitigation
+  notes_mise_a_jour?: string;       // Notes de mise à jour
+  commentaires_externes?: string;   // Commentaires JSON string
+  updatedAt?: string;               // Date de mise à jour
+  createdAt?: string;               // Date de création (simplifié)
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // IDENTIFICATION (Onglet: Identification)
   // ═══════════════════════════════════════════════════════════════════════════
   id_risque: string;              // Format: "R-YYYY-XXX"
@@ -1672,14 +1690,27 @@ export const BUILDING_CODE_LABELS: Record<BuildingCode, string> = {
 };
 
 // Configuration complète des bâtiments selon spécifications v2.0
-export const BATIMENTS_CONFIG: Record<BuildingCode, { id: string; nom: string; estPilote: boolean; ordre: number }> = {
-  CC: { id: 'BAT-1', nom: 'Centre Commercial', estPilote: true, ordre: 1 },
-  MKT: { id: 'BAT-2', nom: 'Market', estPilote: false, ordre: 2 },
-  BB1: { id: 'BAT-3', nom: 'Big Box 1', estPilote: false, ordre: 3 },
-  BB2: { id: 'BAT-4', nom: 'Big Box 2', estPilote: false, ordre: 4 },
-  BB3: { id: 'BAT-5', nom: 'Big Box 3', estPilote: false, ordre: 5 },
-  BB4: { id: 'BAT-6', nom: 'Big Box 4', estPilote: false, ordre: 6 },
+// Total GLA: 45 000 m² (conforme à PROJET_CONFIG)
+export const BATIMENTS_CONFIG: Record<BuildingCode, {
+  id: string;
+  nom: string;
+  description: string;
+  estPilote: boolean;
+  ordre: number;
+  surface: number; // m² GLA
+  niveaux: string;
+  type: string;
+}> = {
+  CC: { id: 'BAT-1', nom: 'Centre Commercial', description: 'Mall principal avec galeries, food court et espaces loisirs', estPilote: true, ordre: 1, surface: 15000, niveaux: 'R+3', type: 'Centre Commercial' },
+  MKT: { id: 'BAT-2', nom: 'Hypermarché', description: 'Hypermarché Carrefour avec surface de vente et réserves', estPilote: false, ordre: 2, surface: 6000, niveaux: 'R+1', type: 'Hypermarché' },
+  BB1: { id: 'BAT-3', nom: 'Big Box 1', description: 'Grande surface spécialisée - Ameublement & Décoration', estPilote: false, ordre: 3, surface: 6000, niveaux: 'R+1', type: 'Big Box' },
+  BB2: { id: 'BAT-4', nom: 'Big Box 2', description: 'Grande surface spécialisée - Électronique & High-Tech', estPilote: false, ordre: 4, surface: 6000, niveaux: 'R+1', type: 'Big Box' },
+  BB3: { id: 'BAT-5', nom: 'Big Box 3', description: 'Grande surface spécialisée - Sport & Loisirs', estPilote: false, ordre: 5, surface: 6000, niveaux: 'R+1', type: 'Big Box' },
+  BB4: { id: 'BAT-6', nom: 'Big Box 4', description: 'Grande surface spécialisée - Bricolage & Jardin', estPilote: false, ordre: 6, surface: 6000, niveaux: 'R+1', type: 'Big Box' },
 };
+
+// Calcul automatique du total GLA
+export const TOTAL_GLA = Object.values(BATIMENTS_CONFIG).reduce((sum, b) => sum + b.surface, 0);
 
 // Codes bâtiments legacy pour compatibilité avec anciennes données
 export const LEGACY_BUILDING_CODES = ['ZE', 'MA', 'PK'] as const;
@@ -1702,6 +1733,7 @@ export interface ActionFilters {
   dateDebut?: string;
   dateFin?: string;
   buildingCode?: BuildingCode;
+  jalonId?: number;
 }
 
 export interface JalonFilters {

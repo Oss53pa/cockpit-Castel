@@ -1119,51 +1119,31 @@ AXE COMMUNICATION
     comment: '',
     section: 'etat',
     duration: '6 min',
-    content: `LES 8 STRUCTURES DU PROJET ${PROJET_CONFIG.nom}
+    content: `LES ${PROJET_CONFIG.nombreBatiments} BÂTIMENTS DU PROJET ${PROJET_CONFIG.nom}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CENTRE COMMERCIAL (R+4)
-• Statut: TRAVAUX EN COURS | Avancement: 45%
-• Surface: 25 000 m² | Niveaux: RDC + 4 étages
-• Zones: Supermarché (LIVRÉ AVEC RÉSERVES), Galeries, Food Court, Loisirs, Rooftop
-• Locataire ancre: Carrefour
+CENTRE COMMERCIAL (${PROJET_CONFIG.nom})
+• Surface GLA: 15 000 m² | Niveaux: R+3
+• Galeries commerciales, Food Court, Espaces loisirs
+• Bâtiment PILOTE - Synchronisation Construction/Mobilisation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HYPERMARCHÉ CARREFOUR
+• Surface GLA: 6 000 m² | Niveaux: R+1
+• Ancre alimentaire principale
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 BIG BOX 1 à 4 (x4)
-• Statut: TRAVAUX NON DÉMARRÉS
-• Surface: 6 000 m² chacun | Niveaux: RDC + 1 étage
-• Destination: Grandes enseignes commerciales
-• Livraison prévue: Octobre 2026
+• Surface GLA: 6 000 m² chacun | Niveaux: R+1
+• Grandes surfaces spécialisées
+• Destinations: Ameublement, High-Tech, Sport, Bricolage
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ZONE D'EXPOSITION
-• Statut: TRAVAUX NON DÉMARRÉS
-• Surface: 4 000 m² | RDC uniquement
-• Destination: Événements, salons, expositions
-• Livraison prévue: Octobre 2026
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-MARCHÉ ARTISANAL
-• Statut: TRAVAUX NON DÉMARRÉS
-• Surface: 2 500 m² | RDC uniquement
-• Destination: Artisans locaux, produits du terroir
-• Livraison prévue: Octobre 2026
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PARKING
-• Statut: TRAVAUX EN COURS | Avancement: 35%
-• Surface: 15 000 m² | Souterrain + Surface
-• Capacité: ~500 places
-• Livraison prévue: Août 2026
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-SURFACE TOTALE PROJET: 70 500 m²`
+SURFACE GLA TOTALE: ${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²`
   },
   {
     id: 'launch_13',
@@ -3169,7 +3149,7 @@ export function DeepDiveLaunch() {
             {/* Total footer */}
             <div className="mt-2 p-1.5 rounded-lg text-center" style={{ backgroundColor: `${primaryColor}10` }}>
               <span className="text-xs font-semibold" style={{ color: primaryColor }}>
-                Surface Totale Projet: 70 500 m²
+                Surface GLA Totale: {PROJET_CONFIG.surfaceGLA.toLocaleString()} m²
               </span>
             </div>
           </div>

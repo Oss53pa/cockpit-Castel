@@ -31,6 +31,8 @@ import {
   BUILDING_TYPE_LABELS,
   BUILDING_STATUS_LABELS,
   BUILDING_STATUS_COLORS,
+  BATIMENTS_CONFIG,
+  TOTAL_GLA,
 } from '@/types';
 
 // ============================================================================
@@ -104,121 +106,96 @@ function calculateBuildingProgress(
 // Total GLA: ~45,000 m²
 // ============================================================================
 
+// Génère DEFAULT_BUILDINGS à partir de BATIMENTS_CONFIG pour garantir la cohérence
 const DEFAULT_BUILDINGS: Building[] = [
   {
-    id: 'BAT-1',
-    nom: 'Centre Commercial',
+    id: BATIMENTS_CONFIG.CC.id,
+    nom: BATIMENTS_CONFIG.CC.nom,
     code: 'CC',
     type: 'centre_commercial',
-    description: 'Bâtiment principal R+4 du centre commercial COSMOS ANGRÉ. Comprend les galeries commerciales (100-120 boutiques), le food court, les espaces de loisirs et la terrasse rooftop. Bâtiment PILOTE pour la synchronisation Construction/Mobilisation.',
-    niveaux: 4,
-    surface: 25000,
+    description: BATIMENTS_CONFIG.CC.description,
+    niveaux: 3,
+    surface: BATIMENTS_CONFIG.CC.surface, // 15 000 m² (depuis BATIMENTS_CONFIG)
     status: 'en_cours',
     dateDebutTravaux: '2024-01-15',
     dateLivraisonPrevue: '2026-09-30',
-    avancement: 45,
+    avancement: 0, // Calculé automatiquement
     reserves: [],
-    zones: [
-      { id: 'Z-CC-01', nom: 'Galerie RDC', type: 'boutique', surface: 6000, niveau: 0, status: 'en_cours' },
-      { id: 'Z-CC-02', nom: 'Galerie R+1', type: 'boutique', surface: 5500, niveau: 1, status: 'en_cours' },
-      { id: 'Z-CC-03', nom: 'Galerie R+2', type: 'boutique', surface: 5000, niveau: 2, status: 'non_demarre' },
-      { id: 'Z-CC-04', nom: 'Food Court', type: 'restauration', surface: 3000, niveau: 3, status: 'non_demarre' },
-      { id: 'Z-CC-05', nom: 'Espace Loisirs', type: 'loisirs', surface: 3500, niveau: 3, status: 'non_demarre' },
-      { id: 'Z-CC-06', nom: 'Terrasse Rooftop', type: 'commun', surface: 2000, niveau: 4, status: 'non_demarre' },
-    ],
+    zones: [],
   },
   {
-    id: 'BAT-2',
-    nom: 'Market',
+    id: BATIMENTS_CONFIG.MKT.id,
+    nom: BATIMENTS_CONFIG.MKT.nom,
     code: 'MKT',
     type: 'big_box',
-    description: 'Hypermarché Carrefour R+1 de 8,000 m². Ancre alimentaire principale du centre commercial avec parking dédié.',
+    description: BATIMENTS_CONFIG.MKT.description,
     niveaux: 1,
-    surface: 8000,
+    surface: BATIMENTS_CONFIG.MKT.surface, // 6 000 m² (depuis BATIMENTS_CONFIG)
     status: 'en_cours',
     dateDebutTravaux: '2024-03-01',
     dateLivraisonPrevue: '2026-08-31',
-    avancement: 35,
+    avancement: 0, // Calculé automatiquement
     reserves: [],
-    zones: [
-      { id: 'Z-MKT-01', nom: 'Surface de vente RDC', type: 'supermarche', surface: 5000, niveau: 0, status: 'en_cours', locataire: 'Carrefour' },
-      { id: 'Z-MKT-02', nom: 'Surface de vente R+1', type: 'supermarche', surface: 2500, niveau: 1, status: 'non_demarre', locataire: 'Carrefour' },
-      { id: 'Z-MKT-03', nom: 'Réserves & Logistique', type: 'technique', surface: 500, niveau: 0, status: 'en_cours' },
-    ],
+    zones: [],
   },
   {
-    id: 'BAT-3',
-    nom: 'Big Box 1',
+    id: BATIMENTS_CONFIG.BB1.id,
+    nom: BATIMENTS_CONFIG.BB1.nom,
     code: 'BB1',
     type: 'big_box',
-    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Ameublement & Décoration.',
+    description: BATIMENTS_CONFIG.BB1.description,
     niveaux: 1,
-    surface: 6000,
+    surface: BATIMENTS_CONFIG.BB1.surface, // 6 000 m²
     status: 'non_demarre',
     dateLivraisonPrevue: '2026-10-15',
     avancement: 0,
     reserves: [],
-    zones: [
-      { id: 'Z-BB1-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-BB1-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
-      { id: 'Z-BB1-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
-    ],
+    zones: [],
   },
   {
-    id: 'BAT-4',
-    nom: 'Big Box 2',
+    id: BATIMENTS_CONFIG.BB2.id,
+    nom: BATIMENTS_CONFIG.BB2.nom,
     code: 'BB2',
     type: 'big_box',
-    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Électronique & High-Tech.',
+    description: BATIMENTS_CONFIG.BB2.description,
     niveaux: 1,
-    surface: 6000,
+    surface: BATIMENTS_CONFIG.BB2.surface, // 6 000 m²
     status: 'non_demarre',
     dateLivraisonPrevue: '2026-10-15',
     avancement: 0,
     reserves: [],
-    zones: [
-      { id: 'Z-BB2-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-BB2-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
-      { id: 'Z-BB2-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
-    ],
+    zones: [],
   },
   {
-    id: 'BAT-5',
-    nom: 'Big Box 3',
+    id: BATIMENTS_CONFIG.BB3.id,
+    nom: BATIMENTS_CONFIG.BB3.nom,
     code: 'BB3',
     type: 'big_box',
-    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Sport & Loisirs.',
+    description: BATIMENTS_CONFIG.BB3.description,
     niveaux: 1,
-    surface: 6000,
+    surface: BATIMENTS_CONFIG.BB3.surface, // 6 000 m²
     status: 'non_demarre',
     dateLivraisonPrevue: '2026-10-15',
     avancement: 0,
     reserves: [],
-    zones: [
-      { id: 'Z-BB3-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-BB3-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
-      { id: 'Z-BB3-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
-    ],
+    zones: [],
   },
   {
-    id: 'BAT-6',
-    nom: 'Big Box 4',
+    id: BATIMENTS_CONFIG.BB4.id,
+    nom: BATIMENTS_CONFIG.BB4.nom,
     code: 'BB4',
     type: 'big_box',
-    description: 'Grande surface spécialisée R+1 de 6,000 m². Destination : Bricolage & Jardin.',
+    description: BATIMENTS_CONFIG.BB4.description,
     niveaux: 1,
-    surface: 6000,
+    surface: BATIMENTS_CONFIG.BB4.surface, // 6 000 m²
     status: 'non_demarre',
     dateLivraisonPrevue: '2026-10-15',
     avancement: 0,
     reserves: [],
-    zones: [
-      { id: 'Z-BB4-01', nom: 'Surface de vente RDC', type: 'boutique', surface: 4000, niveau: 0, status: 'non_demarre' },
-      { id: 'Z-BB4-02', nom: 'Surface de vente R+1', type: 'boutique', surface: 1800, niveau: 1, status: 'non_demarre' },
-      { id: 'Z-BB4-03', nom: 'Réserves', type: 'technique', surface: 200, niveau: 0, status: 'non_demarre' },
-    ],
+    zones: [],
   },
 ];
+// Total GLA calculé automatiquement: TOTAL_GLA = 45 000 m²
 
 const getStatusIcon = (status: BuildingStatus) => {
   switch (status) {
