@@ -105,20 +105,26 @@ export function DataInitialization() {
       let risquesAdded = 0;
       let budgetAdded = 0;
 
-      // Vérifier et ajouter les risques manquants
+      // Récupérer le siteId par défaut
+      const defaultSite = await db.sites.toCollection().first();
+      const siteId = defaultSite?.id || 1;
+
+      // Vérifier et ajouter les risques manquants (AVEC siteId)
       const existingRisques = await db.risques.count();
       if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
-        await db.risques.bulkAdd(PRODUCTION_DATA.risques);
+        const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId }));
+        await db.risques.bulkAdd(risquesWithSiteId);
         risquesAdded = PRODUCTION_DATA.risques.length;
-        console.log(`[RepairData] ${risquesAdded} risques ajoutés`);
+        console.log(`[RepairData] ${risquesAdded} risques ajoutés avec siteId=${siteId}`);
       }
 
-      // Vérifier et ajouter le budget manquant
+      // Vérifier et ajouter le budget manquant (AVEC siteId)
       const existingBudget = await db.budget.count();
       if (existingBudget === 0 && PRODUCTION_DATA.budget?.length > 0) {
-        await db.budget.bulkAdd(PRODUCTION_DATA.budget);
+        const budgetWithSiteId = PRODUCTION_DATA.budget.map(b => ({ ...b, siteId }));
+        await db.budget.bulkAdd(budgetWithSiteId);
         budgetAdded = PRODUCTION_DATA.budget.length;
-        console.log(`[RepairData] ${budgetAdded} entrées budget ajoutées`);
+        console.log(`[RepairData] ${budgetAdded} entrées budget ajoutées avec siteId=${siteId}`);
       }
 
       setRepairResult({ risques: risquesAdded, budget: budgetAdded });
