@@ -8444,8 +8444,10 @@ export async function seedDatabase(): Promise<void> {
     // Seed complet si aucun projet n'existe
 
     // Insert sites
+    let defaultSiteId = 1;
     if (PRODUCTION_DATA.sites?.length > 0) {
       await db.sites.bulkPut(PRODUCTION_DATA.sites);
+      defaultSiteId = PRODUCTION_DATA.sites[0]?.id || 1;
     }
 
     // Insert project
@@ -8478,9 +8480,10 @@ export async function seedDatabase(): Promise<void> {
       await db.jalons.bulkPut(PRODUCTION_DATA.jalons);
     }
 
-    // Insert risques (75 vrais risques)
+    // Insert risques (75 vrais risques) - avec siteId
     if (PRODUCTION_DATA.risques?.length > 0) {
-      await db.risques.bulkPut(PRODUCTION_DATA.risques);
+      const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId: defaultSiteId }));
+      await db.risques.bulkPut(risquesWithSiteId);
     }
 
     // Insert budget
@@ -8490,12 +8493,16 @@ export async function seedDatabase(): Promise<void> {
   } else {
     // Seed partiel: vérifier et ajouter les données manquantes
 
-    // Vérifier et seeder les risques si absents
+    // Vérifier et seeder les risques si absents - avec siteId
     const existingRisques = await db.risques.count();
     if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
       console.log('[seedDatabase] Risques manquants, seed des risques...');
-      await db.risques.bulkPut(PRODUCTION_DATA.risques);
-      console.log(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés`);
+      // Récupérer le siteId par défaut
+      const defaultSite = await db.sites.toCollection().first();
+      const siteIdForRisques = defaultSite?.id || 1;
+      const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId: siteIdForRisques }));
+      await db.risques.bulkPut(risquesWithSiteId);
+      console.log(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés avec siteId=${siteIdForRisques}`);
     }
 
     // Vérifier et seeder le budget si absent
