@@ -1798,6 +1798,19 @@ export function DeepDiveLancement() {
   const risques = useRisques();
   const budgetSynthese = useBudgetSynthese();
   const budgetParAxe = useBudgetParAxe();
+  const currentSite = useCurrentSite();
+
+  // Données du site (100% temps réel depuis la DB)
+  const siteData = useMemo(() => ({
+    surfaceGLA: currentSite?.surface || 45000,
+    nombreBatiments: currentSite?.nombreBatiments || 8,
+    softOpening: currentSite?.dateOuverture || '2026-11-15',
+    inauguration: currentSite?.dateInauguration || '2026-12-15',
+    occupationCible: currentSite?.occupationCible || 85,
+    nom: currentSite?.nom || 'COSMOS ANGRÉ',
+    code: currentSite?.code || 'COSMOS',
+    societe: 'CRMC / New Heaven SA', // Société porteuse du projet
+  }), [currentSite]);
 
   // Données calculées à partir des hooks
   const cockpitData = useMemo(() => {
@@ -2034,10 +2047,10 @@ export function DeepDiveLancement() {
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold text-lg mb-4 text-[#1C3163]">Le Projet</h3>
           <table class="w-full text-sm">
-            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²</td></tr>
-            <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">8</td></tr>
-            <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
-            <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">${new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Surface GLA</td><td class="text-right">${siteData.surfaceGLA.toLocaleString()} m²</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">${siteData.nombreBatiments}</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">${new Date(siteData.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
+            <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">${new Date(siteData.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
             <tr><td class="py-2 font-medium">Occupation actuelle</td><td class="text-right font-bold ${cockpitData.tauxOccupation >= 85 ? 'text-green-600' : 'text-amber-600'}">${cockpitData.tauxOccupation.toFixed(1)}%</td></tr>
           </table>
         </div>
@@ -2082,7 +2095,7 @@ export function DeepDiveLancement() {
         <div class="bg-gray-50 p-6 rounded-lg">
           <h3 class="font-bold mb-4">Effectif Cible</h3>
           <div class="text-center p-4 bg-blue-50 rounded-lg">
-            <p class="text-3xl font-bold text-blue-700">${PROJET_CONFIG.surfaceGLA > 40000 ? 25 : 15}</p>
+            <p class="text-3xl font-bold text-blue-700">${siteData.surfaceGLA > 40000 ? 25 : 15}</p>
             <p class="text-sm text-blue-600">personnes</p>
             <p class="text-xs text-gray-500 mt-2">Effectif calculé selon surface GLA</p>
           </div>
@@ -2105,7 +2118,7 @@ export function DeepDiveLancement() {
           <div class="bg-indigo-50 p-4 rounded-lg"><p class="text-2xl font-bold text-indigo-700">${cockpitData.tauxOccupation.toFixed(1)}%</p><p class="text-xs text-indigo-600">Occupation</p></div>
           <div class="bg-green-50 p-4 rounded-lg"><p class="text-2xl font-bold text-green-700">${cockpitData.actionsByAxe('axe2_commercial').filter(a => a.statut === 'termine').length}</p><p class="text-xs text-green-600">Actions faites</p></div>
           <div class="bg-blue-50 p-4 rounded-lg"><p class="text-2xl font-bold text-blue-700">${cockpitData.jalonsByAxe('axe2_commercial').filter(j => j.statut === 'atteint').length}/${cockpitData.jalonsByAxe('axe2_commercial').length}</p><p class="text-xs text-blue-600">Jalons</p></div>
-          <div class="bg-purple-50 p-4 rounded-lg"><p class="text-2xl font-bold text-purple-700">${PROJET_CONFIG.occupationCible}%</p><p class="text-xs text-purple-600">Cible</p></div>
+          <div class="bg-purple-50 p-4 rounded-lg"><p class="text-2xl font-bold text-purple-700">${siteData.occupationCible}%</p><p class="text-xs text-purple-600">Cible</p></div>
         </div>
       </div>
     </div>
@@ -2433,14 +2446,14 @@ export function DeepDiveLancement() {
             });
           });
         } else if (slideInfo.numero === 2) {
-          // Rappel projet - utilise PROJET_CONFIG
+          // Rappel projet - données réelles du site
           const projetInfo = [
-            ['Nom du projet', PROJET_CONFIG.nom],
-            ['Société', PROJET_CONFIG.societe],
-            ['Surface GLA', `${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²`],
-            ['Occupation cible', `${PROJET_CONFIG.occupationCible}%`],
-            ['Soft Opening', new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR')],
-            ['Inauguration', new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR')],
+            ['Nom du projet', siteData.nom],
+            ['Société', siteData.societe],
+            ['Surface GLA', `${siteData.surfaceGLA.toLocaleString()} m²`],
+            ['Occupation cible', `${siteData.occupationCible}%`],
+            ['Soft Opening', new Date(siteData.softOpening).toLocaleDateString('fr-FR')],
+            ['Inauguration', new Date(siteData.inauguration).toLocaleDateString('fr-FR')],
           ];
           projetInfo.forEach((row, i) => {
             slide.addText(row[0], { x: 0.5, y: 1.0 + i * 0.35, w: 2.5, h: 0.3, fontSize: 11, fontFace: fontFamily, color: '666666' });

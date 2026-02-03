@@ -377,7 +377,7 @@ export function ActionFormContent({
       setNotes([...notes, {
         id: crypto.randomUUID(),
         texte: newNote.trim(),
-        auteur: isExternal ? (action.responsable || 'Externe') : 'Utilisateur',
+        auteur: isExternal ? (action?.responsable || 'Externe') : 'Utilisateur',
         date: new Date().toISOString()
       }]);
       setNewNote('');
@@ -649,7 +649,7 @@ export function ActionFormContent({
                       placeholder="Titre de l'action"
                     />
                   ) : (
-                    <div className="p-2 bg-white rounded border text-sm font-medium">{action.titre || '-'}</div>
+                    <div className="p-2 bg-white rounded border text-sm font-medium">{action?.titre || '-'}</div>
                   )}
                 </div>
 
@@ -657,9 +657,9 @@ export function ActionFormContent({
                 <div>
                   <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                     <Calendar className="w-4 h-4 text-orange-600" />
-                    Échéance
+                    Échéance {isCreate && '*'}
                   </Label>
-                  {isEditing && !isExternal ? (
+                  {canEditInternal ? (
                     <Input
                       type="date"
                       value={echeance}
@@ -667,7 +667,7 @@ export function ActionFormContent({
                     />
                   ) : (
                     <div className="p-2 bg-white rounded border text-sm">
-                      {action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}
+                      {action?.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}
                     </div>
                   )}
                 </div>
@@ -677,7 +677,7 @@ export function ActionFormContent({
                   <Label className="text-sm font-medium mb-1.5 block">
                     Phase projet
                   </Label>
-                  {isEditing && !isExternal ? (
+                  {canEditInternal ? (
                     <Select
                       value={projectPhase || ''}
                       onChange={(e) => setProjectPhase(e.target.value as ProjectPhase || undefined)}
@@ -705,7 +705,7 @@ export function ActionFormContent({
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">ID</div>
-                  <div className="font-mono font-medium text-blue-700 truncate">{action.id_action || '-'}</div>
+                  <div className="font-mono font-medium text-blue-700 truncate">{action?.id_action || (isCreate ? 'Auto-généré' : '-')}</div>
                 </div>
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">Axe</div>

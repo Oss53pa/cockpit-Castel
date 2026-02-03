@@ -84,13 +84,14 @@ import {
   useBudgetParAxe,
   useEVMIndicators,
   useRisques,
+  useCurrentSite,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
 import { SYNC_CONFIG } from '@/config/syncConfig';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
 import { DeepDiveMensuel } from './DeepDiveMensuel';
 import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
-import { PROJET_CONFIG } from '@/data/constants';
+// Données du site maintenant récupérées via useCurrentSite()
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -564,6 +565,18 @@ export function DeepDive() {
   const budget = useBudgetSynthese(); // Synthèse globale
   const evmIndicators = useEVMIndicators(); // Indicateurs EVM calculés depuis les vraies données
   const risques = useRisques();
+  const currentSite = useCurrentSite();
+
+  // Données du site (100% temps réel depuis la DB)
+  const siteData = useMemo(() => ({
+    surfaceGLA: currentSite?.surface || 45000,
+    nombreBatiments: currentSite?.nombreBatiments || 8,
+    softOpening: currentSite?.dateOuverture || '2026-11-15',
+    inauguration: currentSite?.dateInauguration || '2026-12-15',
+    occupationCible: currentSite?.occupationCible || 85,
+    nom: currentSite?.nom || 'COSMOS ANGRÉ',
+    code: currentSite?.code || 'COSMOS',
+  }), [currentSite]);
 
   // Sync data (new module)
   const syncData = useSync(1, 'cosmos-angre');
@@ -1996,7 +2009,7 @@ export function DeepDive() {
         // Page de garde
         return (
           <div style={{ ...baseStyles, backgroundColor: primaryColor }} className="h-full flex flex-col items-center justify-center text-white p-8">
-            <h1 className="text-4xl font-bold mb-2">{PROJET_CONFIG.nom}</h1>
+            <h1 className="text-4xl font-bold mb-2">{siteData.nom}</h1>
             <div className="w-24 h-1 mb-6" style={{ backgroundColor: accentColor }} />
             <h2 className="text-2xl mb-2" style={{ color: accentColor }}>Deep Dive</h2>
             <p className="text-lg opacity-80">Présentation Direction Générale</p>
@@ -2666,9 +2679,9 @@ export function DeepDive() {
                   <h3 className="text-sm font-semibold mb-3" style={{ color: primaryColor }}>Indicateurs EVM</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: 'SPI', value: '0.95' },
-                      { label: 'CPI', value: '1.02' },
-                      { label: 'TCPI', value: '0.98' },
+                      { label: 'SPI', value: evmIndicators.SPI.toFixed(2) },
+                      { label: 'CPI', value: evmIndicators.CPI.toFixed(2) },
+                      { label: 'TCPI', value: (evmIndicators.BAC > 0 && evmIndicators.AC > 0 ? (evmIndicators.BAC - evmIndicators.EV) / (evmIndicators.BAC - evmIndicators.AC) : 1).toFixed(2) },
                     ].map((item) => (
                       <div key={item.label} className="p-2 bg-gray-50 rounded text-center">
                         <div className="text-lg font-bold" style={{ color: accentColor }}>{item.value}</div>
@@ -3213,7 +3226,7 @@ export function DeepDive() {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
-                      Occupation: {kpiValues.occupation}% (cible {PROJET_CONFIG.occupationCible}%)
+                      Occupation: {kpiValues.occupation}% (cible {siteData.occupationCible}%)
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
@@ -3260,7 +3273,7 @@ export function DeepDive() {
             <h1 className="text-3xl font-bold mb-4">Merci de votre attention</h1>
             <div className="w-16 h-1 mb-6" style={{ backgroundColor: accentColor }} />
             <p className="text-xl opacity-80 mb-8">Questions ?</p>
-            <p className="text-sm" style={{ color: accentColor }}>{PROJET_CONFIG.nom}</p>
+            <p className="text-sm" style={{ color: accentColor }}>{siteData.nom}</p>
           </div>
         );
 
@@ -4499,7 +4512,7 @@ export function DeepDive() {
           color: textColor,
           bold: true,
         });
-        slide.addText('{PROJET_CONFIG.nom}', {
+        slide.addText('{siteData.nom}', {
           x: 7.5,
           y: 0.2,
           w: 2,
@@ -4707,7 +4720,7 @@ export function DeepDive() {
           case '1': {
             slide.addShape('rect', { x: 0, y: 0, w: '100%', h: '100%', fill: { color: primaryHex } });
             slide.addShape('rect', { x: 0, y: 2.5, w: '100%', h: 0.1, fill: { color: accentHex } });
-            slide.addText('{PROJET_CONFIG.nom}', { x: 0, y: 1.3, w: '100%', h: 0.8, fontSize: 48, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
+            slide.addText('{siteData.nom}', { x: 0, y: 1.3, w: '100%', h: 0.8, fontSize: 48, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
             slide.addText('Deep Dive', { x: 0, y: 2.6, w: '100%', h: 0.6, fontSize: 32, fontFace: fontFamily, color: accentHex, align: 'center' });
             // Période du rapport
             slide.addText(periodText, { x: 0, y: 3.3, w: '100%', h: 0.5, fontSize: 24, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
@@ -5160,7 +5173,7 @@ export function DeepDive() {
             slide.addText('Points clés', { x: 0.5, y: 1.1, w: 4, h: 0.4, fontSize: 14, fontFace: fontFamily, color: primaryHex, bold: true });
             const keyPoints = [
               `Météo projet: ${weatherConfig[projectWeather].label.split(' ')[0]}`,
-              `Occupation: ${kpiValues.occupation}% (cible ${PROJET_CONFIG.occupationCible}%)`,
+              `Occupation: ${kpiValues.occupation}% (cible ${siteData.occupationCible}%)`,
               `Budget: ${kpiValues.budgetConsumed}% consommé`,
               `${decisionPoints.length} décision(s) en attente DG`,
             ];
@@ -5184,7 +5197,7 @@ export function DeepDive() {
             slide.addText('Merci de votre attention', { x: 0, y: 2, w: '100%', h: 0.8, fontSize: 36, fontFace: fontFamily, color: 'FFFFFF', bold: true, align: 'center' });
             slide.addShape('rect', { x: 3.5, y: 2.9, w: 3, h: 0.05, fill: { color: accentHex } });
             slide.addText('Questions ?', { x: 0, y: 3.2, w: '100%', h: 0.5, fontSize: 18, fontFace: fontFamily, color: 'CCCCCC', align: 'center' });
-            slide.addText('{PROJET_CONFIG.nom}', { x: 0, y: 4.5, w: '100%', h: 0.4, fontSize: 14, fontFace: fontFamily, color: accentHex, align: 'center' });
+            slide.addText('{siteData.nom}', { x: 0, y: 4.5, w: '100%', h: 0.4, fontSize: 14, fontFace: fontFamily, color: accentHex, align: 'center' });
             break;
           }
         }
