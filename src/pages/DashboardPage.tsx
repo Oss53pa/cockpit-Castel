@@ -11,12 +11,9 @@ import {
   Target,
   CheckCircle,
   Clock,
-  Sparkles,
   BarChart3,
   ListChecks,
   Heart,
-  Rocket,
-  Activity,
 } from 'lucide-react';
 import { useDashboardKPIs, useAvancementGlobal } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
@@ -29,6 +26,7 @@ import {
   ActionsEnRetard,
   IndicateurSynchronisation,
   COPILDashboard,
+  CompteARebours,
   MeteoParAxe,
   JalonsCritiques,
   VueAxe,
@@ -37,9 +35,8 @@ import {
 } from '@/components/dashboard';
 import { useCurrentSite } from '@/hooks/useSites';
 import type { Axe } from '@/types';
-import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent, Card } from '@/components/ui';
+import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { Proph3tWidget } from '@/components/proph3t';
-import { useProph3tHealth } from '@/hooks/useProph3t';
 
 type DashboardView = 'operationnel' | 'copil';
 type OperationnelTab = 'synthese' | 'avancement' | 'jalons-actions' | 'sante';
@@ -75,8 +72,8 @@ function getProgressStatus(value: number) {
   };
 }
 
-// Compact header with all key info in one line
-function CompactDashboardHeader({
+// Animated glassmorphism header component
+function GlassmorphismHeader({
   kpis,
   avancementGlobal,
   syncData,
@@ -84,7 +81,6 @@ function CompactDashboardHeader({
   isVisible,
   siteLocalisation,
   dateOuvertureFormatee,
-  healthScore,
 }: {
   kpis: ReturnType<typeof useDashboardKPIs>;
   avancementGlobal: number;
@@ -93,147 +89,137 @@ function CompactDashboardHeader({
   isVisible: boolean;
   siteLocalisation: string;
   dateOuvertureFormatee: string;
-  healthScore: number;
 }) {
   const progressStatus = getProgressStatus(avancementGlobal);
-  const budgetPercent = kpis.budgetTotal > 0 ? (kpis.budgetConsomme / kpis.budgetTotal) * 100 : 0;
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-xl shadow-lg flex-shrink-0',
-        'opacity-0 translate-y-2',
+        'relative overflow-hidden rounded-xl shadow-lg',
+        'opacity-0 translate-y-4',
         isVisible && 'animate-fade-slide-in'
       )}
     >
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-800 to-primary-900" />
+      {/* Background solid gray */}
+      <div className="absolute inset-0 bg-neutral-800" />
 
-      {/* Subtle decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(3)].map((_, i) => (
+      {/* Content */}
+      <div className="relative z-10 px-5 py-4 text-white">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Left: Project Info */}
           <div
-            key={i}
-            className="absolute animate-float"
-            style={{
-              left: `${20 + i * 30}%`,
-              top: '20%',
-              animationDelay: `${i * 0.7}s`,
-              opacity: 0.03,
-            }}
+            className={cn(
+              'flex-1 opacity-0',
+              isVisible && 'animate-fade-slide-in-left'
+            )}
+            style={{ animationDelay: '100ms' }}
           >
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-        ))}
-      </div>
-
-      {/* Content - Single row layout */}
-      <div className="relative z-10 px-4 py-3 text-white">
-        <div className="flex items-center justify-between gap-4">
-          {/* Project name & location */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-white/10 rounded-lg flex-shrink-0">
-              <Building2 className="h-5 w-5 text-secondary-400" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/10 rounded-lg">
+                <Building2 className="h-5 w-5 text-secondary-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">
+                  {kpis.projectName}
+                </h2>
+                <p className="text-neutral-400 text-xs">
+                  Centre commercial premium
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-lg font-bold tracking-tight truncate">{kpis.projectName}</h2>
-              <div className="flex items-center gap-2 text-xs text-primary-300">
-                <MapPin className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{siteLocalisation}</span>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>{siteLocalisation}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Ouverture {dateOuvertureFormatee}</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-secondary-500/20 px-2.5 py-1 rounded-full">
+                <Clock className="h-3.5 w-3.5 text-secondary-400" />
+                <span className="text-secondary-400 font-semibold">
+                  J-{daysUntilOpening}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Countdown badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-secondary-500/30 to-secondary-600/30 rounded-lg border border-secondary-400/30 flex-shrink-0">
-            <Rocket className="h-4 w-4 text-secondary-400" />
-            <div className="text-center">
-              <span className="text-xl font-bold text-white">J-{daysUntilOpening}</span>
-              <p className="text-[10px] text-secondary-300 uppercase">Ouverture</p>
-            </div>
-          </div>
-
-          {/* Main progress circle */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Center: Main Progress */}
+          <div
+            className={cn(
+              'flex items-center gap-4 opacity-0',
+              isVisible && 'animate-scale-in'
+            )}
+            style={{ animationDelay: '200ms' }}
+          >
             <CircularProgress
               value={avancementGlobal}
-              size={56}
-              strokeWidth={5}
-              variant={avancementGlobal >= 80 ? 'success' : avancementGlobal >= 50 ? 'warning' : 'default'}
-              className="[&_text]:text-white [&_span]:text-white [&_text]:text-sm"
+              size={80}
+              strokeWidth={8}
+              variant={
+                avancementGlobal >= 80
+                  ? 'success'
+                  : avancementGlobal >= 50
+                    ? 'warning'
+                    : 'default'
+              }
+              className="[&_text]:text-white [&_span]:text-white"
             />
             <div>
-              <p className="text-[10px] text-primary-300 uppercase tracking-wider">Avancement</p>
-              <p className="text-xl font-bold">{Math.round(avancementGlobal)}%</p>
+              <p className="text-neutral-400 text-xs uppercase tracking-wider mb-0.5">
+                Avancement Global
+              </p>
+              <p className="text-3xl font-bold">{Math.round(avancementGlobal)}%</p>
+              <div
+                className={cn(
+                  'inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-xs font-medium',
+                  'bg-white/10',
+                  progressStatus.color
+                )}
+              >
+                <progressStatus.icon className="h-3 w-3" />
+                {progressStatus.label}
+              </div>
             </div>
           </div>
 
-          {/* Key metrics row */}
-          <div className="hidden xl:flex items-center gap-3 flex-shrink-0">
-            <MetricBadge
-              label="Construction"
-              value={`${syncData.syncStatus ? Math.round(syncData.syncStatus.projectProgress) : 0}%`}
-              color="secondary"
-            />
-            <MetricBadge
-              label="Mobilisation"
-              value={`${syncData.syncStatus ? Math.round(syncData.syncStatus.mobilizationProgress) : 0}%`}
-              color="secondary"
-            />
-            <MetricBadge
-              label="Jalons"
-              value={`${kpis.jalonsAtteints}/${kpis.jalonsTotal}`}
-              color="white"
-            />
-            <MetricBadge
-              label="Budget"
-              value={`${Math.round(budgetPercent)}%`}
-              color={budgetPercent > 100 ? 'error' : budgetPercent > 90 ? 'warning' : 'success'}
-            />
-          </div>
-
-          {/* Health score */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg flex-shrink-0">
-            <Activity className={cn(
-              'h-4 w-4',
-              healthScore >= 70 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
-            )} />
-            <div>
-              <span className={cn(
-                'text-lg font-bold',
-                healthScore >= 70 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
-              )}>{healthScore}</span>
-              <p className="text-[10px] text-primary-300 uppercase">Santé</p>
+          {/* Right: Key Metrics */}
+          <div
+            className={cn(
+              'flex gap-3 opacity-0',
+              isVisible && 'animate-fade-slide-in'
+            )}
+            style={{ animationDelay: '300ms' }}
+          >
+            <div className="text-center px-3 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+              <p className="text-xl font-bold text-secondary-400">
+                {syncData.syncStatus
+                  ? Math.round(syncData.syncStatus.projectProgress)
+                  : 0}
+                %
+              </p>
+              <p className="text-xs text-neutral-400">Construction</p>
+            </div>
+            <div className="text-center px-3 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+              <p className="text-xl font-bold text-secondary-400">
+                {syncData.syncStatus
+                  ? Math.round(syncData.syncStatus.mobilizationProgress)
+                  : 0}
+                %
+              </p>
+              <p className="text-xs text-neutral-400">Mobilisation</p>
+            </div>
+            <div className="text-center px-3 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+              <p className="text-xl font-bold text-white">
+                {kpis.jalonsAtteints}/{kpis.jalonsTotal}
+              </p>
+              <p className="text-xs text-neutral-400">Jalons</p>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// Small metric badge component
-function MetricBadge({
-  label,
-  value,
-  color
-}: {
-  label: string;
-  value: string;
-  color: 'secondary' | 'white' | 'success' | 'warning' | 'error';
-}) {
-  const colorClasses = {
-    secondary: 'text-secondary-400',
-    white: 'text-white',
-    success: 'text-green-400',
-    warning: 'text-amber-400',
-    error: 'text-red-400',
-  };
-
-  return (
-    <div className="text-center px-3 py-1 bg-white/5 rounded-lg border border-white/10">
-      <p className={cn('text-sm font-bold', colorClasses[color])}>{value}</p>
-      <p className="text-[10px] text-primary-300">{label}</p>
     </div>
   );
 }
@@ -378,159 +364,161 @@ export function DashboardPage() {
   }
 
   return (
-    <div ref={containerRef} className="space-y-6">
-      {/* View Toggle */}
-      <ViewToggle view={view} setView={setView} isVisible={isVisible} />
+    <div ref={containerRef} className="h-[calc(100vh-112px)] overflow-auto">
+      <div className="space-y-6 pb-6">
+        {/* View Toggle */}
+        <ViewToggle view={view} setView={setView} isVisible={isVisible} />
 
-      {/* Content based on view */}
-      {view === 'copil' ? (
-        <COPILDashboard />
-      ) : selectedAxe ? (
-        <VueAxe axe={selectedAxe} onBack={() => setSelectedAxe(null)} />
-      ) : (
-        <>
-          {/* Glassmorphism Header - toujours visible */}
-          <GlassmorphismHeader
-            kpis={kpis}
-            avancementGlobal={avancementGlobal}
-            syncData={syncData}
-            daysUntilOpening={daysUntilOpening}
-            isVisible={isVisible}
-            siteLocalisation={siteLocalisation}
-            dateOuvertureFormatee={dateOuvertureFormatee}
-          />
+        {/* Content based on view */}
+        {view === 'copil' ? (
+          <COPILDashboard />
+        ) : selectedAxe ? (
+          <VueAxe axe={selectedAxe} onBack={() => setSelectedAxe(null)} />
+        ) : (
+          <>
+            {/* Glassmorphism Header */}
+            <GlassmorphismHeader
+              kpis={kpis}
+              avancementGlobal={avancementGlobal}
+              syncData={syncData}
+              daysUntilOpening={daysUntilOpening}
+              isVisible={isVisible}
+              siteLocalisation={siteLocalisation}
+              dateOuvertureFormatee={dateOuvertureFormatee}
+            />
 
-          {/* Onglets du dashboard opérationnel */}
-          <Tabs
-            value={operationnelTab}
-            onValueChange={(v) => setOperationnelTab(v as OperationnelTab)}
-            className="space-y-4"
-          >
-            <TabsList className="w-full justify-start bg-white border border-primary-200 p-1 rounded-xl shadow-sm">
-              <TabsTrigger value="synthese" className="flex items-center gap-2 px-4 py-2">
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Synthèse</span>
-              </TabsTrigger>
-              <TabsTrigger value="avancement" className="flex items-center gap-2 px-4 py-2">
-                <BarChart3 className="h-4 w-4" />
-                <span>Avancement</span>
-              </TabsTrigger>
-              <TabsTrigger value="jalons-actions" className="flex items-center gap-2 px-4 py-2">
-                <ListChecks className="h-4 w-4" />
-                <span>Jalons & Actions</span>
-              </TabsTrigger>
-              <TabsTrigger value="sante" className="flex items-center gap-2 px-4 py-2">
-                <Heart className="h-4 w-4" />
-                <span>Santé Projet</span>
-              </TabsTrigger>
-            </TabsList>
+            {/* Onglets du dashboard opérationnel */}
+            <Tabs
+              value={operationnelTab}
+              onValueChange={(v) => setOperationnelTab(v as OperationnelTab)}
+              className="space-y-4"
+            >
+              <TabsList className="w-full justify-start bg-white border border-primary-200 p-1 rounded-xl shadow-sm">
+                <TabsTrigger value="synthese" className="flex items-center gap-2 px-4 py-2">
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Synthèse</span>
+                </TabsTrigger>
+                <TabsTrigger value="avancement" className="flex items-center gap-2 px-4 py-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>Avancement</span>
+                </TabsTrigger>
+                <TabsTrigger value="jalons-actions" className="flex items-center gap-2 px-4 py-2">
+                  <ListChecks className="h-4 w-4" />
+                  <span>Jalons & Actions</span>
+                </TabsTrigger>
+                <TabsTrigger value="sante" className="flex items-center gap-2 px-4 py-2">
+                  <Heart className="h-4 w-4" />
+                  <span>Santé Projet</span>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Onglet Synthèse - KPIs principaux */}
-            <TabsContent value="synthese" className="space-y-6">
-              {/* KPIs Grid - Bento Style */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <KPICard
-                  title="Taux d'occupation"
-                  value={`${Math.round(kpis.tauxOccupation)}%`}
-                  subtitle="Surface commerciale"
-                  icon={Building2}
-                  progress={kpis.tauxOccupation}
-                  variant={kpis.tauxOccupation >= 70 ? 'success' : 'warning'}
-                  animationDelay={0}
+              {/* Onglet Synthèse - KPIs principaux */}
+              <TabsContent value="synthese" className="space-y-6">
+                {/* KPIs Grid - Bento Style */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <KPICard
+                    title="Taux d'occupation"
+                    value={`${Math.round(kpis.tauxOccupation)}%`}
+                    subtitle="Surface commerciale"
+                    icon={Building2}
+                    progress={kpis.tauxOccupation}
+                    variant={kpis.tauxOccupation >= 70 ? 'success' : 'warning'}
+                    animationDelay={0}
+                  />
+
+                  <KPICard
+                    title="Budget consommé"
+                    value={formatCurrency(kpis.budgetConsomme)}
+                    subtitle={`sur ${formatCurrency(kpis.budgetTotal)}`}
+                    icon={Wallet}
+                    progress={budgetPercent}
+                    variant={
+                      budgetPercent > 100
+                        ? 'error'
+                        : budgetPercent > 90
+                          ? 'warning'
+                          : 'default'
+                    }
+                    animationDelay={50}
+                  />
+
+                  <KPICard
+                    title="Jalons atteints"
+                    value={`${kpis.jalonsAtteints}/${kpis.jalonsTotal}`}
+                    subtitle={formatPercent(jalonsPercent)}
+                    icon={Flag}
+                    progress={jalonsPercent}
+                    variant={jalonsPercent >= 80 ? 'success' : 'default'}
+                    animationDelay={100}
+                  />
+
+                  <KPICard
+                    title="Équipe projet"
+                    value={kpis.equipeTaille}
+                    subtitle="membres actifs"
+                    icon={Users}
+                    variant="default"
+                    animationDelay={150}
+                  />
+
+                  <IndicateurSynchronisation />
+                </div>
+
+                {/* Compte à rebours */}
+                <CompteARebours dateOuverture={dateOuverture} />
+
+                {/* Météo Projet + Score Santé */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <MeteoProjetCard />
+                  <ScoreSante />
+                </div>
+              </TabsContent>
+
+              {/* Onglet Avancement - Progression par axe */}
+              <TabsContent value="avancement" className="space-y-6">
+                {/* Météo par Axe - cliquable */}
+                <MeteoParAxe onAxeClick={setSelectedAxe} />
+
+                {/* Avancement par Axe */}
+                <AvancementAxes />
+              </TabsContent>
+
+              {/* Onglet Jalons & Actions */}
+              <TabsContent value="jalons-actions" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Jalons Critiques */}
+                  <JalonsCritiques />
+
+                  {/* Prochains Jalons */}
+                  <ProchainsJalons />
+                </div>
+
+                {/* Actions en retard */}
+                <ActionsEnRetard />
+              </TabsContent>
+
+              {/* Onglet Santé Projet - Indicateurs et IA */}
+              <TabsContent value="sante" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Score de Santé */}
+                  <ScoreSante />
+
+                  {/* Météo Projet */}
+                  <MeteoProjetCard />
+                </div>
+
+                {/* Proph3t Widget */}
+                <Proph3tWidget
+                  variant="card"
+                  showChat={true}
+                  showHealth={true}
+                  showRecommendations={true}
                 />
-
-                <KPICard
-                  title="Budget consommé"
-                  value={formatCurrency(kpis.budgetConsomme)}
-                  subtitle={`sur ${formatCurrency(kpis.budgetTotal)}`}
-                  icon={Wallet}
-                  progress={budgetPercent}
-                  variant={
-                    budgetPercent > 100
-                      ? 'error'
-                      : budgetPercent > 90
-                        ? 'warning'
-                        : 'default'
-                  }
-                  animationDelay={50}
-                />
-
-                <KPICard
-                  title="Jalons atteints"
-                  value={`${kpis.jalonsAtteints}/${kpis.jalonsTotal}`}
-                  subtitle={formatPercent(jalonsPercent)}
-                  icon={Flag}
-                  progress={jalonsPercent}
-                  variant={jalonsPercent >= 80 ? 'success' : 'default'}
-                  animationDelay={100}
-                />
-
-                <KPICard
-                  title="Équipe projet"
-                  value={kpis.equipeTaille}
-                  subtitle="membres actifs"
-                  icon={Users}
-                  variant="default"
-                  animationDelay={150}
-                />
-
-                <IndicateurSynchronisation />
-              </div>
-
-              {/* Compte à rebours */}
-              <CompteARebours dateOuverture={dateOuverture} />
-
-              {/* Météo Projet compact */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <MeteoProjetCard />
-                <ScoreSante />
-              </div>
-            </TabsContent>
-
-            {/* Onglet Avancement - Progression par axe */}
-            <TabsContent value="avancement" className="space-y-6">
-              {/* Météo par Axe - cliquable */}
-              <MeteoParAxe onAxeClick={setSelectedAxe} />
-
-              {/* Avancement par Axe */}
-              <AvancementAxes />
-            </TabsContent>
-
-            {/* Onglet Jalons & Actions */}
-            <TabsContent value="jalons-actions" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Jalons Critiques */}
-                <JalonsCritiques />
-
-                {/* Prochains Jalons */}
-                <ProchainsJalons />
-              </div>
-
-              {/* Actions en retard */}
-              <ActionsEnRetard />
-            </TabsContent>
-
-            {/* Onglet Santé Projet - Indicateurs et IA */}
-            <TabsContent value="sante" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Score de Santé */}
-                <ScoreSante />
-
-                {/* Météo Projet */}
-                <MeteoProjetCard />
-              </div>
-
-              {/* Proph3t Widget */}
-              <Proph3tWidget
-                variant="card"
-                showChat={true}
-                showHealth={true}
-                showRecommendations={true}
-              />
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </div>
     </div>
   );
 }
