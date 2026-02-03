@@ -881,8 +881,8 @@ export function ConstructionCCView() {
                   key={jalon.id}
                   className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg border border-amber-200"
                 >
-                  <Badge className={AXE_CONFIG[jalon.axe].bgLight + ' ' + AXE_CONFIG[jalon.axe].color}>
-                    {AXE_SHORT_LABELS[jalon.axe].replace('Axe ', '').substring(0, 4)}
+                  <Badge className={getAxeConfig(jalon.axe).bgLight + ' ' + getAxeConfig(jalon.axe).color}>
+                    {AXE_SHORT_LABELS[jalon.axe]?.replace('Axe ', '').substring(0, 4) || jalon.axe}
                   </Badge>
                   <span className="text-sm text-neutral-700 flex-1 truncate">{jalon.titre}</span>
                   <ArrowRight className="w-3 h-3 text-red-500" />

@@ -3,6 +3,11 @@ import { AlertTriangle, X, Check, ChevronRight } from 'lucide-react';
 import { SYNC_CONFIG } from '@/config/syncConfig';
 import type { SyncAlert } from '@/types/sync.types';
 
+// Helper to safely get priority style with fallback
+const getPriorityStyle = (priority: string) => {
+  return SYNC_CONFIG.priorityStyles[priority as keyof typeof SYNC_CONFIG.priorityStyles] || SYNC_CONFIG.priorityStyles.MEDIUM;
+};
+
 interface SyncAlertBannerProps {
   alerts: SyncAlert[];
   onAcknowledge: (alertId: number) => void;
@@ -70,8 +75,8 @@ export const SyncAlertBanner: React.FC<SyncAlertBannerProps> = ({
                       <span
                         key={idx}
                         className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
-                          SYNC_CONFIG.priorityStyles[action.priority].bg
-                        } ${SYNC_CONFIG.priorityStyles[action.priority].text}`}
+                          getPriorityStyle(action.priority).bg
+                        } ${getPriorityStyle(action.priority).text}`}
                       >
                         {SYNC_CONFIG.actionTypeLabels[action.actionType]}: {action.title}
                       </span>

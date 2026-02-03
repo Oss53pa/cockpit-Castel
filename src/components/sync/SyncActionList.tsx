@@ -2,6 +2,11 @@ import { CheckCircle, Clock, XCircle, Loader2 } from 'lucide-react';
 import { SYNC_CONFIG } from '@/config/syncConfig';
 import type { SyncAction, SyncActionStatus } from '@/types/sync.types';
 
+// Helper to safely get priority style with fallback
+const getPriorityStyle = (priority: string) => {
+  return SYNC_CONFIG.priorityStyles[priority as keyof typeof SYNC_CONFIG.priorityStyles] || SYNC_CONFIG.priorityStyles.MEDIUM;
+};
+
 interface SyncActionListProps {
   actions: SyncAction[];
   projectId: string;
@@ -67,10 +72,10 @@ export const SyncActionList: React.FC<SyncActionListProps> = ({
                   <span className="font-medium text-gray-900">{action.title}</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full ${
-                      SYNC_CONFIG.priorityStyles[action.priority].bg
-                    } ${SYNC_CONFIG.priorityStyles[action.priority].text}`}
+                      getPriorityStyle(action.priority).bg
+                    } ${getPriorityStyle(action.priority).text}`}
                   >
-                    {SYNC_CONFIG.priorityStyles[action.priority].label}
+                    {getPriorityStyle(action.priority).label}
                   </span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded ${

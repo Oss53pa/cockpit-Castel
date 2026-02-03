@@ -20,6 +20,11 @@ import type { DependencyNode, InterdependencyGraph } from '@/types/interdependen
 import { AXE_COLORS } from '@/types/interdependency.types';
 import { getPredecessors, getSuccessors } from '@/lib/interdependency';
 
+// Helper to safely get axe colors with fallback
+const getAxeColors = (axe: string) => {
+  return AXE_COLORS[axe as keyof typeof AXE_COLORS] || AXE_COLORS.axe1_rh;
+};
+
 const AXE_LABELS: Record<string, string> = {
   axe1_rh: 'RH',
   axe2_commercial: 'Commercial',
@@ -53,7 +58,7 @@ export const InterdependencyDetails: React.FC<InterdependencyDetailsProps> = ({
   onNodeClick,
   onSimulateClick,
 }) => {
-  const colors = AXE_COLORS[node.action.axe];
+  const colors = getAxeColors(node.action.axe);
   const predecessors = getPredecessors(graph, node.id);
   const successors = getSuccessors(graph, node.id);
 
@@ -215,7 +220,7 @@ export const InterdependencyDetails: React.FC<InterdependencyDetailsProps> = ({
                   >
                     <div
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: AXE_COLORS[pred.action.axe].bg }}
+                      style={{ backgroundColor: getAxeColors(pred.action.axe).bg }}
                     />
                     <span className="font-mono text-xs text-gray-500">
                       {pred.id}
@@ -244,7 +249,7 @@ export const InterdependencyDetails: React.FC<InterdependencyDetailsProps> = ({
                   >
                     <div
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: AXE_COLORS[succ.action.axe].bg }}
+                      style={{ backgroundColor: getAxeColors(succ.action.axe).bg }}
                     />
                     <span className="font-mono text-xs text-gray-500">
                       {succ.id}

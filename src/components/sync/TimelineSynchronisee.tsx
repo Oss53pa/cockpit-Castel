@@ -588,7 +588,7 @@ export function TimelineSynchronisee() {
 
     return mobilisationAxes.map(axe => {
       const axeConfig = AXES_CONFIG_FULL[axe.replace('axe1_', '').replace('axe2_', '').replace('axe3_', '').replace('axe4_', '').replace('axe5_', '').replace('axe6_', '') as keyof typeof AXES_CONFIG_FULL] || {};
-      const visualConfig = AXE_VISUAL_CONFIG[axe];
+      const visualConfig = AXE_VISUAL_CONFIG[axe] || AXE_VISUAL_CONFIG.axe1_rh;
       const axeJalons = allJalons.filter(j => j.axe === axe);
       const axeActions = allActions.filter(a => a.axe === axe);
 

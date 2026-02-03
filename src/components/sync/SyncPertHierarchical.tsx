@@ -87,6 +87,12 @@ const axeColors: Record<Axe, { bg: string; light: string; dark: string }> = {
   axe4_budget: { bg: '#8B5CF6', light: '#EDE9FE', dark: '#5B21B6' },
   axe5_marketing: { bg: '#EC4899', light: '#FCE7F3', dark: '#9D174D' },
   axe6_exploitation: { bg: '#06B6D4', light: '#CFFAFE', dark: '#0E7490' },
+  axe7_construction: { bg: '#14B8A6', light: '#CCFBF1', dark: '#0F766E' },
+};
+
+// Helper to safely get axe colors with fallback
+const getAxeColors = (axe: string) => {
+  return axeColors[axe as Axe] || axeColors.axe1_rh;
 };
 
 const jalonStatusColors: Record<JalonStatus, string> = {
@@ -378,7 +384,7 @@ export function SyncPertHierarchical({ projectId: _projectId }: SyncPertHierarch
       const axeJalons = jalonsByAxe.get(axe) || [];
       if (axeJalons.length === 0) return;
 
-      const axeColor = axeColors[axe];
+      const axeColor = getAxeColors(axe);
 
       // Calculate axe duration from jalons
       const allDates: Date[] = [];
@@ -845,7 +851,7 @@ export function SyncPertHierarchical({ projectId: _projectId }: SyncPertHierarch
                     />
                     <span
                       className="w-3 h-3 rounded"
-                      style={{ backgroundColor: axeColors[axe].bg }}
+                      style={{ backgroundColor: getAxeColors(axe).bg }}
                     />
                     <span className="text-sm text-gray-700">{AXE_SHORT_LABELS[axe]}</span>
                   </label>

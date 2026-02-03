@@ -7,13 +7,20 @@ import { Lock, GitBranch } from 'lucide-react';
 import type { Axe, TypeLien } from '@/types';
 import { AXE_COLORS, DEPENDENCY_STYLES } from '@/types/interdependency.types';
 
-const AXE_LABELS: Record<Axe, string> = {
+const AXE_LABELS: Record<string, string> = {
   axe1_rh: 'RH',
   axe2_commercial: 'Commercial',
   axe3_technique: 'Technique',
   axe4_budget: 'Budget',
   axe5_marketing: 'Marketing',
   axe6_exploitation: 'Exploitation',
+  axe7_construction: 'Construction',
+  axe8_divers: 'Divers',
+};
+
+// Helper to safely get axe colors with fallback
+const getAxeColors = (axe: string) => {
+  return AXE_COLORS[axe as keyof typeof AXE_COLORS] || AXE_COLORS.axe1_rh;
 };
 
 const LINK_TYPE_LABELS: Record<TypeLien, string> = {
@@ -56,9 +63,9 @@ export const InterdependencyLegend: React.FC<InterdependencyLegendProps> = ({
                 <div key={axe} className="flex items-center gap-1.5">
                   <div
                     className="w-3 h-3 rounded-sm"
-                    style={{ backgroundColor: AXE_COLORS[axe].bg }}
+                    style={{ backgroundColor: getAxeColors(axe).bg }}
                   />
-                  <span className="text-xs text-gray-600">{AXE_LABELS[axe]}</span>
+                  <span className="text-xs text-gray-600">{AXE_LABELS[axe] || axe}</span>
                 </div>
               ))}
             </div>
