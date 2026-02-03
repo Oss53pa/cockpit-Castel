@@ -96,8 +96,12 @@ export async function forceReseed(): Promise<{
 }> {
   console.log('[initDatabase] Force reseed des données de production...');
 
-  // Effacer TOUTES les données existantes
-  await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams], async () => {
+  // Reset initialization state
+  isInitialized = false;
+  initPromise = null;
+
+  // Effacer TOUTES les données existantes (y compris project pour forcer un seed complet)
+  await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams, db.project, db.sites, db.projectSettings], async () => {
     await db.users.clear();
     await db.jalons.clear();
     await db.actions.clear();
@@ -105,6 +109,9 @@ export async function forceReseed(): Promise<{
     await db.budget.clear();
     await db.alertes.clear();
     await db.teams.clear();
+    await db.project.clear();
+    await db.sites.clear();
+    await db.projectSettings.clear();
   });
 
   // Charger les vraies données de production avec siteId
