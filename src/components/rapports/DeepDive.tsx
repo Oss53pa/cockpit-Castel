@@ -169,6 +169,17 @@ const axeToDbCode: Record<AxeType, string> = {
   general: 'general',
 };
 
+// Mapping inverse (DB code vers axe DeepDive)
+const dbCodeToAxe: Record<string, AxeType> = {
+  axe1_rh: 'rh',
+  axe2_commercial: 'commercialisation',
+  axe3_technique: 'technique',
+  axe4_budget: 'budget',
+  axe5_marketing: 'marketing',
+  axe6_exploitation: 'exploitation',
+  general: 'general',
+};
+
 // Weather config - Design Premium (couleurs subtiles)
 const weatherConfig: Record<
   ProjectWeather,
@@ -862,6 +873,65 @@ export function DeepDive() {
     return grouped;
   }, [decisionPoints]);
 
+  // Points d'Attention consolidés par axe (depuis les actions)
+  const pointsAttentionByAxe = useMemo(() => {
+    const grouped: Record<AxeType, Array<{ id: string; sujet: string; responsableNom?: string; actionTitre: string }>> = {
+      rh: [],
+      commercialisation: [],
+      technique: [],
+      budget: [],
+      marketing: [],
+      exploitation: [],
+      general: [],
+    };
+
+    actions.forEach((action) => {
+      const pa = (action as any).points_attention || [];
+      pa.forEach((p: any) => {
+        if (!p.transmis && p.sujet) {
+          const axe = dbCodeToAxe[action.axe] || 'general';
+          grouped[axe].push({
+            id: p.id,
+            sujet: p.sujet,
+            responsableNom: p.responsableNom,
+            actionTitre: action.titre,
+          });
+        }
+      });
+    });
+
+    return grouped;
+  }, [actions]);
+
+  // Décisions Attendues consolidées par axe (depuis les actions)
+  const decisionsAttenduesByAxe = useMemo(() => {
+    const grouped: Record<AxeType, Array<{ id: string; sujet: string; actionTitre: string }>> = {
+      rh: [],
+      commercialisation: [],
+      technique: [],
+      budget: [],
+      marketing: [],
+      exploitation: [],
+      general: [],
+    };
+
+    actions.forEach((action) => {
+      const da = (action as any).decisions_attendues || [];
+      da.forEach((d: any) => {
+        if (!d.transmis && d.sujet) {
+          const axe = dbCodeToAxe[action.axe] || 'general';
+          grouped[axe].push({
+            id: d.id,
+            sujet: d.sujet,
+            actionTitre: action.titre,
+          });
+        }
+      });
+    });
+
+    return grouped;
+  }, [actions]);
+
   // Top risques
   const topRisques = useMemo(() => {
     return risques
@@ -1213,6 +1283,51 @@ export function DeepDive() {
                     <div className="text-[9px] text-slate-500 mt-0.5">{point.recommendation}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Points d'Attention consolidés (depuis les actions) */}
+          {pointsAttentionByAxe[axe]?.length > 0 && (
+            <div className="mt-2 p-3 bg-amber-50/30 rounded-xl border border-amber-200">
+              <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-amber-800">
+                <AlertTriangle className="h-3 w-3" />
+                Points d'Attention ({pointsAttentionByAxe[axe].length})
+              </h3>
+              <div className="space-y-1">
+                {pointsAttentionByAxe[axe].slice(0, 4).map((pa) => (
+                  <div key={pa.id} className="p-1.5 bg-white rounded-lg text-[10px] border border-amber-100">
+                    <div className="font-medium text-slate-700 truncate">{pa.sujet}</div>
+                    <div className="flex items-center justify-between text-[9px] text-slate-500 mt-0.5">
+                      <span className="truncate max-w-[60%]">{pa.actionTitre}</span>
+                      {pa.responsableNom && <span className="text-amber-600">{pa.responsableNom}</span>}
+                    </div>
+                  </div>
+                ))}
+                {pointsAttentionByAxe[axe].length > 4 && (
+                  <div className="text-[9px] text-amber-600 text-center">+{pointsAttentionByAxe[axe].length - 4} autres</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Décisions Attendues consolidées (depuis les actions) */}
+          {decisionsAttenduesByAxe[axe]?.length > 0 && (
+            <div className="mt-2 p-3 bg-indigo-50/30 rounded-xl border border-indigo-200">
+              <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-indigo-800">
+                <CheckCircle className="h-3 w-3" />
+                Décisions Attendues ({decisionsAttenduesByAxe[axe].length})
+              </h3>
+              <div className="space-y-1">
+                {decisionsAttenduesByAxe[axe].slice(0, 4).map((da) => (
+                  <div key={da.id} className="p-1.5 bg-white rounded-lg text-[10px] border border-indigo-100">
+                    <div className="font-medium text-slate-700 truncate">{da.sujet}</div>
+                    <div className="text-[9px] text-slate-500 mt-0.5 truncate">{da.actionTitre}</div>
+                  </div>
+                ))}
+                {decisionsAttenduesByAxe[axe].length > 4 && (
+                  <div className="text-[9px] text-indigo-600 text-center">+{decisionsAttenduesByAxe[axe].length - 4} autres</div>
+                )}
               </div>
             </div>
           )}

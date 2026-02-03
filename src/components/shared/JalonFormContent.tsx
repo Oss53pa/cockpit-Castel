@@ -25,10 +25,12 @@ import {
   Input,
   Label,
   Badge,
+  Select,
+  SelectOption,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useUsers } from '@/hooks';
-import { AXE_LABELS, type Jalon, type Axe, type MeteoJalon } from '@/types';
+import { AXES, AXE_LABELS, type Jalon, type Axe, type MeteoJalon } from '@/types';
 
 // ============================================================================
 // TYPES
@@ -82,6 +84,7 @@ export interface JalonFormSaveData {
   description?: string;
   date_prevue?: string;
   responsable?: string;
+  axe?: Axe;
   // Champs éditables en interne ET externe
   preuve_url?: string;
   notes_mise_a_jour?: string;
@@ -109,6 +112,7 @@ export function JalonFormContent({
   const [description, setDescription] = useState(jalon.description || '');
   const [datePrevue, setDatePrevue] = useState(jalon.date_prevue || '');
   const [responsable, setResponsable] = useState(jalon.responsable || '');
+  const [axe, setAxe] = useState<Axe | undefined>(jalon.axe);
 
   // Champs éditables en interne ET externe
   const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
@@ -219,6 +223,7 @@ export function JalonFormContent({
         description,
         date_prevue: datePrevue,
         responsable,
+        axe,
       }),
       // Champs communs (interne + externe)
       preuve_url: preuveUrl,
@@ -302,7 +307,20 @@ export function JalonFormContent({
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               Axe
             </Label>
-            <div className="p-2 bg-white rounded border text-sm">{jalon.axe ? AXE_LABELS[jalon.axe] : '-'}</div>
+            {canEditInternal ? (
+              <Select
+                value={axe || ''}
+                onChange={(e) => setAxe(e.target.value as Axe)}
+                className="bg-white"
+              >
+                <SelectOption value="">-- Sélectionner --</SelectOption>
+                {AXES.map((a) => (
+                  <SelectOption key={a} value={a}>{AXE_LABELS[a]}</SelectOption>
+                ))}
+              </Select>
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">{axe ? AXE_LABELS[axe] : '-'}</div>
+            )}
           </div>
 
           <div className="md:col-span-2">

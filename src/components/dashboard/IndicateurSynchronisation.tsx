@@ -1,6 +1,6 @@
-import { ArrowLeftRight, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui';
+import { Card, Tooltip } from '@/components/ui';
 import { useSynchronisationMetrics } from '@/hooks';
 import { SYNC_STATUS_LABELS, SYNC_STATUS_STYLES, type SyncStatus } from '@/types';
 
@@ -53,7 +53,28 @@ export function IndicateurSynchronisation() {
     <Card className="card-hover overflow-hidden" padding="none">
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-primary-500">Synchronisation</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-primary-500">Sync. Actions</p>
+            <Tooltip
+              content={
+                <div className="max-w-xs p-2 text-sm">
+                  <p className="font-semibold mb-2">Avancement moyen des Actions</p>
+                  <p className="text-gray-300 mb-2">
+                    Compare l'avancement moyen de <strong>toutes les actions</strong> par catégorie :
+                  </p>
+                  <ul className="text-xs text-gray-400 space-y-1 mb-2">
+                    <li><strong>Tech.</strong> = Actions Axe 3 (Technique)</li>
+                    <li><strong>Mob.</strong> = Actions des 5 axes opérationnels (RH, Commercial, Budget, Marketing, Exploitation)</li>
+                  </ul>
+                  <p className="text-xs text-gray-500 border-t border-gray-600 pt-2 mt-2">
+                    Différent de "Sync. CC/Mob." qui ne prend que le Centre Commercial.
+                  </p>
+                </div>
+              }
+            >
+              <Info className="h-3.5 w-3.5 text-primary-400 cursor-help hover:text-primary-600 transition-colors" />
+            </Tooltip>
+          </div>
           <div className={cn('rounded-lg p-2', variantBg[variant])}>
             <ArrowLeftRight className={cn('h-4 w-4', variantColors[variant])} />
           </div>

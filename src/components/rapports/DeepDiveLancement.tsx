@@ -216,6 +216,108 @@ function AxeMeteoBadge({ actions, jalons }: { actions: any[]; jalons: any[] }) {
   );
 }
 
+// Types pour Points d'Attention et Décisions Attendues
+interface PointAttention {
+  id: string;
+  sujet: string;
+  responsableId: number | null;
+  responsableNom?: string;
+  dateCreation: string;
+  transmis?: boolean;
+}
+
+interface DecisionAttendue {
+  id: string;
+  sujet: string;
+  dateCreation: string;
+  transmis?: boolean;
+}
+
+// Composant Points d'Attention consolidés par axe
+function PointsAttentionConsolides({ actions }: { actions: any[] }) {
+  const pointsAttention = useMemo(() => {
+    const points: (PointAttention & { actionTitre: string })[] = [];
+    actions.forEach(action => {
+      const pa = action.points_attention || [];
+      pa.forEach((p: PointAttention) => {
+        if (!p.transmis) { // Seulement les non-transmis
+          points.push({ ...p, actionTitre: action.titre });
+        }
+      });
+    });
+    return points.sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+  }, [actions]);
+
+  if (pointsAttention.length === 0) return null;
+
+  return (
+    <Card padding="md" className="border-amber-200 bg-amber-50/30">
+      <h4 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4" />
+        Points d'Attention ({pointsAttention.length})
+      </h4>
+      <div className="space-y-2">
+        {pointsAttention.slice(0, 5).map((pa) => (
+          <div key={pa.id} className="p-2 bg-white rounded-lg border border-amber-200">
+            <p className="text-sm font-medium text-slate-800">{pa.sujet}</p>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-slate-500 truncate max-w-[150px]" title={pa.actionTitre}>
+                {pa.actionTitre}
+              </span>
+              {pa.responsableNom && (
+                <span className="text-xs text-amber-600">{pa.responsableNom}</span>
+              )}
+            </div>
+          </div>
+        ))}
+        {pointsAttention.length > 5 && (
+          <p className="text-xs text-amber-600 text-center">+{pointsAttention.length - 5} autres points</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// Composant Décisions Attendues consolidées par axe
+function DecisionsAttenduesConsolidees({ actions }: { actions: any[] }) {
+  const decisionsAttendues = useMemo(() => {
+    const decisions: (DecisionAttendue & { actionTitre: string })[] = [];
+    actions.forEach(action => {
+      const da = action.decisions_attendues || [];
+      da.forEach((d: DecisionAttendue) => {
+        if (!d.transmis) { // Seulement les non-transmises
+          decisions.push({ ...d, actionTitre: action.titre });
+        }
+      });
+    });
+    return decisions.sort((a, b) => new Date(b.dateCreation).getTime() - new Date(a.dateCreation).getTime());
+  }, [actions]);
+
+  if (decisionsAttendues.length === 0) return null;
+
+  return (
+    <Card padding="md" className="border-indigo-200 bg-indigo-50/30">
+      <h4 className="font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+        <CheckCircle className="h-4 w-4" />
+        Décisions Attendues ({decisionsAttendues.length})
+      </h4>
+      <div className="space-y-2">
+        {decisionsAttendues.slice(0, 5).map((da) => (
+          <div key={da.id} className="p-2 bg-white rounded-lg border border-indigo-200">
+            <p className="text-sm font-medium text-slate-800">{da.sujet}</p>
+            <span className="text-xs text-slate-500 truncate block max-w-full" title={da.actionTitre}>
+              {da.actionTitre}
+            </span>
+          </div>
+        ))}
+        {decisionsAttendues.length > 5 && (
+          <p className="text-xs text-indigo-600 text-center">+{decisionsAttendues.length - 5} autres décisions</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 // ============================================================================
 // SLIDE 1 - RAPPEL PROJET & MÉTÉO GLOBALE
 // ============================================================================
@@ -531,6 +633,10 @@ function SlideAxeRH() {
           <p className="text-center text-gray-400 italic py-4">Aucun jalon RH défini</p>
         )}
       </Card>
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsRH} />
+      <DecisionsAttenduesConsolidees actions={actionsRH} />
     </div>
   );
 }
@@ -673,6 +779,10 @@ function SlideAxeCommercial() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsCommerciales} />
+      <DecisionsAttenduesConsolidees actions={actionsCommerciales} />
     </div>
   );
 }
@@ -799,6 +909,10 @@ function SlideAxeTechnique() {
           </div>
         </div>
       )}
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsTechniques} />
+      <DecisionsAttenduesConsolidees actions={actionsTechniques} />
     </div>
   );
 }
@@ -914,6 +1028,10 @@ function SlideAxeBudget() {
           <p className="text-center text-gray-400 italic py-4">Aucune action budget définie</p>
         )}
       </Card>
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsBudget} />
+      <DecisionsAttenduesConsolidees actions={actionsBudget} />
     </div>
   );
 }
@@ -1010,6 +1128,10 @@ function SlideAxeMarketing() {
           </div>
         </div>
       </Card>
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsMarketing} />
+      <DecisionsAttenduesConsolidees actions={actionsMarketing} />
     </div>
   );
 }
@@ -1135,6 +1257,10 @@ function SlideAxeExploitation() {
           <p className="text-center text-gray-400 italic py-4">Aucun jalon exploitation défini</p>
         )}
       </Card>
+
+      {/* Points d'Attention et Décisions Attendues consolidés */}
+      <PointsAttentionConsolides actions={actionsExploitation} />
+      <DecisionsAttenduesConsolidees actions={actionsExploitation} />
     </div>
   );
 }

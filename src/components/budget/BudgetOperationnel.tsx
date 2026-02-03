@@ -66,6 +66,7 @@ import { formatNumber } from '@/lib/utils';
 import { BudgetImportExport } from './BudgetImportExport';
 import { BudgetEditModal } from './BudgetEditModal';
 import { useBudgetExploitation } from '@/hooks/useBudgetExploitation';
+import { resetBudgetEngagements } from '@/hooks';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // Import des vraies données Cosmos Angré
@@ -1858,6 +1859,7 @@ export function BudgetOperationnel() {
   const [annee, setAnnee] = useState<2026 | 2027>(2027);
   const [editingLigne, setEditingLigne] = useState<LigneBudgetExploitation | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [isResettingEngagements, setIsResettingEngagements] = useState(false);
 
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
 
@@ -1916,6 +1918,23 @@ export function BudgetOperationnel() {
     }
   };
 
+  // Handler de reset des engagements uniquement
+  const handleResetEngagementsOnly = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir remettre tous les engagements et réalisations à 0 ?\n\nLes montants prévus seront conservés.')) {
+      return;
+    }
+    setIsResettingEngagements(true);
+    try {
+      const count = await resetBudgetEngagements();
+      alert(`✅ ${count} ligne(s) budgétaire(s) mise(s) à jour.\n\nEngagé = 0\nRéalisé = 0`);
+    } catch (error) {
+      console.error('Reset engagements error:', error);
+      alert('❌ Erreur lors de la réinitialisation des engagements');
+    } finally {
+      setIsResettingEngagements(false);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -1954,11 +1973,21 @@ export function BudgetOperationnel() {
           <Button
             variant="outline"
             size="sm"
+            onClick={handleResetEngagementsOnly}
+            disabled={isResettingEngagements}
+            className="text-warning-600 border-warning-300 hover:bg-warning-50"
+          >
+            <RotateCcw className={cn('h-4 w-4 mr-2', isResettingEngagements && 'animate-spin')} />
+            {isResettingEngagements ? 'Réinitialisation...' : 'RAZ Engagements'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleReset}
             disabled={isResetting}
           >
             <RotateCcw className={cn('h-4 w-4 mr-2', isResetting && 'animate-spin')} />
-            {isResetting ? 'Réinitialisation...' : 'Réinitialiser'}
+            {isResetting ? 'Réinitialisation...' : 'Réinitialiser tout'}
           </Button>
           <BudgetImportExport budgetType="operationnel" />
         </div>

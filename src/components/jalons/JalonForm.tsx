@@ -33,6 +33,7 @@ const AXE_PREFIXES: Record<string, string> = {
   'axe5_marketing': 'MKT',
   'axe6_exploitation': 'EXP',
   'axe7_construction': 'CON',
+  'axe8_divers': 'DIV',
 };
 
 interface JalonFormProps {
@@ -74,6 +75,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         ...(data.description !== undefined && { description: data.description }),
         ...(data.date_prevue && { date_prevue: data.date_prevue }),
         ...(data.responsable && { responsable: data.responsable }),
+        ...(data.axe && { axe: data.axe }),
         // Statut et validation
         statut: data.statut,
         preuve_url: data.preuve_url || null,

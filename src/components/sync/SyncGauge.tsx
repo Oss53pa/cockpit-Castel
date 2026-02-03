@@ -70,27 +70,34 @@ export const SyncGauge: React.FC<SyncGaugeProps> = ({
     <div className="bg-white rounded-xl p-6 shadow-sm border">
       {/* Header with explanation tooltip */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Synchronisation Projet / Mobilisation</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Sync. CC / Mobilisation</h3>
         <Tooltip
           content={
             <div className="max-w-xs p-2 text-sm">
-              <p className="font-semibold mb-2">Calcul du taux de synchronisation</p>
+              <p className="font-semibold mb-2">Synchronisation Centre Commercial</p>
               <p className="text-gray-300 mb-2">
-                L'écart représente la différence entre l'avancement du Projet (Construction CC)
-                et l'avancement de la Mobilisation opérationnelle.
+                Compare l'avancement du <strong>Centre Commercial (CC) uniquement</strong>
+                avec la préparation opérationnelle (moyenne pondérée des 5 axes).
               </p>
+              <ul className="text-xs text-gray-400 space-y-1 mb-2">
+                <li><strong>Construction</strong> = Progression du bâtiment CC</li>
+                <li><strong>Mobilisation</strong> = Moyenne pondérée (RH, Commercial, Budget, Marketing, Exploitation)</li>
+              </ul>
               <p className="text-xs text-gray-400 mb-2">
-                <strong>Formule :</strong> Écart = % Projet - % Mobilisation
+                <strong>Formule :</strong> Écart = % CC - % Mobilisation
               </p>
               <div className="text-xs space-y-1 border-t border-gray-600 pt-2 mt-2">
                 <p className="text-green-400">🟢 |Écart| ≤ 5% : Synchronisé</p>
-                <p className="text-yellow-400">🟡 5% &lt; |Écart| ≤ 15% : Attention requise</p>
+                <p className="text-yellow-400">🟡 5% &lt; |Écart| ≤ 15% : Attention</p>
                 <p className="text-red-400">🔴 |Écart| &gt; 15% : Désynchronisé</p>
               </div>
+              <p className="text-xs text-gray-500 border-t border-gray-600 pt-2 mt-2">
+                Différent de "Sync. Actions" qui prend toutes les actions techniques.
+              </p>
             </div>
           }
         >
-          <Info className="h-5 w-5 text-gray-400 cursor-help hover:text-gray-600 transition-colors" />
+          <Info className="h-5 w-5 text-primary-400 cursor-help hover:text-primary-600 transition-colors" />
         </Tooltip>
       </div>
 
