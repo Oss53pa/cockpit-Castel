@@ -10,7 +10,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { Button, Input, Badge } from '@/components/ui';
+import { Button, Input, Badge, Textarea } from '@/components/ui';
 import {
   sendReminderEmail,
   getEmailConfig,
@@ -61,6 +61,7 @@ export function SendReminderModal({
 
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientName, setRecipientName] = useState('');
+  const [note, setNote] = useState('');
   const [duration, setDuration] = useState(config.defaultLinkDuration);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +86,7 @@ export function SendReminderModal({
       setError(null);
       setSuccess(null);
       setShowPreview(false);
+      setNote('');
     }
   }, [isOpen]);
 
@@ -110,6 +112,7 @@ export function SendReminderModal({
         hour: '2-digit',
         minute: '2-digit',
       }),
+      note: note || '',
     };
 
     if (entityType === 'action') {
@@ -175,7 +178,8 @@ export function SendReminderModal({
         entity,
         recipientEmail,
         recipientName,
-        duration
+        duration,
+        note
       );
       setSuccess(result);
     } catch (e) {
@@ -335,6 +339,19 @@ export function SendReminderModal({
                     heures ({Math.round(duration / 24)} jours)
                   </span>
                 </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">
+                  Note personnalisée (optionnel)
+                </label>
+                <Textarea
+                  placeholder="Ajouter un message personnalisé pour le destinataire..."
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  rows={3}
+                />
               </div>
 
               {/* Error */}

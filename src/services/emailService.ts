@@ -1185,7 +1185,8 @@ export async function sendReminderEmail(
   entity: Action | Jalon | Risque,
   recipientEmail: string,
   recipientName: string,
-  durationHours?: number
+  durationHours?: number,
+  note?: string
 ): Promise<{ link: UpdateLink; emailResult: EmailResult }> {
   const config = getEmailConfig();
 
@@ -1217,6 +1218,8 @@ export async function sendReminderEmail(
       hour: '2-digit',
       minute: '2-digit',
     }),
+    note: note || '',
+    note_section: note ? `<div style="margin: 16px 0; padding: 12px; background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 4px;"><strong>Note:</strong> ${note}</div>` : '',
   };
 
   // Add entity-specific replacements
