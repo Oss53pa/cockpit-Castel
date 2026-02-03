@@ -24,7 +24,7 @@ const PrioriteBadge: React.FC<{ priorite: 'critique' | 'haute' | 'moyenne' }> = 
     haute: { bg: '#FFEDD5', color: '#C2410C', label: 'Haute' },
     moyenne: { bg: '#FEF9C3', color: '#A16207', label: 'Moyenne' },
   };
-  const config = configs[priorite];
+  const config = configs[priorite] || configs.moyenne;
 
   return (
     <span
@@ -113,7 +113,7 @@ export function ActionsPrioritairesSlide({
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {data.map((action) => {
-              const axeConfig = AXES_MENSUEL_CONFIG[action.axe];
+              const axeConfig = AXES_MENSUEL_CONFIG[action.axe] || AXES_MENSUEL_CONFIG.general;
               const isOverdue = new Date(action.dateLimite) < new Date();
 
               return (

@@ -44,7 +44,7 @@ const getTendanceArrow = (tendance: TendanceType): string => {
 
 export function SyntheseExecutiveSlide({ data, designSettings }: SyntheseExecutiveSlideProps) {
   const { primaryColor, accentColor, fontFamily } = designSettings;
-  const meteoConfig = METEO_EMOJI_CONFIG[data.meteoGlobale.meteoGlobale];
+  const meteoConfig = METEO_EMOJI_CONFIG[data.meteoGlobale.meteoGlobale] || METEO_EMOJI_CONFIG.jaune;
   const jalonsCompteRebours = data.compteRebours || JALONS_CLES_COMPTE_REBOURS;
 
   return (

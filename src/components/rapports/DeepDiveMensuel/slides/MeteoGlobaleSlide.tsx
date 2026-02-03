@@ -29,7 +29,7 @@ const TendanceIcon: React.FC<{ tendance: TendanceType; className?: string }> = (
 
 export function MeteoGlobaleSlide({ data, designSettings }: MeteoGlobaleSlideProps) {
   const { primaryColor, accentColor, fontFamily } = designSettings;
-  const meteoConfig = METEO_EMOJI_CONFIG[data.meteoGlobale];
+  const meteoConfig = METEO_EMOJI_CONFIG[data.meteoGlobale] || METEO_EMOJI_CONFIG.jaune;
 
   return (
     <div style={{ fontFamily }} className="h-full flex flex-col bg-white">
@@ -72,7 +72,7 @@ export function MeteoGlobaleSlide({ data, designSettings }: MeteoGlobaleSlidePro
         {/* KPIs Grid */}
         <div className="grid grid-cols-2 gap-4">
           {data.kpis.map((kpi) => {
-            const kpiMeteo = METEO_EMOJI_CONFIG[kpi.meteo];
+            const kpiMeteo = METEO_EMOJI_CONFIG[kpi.meteo] || METEO_EMOJI_CONFIG.jaune;
             const pourcentage = Math.round((kpi.valeur / kpi.cible) * 100);
 
             return (

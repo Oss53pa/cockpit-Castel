@@ -89,7 +89,7 @@ export function TableauBordAxesSlide({ data, designSettings, periode }: TableauB
             </thead>
             <tbody>
               {data.map((row, index) => {
-                const meteoConfig = METEO_EMOJI_CONFIG[row.meteo];
+                const meteoConfig = METEO_EMOJI_CONFIG[row.meteo] || METEO_EMOJI_CONFIG.jaune;
                 const budgetPct = row.budgetPrevu > 0
                   ? Math.round((row.budgetConsomme / row.budgetPrevu) * 100)
                   : 0;

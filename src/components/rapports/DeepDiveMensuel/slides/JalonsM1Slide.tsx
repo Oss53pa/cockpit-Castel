@@ -23,7 +23,7 @@ const StatutBadge: React.FC<{ statut: 'en_danger' | 'a_surveiller' | 'on_track' 
     a_surveiller: { bg: '#FEF9C3', color: '#A16207', icon: AlertTriangle, label: 'À surveiller' },
     on_track: { bg: '#DCFCE7', color: '#15803D', icon: CheckCircle, label: 'On track' },
   };
-  const config = configs[statut];
+  const config = configs[statut] || configs.a_surveiller;
   const Icon = config.icon;
 
   return (
@@ -109,7 +109,7 @@ export function JalonsM1Slide({ data, designSettings, periode }: JalonsM1SlidePr
         ) : (
           <div className="space-y-4">
             {sortedJalons.map((jalon) => {
-              const axeConfig = AXES_MENSUEL_CONFIG[jalon.axe];
+              const axeConfig = AXES_MENSUEL_CONFIG[jalon.axe] || AXES_MENSUEL_CONFIG.general;
               const daysUntil = Math.ceil(
                 (new Date(jalon.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
               );

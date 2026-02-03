@@ -210,7 +210,7 @@ export function CourbeSSlide({ data, designSettings, periode }: CourbeSSlideProp
             </h3>
 
             {evmIndicators.map((indicator) => {
-              const statusConfig = statusColors[indicator.status as keyof typeof statusColors];
+              const statusConfig = statusColors[indicator.status as keyof typeof statusColors] || statusColors.warning;
               const Icon = statusConfig.icon;
 
               return (

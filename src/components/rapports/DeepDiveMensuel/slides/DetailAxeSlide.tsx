@@ -32,7 +32,7 @@ interface DetailAxeSlideProps {
 
 export function DetailAxeSlide({ data, designSettings, periode }: DetailAxeSlideProps) {
   const { primaryColor, fontFamily } = designSettings;
-  const meteoConfig = METEO_EMOJI_CONFIG[data.meteo];
+  const meteoConfig = METEO_EMOJI_CONFIG[data.meteo] || METEO_EMOJI_CONFIG.jaune;
 
   const formatMontant = (montant: number): string => {
     if (montant >= 1_000_000) {
