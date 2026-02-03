@@ -46,7 +46,7 @@ export function MeteoGlobaleSlide({ data, designSettings }: MeteoGlobaleSlidePro
           className="flex items-center gap-3 px-4 py-2 rounded-lg"
           style={{ backgroundColor: meteoConfig.bgColor }}
         >
-          <span className="text-3xl">{meteoConfig.emoji}</span>
+          <span className="text-3xl emoji">{meteoConfig.emoji}</span>
           <div>
             <div className="font-bold" style={{ color: meteoConfig.color }}>
               {meteoConfig.label}
@@ -85,7 +85,7 @@ export function MeteoGlobaleSlide({ data, designSettings }: MeteoGlobaleSlidePro
                   <span className="text-sm font-medium text-gray-600">{kpi.label}</span>
                   <div className="flex items-center gap-2">
                     <TendanceIcon tendance={kpi.tendance} className="h-4 w-4" />
-                    <span className="text-xl">{kpiMeteo.emoji}</span>
+                    <span className="text-xl emoji">{kpiMeteo.emoji}</span>
                   </div>
                 </div>
 

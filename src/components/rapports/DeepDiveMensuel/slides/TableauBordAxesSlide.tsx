@@ -116,7 +116,7 @@ export function TableauBordAxesSlide({ data, designSettings, periode }: TableauB
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
                         style={{ backgroundColor: meteoConfig.bgColor, color: meteoConfig.color }}
                       >
-                        <span>{meteoConfig.emoji}</span>
+                        <span className="emoji">{meteoConfig.emoji}</span>
                         <span>{meteoConfig.label}</span>
                       </div>
                     </td>
@@ -209,7 +209,7 @@ export function TableauBordAxesSlide({ data, designSettings, periode }: TableauB
             <div className="flex items-center gap-1">
               <span>Météo:</span>
               {Object.entries(METEO_EMOJI_CONFIG).map(([key, config]) => (
-                <span key={key} title={config.label}>{config.emoji}</span>
+                <span key={key} title={config.label} className="emoji">{config.emoji}</span>
               ))}
             </div>
             <div className="flex items-center gap-2">

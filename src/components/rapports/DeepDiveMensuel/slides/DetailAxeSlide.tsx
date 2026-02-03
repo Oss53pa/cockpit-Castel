@@ -89,7 +89,7 @@ export function DetailAxeSlide({ data, designSettings, periode }: DetailAxeSlide
             className="flex items-center gap-2 px-3 py-2 rounded-lg"
             style={{ backgroundColor: 'rgba(255,255,255,0.9)' }}
           >
-            <span className="text-2xl">{meteoConfig.emoji}</span>
+            <span className="text-2xl emoji">{meteoConfig.emoji}</span>
             <span className="font-bold" style={{ color: meteoConfig.color }}>
               {meteoConfig.label}
             </span>

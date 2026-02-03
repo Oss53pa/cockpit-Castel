@@ -118,7 +118,7 @@ export function SyntheseExecutiveSlide({ data, designSettings }: SyntheseExecuti
                   ringColor: key === data.meteoGlobale.meteoGlobale ? meteoConfig.color : 'transparent',
                 }}
               >
-                <div className="text-xl">{config.emoji}</div>
+                <div className="text-xl emoji">{config.emoji}</div>
                 <div className="text-[10px] text-gray-600">{config.label}</div>
               </div>
             ))}
@@ -127,7 +127,7 @@ export function SyntheseExecutiveSlide({ data, designSettings }: SyntheseExecuti
             className="text-center p-2 rounded-lg"
             style={{ backgroundColor: meteoConfig.bgColor }}
           >
-            <span className="text-2xl mr-2">{meteoConfig.emoji}</span>
+            <span className="text-2xl mr-2 emoji">{meteoConfig.emoji}</span>
             <span className="font-bold" style={{ color: meteoConfig.color }}>
               MÉTÉO : {meteoConfig.label.toUpperCase()}
             </span>
