@@ -90,6 +90,11 @@ const AXE_CONFIG: Record<Axe, { icon: typeof Users; color: string; bgLight: stri
   axe7_construction: { icon: Building2, color: 'text-amber-700', bgLight: 'bg-amber-100', bgDark: 'bg-amber-500' },
 };
 
+// Safe helper to get axe config with fallback
+const getAxeConfig = (axe: string) => {
+  return AXE_CONFIG[axe as Axe] || AXE_CONFIG.axe1_rh;
+};
+
 // Couleurs des phases CC
 const PHASE_COLORS: Record<string, string> = {
   GO: 'bg-red-500',
@@ -631,7 +636,7 @@ export function ConstructionCCView() {
 
               {/* SECTIONS PAR AXE */}
               {AXES.filter(a => a !== 'axe7_construction').map((axe) => {
-                const config = AXE_CONFIG[axe];
+                const config = getAxeConfig(axe);
                 const Icon = config.icon;
                 const jalonsPourAxe = jalonsMobilisation.filter((j) => j.axe === axe);
 
@@ -771,7 +776,7 @@ export function ConstructionCCView() {
 
                 {/* Axes Mobilisation */}
                 {AXES.filter(a => a !== 'axe7_construction').map((axe) => {
-                  const config = AXE_CONFIG[axe];
+                  const config = getAxeConfig(axe);
                   const jalonsPourAxe = jalonsMobilisation.filter((j) => j.axe === axe);
 
                   return (
@@ -843,7 +848,7 @@ export function ConstructionCCView() {
           </div>
           <div className="border-l pl-4 ml-2 flex items-center gap-3">
             {AXES.filter(a => a !== 'axe7_construction').map((axe) => {
-              const config = AXE_CONFIG[axe];
+              const config = getAxeConfig(axe);
               return (
                 <div key={axe} className="flex items-center gap-1">
                   <div className={cn('w-3 h-3 rounded', config.bgDark)} />

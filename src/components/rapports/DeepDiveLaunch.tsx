@@ -230,6 +230,11 @@ const getUrgencyConfig = (urgency: string) => {
   return urgencyConfig[urgency as UrgencyLevel] || urgencyConfig.medium;
 };
 
+// Helper to safely get weather config with fallback
+const getWeatherConfig = (weather: string) => {
+  return weatherConfig[weather as ProjectWeather] || weatherConfig.yellow;
+};
+
 const colorPresets = [
   { name: 'Cosmos Angré', primary: '#1C3163', accent: '#D4AF37' },
   { name: 'Corporate Blue', primary: '#0F172A', accent: '#3B82F6' },
@@ -2932,15 +2937,15 @@ export function DeepDiveLaunch() {
           )}
           <div className="flex-1 p-6">
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg border-2 text-center" style={{ borderColor: weatherConfig[projectWeather].color, backgroundColor: `${weatherConfig[projectWeather].color}10` }}>
+              <div className="p-4 rounded-lg border-2 text-center" style={{ borderColor: getWeatherConfig(projectWeather).color, backgroundColor: `${getWeatherConfig(projectWeather).color}10` }}>
                 <div className="flex justify-center mb-2">
-                  {React.createElement(weatherConfig[projectWeather].icon, {
+                  {React.createElement(getWeatherConfig(projectWeather).icon, {
                     className: 'h-12 w-12',
-                    style: { color: weatherConfig[projectWeather].color }
+                    style: { color: getWeatherConfig(projectWeather).color }
                   })}
                 </div>
-                <div className="text-sm font-semibold" style={{ color: weatherConfig[projectWeather].color }}>
-                  {weatherConfig[projectWeather].label.split(' ')[0]}
+                <div className="text-sm font-semibold" style={{ color: getWeatherConfig(projectWeather).color }}>
+                  {getWeatherConfig(projectWeather).label.split(' ')[0]}
                 </div>
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-3">
@@ -4081,13 +4086,13 @@ export function DeepDiveLaunch() {
                         onClick={() => setProjectWeather(weather)}
                         className={`p-2 rounded-lg border-2 transition-all ${
                           projectWeather === weather
-                            ? `border-current ${weatherConfig[weather].bgColor} ${weatherConfig[weather].textColor}`
+                            ? `border-current ${getWeatherConfig(weather).bgColor} ${getWeatherConfig(weather).textColor}`
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          {React.createElement(weatherConfig[weather].icon, { className: 'h-4 w-4' })}
-                          <span className="text-xs font-medium">{weatherConfig[weather].label.split(' ')[0]}</span>
+                          {React.createElement(getWeatherConfig(weather).icon, { className: 'h-4 w-4' })}
+                          <span className="text-xs font-medium">{getWeatherConfig(weather).label.split(' ')[0]}</span>
                         </div>
                       </button>
                     ))}

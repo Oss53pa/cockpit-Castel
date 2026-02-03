@@ -37,6 +37,11 @@ const meteoConfig: Record<
   },
 };
 
+// Safe helper to get meteo config with fallback
+const getMeteoConfig = (meteo: string) => {
+  return meteoConfig[meteo as MeteoType] || meteoConfig.jaune;
+};
+
 interface JalonProblematique {
   axe: Axe;
   jalon: Jalon | null;
@@ -128,7 +133,7 @@ function JalonProblematiqueLine({ data }: { data: JalonProblematique }) {
 
 export function MeteoProjetCard() {
   const meteo = useMeteoProjet();
-  const config = meteoConfig[meteo];
+  const config = getMeteoConfig(meteo);
   const Icon = config.icon;
   const jalonsProblematiques = useJalonsProblematiquesParAxe();
 

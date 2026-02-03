@@ -8,7 +8,7 @@ interface SyncStatusBadgeProps {
 }
 
 export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({ status, size = 'md' }) => {
-  const config = SYNC_CONFIG.statusStyles[status.status];
+  const config = SYNC_CONFIG.statusStyles[status.status] || SYNC_CONFIG.statusStyles.not_started;
 
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',

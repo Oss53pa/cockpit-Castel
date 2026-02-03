@@ -40,6 +40,11 @@ const meteoConfig: Record<MeteoType, { label: string; icon: React.ElementType; c
   pluie: { label: 'Critique', icon: CloudRain, color: 'text-error-600', bgColor: 'bg-error-100' },
 };
 
+// Safe helper to get meteo config with fallback
+const getMeteoConfig = (meteo: string) => {
+  return meteoConfig[meteo as MeteoType] || meteoConfig.soleil_nuage;
+};
+
 export function AxisHeader({
   axe,
   label,
@@ -108,7 +113,7 @@ export function AxisHeader({
     };
   }, [actions, jalons, risques, avancementPrevu, avancementRealise]);
 
-  const MeteoIcon = meteoConfig[metrics.meteo].icon;
+  const MeteoIcon = getMeteoConfig(metrics.meteo).icon;
   const ecart = avancementRealise - avancementPrevu;
 
   return (
@@ -133,13 +138,13 @@ export function AxisHeader({
           {/* Météo */}
           <div className={cn(
             'flex items-center gap-3 px-4 py-3 rounded-xl',
-            meteoConfig[metrics.meteo].bgColor
+            getMeteoConfig(metrics.meteo).bgColor
           )}>
-            <MeteoIcon className={cn('h-8 w-8', meteoConfig[metrics.meteo].color)} />
+            <MeteoIcon className={cn('h-8 w-8', getMeteoConfig(metrics.meteo).color)} />
             <div>
               <p className="text-xs text-gray-600">Météo</p>
-              <p className={cn('font-bold', meteoConfig[metrics.meteo].color)}>
-                {meteoConfig[metrics.meteo].label}
+              <p className={cn('font-bold', getMeteoConfig(metrics.meteo).color)}>
+                {getMeteoConfig(metrics.meteo).label}
               </p>
             </div>
           </div>

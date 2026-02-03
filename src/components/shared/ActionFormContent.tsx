@@ -114,6 +114,11 @@ const STATUT_CONFIG = {
 
 type StatutAction = keyof typeof STATUT_CONFIG;
 
+// Safe helper to get statut config with fallback
+const getStatutConfig = (statut: string) => {
+  return STATUT_CONFIG[statut as StatutAction] || STATUT_CONFIG.a_faire;
+};
+
 // Tabs
 const FORM_TABS = [
   { id: 'general', label: 'Général', icon: Target },
@@ -483,7 +488,7 @@ export function ActionFormContent({
     });
   };
 
-  const StatutIcon = STATUT_CONFIG[statut].icon;
+  const StatutIcon = getStatutConfig(statut).icon;
 
   return (
     <div className="flex flex-col h-full">
@@ -493,9 +498,9 @@ export function ActionFormContent({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-neutral-600">Statut:</span>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium ${STATUT_CONFIG[statut].color}`}>
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium ${getStatutConfig(statut).color}`}>
               <StatutIcon className="w-4 h-4" />
-              {STATUT_CONFIG[statut].label}
+              {getStatutConfig(statut).label}
             </div>
             <span className="text-xs text-neutral-400 italic">(auto-calculé)</span>
           </div>
@@ -721,7 +726,7 @@ export function ActionFormContent({
                 </div>
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">Statut</div>
-                  <Badge className={`${STATUT_CONFIG[statut]?.color} text-xs`}>{STATUT_CONFIG[statut]?.label}</Badge>
+                  <Badge className={`${getStatutConfig(statut)?.color} text-xs`}>{getStatutConfig(statut)?.label}</Badge>
                 </div>
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">Avancement</div>

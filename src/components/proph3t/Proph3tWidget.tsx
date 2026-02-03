@@ -833,7 +833,7 @@ function Proph3tProactivePanel() {
           </div>
         ) : (
           insights.map(insight => {
-            const config = severityConfig[insight.severity];
+            const config = severityConfig[insight.severity as keyof typeof severityConfig] || severityConfig.info;
             const Icon = config.icon;
 
             return (
