@@ -15,6 +15,8 @@ import {
   BarChart3,
   ListChecks,
   Heart,
+  Rocket,
+  Activity,
 } from 'lucide-react';
 import { useDashboardKPIs, useAvancementGlobal } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
@@ -27,7 +29,6 @@ import {
   ActionsEnRetard,
   IndicateurSynchronisation,
   COPILDashboard,
-  CompteARebours,
   MeteoParAxe,
   JalonsCritiques,
   VueAxe,
@@ -36,8 +37,9 @@ import {
 } from '@/components/dashboard';
 import { useCurrentSite } from '@/hooks/useSites';
 import type { Axe } from '@/types';
-import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
+import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent, Card } from '@/components/ui';
 import { Proph3tWidget } from '@/components/proph3t';
+import { useProph3tHealth } from '@/hooks/useProph3t';
 
 type DashboardView = 'operationnel' | 'copil';
 type OperationnelTab = 'synthese' | 'avancement' | 'jalons-actions' | 'sante';
@@ -73,8 +75,8 @@ function getProgressStatus(value: number) {
   };
 }
 
-// Animated glassmorphism header component
-function GlassmorphismHeader({
+// Compact header with all key info in one line
+function CompactDashboardHeader({
   kpis,
   avancementGlobal,
   syncData,
@@ -82,6 +84,7 @@ function GlassmorphismHeader({
   isVisible,
   siteLocalisation,
   dateOuvertureFormatee,
+  healthScore,
 }: {
   kpis: ReturnType<typeof useDashboardKPIs>;
   avancementGlobal: number;
@@ -90,164 +93,147 @@ function GlassmorphismHeader({
   isVisible: boolean;
   siteLocalisation: string;
   dateOuvertureFormatee: string;
+  healthScore: number;
 }) {
   const progressStatus = getProgressStatus(avancementGlobal);
+  const budgetPercent = kpis.budgetTotal > 0 ? (kpis.budgetConsomme / kpis.budgetTotal) * 100 : 0;
 
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl shadow-xl',
-        'opacity-0 translate-y-4',
+        'relative overflow-hidden rounded-xl shadow-lg flex-shrink-0',
+        'opacity-0 translate-y-2',
         isVisible && 'animate-fade-slide-in'
       )}
     >
-      {/* Background with glassmorphism */}
+      {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary-900 via-primary-800 to-primary-900" />
-      <div className="absolute inset-0 glass-dark" />
 
-      {/* Animated decorative elements */}
+      {/* Subtle decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(3)].map((_, i) => (
           <div
             key={i}
             className="absolute animate-float"
             style={{
-              left: `${10 + i * 15}%`,
-              top: `${5 + (i % 3) * 25}%`,
+              left: `${20 + i * 30}%`,
+              top: '20%',
               animationDelay: `${i * 0.7}s`,
-              opacity: 0.05,
+              opacity: 0.03,
             }}
           >
-            <Sparkles className="w-12 h-12 text-white" />
+            <Sparkles className="w-8 h-8 text-white" />
           </div>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 p-6 text-white">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          {/* Left: Project Info */}
-          <div
-            className={cn(
-              'flex-1 opacity-0',
-              isVisible && 'animate-fade-slide-in-left'
-            )}
-            style={{ animationDelay: '100ms' }}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/10">
-                <Building2 className="h-7 w-7 text-secondary-400" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  {kpis.projectName}
-                </h2>
-                <p className="text-primary-200 text-sm">
-                  Centre commercial premium
-                </p>
-              </div>
+      {/* Content - Single row layout */}
+      <div className="relative z-10 px-4 py-3 text-white">
+        <div className="flex items-center justify-between gap-4">
+          {/* Project name & location */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 bg-white/10 rounded-lg flex-shrink-0">
+              <Building2 className="h-5 w-5 text-secondary-400" />
             </div>
-
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-primary-200 bg-white/5 px-3 py-1 rounded-full">
-                <MapPin className="h-4 w-4" />
-                <span>{siteLocalisation}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-primary-200 bg-white/5 px-3 py-1 rounded-full">
-                <Calendar className="h-4 w-4" />
-                <span>Ouverture {dateOuvertureFormatee}</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-secondary-500/20 px-3 py-1 rounded-full">
-                <Clock className="h-4 w-4 text-secondary-400" />
-                <span className="text-secondary-400 font-semibold">
-                  J-{daysUntilOpening}
-                </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold tracking-tight truncate">{kpis.projectName}</h2>
+              <div className="flex items-center gap-2 text-xs text-primary-300">
+                <MapPin className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{siteLocalisation}</span>
               </div>
             </div>
           </div>
 
-          {/* Center: Main Progress */}
-          <div
-            className={cn(
-              'flex items-center gap-6 opacity-0',
-              isVisible && 'animate-scale-in'
-            )}
-            style={{ animationDelay: '200ms' }}
-          >
-            <div className="relative">
-              <div
-                className="absolute inset-0 rounded-full blur-xl opacity-30"
-                style={{
-                  background: `radial-gradient(circle, ${avancementGlobal >= 80 ? '#22c55e' : avancementGlobal >= 50 ? '#f59e0b' : '#3b82f6'} 0%, transparent 70%)`,
-                }}
-              />
-              <CircularProgress
-                value={avancementGlobal}
-                size={110}
-                strokeWidth={10}
-                variant={
-                  avancementGlobal >= 80
-                    ? 'success'
-                    : avancementGlobal >= 50
-                      ? 'warning'
-                      : 'default'
-                }
-                className="[&_text]:text-white [&_span]:text-white"
-              />
+          {/* Countdown badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-secondary-500/30 to-secondary-600/30 rounded-lg border border-secondary-400/30 flex-shrink-0">
+            <Rocket className="h-4 w-4 text-secondary-400" />
+            <div className="text-center">
+              <span className="text-xl font-bold text-white">J-{daysUntilOpening}</span>
+              <p className="text-[10px] text-secondary-300 uppercase">Ouverture</p>
             </div>
+          </div>
+
+          {/* Main progress circle */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <CircularProgress
+              value={avancementGlobal}
+              size={56}
+              strokeWidth={5}
+              variant={avancementGlobal >= 80 ? 'success' : avancementGlobal >= 50 ? 'warning' : 'default'}
+              className="[&_text]:text-white [&_span]:text-white [&_text]:text-sm"
+            />
             <div>
-              <p className="text-primary-300 text-xs uppercase tracking-wider mb-1">
-                Avancement Global
-              </p>
-              <p className="text-4xl font-bold">{Math.round(avancementGlobal)}%</p>
-              <div
-                className={cn(
-                  'inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full text-xs font-medium',
-                  'bg-white/10 backdrop-blur-sm',
-                  progressStatus.color
-                )}
-              >
-                <progressStatus.icon className="h-3 w-3" />
-                {progressStatus.label}
-              </div>
+              <p className="text-[10px] text-primary-300 uppercase tracking-wider">Avancement</p>
+              <p className="text-xl font-bold">{Math.round(avancementGlobal)}%</p>
             </div>
           </div>
 
-          {/* Right: Key Metrics */}
-          <div
-            className={cn(
-              'flex gap-4 lg:gap-5 opacity-0',
-              isVisible && 'animate-fade-slide-in'
-            )}
-            style={{ animationDelay: '300ms' }}
-          >
-            <div className="text-center px-4 py-3 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-              <p className="text-2xl font-bold text-secondary-400">
-                {syncData.syncStatus
-                  ? Math.round(syncData.syncStatus.projectProgress)
-                  : 0}
-                %
-              </p>
-              <p className="text-xs text-primary-300 font-medium">Construction</p>
-            </div>
-            <div className="text-center px-4 py-3 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-              <p className="text-2xl font-bold text-secondary-400">
-                {syncData.syncStatus
-                  ? Math.round(syncData.syncStatus.mobilizationProgress)
-                  : 0}
-                %
-              </p>
-              <p className="text-xs text-primary-300 font-medium">Mobilisation</p>
-            </div>
-            <div className="text-center px-4 py-3 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-              <p className="text-2xl font-bold text-white">
-                {kpis.jalonsAtteints}/{kpis.jalonsTotal}
-              </p>
-              <p className="text-xs text-primary-300 font-medium">Jalons</p>
+          {/* Key metrics row */}
+          <div className="hidden xl:flex items-center gap-3 flex-shrink-0">
+            <MetricBadge
+              label="Construction"
+              value={`${syncData.syncStatus ? Math.round(syncData.syncStatus.projectProgress) : 0}%`}
+              color="secondary"
+            />
+            <MetricBadge
+              label="Mobilisation"
+              value={`${syncData.syncStatus ? Math.round(syncData.syncStatus.mobilizationProgress) : 0}%`}
+              color="secondary"
+            />
+            <MetricBadge
+              label="Jalons"
+              value={`${kpis.jalonsAtteints}/${kpis.jalonsTotal}`}
+              color="white"
+            />
+            <MetricBadge
+              label="Budget"
+              value={`${Math.round(budgetPercent)}%`}
+              color={budgetPercent > 100 ? 'error' : budgetPercent > 90 ? 'warning' : 'success'}
+            />
+          </div>
+
+          {/* Health score */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg flex-shrink-0">
+            <Activity className={cn(
+              'h-4 w-4',
+              healthScore >= 70 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+            )} />
+            <div>
+              <span className={cn(
+                'text-lg font-bold',
+                healthScore >= 70 ? 'text-green-400' : healthScore >= 50 ? 'text-amber-400' : 'text-red-400'
+              )}>{healthScore}</span>
+              <p className="text-[10px] text-primary-300 uppercase">Santé</p>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Small metric badge component
+function MetricBadge({
+  label,
+  value,
+  color
+}: {
+  label: string;
+  value: string;
+  color: 'secondary' | 'white' | 'success' | 'warning' | 'error';
+}) {
+  const colorClasses = {
+    secondary: 'text-secondary-400',
+    white: 'text-white',
+    success: 'text-green-400',
+    warning: 'text-amber-400',
+    error: 'text-red-400',
+  };
+
+  return (
+    <div className="text-center px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+      <p className={cn('text-sm font-bold', colorClasses[color])}>{value}</p>
+      <p className="text-[10px] text-primary-300">{label}</p>
     </div>
   );
 }
