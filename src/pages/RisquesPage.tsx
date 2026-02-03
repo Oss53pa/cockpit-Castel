@@ -5,6 +5,9 @@ import { Button, Select, SelectOption, Card, Badge, Tooltip, useToast } from '@/
 import { excelService } from '@/services/excelService';
 import { useRisques, createRisque, updateRisque } from '@/hooks';
 import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
+import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
+import { Shield } from 'lucide-react';
 import {
   RISQUE_CATEGORIES,
   RISQUE_CATEGORY_LABELS,
@@ -24,6 +27,8 @@ export function RisquesPage() {
   const { risqueFilters, setRisqueFilters } = useAppStore();
   const [viewMode, setViewMode] = useState<'list' | 'matrix' | 'top10' | 'synthese'>('list');
   const [formOpen, setFormOpen] = useState(false);
+  const [createFormOpen, setCreateFormOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [selectedRisque, setSelectedRisque] = useState<Risque | undefined>();
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,8 +53,52 @@ export function RisquesPage() {
   };
 
   const handleAdd = () => {
-    setSelectedRisque(undefined);
-    setFormOpen(true);
+    setCreateFormOpen(true);
+  };
+
+  // Génération de l'ID risque
+  const generateRisqueId = (): string => {
+    const count = risques.length + 1;
+    return `R-${String(count).padStart(3, '0')}`;
+  };
+
+  // Handler création risque
+  const handleCreateRisque = async (data: RisqueFormSaveData) => {
+    if (!data.titre || !data.categorie) {
+      toast.error('Erreur', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await createRisque({
+        id_risque: generateRisqueId(),
+        titre: data.titre,
+        description: data.description || '',
+        categorie: data.categorie as any,
+        statut: data.statut as any,
+        probabilite: data.probabilite,
+        impact: data.impact,
+        score: data.score,
+        proprietaire: data.proprietaire || '',
+        responsable: data.proprietaire || '',
+        plan_mitigation: data.plan_mitigation || '',
+        mesures_attenuation: data.plan_mitigation || '',
+        date_identification: today,
+        date_derniere_evaluation: today,
+        notes_mise_a_jour: data.notes_mise_a_jour || '',
+        commentaires_externes: data.commentaires_externes || '[]',
+      });
+
+      toast.success('Risque créé', `"${data.titre}" a été enregistré`);
+      setCreateFormOpen(false);
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur', 'Impossible de créer le risque');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleFormClose = () => {
@@ -451,13 +500,38 @@ export function RisquesPage() {
         </div>
       </Card>
 
-      {/* Form */}
+      {/* Form modification */}
       <RisqueForm
         risque={selectedRisque}
         open={formOpen}
         onClose={handleFormClose}
         onSuccess={() => {}}
       />
+
+      {/* Form création */}
+      <Dialog open={createFormOpen} onOpenChange={(isOpen) => !isOpen && setCreateFormOpen(false)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg">
+                <Shield className="w-5 h-5 text-white" />
+              </div>
+              <span>Nouveau risque</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <RisqueFormContent
+              isEditing={true}
+              isExternal={false}
+              isCreate={true}
+              onSave={handleCreateRisque}
+              onCancel={() => setCreateFormOpen(false)}
+              isSaving={isCreating}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

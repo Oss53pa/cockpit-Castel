@@ -134,9 +134,10 @@ const FORM_TABS = [
 // ============================================================================
 
 export interface RisqueFormContentProps {
-  risque: Partial<Risque> & { titre: string };
+  risque?: Partial<Risque> & { titre?: string };
   isEditing?: boolean;
   isExternal?: boolean;
+  isCreate?: boolean; // Mode création
   onStatutChange?: (statut: Statut) => void;
   onSave?: (data: RisqueFormSaveData) => void;
   onCancel?: () => void;
@@ -167,6 +168,7 @@ export function RisqueFormContent({
   risque,
   isEditing = true,
   isExternal = false,
+  isCreate = false,
   onStatutChange,
   onSave,
   onCancel,
@@ -176,10 +178,10 @@ export function RisqueFormContent({
   const users = useUsers();
 
   // Tous les champs sont éditables (sauf le code qui est auto-généré)
-  const [titre, setTitre] = useState(risque.titre || '');
-  const [description, setDescription] = useState(risque.description || '');
-  const [categorie, setCategorie] = useState(risque.categorie || '');
-  const [proprietaire, setProprietaire] = useState(risque.proprietaire || '');
+  const [titre, setTitre] = useState(risque?.titre || '');
+  const [description, setDescription] = useState(risque?.description || '');
+  const [categorie, setCategorie] = useState(risque?.categorie || '');
+  const [proprietaire, setProprietaire] = useState(risque?.proprietaire || '');
 
   // Convertir les valeurs numériques en enums
   const getProbabiliteFromNum = (num?: number): Probabilite => {
@@ -211,18 +213,19 @@ export function RisqueFormContent({
 
   // État du formulaire
   const [isClosed, setIsClosed] = useState<'FERME' | 'ACCEPTE' | null>(
-    risque.statut === 'ferme' || risque.statut === 'clos' ? 'FERME' :
-    risque.statut === 'accepte' ? 'ACCEPTE' : null
+    risque?.statut === 'ferme' || risque?.statut === 'clos' ? 'FERME' :
+    risque?.statut === 'accepte' ? 'ACCEPTE' : null
   );
   const [probabilite, setProbabilite] = useState<Probabilite>(
-    typeof risque.probabilite === 'number' ? getProbabiliteFromNum(risque.probabilite) : 'MOYENNE'
+    typeof risque?.probabilite === 'number' ? getProbabiliteFromNum(risque.probabilite) : 'MOYENNE'
   );
   const [impact, setImpact] = useState<Impact>(
-    typeof risque.impact === 'number' ? getImpactFromNum(risque.impact) : 'MOYEN'
+    typeof risque?.impact === 'number' ? getImpactFromNum(risque.impact) : 'MOYEN'
   );
-  const [planMitigation, setPlanMitigation] = useState(risque.plan_mitigation || '');
-  const [notesMiseAJour, setNotesMiseAJour] = useState((risque as any).notes_mise_a_jour || '');
+  const [planMitigation, setPlanMitigation] = useState(risque?.plan_mitigation || '');
+  const [notesMiseAJour, setNotesMiseAJour] = useState((risque as any)?.notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(() => {
+    if (!risque) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
     const externesStr = (risque as any).commentaires_externes;
     if (externesStr) {
@@ -284,7 +287,7 @@ export function RisqueFormContent({
       setComments([...comments, {
         id: crypto.randomUUID(),
         texte: newComment.trim(),
-        auteur: isExternal ? (risque.proprietaire || 'Externe') : 'Utilisateur',
+        auteur: isExternal ? (risque?.proprietaire || 'Externe') : 'Utilisateur',
         date: new Date().toISOString()
       }]);
       setNewComment('');
@@ -297,6 +300,18 @@ export function RisqueFormContent({
 
   // Sauvegarde
   const handleSave = () => {
+    // Validation basique pour le mode création
+    if (isCreate) {
+      if (!titre.trim()) {
+        alert('Le titre est obligatoire');
+        return;
+      }
+      if (!categorie) {
+        alert('La catégorie est obligatoire');
+        return;
+      }
+    }
+
     const statutToOld: Record<Statut, string> = {
       OUVERT: 'ouvert',
       EN_TRAITEMENT: 'en_cours',
@@ -417,15 +432,17 @@ export function RisqueFormContent({
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
               <h3 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4" />
-                Identification du risque
+                {isCreate ? 'Nouveau risque' : 'Identification du risque'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {!isCreate && (
+                  <div>
+                    <Label className="text-sm font-medium mb-1.5 block">Code <span className="text-xs text-neutral-400">(auto-généré)</span></Label>
+                    <div className="p-2 bg-white rounded border text-sm font-mono">{risque?.id_risque || '-'}</div>
+                  </div>
+                )}
                 <div>
-                  <Label className="text-sm font-medium mb-1.5 block">Code <span className="text-xs text-neutral-400">(auto-généré)</span></Label>
-                  <div className="p-2 bg-white rounded border text-sm font-mono">{risque.id_risque || '-'}</div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium mb-1.5 block">Catégorie</Label>
+                  <Label className="text-sm font-medium mb-1.5 block">Catégorie {isCreate && '*'}</Label>
                   {isEditing ? (
                     <select
                       value={categorie}
@@ -447,7 +464,7 @@ export function RisqueFormContent({
                   )}
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-sm font-medium mb-1.5 block">Titre</Label>
+                  <Label className="text-sm font-medium mb-1.5 block">Titre {isCreate && '*'}</Label>
                   {isEditing ? (
                     <Input
                       value={titre}
@@ -501,12 +518,14 @@ export function RisqueFormContent({
                     <div className="p-2 bg-white rounded border text-sm">{proprietaire || '-'}</div>
                   )}
                 </div>
-                <div>
-                  <Label className="text-sm font-medium mb-1.5 block">Date d'identification</Label>
-                  <div className="p-2 bg-white rounded border text-sm">
-                    {risque.date_identification ? new Date(risque.date_identification).toLocaleDateString('fr-FR') : '-'}
+                {!isCreate && (
+                  <div>
+                    <Label className="text-sm font-medium mb-1.5 block">Date d'identification</Label>
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {risque?.date_identification ? new Date(risque.date_identification).toLocaleDateString('fr-FR') : '-'}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -684,7 +703,7 @@ export function RisqueFormContent({
             {isSaving ? (
               <><Clock className="w-4 h-4 mr-1 animate-spin" />Enregistrement...</>
             ) : (
-              <><Save className="w-4 h-4 mr-1" />Enregistrer</>
+              <><Save className="w-4 h-4 mr-1" />{isCreate ? 'Créer' : 'Enregistrer'}</>
             )}
           </Button>
         </div>
