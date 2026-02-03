@@ -105,6 +105,7 @@ export interface CategoryActionItem {
     id: number;
     libelle: string;
     fait: boolean;
+    avancement: number; // 0-100%
   }>;
 }
 
