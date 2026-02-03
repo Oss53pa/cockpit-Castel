@@ -89,7 +89,6 @@ import {
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
 import { SYNC_CONFIG } from '@/config/syncConfig';
-import { PROJET_CONFIG } from '@/data/constants';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
 import { DeepDiveMensuel } from './DeepDiveMensuel';
 import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
@@ -579,6 +578,8 @@ export function DeepDive() {
     occupationCible: currentSite?.occupationCible || 85,
     nom: currentSite?.nom || 'COSMOS ANGRÉ',
     code: currentSite?.code || 'COSMOS',
+    presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
+    destinataires: ['PDG', 'Actionnaires'],
   }), [currentSite]);
 
   // Sync data (new module)
@@ -5298,7 +5299,7 @@ export function DeepDive() {
             Deep Dive Mensuel — Cosmos Angré
           </h3>
           <p className="text-xs text-primary-400">
-            Présenté par : Pamela Atokouna, DGA | Destinataires : PDG, Actionnaires
+            Présenté par : {siteData.presentateur.nom}, {siteData.presentateur.titre} | Destinataires : {siteData.destinataires.join(', ')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

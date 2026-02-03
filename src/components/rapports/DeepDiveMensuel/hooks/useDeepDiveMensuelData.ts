@@ -652,8 +652,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
           j.statut === 'en_cours' || j.statut === 'en_approche' ? 'en_cours' : 'a_venir',
       })),
       // Dates depuis la configuration centralisée
-      dateDebut: PROJET_CONFIG.dateDebut,
-      dateFin: PROJET_CONFIG.dateFin,
+      dateDebut: PROJECT_DATES.dateDebut,
+      dateFin: PROJECT_DATES.dateFin,
       dateActuelle: new Date().toISOString().split('T')[0],
     };
   }, [jalonsDb]);
@@ -666,8 +666,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
 
     // Générer des points mensuels depuis les dates de la configuration
     const points: CourbeSData['points'] = [];
-    const startDate = new Date(PROJET_CONFIG.dateDebut);
-    const endDate = new Date(PROJET_CONFIG.dateFin);
+    const startDate = new Date(PROJECT_DATES.dateDebut);
+    const endDate = new Date(PROJECT_DATES.dateFin);
     const today = new Date();
 
     // Calculer le nombre total de mois

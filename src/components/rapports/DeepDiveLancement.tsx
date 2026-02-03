@@ -99,7 +99,7 @@ function getStatutIcon(statut: string): string {
 }
 
 // Import constantes centralisées
-import { PROJET_CONFIG } from '@/data/constants';
+// Données du site maintenant récupérées via useCurrentSite()
 
 // Types
 type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
@@ -329,14 +329,14 @@ function SlideRappelProjet() {
   const actions = useActions();
   const currentSite = useCurrentSite();
 
-  // Données du site (priorité aux données DB, fallback sur PROJET_CONFIG)
+  // Données du site (100% temps réel depuis la DB)
   const siteData = useMemo(() => ({
-    surfaceGLA: currentSite?.surface || PROJET_CONFIG.surfaceGLA,
-    nombreBatiments: currentSite?.nombreBatiments || PROJET_CONFIG.nombreBatiments,
-    softOpening: currentSite?.dateOuverture || PROJET_CONFIG.jalonsClés.softOpening,
-    inauguration: currentSite?.dateInauguration || PROJET_CONFIG.jalonsClés.inauguration,
-    occupationCible: PROJET_CONFIG.occupationCible, // Pas dans Site, garder PROJET_CONFIG
-    nom: currentSite?.nom || PROJET_CONFIG.nom,
+    surfaceGLA: currentSite?.surface || 45000,
+    nombreBatiments: currentSite?.nombreBatiments || 8,
+    softOpening: currentSite?.dateOuverture || '2026-11-15',
+    inauguration: currentSite?.dateInauguration || '2026-12-15',
+    occupationCible: currentSite?.occupationCible || 85,
+    nom: currentSite?.nom || 'COSMOS ANGRÉ',
   }), [currentSite]);
 
   // Calcul des jalons atteints
@@ -1810,6 +1810,8 @@ export function DeepDiveLancement() {
     nom: currentSite?.nom || 'COSMOS ANGRÉ',
     code: currentSite?.code || 'COSMOS',
     societe: 'CRMC / New Heaven SA', // Société porteuse du projet
+    presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
+    destinataires: ['PDG', 'Actionnaires'],
   }), [currentSite]);
 
   // Données calculées à partir des hooks
@@ -2010,7 +2012,7 @@ export function DeepDiveLancement() {
       <h1 class="text-3xl font-bold mb-2">DEEP DIVE LANCEMENT</h1>
       <p class="text-lg opacity-90">Projet Cosmos Angré - Validation Stratégique</p>
       <p class="text-sm opacity-75 mt-2">Date: ${dateFormatted}</p>
-      <p class="text-sm opacity-75">Présenté par: ${PROJET_CONFIG.presentateur.nom}, ${PROJET_CONFIG.presentateur.titre} | Destinataires: ${PROJET_CONFIG.destinataires.join(', ')}</p>
+      <p class="text-sm opacity-75">Présenté par: ${siteData.presentateur.nom}, ${siteData.presentateur.titre} | Destinataires: ${siteData.destinataires.join(', ')}</p>
     </div>
   </div>
 
@@ -2399,7 +2401,7 @@ export function DeepDiveLancement() {
         x: 0.5, y: 4.2, w: 9, h: 0.4,
         fontSize: 16, fontFace: fontFamily, color: accentColor, align: 'center',
       });
-      coverSlide.addText(`Présenté par : ${PROJET_CONFIG.presentateur.nom}, ${PROJET_CONFIG.presentateur.titre}`, {
+      coverSlide.addText(`Présenté par : ${siteData.presentateur.nom}, ${siteData.presentateur.titre}`, {
         x: 0.5, y: 4.8, w: 9, h: 0.3,
         fontSize: 11, fontFace: fontFamily, color: 'CCCCCC', align: 'center',
       });
@@ -2536,7 +2538,7 @@ export function DeepDiveLancement() {
             Projet Cosmos Angré - Validation Stratégique
           </p>
           <p className="text-xs text-primary-400">
-            Présenté par : {PROJET_CONFIG.presentateur.nom}, {PROJET_CONFIG.presentateur.titre} | Destinataires : {PROJET_CONFIG.destinataires.join(', ')}
+            Présenté par : {siteData.presentateur.nom}, {siteData.presentateur.titre} | Destinataires : {siteData.destinataires.join(', ')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

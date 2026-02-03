@@ -41,10 +41,9 @@ import {
   REPORT_TYPE_CONFIG,
   DEFAULT_EXPORT_OPTIONS,
 } from '@/types/reports.types';
-import { useJalons, useActions, useRisques } from '@/hooks';
+import { useJalons, useActions, useRisques, useCurrentSite } from '@/hooks';
 import { db } from '@/db';
 import { cn } from '@/lib/utils';
-import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES LOCAUX
@@ -79,6 +78,10 @@ export function ReportGenerator({
   const jalons = useJalons();
   const actions = useActions();
   const risques = useRisques();
+  const currentSite = useCurrentSite();
+
+  // Date Soft Opening depuis les données du site
+  const softOpeningDate = currentSite?.dateOuverture || '2026-11-15';
 
   // Config du type de rapport
   const reportConfig = REPORT_TYPE_CONFIG[reportType];
@@ -125,8 +128,8 @@ export function ReportGenerator({
       else if (tauxCompletion >= 80) meteoGlobale = 'excellent';
       else meteoGlobale = 'bon';
 
-      // Calculer le compte a rebours - utilise PROJET_CONFIG
-      const softOpening = new Date(PROJET_CONFIG.jalonsClés.softOpening);
+      // Calculer le compte a rebours depuis les données du site
+      const softOpening = new Date(softOpeningDate);
       const today = new Date();
       const joursRestants = Math.ceil((softOpening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 

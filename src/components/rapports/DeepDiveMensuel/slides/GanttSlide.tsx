@@ -6,7 +6,14 @@ import React, { useMemo } from 'react';
 import { Calendar, Flag, AlertCircle } from 'lucide-react';
 import type { GanttSimplifiedData } from '@/types/deepDive';
 import { AXES_MENSUEL_CONFIG } from '@/data/deepDiveMensuelTemplate';
-import { PROJET_CONFIG } from '@/data/constants';
+
+// Phases du projet (configuration fixe)
+const PROJECT_PHASES = [
+  { code: 'PREPARATION', label: 'Phase 1: Préparation', dateDebut: '2026-01-01', dateFin: '2026-03-31' },
+  { code: 'MOBILISATION', label: 'Phase 2: Mobilisation', dateDebut: '2026-04-01', dateFin: '2026-09-30' },
+  { code: 'LANCEMENT', label: 'Phase 3: Lancement', dateDebut: '2026-10-01', dateFin: '2026-11-30' },
+  { code: 'STABILISATION', label: 'Phase 4: Stabilisation', dateDebut: '2026-12-01', dateFin: '2027-02-28' },
+];
 
 interface GanttSlideProps {
   data: GanttSimplifiedData;
@@ -77,8 +84,8 @@ export function GanttSlide({ data, designSettings, periode }: GanttSlideProps) {
 
   // Grouper les jalons par phase depuis la configuration centralisée
   const phases = useMemo(() => {
-    // Utiliser les phases depuis PROJET_CONFIG
-    return PROJET_CONFIG.phases.map(phase => ({
+    // Utiliser les phases définies localement
+    return PROJECT_PHASES.map(phase => ({
       label: phase.label,
       start: phase.dateDebut,
       end: phase.dateFin,

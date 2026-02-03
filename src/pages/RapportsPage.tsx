@@ -64,6 +64,7 @@ import {
   useReports,
   createReport,
   deleteReport,
+  useCurrentSite,
 } from '@/hooks';
 import { useCatalogueData, searchDynamicCharts, searchDynamicTables, searchDynamicKPIs } from '@/hooks/useCatalogueData';
 import { ReportStudio } from '@/components/rapports/ReportStudio';
@@ -87,6 +88,7 @@ import {
 import type { GeneratedReport } from '@/types/reports.types';
 import { DEFAULT_EXPORT_OPTIONS } from '@/types/reports.types';
 import { sendReportShareEmail, openEmailClientForReport } from '@/services/emailService';
+// Données du site récupérées via useCurrentSite()
 import type { ReportType, ReportStatus, ChartCategory, TableCategory } from '@/types/reportStudio';
 import {
   REPORT_STATUS_LABELS,
@@ -351,6 +353,10 @@ export function RapportsPage() {
   const actions = useActions();
   const budget = useBudgetSynthese();
   const risques = useRisques();
+  const currentSite = useCurrentSite();
+
+  // Nom du présentateur pour les partages de rapport
+  const presentateurNom = 'Pamela Atokouna';
 
   // Dynamic catalogue data from real project data
   const catalogueData = useCatalogueData();
@@ -2038,7 +2044,7 @@ export function RapportsPage() {
                         const emailParams = {
                           recipientEmail: recipient,
                           recipientName: recipient.split('@')[0],
-                          senderName: 'Pamela ATOKOUNA',
+                          senderName: presentateurNom,
                           reportLink: newShare.shareLink,
                           reportPeriod: sharePeriod?.displayText || 'Période en cours',
                           stats,
