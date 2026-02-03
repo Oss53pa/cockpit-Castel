@@ -34,6 +34,7 @@ export async function createSousTache(actionId: string, libelle: string): Promis
     actionId,
     libelle,
     fait: false,
+    avancement: 0,
     ordre,
     createdAt: now,
     updatedAt: now,
@@ -56,11 +57,25 @@ export async function updateSousTache(id: number, updates: Partial<SousTache>): 
 export async function toggleSousTache(id: number): Promise<void> {
   const sousTache = await db.sousTaches.get(id);
   if (sousTache) {
+    const newFait = !sousTache.fait;
     await db.sousTaches.update(id, {
-      fait: !sousTache.fait,
+      fait: newFait,
+      avancement: newFait ? 100 : 0,
       updatedAt: new Date().toISOString(),
     });
   }
+}
+
+/**
+ * Met à jour l'avancement d'une sous-tâche
+ */
+export async function updateSousTacheAvancement(id: number, avancement: number): Promise<void> {
+  const clampedAvancement = Math.max(0, Math.min(100, avancement));
+  await db.sousTaches.update(id, {
+    avancement: clampedAvancement,
+    fait: clampedAvancement === 100,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 /**
@@ -83,12 +98,12 @@ export async function reorderSousTaches(actionId: string, orderedIds: number[]):
 }
 
 /**
- * Calcule le pourcentage de complétion des sous-tâches
+ * Calcule le pourcentage de complétion des sous-tâches (moyenne des avancements)
  */
 export function calculateSousTachesProgress(sousTaches: SousTache[]): number {
   if (sousTaches.length === 0) return 0;
-  const completed = sousTaches.filter(st => st.fait).length;
-  return Math.round((completed / sousTaches.length) * 100);
+  const totalAvancement = sousTaches.reduce((sum, st) => sum + (st.avancement || 0), 0);
+  return Math.round(totalAvancement / sousTaches.length);
 }
 
 // ============================================================================

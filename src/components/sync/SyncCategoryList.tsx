@@ -56,7 +56,9 @@ const ActionItemCard: React.FC<{ item: CategoryActionItem }> = ({ item }) => {
   const [showDetails, setShowDetails] = useState(false);
   const status = getStatusLabel(item.statut);
   const hasSousTaches = item.sousTaches && item.sousTaches.length > 0;
-  const completedSousTaches = item.sousTaches?.filter(st => st.fait).length || 0;
+  const avgSousTachesProgress = hasSousTaches
+    ? Math.round(item.sousTaches!.reduce((sum, st) => sum + (st.avancement || 0), 0) / item.sousTaches!.length)
+    : 0;
   const totalSousTaches = item.sousTaches?.length || 0;
 
   return (
@@ -97,7 +99,7 @@ const ActionItemCard: React.FC<{ item: CategoryActionItem }> = ({ item }) => {
               {hasSousTaches && (
                 <span className="flex items-center gap-1">
                   <CheckSquare className="h-3 w-3" />
-                  {completedSousTaches}/{totalSousTaches} sous-tâches
+                  {totalSousTaches} sous-tâches ({avgSousTachesProgress}%)
                 </span>
               )}
             </div>
@@ -131,15 +133,19 @@ const ActionItemCard: React.FC<{ item: CategoryActionItem }> = ({ item }) => {
               <div
                 key={st.id}
                 className={`flex items-center gap-2 p-1.5 rounded text-xs ${
-                  st.fait ? 'bg-green-50' : 'bg-gray-50'
+                  (st.avancement || 0) === 100 ? 'bg-green-50' : 'bg-gray-50'
                 }`}
               >
-                {st.fait ? (
-                  <CheckSquare className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                ) : (
-                  <Square className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                )}
-                <span className={st.fait ? 'text-green-700 line-through' : 'text-gray-700'}>
+                <span className={`w-10 font-medium ${(st.avancement || 0) === 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                  {st.avancement || 0}%
+                </span>
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
+                  <div
+                    className={`h-full rounded-full ${(st.avancement || 0) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                    style={{ width: `${st.avancement || 0}%` }}
+                  />
+                </div>
+                <span className={(st.avancement || 0) === 100 ? 'text-green-700 line-through' : 'text-gray-700'}>
                   {st.libelle}
                 </span>
               </div>

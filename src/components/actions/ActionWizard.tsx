@@ -180,6 +180,7 @@ export function ActionWizard({
           responsableId: st.responsableId || null,
           echeance: st.echeance || null,
           fait: st.fait,
+          avancement: st.avancement || 0,
         })) || [],
 
         // Points d'attention et décisions

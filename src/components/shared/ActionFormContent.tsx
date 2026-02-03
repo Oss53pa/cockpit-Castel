@@ -51,6 +51,7 @@ interface SousTache {
   responsableId: number | null;
   echeance: string | null;
   fait: boolean;
+  avancement: number; // 0-100%
 }
 
 interface Preuve {
@@ -279,11 +280,11 @@ export function ActionFormContent({
     ? Math.ceil((new Date(dateToUse).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
-  // Calcul avancement auto selon sous-tâches (uniquement si pas bloqué)
+  // Calcul avancement auto selon sous-tâches (moyenne des pourcentages)
   useEffect(() => {
     if (sousTaches.length > 0 && !isBloque) {
-      const faites = sousTaches.filter(st => st.fait).length;
-      const newAvancement = Math.round((faites / sousTaches.length) * 100);
+      const totalAvancement = sousTaches.reduce((sum, st) => sum + (st.avancement || 0), 0);
+      const newAvancement = Math.round(totalAvancement / sousTaches.length);
       if (newAvancement !== avancement) {
         setAvancement(newAvancement);
         onAvancementChange?.(newAvancement);
@@ -312,7 +313,7 @@ export function ActionFormContent({
 
   // Handlers sous-tâches
   const handleAddSousTache = () => {
-    setSousTaches([...sousTaches, { id: crypto.randomUUID(), libelle: '', responsableId: null, echeance: null, fait: false }]);
+    setSousTaches([...sousTaches, { id: crypto.randomUUID(), libelle: '', responsableId: null, echeance: null, fait: false, avancement: 0 }]);
   };
 
   const handleUpdateSousTache = (index: number, field: keyof SousTache, value: any) => {
@@ -325,9 +326,14 @@ export function ActionFormContent({
     setSousTaches(sousTaches.filter((_, i) => i !== index));
   };
 
-  const handleToggleSousTache = (index: number) => {
+  const handleSousTacheAvancementChange = (index: number, newAvancement: number) => {
     const updated = [...sousTaches];
-    updated[index] = { ...updated[index], fait: !updated[index].fait };
+    const clampedAvancement = Math.max(0, Math.min(100, newAvancement));
+    updated[index] = {
+      ...updated[index],
+      avancement: clampedAvancement,
+      fait: clampedAvancement === 100 // Auto-mark as done if 100%
+    };
     setSousTaches(updated);
   };
 
@@ -545,7 +551,7 @@ export function ActionFormContent({
           )}
           {sousTaches.length > 0 && !isBloque && (
             <p className="text-xs text-neutral-500 italic">
-              Avancement calculé automatiquement selon les sous-tâches ({sousTaches.filter(st => st.fait).length}/{sousTaches.length} terminées)
+              Avancement = moyenne des sous-tâches ({sousTaches.length} sous-tâche{sousTaches.length > 1 ? 's' : ''})
             </p>
           )}
           {isBloque && (
@@ -566,7 +572,9 @@ export function ActionFormContent({
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{tab.label}</span>
                 {tab.id === 'sousTaches' && sousTaches.length > 0 && (
-                  <Badge variant="info" className="ml-1 text-xs">{sousTaches.filter(st => st.fait).length}/{sousTaches.length}</Badge>
+                  <Badge variant="info" className="ml-1 text-xs">
+                    {Math.round(sousTaches.reduce((sum, st) => sum + (st.avancement || 0), 0) / sousTaches.length)}%
+                  </Badge>
                 )}
                 {tab.id === 'preuves' && preuves.length > 0 && (
                   <Badge variant="info" className="ml-1 text-xs">{preuves.length}</Badge>
@@ -760,7 +768,7 @@ export function ActionFormContent({
                 <ListChecks className="w-4 h-4" />
                 Sous-tâches
               </h3>
-              <p className="text-xs text-green-600">Le % d'avancement est calculé automatiquement selon les sous-tâches cochées</p>
+              <p className="text-xs text-green-600">Le % d'avancement global est la moyenne des pourcentages des sous-tâches</p>
             </div>
 
             {sousTaches.length === 0 ? (
@@ -771,24 +779,46 @@ export function ActionFormContent({
             ) : (
               <div className="space-y-2">
                 {sousTaches.map((st, index) => (
-                  <div key={st.id} className={`p-3 rounded-lg border ${st.fait ? 'bg-green-50 border-green-200' : 'bg-white border-neutral-200'}`}>
+                  <div key={st.id} className={`p-3 rounded-lg border ${(st.avancement || 0) === 100 ? 'bg-green-50 border-green-200' : 'bg-white border-neutral-200'}`}>
                     <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={st.fait}
-                        onChange={() => handleToggleSousTache(index)}
-                        disabled={!isEditing}
-                        className="w-5 h-5 rounded border-neutral-300 text-green-600 focus:ring-green-500"
-                      />
+                      {/* Pourcentage */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {isEditing ? (
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="5"
+                              value={st.avancement || 0}
+                              onChange={(e) => handleSousTacheAvancementChange(index, parseInt(e.target.value) || 0)}
+                              className="w-16 h-8 px-2 text-center text-sm font-medium border border-neutral-300 rounded-l-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            />
+                            <span className="h-8 px-2 flex items-center bg-neutral-100 border border-l-0 border-neutral-300 rounded-r-lg text-sm text-neutral-600">%</span>
+                          </div>
+                        ) : (
+                          <span className={`w-14 text-center text-sm font-bold ${(st.avancement || 0) === 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                            {st.avancement || 0}%
+                          </span>
+                        )}
+                      </div>
+                      {/* Barre de progression mini */}
+                      <div className="w-16 h-2 bg-neutral-200 rounded-full overflow-hidden flex-shrink-0">
+                        <div
+                          className={`h-full rounded-full transition-all ${(st.avancement || 0) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${st.avancement || 0}%` }}
+                        />
+                      </div>
+                      {/* Libellé */}
                       {isEditing ? (
                         <Input
                           value={st.libelle}
                           onChange={(e) => handleUpdateSousTache(index, 'libelle', e.target.value)}
                           placeholder="Libellé de la sous-tâche"
-                          className={`flex-1 ${st.fait ? 'line-through text-neutral-400' : ''}`}
+                          className={`flex-1 ${(st.avancement || 0) === 100 ? 'line-through text-neutral-400' : ''}`}
                         />
                       ) : (
-                        <span className={`flex-1 ${st.fait ? 'line-through text-neutral-400' : ''}`}>{st.libelle}</span>
+                        <span className={`flex-1 ${(st.avancement || 0) === 100 ? 'line-through text-neutral-400' : ''}`}>{st.libelle}</span>
                       )}
                       {isEditing && (
                         <button type="button" onClick={() => handleRemoveSousTache(index)} className="text-red-500 hover:text-red-700 p-1">

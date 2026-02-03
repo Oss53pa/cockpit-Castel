@@ -25,10 +25,10 @@ export function calculerPourcentageAction(
   if (statutNormalise === 'FAIT') return 100;
   if (statutNormalise === 'BLOQUE') return pourcentageActuel;
 
-  // EN_COURS avec sous-tâches
+  // EN_COURS avec sous-tâches (moyenne des avancements)
   if (sousTaches.length > 0) {
-    const faites = sousTaches.filter(st => st.fait).length;
-    return Math.round((faites / sousTaches.length) * 100);
+    const totalAvancement = sousTaches.reduce((sum, st) => sum + (st.avancement || 0), 0);
+    return Math.round(totalAvancement / sousTaches.length);
   }
 
   // EN_COURS sans sous-tâches → valeur manuelle ou 50% par défaut

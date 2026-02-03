@@ -877,6 +877,7 @@ export interface SousTache {
   actionId: string;
   libelle: string;
   fait: boolean;
+  avancement: number; // 0-100%
   ordre: number;
   createdAt: string;
   updatedAt: string;

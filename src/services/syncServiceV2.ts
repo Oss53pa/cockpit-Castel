@@ -494,6 +494,7 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
           id: st.id!,
           libelle: st.libelle,
           fait: st.fait,
+          avancement: st.avancement || 0,
         })).sort((a, b) => a.id - b.id),
       });
     }
@@ -561,6 +562,7 @@ export async function getMobilisationCategoryDetails(siteId: number): Promise<Ca
           id: st.id!,
           libelle: st.libelle,
           fait: st.fait,
+          avancement: st.avancement || 0,
         })).sort((a, b) => a.id - b.id),
       };
     });
