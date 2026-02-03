@@ -617,9 +617,9 @@ export function ActionFormContent({
                 <div>
                   <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                     <User className="w-4 h-4 text-green-600" />
-                    Responsable
+                    Responsable {isCreate && '*'}
                   </Label>
-                  {isEditing && !isExternal ? (
+                  {canEditInternal ? (
                     <Select
                       value={responsableId?.toString() || ''}
                       onChange={(e) => setResponsableId(e.target.value ? parseInt(e.target.value) : null)}
@@ -632,7 +632,7 @@ export function ActionFormContent({
                       ))}
                     </Select>
                   ) : (
-                    <div className="p-2 bg-white rounded border text-sm">{action.responsable || '-'}</div>
+                    <div className="p-2 bg-white rounded border text-sm">{action?.responsable || '-'}</div>
                   )}
                 </div>
 
@@ -640,9 +640,9 @@ export function ActionFormContent({
                 <div className="md:col-span-2">
                   <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                     <FileText className="w-4 h-4 text-blue-600" />
-                    Libellé
+                    Libellé {isCreate && '*'}
                   </Label>
-                  {isEditing && !isExternal ? (
+                  {canEditInternal ? (
                     <Input
                       value={titre}
                       onChange={(e) => setTitre(e.target.value)}
