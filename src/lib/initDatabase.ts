@@ -52,7 +52,7 @@ export async function initializeDatabase(): Promise<{
 
       if (empty) {
         console.log('[initDatabase] Base de données vide, seed des données v2.0...');
-        const result = await seedDatabaseV2(false);
+        const result = await seedDatabaseV2();
         console.log('[initDatabase] Seed terminé:', result);
         // Migration pour ajouter buildingCode aux actions de construction
         const migratedCount = await migrateActionsBuildingCode();
@@ -119,7 +119,7 @@ export async function forceReseed(): Promise<{
   await seedDatabase();
 
   // Aussi exécuter seedDatabaseV2 pour les données complémentaires
-  const result = await seedDatabaseV2(false);
+  const result = await seedDatabaseV2();
   console.log('[initDatabase] Force reseed terminé:', result);
 
   return result;
