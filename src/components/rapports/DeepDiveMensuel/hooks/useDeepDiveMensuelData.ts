@@ -11,6 +11,7 @@ import {
   useBudgetSynthese,
   useBudgetParAxe,
   useRisques,
+  useAvancementParAxe,
 } from '@/hooks';
 // Import seuils pour calculs météo (ces configurations ne changent pas)
 import { SEUILS_METEO, SEUILS_UI } from '@/data/constants';
@@ -174,6 +175,9 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
   const budgetSynthese = useBudgetSynthese();
   const risquesDb = useRisques();
 
+  // IMPORTANT: Utiliser les mêmes données que le dashboard pour l'avancement par axe
+  const avancementParAxe = useAvancementParAxe();
+
   // Détection de l'état de chargement
   // Note: Les hooks utilisent ?? [] donc ils retournent toujours un tableau
   // On considère que les données ne sont pas prêtes si TOUS les tableaux sont vides
@@ -201,6 +205,12 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
     const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
     const today = new Date().toISOString().split('T')[0];
 
+    // Mapping des codes DB vers les données du dashboard
+    const dbCodeToAvancement: Record<string, number> = {};
+    avancementParAxe.forEach(a => {
+      dbCodeToAvancement[a.axe] = Math.round(a.avancement);
+    });
+
     return axeTypes.map(axe => {
       const dbCode = axeToDbCode[axe];
       const config = AXES_MENSUEL_CONFIG[axe];
@@ -226,10 +236,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
       const budgetPrevu = axeBudgetItems.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
       const budgetRealise = axeBudgetItems.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
 
-      // Avancement calculé
-      const avancement = axeActions.length > 0
-        ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
-        : 0;
+      // IMPORTANT: Utiliser l'avancement du dashboard (useAvancementParAxe) qui est correct
+      const avancement = dbCodeToAvancement[dbCode] ?? 0;
 
       // Météo calculée
       const meteo = calculateMeteo(avancement, 100, actionsEnRetard);
@@ -260,12 +268,18 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         alertePrincipale,
       };
     });
-  }, [actionsDb, jalonsDb, risquesDb, budgetItems]);
+  }, [actionsDb, jalonsDb, risquesDb, budgetItems, avancementParAxe]);
 
   const detailsAxes = useMemo((): Record<AxeType, DetailAxeData> => {
     const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation', 'general'];
     const result = {} as Record<AxeType, DetailAxeData>;
     const today = new Date().toISOString().split('T')[0];
+
+    // Mapping des codes DB vers les données du dashboard
+    const dbCodeToAvancement: Record<string, number> = {};
+    avancementParAxe.forEach(a => {
+      dbCodeToAvancement[a.axe] = Math.round(a.avancement);
+    });
 
     axeTypes.forEach(axe => {
       const dbCode = axeToDbCode[axe];
@@ -277,9 +291,8 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         a.statut !== 'termine' && a.date_fin_prevue && a.date_fin_prevue < today
       ).length;
 
-      const avancement = axeActions.length > 0
-        ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
-        : 0;
+      // IMPORTANT: Utiliser l'avancement du dashboard
+      const avancement = dbCodeToAvancement[dbCode] ?? 0;
 
       // Jalons
       const axeJalons = jalonsDb.filter(j => j.axe === dbCode);
@@ -364,7 +377,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
     });
 
     return result;
-  }, [actionsDb, jalonsDb, risquesDb, budgetItems]);
+  }, [actionsDb, jalonsDb, risquesDb, budgetItems, avancementParAxe]);
 
   // ============================================================================
   // SECTION 1 - Météo Globale + Faits Marquants

@@ -74,6 +74,7 @@ import {
   useCurrentSiteId,
   useCurrentSite,
   useSites,
+  useAvancementParAxe,
 } from '@/hooks';
 
 // Types et utilitaires uniquement (pas de données)
@@ -336,6 +337,9 @@ function SlideRappelProjet() {
   const currentSite = useCurrentSite();
   const allSites = useSites();
 
+  // IMPORTANT: Utiliser les mêmes données que le dashboard pour l'avancement
+  const avancementParAxe = useAvancementParAxe();
+
   // Données du site (100% temps réel depuis la DB)
   // Priorité: currentSite > premier site actif > PROJET_CONFIG
   const siteData = useMemo(() => {
@@ -358,7 +362,7 @@ function SlideRappelProjet() {
 
   const jalonsTotal = jalons?.length || 0;
 
-  // Calcul dynamique de la météo par axe basé sur les vraies données
+  // Calcul dynamique de la météo par axe basé sur les données du DASHBOARD
   const meteoParAxe = useMemo(() => {
     if (!actions || !jalons) return [];
 
@@ -370,6 +374,12 @@ function SlideRappelProjet() {
       { code: 'axe5_marketing', key: 'marketing', label: 'Marketing & Communication' },
       { code: 'axe6_exploitation', key: 'exploitation', label: 'Exploitation & Juridique' },
     ];
+
+    // Mapping des avancements depuis le dashboard (même source que le cockpit)
+    const avancementMap: Record<string, number> = {};
+    avancementParAxe.forEach(a => {
+      avancementMap[a.axe] = Math.round(a.avancement);
+    });
 
     return axes.map(axe => {
       const axeActions = actions!.filter(a => a.axe === axe.code);
@@ -383,7 +393,8 @@ function SlideRappelProjet() {
       }).length;
       const jalonsEnDanger = axeJalons.filter(j => j.statut === 'en_danger' || j.statut === 'depasse').length;
 
-      const tauxCompletion = axeActions.length > 0 ? (actionsTerminees / axeActions.length) * 100 : 0;
+      // IMPORTANT: Utiliser l'avancement moyen du dashboard (pas le % d'actions terminées)
+      const avancement = avancementMap[axe.code] ?? 0;
 
       let meteo: MeteoType;
       let statut: string;
@@ -394,20 +405,20 @@ function SlideRappelProjet() {
       } else if (actionsBloquees > 0 || actionsEnRetard > 2 || jalonsEnDanger > 1) {
         meteo = 'pluie';
         statut = actionsBloquees > 0 ? `${actionsBloquees} bloquée(s)` : `${actionsEnRetard} en retard`;
-      } else if (tauxCompletion < 30 || actionsEnRetard > 0 || jalonsEnDanger > 0) {
+      } else if (avancement < 30 || actionsEnRetard > 0 || jalonsEnDanger > 0) {
         meteo = 'nuage';
-        statut = `Vigilance - ${Math.round(tauxCompletion)}%`;
-      } else if (tauxCompletion < 70) {
+        statut = actionsEnRetard > 0 ? `${actionsEnRetard} en retard` : `${avancement}% avancement`;
+      } else if (avancement < 70) {
         meteo = 'soleil_nuage';
-        statut = `En cours - ${Math.round(tauxCompletion)}%`;
+        statut = `En cours - ${avancement}%`;
       } else {
         meteo = 'soleil';
-        statut = `${Math.round(tauxCompletion)}% complété`;
+        statut = `${avancement}% complété`;
       }
 
       return { axe: axe.code, key: axe.key, label: axe.label, meteo, statut };
     });
-  }, [actions, jalons]);
+  }, [actions, jalons, avancementParAxe]);
 
   // Calcul effectif depuis les actions RH
   const effectifCible = useMemo(() => {
@@ -509,7 +520,8 @@ function SlideAgenda() {
     { num: 7, titre: 'AXE Marketing & Communication', icon: Megaphone },
     { num: 8, titre: 'AXE Exploitation & Juridique', icon: Settings },
     { num: 9, titre: 'Risques Majeurs', icon: AlertTriangle },
-    { num: 10, titre: 'Décisions Attendues', icon: CheckCircle },
+    { num: 10, titre: "Points d'Attention", icon: AlertTriangle },
+    { num: 11, titre: 'Décisions Attendues', icon: CheckCircle },
   ];
 
   const midPoint = Math.ceil(agendaItems.length / 2);
@@ -1395,7 +1407,132 @@ function SlideRisquesMajeurs() {
 }
 
 // ============================================================================
-// SLIDE 9 - DÉCISIONS ATTENDUES
+// SLIDE - POINTS D'ATTENTION
+// ============================================================================
+function SlidePointsAttention() {
+  const actions = useActions();
+
+  // Points d'attention = extraits du champ points_attention de chaque action (non cochés uniquement)
+  const pointsAttention = useMemo(() => {
+    if (!actions) return [];
+
+    // Extraire les points d'attention NON TRANSMIS (non cochés) de toutes les actions non terminées
+    const allPoints: { numero: number; sujet: string; responsable: string; responsablePoint?: string; actionTitre: string; axe?: string }[] = [];
+    let idx = 0;
+
+    actions
+      .filter(a => a.statut !== 'termine' && a.statut !== 'annule')
+      .forEach(action => {
+        const points = (action as any).points_attention || [];
+        points
+          .filter((point: { transmis?: boolean }) => !point.transmis) // Seulement les non cochés
+          .forEach((point: { id: string; sujet: string; responsableNom?: string; dateCreation: string; transmis?: boolean }) => {
+            idx++;
+            allPoints.push({
+              numero: idx,
+              sujet: point.sujet,
+              responsable: action.responsable_nom || action.responsable || '-',
+              responsablePoint: point.responsableNom,
+              actionTitre: action.titre,
+              axe: action.axe,
+            });
+          });
+      });
+
+    return allPoints.slice(0, 15);
+  }, [actions]);
+
+  // État local pour toggle des points
+  const [pointsState, setPointsState] = useState<Record<number, boolean>>({});
+
+  const togglePoint = (numero: number) => {
+    setPointsState(prev => ({ ...prev, [numero]: !prev[numero] }));
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader title="POINTS D'ATTENTION" icon={AlertTriangle} />
+
+      {/* Liste des points d'attention */}
+      <Card padding="md" className="border-amber-200">
+        <h4 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          Points Nécessitant Attention ({pointsAttention.length})
+        </h4>
+        {pointsAttention.length > 0 ? (
+          <div className="space-y-2">
+            {pointsAttention.map((point) => (
+              <div
+                key={point.numero}
+                className={cn(
+                  'flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all',
+                  pointsState[point.numero]
+                    ? 'bg-emerald-50/50 border-emerald-200'
+                    : 'bg-amber-50/50 border-amber-200 hover:bg-amber-100/50'
+                )}
+                onClick={() => togglePoint(point.numero)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                    pointsState[point.numero] ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                  )}>
+                    {pointsState[point.numero] ? '✓' : point.numero}
+                  </span>
+                  <div>
+                    <span className="font-medium text-slate-800 text-sm">{point.sujet}</span>
+                    <p className="text-xs text-slate-400 mt-0.5">Action: {point.actionTitre}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {point.responsablePoint && (
+                        <span className="text-xs text-amber-600">Resp. point: {point.responsablePoint}</span>
+                      )}
+                      {point.responsable && point.responsable !== '-' && (
+                        <span className="text-xs text-slate-500">Resp. action: {point.responsable}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {pointsState[point.numero] ? (
+                    <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200">Traité</Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-300 text-amber-700 bg-amber-50">À traiter</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-slate-400 italic py-4">Aucun point d'attention en attente</p>
+        )}
+      </Card>
+
+      {/* Résumé par axe */}
+      {pointsAttention.length > 0 && (
+        <Card padding="md" className="border-slate-200">
+          <h4 className="font-semibold text-slate-800 mb-3">Répartition par Axe</h4>
+          <div className="grid grid-cols-3 gap-2">
+            {Object.entries(
+              pointsAttention.reduce((acc, p) => {
+                const axeLabel = p.axe ? AXE_SHORT_LABELS[p.axe as keyof typeof AXE_SHORT_LABELS] || p.axe : 'Non défini';
+                acc[axeLabel] = (acc[axeLabel] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>)
+            ).map(([axe, count]) => (
+              <div key={axe} className="p-2 bg-amber-50 rounded-lg border border-amber-200 text-center">
+                <p className="text-xs text-amber-600 truncate" title={axe}>{axe}</p>
+                <p className="text-lg font-bold text-amber-700">{count}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// SLIDE - DÉCISIONS ATTENDUES
 // ============================================================================
 function SlideDecisions() {
   const actions = useActions();
@@ -1919,7 +2056,8 @@ export function DeepDiveLancement() {
     { numero: 8, titre: 'AXE Exploitation & Juridique', component: SlideAxeExploitation },
     { numero: 9, titre: 'Synchronisation Chantier / Mobilisation', component: SlideSynchronisation },
     { numero: 10, titre: 'Risques Majeurs', component: SlideRisquesMajeurs },
-    { numero: 11, titre: 'Décisions Attendues', component: SlideDecisions },
+    { numero: 11, titre: "Points d'Attention", component: SlidePointsAttention },
+    { numero: 12, titre: 'Décisions Attendues', component: SlideDecisions },
   ];
 
   // Navigation dans le preview
