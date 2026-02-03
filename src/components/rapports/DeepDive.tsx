@@ -85,6 +85,7 @@ import {
   useEVMIndicators,
   useRisques,
   useCurrentSite,
+  useSites,
   useTeams,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
@@ -92,7 +93,7 @@ import { SYNC_CONFIG } from '@/config/syncConfig';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
 import { DeepDiveMensuel } from './DeepDiveMensuel';
 import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
-// Données du site maintenant récupérées via useCurrentSite()
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -567,20 +568,27 @@ export function DeepDive() {
   const evmIndicators = useEVMIndicators(); // Indicateurs EVM calculés depuis les vraies données
   const risques = useRisques();
   const currentSite = useCurrentSite();
+  const allSites = useSites(); // Tous les sites de la DB
   const teamsData = useTeams(); // Équipes depuis la DB
 
   // Données du site (100% temps réel depuis la DB)
-  const siteData = useMemo(() => ({
-    surfaceGLA: currentSite?.surface || 45000,
-    nombreBatiments: currentSite?.nombreBatiments || 8,
-    softOpening: currentSite?.dateOuverture || '2026-11-15',
-    inauguration: currentSite?.dateInauguration || '2026-12-15',
-    occupationCible: currentSite?.occupationCible || 85,
-    nom: currentSite?.nom || 'COSMOS ANGRÉ',
-    code: currentSite?.code || 'COSMOS',
-    presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
-    destinataires: ['PDG', 'Actionnaires'],
-  }), [currentSite]);
+  // Priorité: currentSite du store > premier site actif de la DB > PROJET_CONFIG
+  const siteData = useMemo(() => {
+    // Utiliser currentSite du store, sinon le premier site actif de la DB
+    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+
+    return {
+      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
+      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
+      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
+      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
+      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
+      nom: site?.nom ?? PROJET_CONFIG.nom,
+      code: site?.code ?? 'COSMOS',
+      presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
+      destinataires: ['PDG', 'Actionnaires'],
+    };
+  }, [currentSite, allSites]);
 
   // Sync data (new module)
   const syncData = useSync(1, 'cosmos-angre');
