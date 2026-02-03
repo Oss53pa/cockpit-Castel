@@ -341,7 +341,7 @@ export const PertChart: React.FC<PertChartProps> = ({
   dimension = 'ALL',
   projectStartDate = new Date('2025-06-01'),
 }) => {
-  const { items, categories, loading } = useSync(projectId);
+  const { items, categories, loading } = useSync(1, projectId || 'cosmos-angre');
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 

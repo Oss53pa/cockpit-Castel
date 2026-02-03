@@ -555,7 +555,7 @@ export function DeepDive() {
   const risques = useRisques();
 
   // Sync data (new module)
-  const syncData = useSync('cosmos-angre');
+  const syncData = useSync(1, 'cosmos-angre');
 
   // Template type state - monthly_v2 is the new COPIL format
   const [templateType, setTemplateType] = useState<DeepDiveTemplateType | 'monthly_v2'>('monthly');

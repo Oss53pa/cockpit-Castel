@@ -108,7 +108,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   projectStartDate = new Date('2025-06-01'),
   showBaseline = false,
 }) => {
-  const { items, categories, loading, updateItemProgress } = useSync(projectId);
+  const { items, categories, loading, updateItemProgress } = useSync(1, projectId || 'cosmos-angre');
 
   // State
   const [viewMode, setViewMode] = useState<ViewMode>('month');
