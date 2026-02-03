@@ -72,6 +72,7 @@ import {
   useSyncStatus,
   useSyncStats,
   useCurrentSiteId,
+  useCurrentSite,
 } from '@/hooks';
 
 // Types et utilitaires uniquement (pas de données)
@@ -326,6 +327,17 @@ function SlideRappelProjet() {
   const kpis = useDashboardKPIs();
   const jalons = useJalons();
   const actions = useActions();
+  const currentSite = useCurrentSite();
+
+  // Données du site (priorité aux données DB, fallback sur PROJET_CONFIG)
+  const siteData = useMemo(() => ({
+    surfaceGLA: currentSite?.surface || PROJET_CONFIG.surfaceGLA,
+    nombreBatiments: currentSite?.nombreBatiments || PROJET_CONFIG.nombreBatiments,
+    softOpening: currentSite?.dateOuverture || PROJET_CONFIG.jalonsClés.softOpening,
+    inauguration: currentSite?.dateInauguration || PROJET_CONFIG.jalonsClés.inauguration,
+    occupationCible: PROJET_CONFIG.occupationCible, // Pas dans Site, garder PROJET_CONFIG
+    nom: currentSite?.nom || PROJET_CONFIG.nom,
+  }), [currentSite]);
 
   // Calcul des jalons atteints
   const jalonsAtteints = useMemo(() => {
@@ -389,37 +401,36 @@ function SlideRappelProjet() {
   // Calcul effectif depuis les actions RH
   const effectifCible = useMemo(() => {
     if (!actions) return 25; // Valeur par défaut
-    const actionsRH = actions.filter(a => a.axe === 'axe1_rh');
-    // Chercher une action qui mentionne l'effectif ou utiliser la config
-    return PROJET_CONFIG.surfaceGLA > 40000 ? 25 : 15;
-  }, [actions]);
+    // Estimer l'effectif cible basé sur la surface du site
+    return siteData.surfaceGLA > 40000 ? 25 : 15;
+  }, [actions, siteData.surfaceGLA]);
 
   return (
     <div className="space-y-6">
-      {/* Info Projet - Données de PROJET_CONFIG */}
+      {/* Info Projet - Données réelles du site */}
       <Card padding="md">
         <h3 className="text-lg font-bold text-primary-900 mb-4">Le Projet</h3>
         <Table>
           <TableBody>
             <TableRow>
               <TableCell className="font-medium">Surface GLA</TableCell>
-              <TableCell className="text-right">{PROJET_CONFIG.surfaceGLA.toLocaleString()} m²</TableCell>
+              <TableCell className="text-right">{siteData.surfaceGLA.toLocaleString()} m²</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Bâtiments</TableCell>
-              <TableCell className="text-right">{PROJET_CONFIG.nombreBatiments} bâtiments</TableCell>
+              <TableCell className="text-right">{siteData.nombreBatiments} bâtiments</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Soft Opening</TableCell>
-              <TableCell className="text-right">{new Date(PROJET_CONFIG.jalonsClés.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
+              <TableCell className="text-right">{new Date(siteData.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Inauguration</TableCell>
-              <TableCell className="text-right">{new Date(PROJET_CONFIG.jalonsClés.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
+              <TableCell className="text-right">{new Date(siteData.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell className="font-medium">Occupation cible</TableCell>
-              <TableCell className="text-right">≥ {PROJET_CONFIG.occupationCible}%</TableCell>
+              <TableCell className="text-right">≥ {siteData.occupationCible}%</TableCell>
             </TableRow>
           </TableBody>
         </Table>

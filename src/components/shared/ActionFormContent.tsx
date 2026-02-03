@@ -216,6 +216,7 @@ export function ActionFormContent({
     dateAjout: d.dateAjout || new Date().toISOString(),
   })) || []);
   const [notes, setNotes] = useState<Note[]>(() => {
+    if (!action) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
     const externesStr = (action as any).commentaires_externes;
     if (externesStr) {
@@ -243,12 +244,12 @@ export function ActionFormContent({
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [pointsAttention, setPointsAttention] = useState<PointAttention[]>(
-    (action as any).points_attention || []
+    (action as any)?.points_attention || []
   );
   const [decisionsAttendues, setDecisionsAttendues] = useState<DecisionAttendue[]>(
-    (action as any).decisions_attendues || []
+    (action as any)?.decisions_attendues || []
   );
-  const [notesMiseAJour, setNotesMiseAJour] = useState((action as any).notes_mise_a_jour || '');
+  const [notesMiseAJour, setNotesMiseAJour] = useState((action as any)?.notes_mise_a_jour || '');
 
   // Calcul automatique du statut basé sur l'avancement
   const statut: StatutAction = isBloque
@@ -261,19 +262,21 @@ export function ActionFormContent({
 
   // Calculs
   const selectedJalon = jalonId ? jalons.find(j => j.id === jalonId) : null;
-  const axeHerite = selectedJalon?.axe || action.axe || null;
+  const axeHerite = selectedJalon?.axe || action?.axe || null;
 
-  const calculerPriorite = useCallback((echeance: string): 'haute' | 'moyenne' | 'basse' => {
-    if (!echeance) return 'moyenne';
-    const joursRestants = Math.ceil((new Date(echeance).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (joursRestants <= 7) return 'haute';
-    if (joursRestants <= 30) return 'moyenne';
+  const calculerPriorite = useCallback((dateEcheance: string): 'haute' | 'moyenne' | 'basse' => {
+    if (!dateEcheance) return 'moyenne';
+    const jours = Math.ceil((new Date(dateEcheance).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (jours <= 7) return 'haute';
+    if (jours <= 30) return 'moyenne';
     return 'basse';
   }, []);
 
-  const prioriteCalculee = calculerPriorite(action.date_fin_prevue || '');
-  const joursRestants = action.date_fin_prevue
-    ? Math.ceil((new Date(action.date_fin_prevue).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  // Utiliser echeance (state) au lieu de action.date_fin_prevue pour le mode création
+  const dateToUse = echeance || action?.date_fin_prevue || '';
+  const prioriteCalculee = calculerPriorite(dateToUse);
+  const joursRestants = dateToUse
+    ? Math.ceil((new Date(dateToUse).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
   // Calcul avancement auto selon sous-tâches (uniquement si pas bloqué)
@@ -434,13 +437,33 @@ export function ActionFormContent({
 
   // Sauvegarde
   const handleSave = () => {
+    // Validation basique pour le mode création
+    if (isCreate) {
+      if (!titre.trim()) {
+        alert('Le libellé est obligatoire');
+        return;
+      }
+      if (!jalonId) {
+        alert('Le jalon est obligatoire');
+        return;
+      }
+      if (!echeance) {
+        alert('L\'échéance est obligatoire');
+        return;
+      }
+      if (!responsableId) {
+        alert('Le responsable est obligatoire');
+        return;
+      }
+    }
+
     onSave?.({
-      // Champs principaux (si modifiés en interne)
-      titre: titre !== action.titre ? titre : undefined,
-      jalonId: jalonId !== action.jalonId ? jalonId : undefined,
-      responsableId: responsableId !== action.responsableId ? responsableId : undefined,
-      date_fin_prevue: echeance !== action.date_fin_prevue ? echeance : undefined,
-      projectPhase: projectPhase !== action.projectPhase ? projectPhase : undefined,
+      // Champs principaux (toujours envoyés en mode création, sinon si modifiés)
+      titre: isCreate || titre !== action?.titre ? titre : undefined,
+      jalonId: isCreate || jalonId !== action?.jalonId ? jalonId : undefined,
+      responsableId: isCreate || responsableId !== action?.responsableId ? responsableId : undefined,
+      date_fin_prevue: isCreate || echeance !== action?.date_fin_prevue ? echeance : undefined,
+      projectPhase: isCreate || projectPhase !== action?.projectPhase ? projectPhase : undefined,
       // Statut et avancement
       statut,
       avancement,
@@ -1191,7 +1214,7 @@ export function ActionFormContent({
             {isSaving ? (
               <><Clock className="w-4 h-4 mr-1 animate-spin" />Enregistrement...</>
             ) : (
-              <><Save className="w-4 h-4 mr-1" />Enregistrer</>
+              <><Save className="w-4 h-4 mr-1" />{isCreate ? 'Créer' : 'Enregistrer'}</>
             )}
           </Button>
         </div>
