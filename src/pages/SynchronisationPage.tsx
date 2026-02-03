@@ -866,93 +866,157 @@ export function SynchronisationPage() {
               </div>
             </Card>
           ) : (
-            <Card padding="none">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Action Technique</TableHead>
-                    <TableHead className="w-12 text-center">
-                      <ArrowRight className="w-4 h-4 mx-auto" />
-                    </TableHead>
-                    <TableHead>Action Mobilisation</TableHead>
-                    <TableHead className="text-center">Propagation</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {liens.map((lien) => {
-                    const actionTech = actionsTechniques.find(
-                      (a) => a.id_action === lien.action_technique_id
-                    );
-                    const actionMob = actionsMobilisation.find(
-                      (a) => a.id_action === lien.action_mobilisation_id
-                    );
+            <>
+              {/* Grouper les liens par phase */}
+              {(() => {
+                // Définir les phases basées sur le code de l'action
+                const getPhaseFromCode = (code: string | undefined): { phase: string; order: number } => {
+                  if (!code) return { phase: 'Autre', order: 99 };
+                  const num = parseInt(code.split('.')[0]);
+                  if (num >= 1 && num <= 3) return { phase: 'Phase 1 - Préparation', order: 1 };
+                  if (num >= 4 && num <= 6) return { phase: 'Phase 2 - Recrutement', order: 2 };
+                  if (num >= 7 && num <= 9) return { phase: 'Phase 3 - Réceptions Techniques', order: 3 };
+                  if (num >= 10 && num <= 13) return { phase: 'Phase 4 - Mobilisation Équipes', order: 4 };
+                  if (num >= 14 && num <= 17) return { phase: 'Phase 5 - Lancement', order: 5 };
+                  return { phase: 'Autre', order: 99 };
+                };
 
-                    return (
-                      <TableRow key={lien.id}>
-                        <TableCell>
-                          <button
-                            onClick={() => setExpandedLien(expandedLien === lien.id ? null : lien.id!)}
-                            className="p-1 hover:bg-neutral-100 rounded"
-                          >
-                            {expandedLien === lien.id ? (
-                              <ChevronUp className="w-4 h-4" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4" />
-                            )}
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-neutral-900">{actionTech?.titre || 'Action supprimée'}</p>
-                            <p className="text-xs text-neutral-500">{actionTech?.id_action}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Link2 className="w-4 h-4 text-neutral-400 mx-auto" />
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-neutral-900">{actionMob?.titre || 'Action supprimée'}</p>
-                            <p className="text-xs text-neutral-500">{actionMob?.id_action}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant={lien.propagation_retard ? 'primary' : 'secondary'}
-                            size="sm"
-                            onClick={() => handleTogglePropagation(lien.id!, lien.propagation_retard)}
-                          >
-                            {lien.propagation_retard ? (
-                              <>
-                                <Play className="w-3 h-3 mr-1" />
-                                Active
-                              </>
-                            ) : (
-                              <>
-                                <Pause className="w-3 h-3 mr-1" />
-                                Inactive
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDeleteLink(lien.id!)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Card>
+                // Calculer le statut du lien
+                const getLinkStatus = (actionTech: Action | undefined, actionMob: Action | undefined) => {
+                  if (!actionTech || !actionMob) return { label: 'Inconnu', color: 'bg-gray-100 text-gray-600' };
+
+                  const today = new Date().toISOString().split('T')[0];
+                  const techEnRetard = actionTech.statut !== 'termine' && actionTech.date_fin_prevue && actionTech.date_fin_prevue < today;
+                  const mobEnRetard = actionMob.statut !== 'termine' && actionMob.date_fin_prevue && actionMob.date_fin_prevue < today;
+
+                  if (techEnRetard && mobEnRetard) {
+                    return { label: 'Retard propagé', color: 'bg-red-100 text-red-700' };
+                  }
+                  if (techEnRetard) {
+                    return { label: 'À surveiller', color: 'bg-amber-100 text-amber-700' };
+                  }
+                  if (actionTech.statut === 'termine' && actionMob.statut === 'termine') {
+                    return { label: 'Terminé', color: 'bg-green-100 text-green-700' };
+                  }
+                  return { label: 'OK', color: 'bg-blue-100 text-blue-700' };
+                };
+
+                // Grouper les liens
+                const liensGroupes = liens.reduce((acc, lien) => {
+                  const actionTech = actionsTechniques.find((a) => a.id_action === lien.action_technique_id);
+                  const { phase, order } = getPhaseFromCode(actionTech?.id_action);
+                  if (!acc[phase]) acc[phase] = { liens: [], order };
+                  acc[phase].liens.push(lien);
+                  return acc;
+                }, {} as Record<string, { liens: typeof liens; order: number }>);
+
+                // Trier par ordre de phase
+                const phasesTriees = Object.entries(liensGroupes).sort(([, a], [, b]) => a.order - b.order);
+
+                return phasesTriees.map(([phase, { liens: liensPhase }]) => (
+                  <Card key={phase} padding="none" className="mb-4">
+                    <div className="bg-neutral-50 px-4 py-3 border-b border-neutral-200">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-neutral-900">{phase}</h4>
+                        <Badge variant="secondary">{liensPhase.length} lien{liensPhase.length > 1 ? 's' : ''}</Badge>
+                      </div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Action Technique</TableHead>
+                          <TableHead className="w-12 text-center">
+                            <ArrowRight className="w-4 h-4 mx-auto" />
+                          </TableHead>
+                          <TableHead>Action Mobilisation</TableHead>
+                          <TableHead className="text-center">Statut</TableHead>
+                          <TableHead className="text-center">Propagation</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {liensPhase.map((lien) => {
+                          const actionTech = actionsTechniques.find(
+                            (a) => a.id_action === lien.action_technique_id
+                          );
+                          const actionMob = actionsMobilisation.find(
+                            (a) => a.id_action === lien.action_mobilisation_id
+                          );
+                          const status = getLinkStatus(actionTech, actionMob);
+
+                          return (
+                            <TableRow key={lien.id}>
+                              <TableCell>
+                                <button
+                                  onClick={() => setExpandedLien(expandedLien === lien.id ? null : lien.id!)}
+                                  className="p-1 hover:bg-neutral-100 rounded"
+                                >
+                                  {expandedLien === lien.id ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium text-neutral-900">{actionTech?.titre || 'Action supprimée'}</p>
+                                  <p className="text-xs text-neutral-500">{actionTech?.id_action}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Link2 className="w-4 h-4 text-neutral-400 mx-auto" />
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium text-neutral-900">{actionMob?.titre || 'Action supprimée'}</p>
+                                  <p className="text-xs text-neutral-500">{actionMob?.id_action}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className={cn('inline-flex items-center px-2 py-1 rounded-full text-xs font-medium', status.color)}>
+                                  {status.label}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant={lien.propagation_retard ? 'primary' : 'secondary'}
+                                  size="sm"
+                                  onClick={() => handleTogglePropagation(lien.id!, lien.propagation_retard)}
+                                >
+                                  {lien.propagation_retard ? (
+                                    <>
+                                      <Play className="w-3 h-3 mr-1" />
+                                      Active
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pause className="w-3 h-3 mr-1" />
+                                      Inactive
+                                    </>
+                                  )}
+                                </Button>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleDeleteLink(lien.id!)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                ));
+              })()}
+            </>
           )}
         </TabsContent>
 
