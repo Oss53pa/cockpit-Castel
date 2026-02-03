@@ -95,7 +95,9 @@ import {
   useBudgetParAxe,
   useRisques,
   useCurrentSite,
+  useSites,
 } from '@/hooks';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -1921,17 +1923,22 @@ export function DeepDiveLaunch() {
   const budgetParAxe = useBudgetParAxe();
   const risques = useRisques();
   const currentSite = useCurrentSite();
+  const allSites = useSites();
 
   // Données du site (100% temps réel depuis la DB)
-  const siteData = useMemo(() => ({
-    surfaceGLA: currentSite?.surface || 45000,
-    nombreBatiments: currentSite?.nombreBatiments || 8,
-    softOpening: currentSite?.dateOuverture || '2026-11-15',
-    inauguration: currentSite?.dateInauguration || '2026-12-15',
-    occupationCible: currentSite?.occupationCible || 85,
-    nom: currentSite?.nom || 'COSMOS ANGRÉ',
-    code: currentSite?.code || 'COSMOS',
-  }), [currentSite]);
+  // Priorité: currentSite > premier site actif > PROJET_CONFIG
+  const siteData = useMemo(() => {
+    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    return {
+      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
+      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
+      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
+      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
+      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
+      nom: site?.nom ?? PROJET_CONFIG.nom,
+      code: site?.code ?? 'COSMOS',
+    };
+  }, [currentSite, allSites]);
 
   // Helper functions pour récupérer les données par axe
   const getActionsForAxe = (axe: AxeType) => {

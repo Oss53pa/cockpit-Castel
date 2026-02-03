@@ -25,6 +25,9 @@ const TRACKED_ACTION_FIELDS: (keyof Action)[] = [
 ];
 
 export function useActions(filters?: ActionFilters) {
+  // Stabiliser la dépendance pour que useLiveQuery détecte correctement les changements DB
+  const filtersDep = JSON.stringify(filters ?? {});
+
   const actions = useLiveQuery(async () => {
     let query = db.actions.toCollection();
 
@@ -69,7 +72,7 @@ export function useActions(filters?: ActionFilters) {
     }
 
     return results;
-  }, [filters]);
+  }, [filtersDep]);
 
   return actions ?? [];
 }

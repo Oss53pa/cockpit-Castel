@@ -3,8 +3,9 @@
 // ============================================================================
 
 import { useMemo } from 'react';
-import { useActions, useJalons, useUsers, useDashboardKPIs } from '@/hooks';
+import { useActions, useJalons, useUsers, useDashboardKPIs, useCurrentSite, useSites } from '@/hooks';
 import type { Action, Jalon, User } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -287,6 +288,11 @@ export function useMonthlyReport(mois?: number, annee?: number): MonthlyReportDa
   const jalonsDb = useJalons();
   const usersDb = useUsers();
   const kpis = useDashboardKPIs();
+  const currentSite = useCurrentSite();
+  const allSites = useSites();
+
+  // Site actif pour les données projet
+  const site = currentSite || allSites.find(s => s.actif) || allSites[0];
 
   // Calculer les bornes du mois
   const { debut: debutMois, fin: finMois } = useMemo(
@@ -373,9 +379,9 @@ export function useMonthlyReport(mois?: number, annee?: number): MonthlyReportDa
     periodeLabel,
     debutMois,
     finMois,
-    projectName: kpis.projectName || 'COSMOS ANGRÉ',
+    projectName: site?.nom ?? kpis.projectName ?? PROJET_CONFIG.nom,
     joursRestants: kpis.joursRestants || 0,
-    dateOuverture: kpis.dateOuverture || '2026-11-15',
+    dateOuverture: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
     actionsduMois,
     actionsEnRetard,
     actionsTerminees,

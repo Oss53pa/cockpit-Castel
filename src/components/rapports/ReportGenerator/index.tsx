@@ -41,9 +41,10 @@ import {
   REPORT_TYPE_CONFIG,
   DEFAULT_EXPORT_OPTIONS,
 } from '@/types/reports.types';
-import { useJalons, useActions, useRisques, useCurrentSite } from '@/hooks';
+import { useJalons, useActions, useRisques, useCurrentSite, useSites } from '@/hooks';
 import { db } from '@/db';
 import { cn } from '@/lib/utils';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES LOCAUX
@@ -79,9 +80,11 @@ export function ReportGenerator({
   const actions = useActions();
   const risques = useRisques();
   const currentSite = useCurrentSite();
+  const allSites = useSites();
 
-  // Date Soft Opening depuis les données du site
-  const softOpeningDate = currentSite?.dateOuverture || '2026-11-15';
+  // Date Soft Opening depuis les données du site (DB prioritaire)
+  const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+  const softOpeningDate = site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening;
 
   // Config du type de rapport
   const reportConfig = REPORT_TYPE_CONFIG[reportType];

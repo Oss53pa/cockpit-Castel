@@ -73,6 +73,7 @@ import {
   useSyncStats,
   useCurrentSiteId,
   useCurrentSite,
+  useSites,
 } from '@/hooks';
 
 // Types et utilitaires uniquement (pas de données)
@@ -99,8 +100,7 @@ function getStatutIcon(statut: string): string {
 }
 
 // Import constantes centralisées
-import { AXES_CONFIG_FULL } from '@/data/constants';
-// Données du site maintenant récupérées via useCurrentSite()
+import { AXES_CONFIG_FULL, PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
@@ -334,16 +334,21 @@ function SlideRappelProjet() {
   const jalons = useJalons();
   const actions = useActions();
   const currentSite = useCurrentSite();
+  const allSites = useSites();
 
   // Données du site (100% temps réel depuis la DB)
-  const siteData = useMemo(() => ({
-    surfaceGLA: currentSite?.surface || 45000,
-    nombreBatiments: currentSite?.nombreBatiments || 8,
-    softOpening: currentSite?.dateOuverture || '2026-11-15',
-    inauguration: currentSite?.dateInauguration || '2026-12-15',
-    occupationCible: currentSite?.occupationCible || 85,
-    nom: currentSite?.nom || 'COSMOS ANGRÉ',
-  }), [currentSite]);
+  // Priorité: currentSite > premier site actif > PROJET_CONFIG
+  const siteData = useMemo(() => {
+    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    return {
+      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
+      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
+      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
+      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
+      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
+      nom: site?.nom ?? PROJET_CONFIG.nom,
+    };
+  }, [currentSite, allSites]);
 
   // Calcul des jalons atteints
   const jalonsAtteints = useMemo(() => {
@@ -1805,20 +1810,25 @@ export function DeepDiveLancement() {
   const budgetSynthese = useBudgetSynthese();
   const budgetParAxe = useBudgetParAxe();
   const currentSite = useCurrentSite();
+  const allSites = useSites();
 
   // Données du site (100% temps réel depuis la DB)
-  const siteData = useMemo(() => ({
-    surfaceGLA: currentSite?.surface || 45000,
-    nombreBatiments: currentSite?.nombreBatiments || 8,
-    softOpening: currentSite?.dateOuverture || '2026-11-15',
-    inauguration: currentSite?.dateInauguration || '2026-12-15',
-    occupationCible: currentSite?.occupationCible || 85,
-    nom: currentSite?.nom || 'COSMOS ANGRÉ',
-    code: currentSite?.code || 'COSMOS',
-    societe: 'CRMC / New Heaven SA', // Société porteuse du projet
-    presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
-    destinataires: ['PDG', 'Actionnaires'],
-  }), [currentSite]);
+  // Priorité: currentSite > premier site actif > PROJET_CONFIG
+  const siteData = useMemo(() => {
+    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    return {
+      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
+      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
+      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
+      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
+      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
+      nom: site?.nom ?? PROJET_CONFIG.nom,
+      code: site?.code ?? 'COSMOS',
+      societe: PROJET_CONFIG.societe,
+      presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
+      destinataires: ['PDG', 'Actionnaires'],
+    };
+  }, [currentSite, allSites]);
 
   // Données calculées à partir des hooks
   const cockpitData = useMemo(() => {
