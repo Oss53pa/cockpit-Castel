@@ -346,7 +346,7 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-primary-900">Initialiser les données</h5>
               <p className="text-sm text-primary-500">
-                Charge les données v2.0 si la base est vide (ne modifie pas les données existantes)
+                Charge les données v2.0 uniquement si la base est vide (utilisateurs, jalons, actions = 0)
               </p>
             </div>
             <Button
@@ -373,7 +373,7 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-purple-900">Charger budget d'exploitation</h5>
               <p className="text-sm text-purple-600">
-                Charge les budgets 2026 (200M) et 2027 (761M) depuis les données COSMOS ANGRÉ
+                Ajoute les budgets d'exploitation 2026 et 2027 depuis COSMOS ANGRÉ (sans effacer l'existant)
               </p>
             </div>
             <Button
@@ -401,7 +401,7 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-teal-900">Réparer les données manquantes</h5>
               <p className="text-sm text-teal-600">
-                Ajoute les risques et/ou le budget s'ils sont absents (ne modifie pas les données existantes)
+                Ajoute utilisateurs, jalons, actions, risques et budget s'ils sont absents (tables vides)
               </p>
               {repairResult && (repairResult.risques > 0 || repairResult.budget > 0) && (
                 <p className="text-xs text-teal-700 mt-1">
@@ -465,9 +465,9 @@ export function DataInitialization() {
           {/* Réinitialiser (force) */}
           <div className="flex items-center justify-between p-4 bg-warning-50 rounded-lg">
             <div>
-              <h5 className="font-medium text-warning-900">Réinitialiser avec données v2.0</h5>
+              <h5 className="font-medium text-warning-900">Réinitialiser avec données de production</h5>
               <p className="text-sm text-warning-600">
-                EFFACE toutes les données existantes et recharge les données v2.0 de production
+                EFFACE TOUT et recharge les données COSMOS ANGRÉ (102 actions, 19 jalons, 75 risques, budget)
               </p>
             </div>
             <Button
