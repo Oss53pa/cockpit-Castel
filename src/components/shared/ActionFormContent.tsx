@@ -584,7 +584,7 @@ export function ActionFormContent({
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Target className="w-4 h-4" />
-                Champs obligatoires
+                {isCreate ? 'Nouvelle action' : 'Champs obligatoires'}
                 {isExternal && <span className="text-xs font-normal text-blue-600 ml-2">(lecture seule)</span>}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -592,9 +592,9 @@ export function ActionFormContent({
                 <div>
                   <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
                     <Link2 className="w-4 h-4 text-purple-600" />
-                    Jalon
+                    Jalon {isCreate && '*'}
                   </Label>
-                  {isEditing && !isExternal ? (
+                  {canEditInternal ? (
                     <Select
                       value={jalonId?.toString() || ''}
                       onChange={(e) => setJalonId(e.target.value ? parseInt(e.target.value) : null)}
@@ -608,7 +608,7 @@ export function ActionFormContent({
                     </Select>
                   ) : (
                     <div className="p-2 bg-white rounded border text-sm">
-                      {selectedJalon ? `${selectedJalon.id_jalon} - ${selectedJalon.titre}` : action.jalonId || '-'}
+                      {selectedJalon ? `${selectedJalon.id_jalon} - ${selectedJalon.titre}` : action?.jalonId || '-'}
                     </div>
                   )}
                 </div>

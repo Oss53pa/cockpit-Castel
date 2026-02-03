@@ -15,6 +15,7 @@ export interface Site {
   boutiquesMax?: number;     // Nombre maximum de boutiques
   investissement?: number;   // Investissement total en FCFA
   nombreBatiments?: number;  // Nombre de bâtiments
+  occupationCible?: number;  // Taux d'occupation cible en %
   couleur: string;           // Couleur pour l'UI (#hex)
   logo?: string;             // URL ou base64 du logo
   actif: boolean;            // Site actif ou archivé
@@ -33,7 +34,8 @@ export const DEFAULT_SITE: Omit<Site, 'id' | 'createdAt' | 'updatedAt'> = {
   boutiquesMin: 100,
   boutiquesMax: 120,
   investissement: 85_000_000_000, // 85 milliards FCFA
-  nombreBatiments: 6,
+  nombreBatiments: 8, // 8 bâtiments: CC, Market, BB1-BB4, ZE, MA
+  occupationCible: 85, // 85% d'occupation cible
   couleur: '#18181b',
   actif: true,
 };
