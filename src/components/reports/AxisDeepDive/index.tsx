@@ -38,7 +38,7 @@ import {
   useAvancementParAxe,
   useAlertes,
 } from '@/hooks';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, AXES_CONFIG_FULL } from '@/data/constants';
 import { cn } from '@/lib/utils';
 
 import { ReportHeader } from '../shared/ReportHeader';
@@ -49,57 +49,31 @@ import { AxisRisks } from './AxisRisks';
 import { AxisRecommendations } from './AxisRecommendations';
 import { AxisSync } from './AxisSync';
 
-// Configuration des 6 axes stratégiques
-const AXES_CONFIG = {
-  axe1_rh: {
-    code: 'axe1_rh',
-    label: 'RH & Organisation',
-    shortLabel: 'RH',
-    icon: Users,
-    color: '#EF4444', // red-500
-    description: 'Recrutement, formation, organisation des équipes',
-  },
-  axe2_commercial: {
-    code: 'axe2_commercial',
-    label: 'Commercial & Leasing',
-    shortLabel: 'Commercial',
-    icon: Building2,
-    color: '#3B82F6', // blue-500
-    description: 'Commercialisation, baux, occupation',
-  },
-  axe3_technique: {
-    code: 'axe3_technique',
-    label: 'Technique & Handover',
-    shortLabel: 'Technique',
-    icon: Wrench,
-    color: '#8B5CF6', // violet-500
-    description: 'Réception, systèmes, maintenance',
-  },
-  axe4_budget: {
-    code: 'axe4_budget',
-    label: 'Budget & Pilotage',
-    shortLabel: 'Budget',
-    icon: DollarSign,
-    color: '#F59E0B', // amber-500
-    description: 'Budget, suivi financier, reporting',
-  },
-  axe5_marketing: {
-    code: 'axe5_marketing',
-    label: 'Marketing & Communication',
-    shortLabel: 'Marketing',
-    icon: Megaphone,
-    color: '#EC4899', // pink-500
-    description: 'Communication, événements, branding',
-  },
-  axe6_exploitation: {
-    code: 'axe6_exploitation',
-    label: 'Exploitation & Systèmes',
-    shortLabel: 'Exploitation',
-    icon: Briefcase,
-    color: '#10B981', // emerald-500
-    description: 'Exploitation, procédures, systèmes',
-  },
-};
+// Icônes et descriptions locales (UI-specific)
+const AXES_UI_CONFIG = {
+  rh: { icon: Users, description: 'Recrutement, formation, organisation des équipes' },
+  commercialisation: { icon: Building2, description: 'Commercialisation, baux, occupation' },
+  technique: { icon: Wrench, description: 'Réception, systèmes, maintenance' },
+  budget: { icon: DollarSign, description: 'Budget, suivi financier, reporting' },
+  marketing: { icon: Megaphone, description: 'Communication, événements, branding' },
+  exploitation: { icon: Briefcase, description: 'Exploitation, procédures, systèmes' },
+} as const;
+
+// Configuration des 6 axes - fusionne AXES_CONFIG_FULL (constants.ts) avec config UI locale
+const AXES_CONFIG = Object.fromEntries(
+  Object.entries(AXES_CONFIG_FULL)
+    .filter(([key]) => key !== 'divers') // Exclure axe8_divers
+    .map(([key, data]) => [
+      data.code, // axe1_rh, axe2_commercial, etc.
+      {
+        code: data.code,
+        label: data.label,
+        shortLabel: data.labelCourt,
+        color: data.color,
+        ...AXES_UI_CONFIG[key as keyof typeof AXES_UI_CONFIG],
+      },
+    ])
+) as Record<string, { code: string; label: string; shortLabel: string; color: string; icon: typeof Users; description: string }>;
 
 type AxeCode = keyof typeof AXES_CONFIG;
 

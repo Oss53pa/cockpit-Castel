@@ -10,6 +10,7 @@ import { AXE_SHORT_LABELS, AXE_CONFIG, type Axe } from '@/types';
 import { cn } from '@/lib/utils';
 import type { Trend } from '@/lib/calculations';
 import { useEffect, useState, useRef } from 'react';
+import { METEO_STYLES, type MeteoType } from '@/data/constants';
 
 // SVG Weather Icons - Animated
 function SunIcon({ className }: { className?: string }) {
@@ -80,39 +81,20 @@ function StormIcon({ className }: { className?: string }) {
   );
 }
 
-// Mapping météo vers icône et style
-const METEO_CONFIG = {
-  SOLEIL: {
-    icon: SunIcon,
-    label: 'Soleil',
-    bgColor: 'bg-gradient-to-br from-green-50 to-emerald-100',
-    borderColor: 'border-green-200',
-    iconColor: 'text-amber-500',
-    textColor: 'text-green-700',
-    glowClass: 'hover:glow-success',
-    progressColor: 'bg-green-500',
-  },
-  NUAGEUX: {
-    icon: CloudIcon,
-    label: 'Nuageux',
-    bgColor: 'bg-gradient-to-br from-amber-50 to-orange-100',
-    borderColor: 'border-amber-200',
-    iconColor: 'text-amber-600',
-    textColor: 'text-amber-700',
-    glowClass: 'hover:glow-warning',
-    progressColor: 'bg-amber-500',
-  },
-  ORAGEUX: {
-    icon: StormIcon,
-    label: 'Orageux',
-    bgColor: 'bg-gradient-to-br from-red-50 to-rose-100',
-    borderColor: 'border-red-200',
-    iconColor: 'text-red-500',
-    textColor: 'text-red-700',
-    glowClass: 'hover:glow-error',
-    progressColor: 'bg-red-500',
-  },
-};
+// Mapping des icônes SVG animées locales (les styles viennent de METEO_STYLES)
+const METEO_ICONS = {
+  SOLEIL: SunIcon,
+  NUAGEUX: CloudIcon,
+  ORAGEUX: StormIcon,
+} as const;
+
+// Helper pour obtenir config complète (styles + icône)
+function getMeteoConfig(meteo: MeteoType) {
+  return {
+    ...METEO_STYLES[meteo],
+    icon: METEO_ICONS[meteo],
+  };
+}
 
 // Calculer la météo en fonction de l'écart prévu/réalisé
 function calculerMeteo(avancement: number, prevu: number): 'SOLEIL' | 'NUAGEUX' | 'ORAGEUX' {
@@ -159,7 +141,7 @@ function MeteoAxeCard({
   }, [animationDelay]);
 
   const meteo = calculerMeteo(avancement, prevu);
-  const config = METEO_CONFIG[meteo];
+  const config = getMeteoConfig(meteo);
   const WeatherIcon = config.icon;
 
   const TrendIcon =

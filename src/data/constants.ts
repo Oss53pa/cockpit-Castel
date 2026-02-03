@@ -260,6 +260,49 @@ export const AXES_CONFIG_FULL = {
 } as const;
 
 // ============================================================================
+// CONFIGURATION MÉTÉO - STYLES PARTAGÉS
+// Les icônes sont définies localement dans chaque composant (lucide, SVG, etc.)
+// ============================================================================
+
+export const METEO_STYLES = {
+  SOLEIL: {
+    label: 'Soleil',
+    emoji: '☀️',
+    bgColor: 'bg-gradient-to-br from-green-50 to-emerald-100',
+    borderColor: 'border-green-200',
+    iconColor: 'text-amber-500',
+    textColor: 'text-green-700',
+    glowClass: 'hover:glow-success',
+    progressColor: 'bg-green-500',
+    color: 'text-green-500',
+  },
+  NUAGEUX: {
+    label: 'Nuageux',
+    emoji: '🌤️',
+    bgColor: 'bg-gradient-to-br from-amber-50 to-orange-100',
+    borderColor: 'border-amber-200',
+    iconColor: 'text-amber-600',
+    textColor: 'text-amber-700',
+    glowClass: 'hover:glow-warning',
+    progressColor: 'bg-amber-500',
+    color: 'text-amber-500',
+  },
+  ORAGEUX: {
+    label: 'Orageux',
+    emoji: '⛈️',
+    bgColor: 'bg-gradient-to-br from-red-50 to-rose-100',
+    borderColor: 'border-red-200',
+    iconColor: 'text-red-500',
+    textColor: 'text-red-700',
+    glowClass: 'hover:glow-error',
+    progressColor: 'bg-red-500',
+    color: 'text-red-500',
+  },
+} as const;
+
+export type MeteoType = keyof typeof METEO_STYLES;
+
+// ============================================================================
 // COULEURS THÈME PROJET
 // ============================================================================
 

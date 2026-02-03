@@ -99,35 +99,41 @@ function getStatutIcon(statut: string): string {
 }
 
 // Import constantes centralisées
+import { AXES_CONFIG_FULL } from '@/data/constants';
 // Données du site maintenant récupérées via useCurrentSite()
 
 // Types
 type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
 type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'construction' | 'divers';
 
-// Configuration des axes - Design Premium (palette slate/indigo)
-const AXES_CONFIG: Record<AxeType, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  rh: { label: 'RH & Organisation', icon: Users, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  commercial: { label: 'Commercial & Leasing', icon: Building2, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  technique: { label: 'Technique & Handover', icon: Wrench, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  budget: { label: 'Budget & Finances', icon: DollarSign, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  marketing: { label: 'Marketing & Communication', icon: Megaphone, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  exploitation: { label: 'Exploitation & Juridique', icon: Settings, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  construction: { label: 'Construction', icon: Building2, color: 'text-slate-700', bgColor: 'bg-slate-100' },
-  divers: { label: 'Divers', icon: Target, color: 'text-slate-600', bgColor: 'bg-slate-50' },
+// Icônes locales pour les axes (UI-specific)
+const AXES_ICONS: Record<AxeType, React.ElementType> = {
+  rh: Users,
+  commercial: Building2,
+  technique: Wrench,
+  budget: DollarSign,
+  marketing: Megaphone,
+  exploitation: Settings,
+  construction: Building2,
+  divers: Target,
 };
 
-// Mapping axe vers code DB
-const axeToDbCode: Record<AxeType, string> = {
-  rh: 'axe1_rh',
-  commercial: 'axe2_commercial',
-  technique: 'axe3_technique',
-  budget: 'axe4_budget',
-  marketing: 'axe5_marketing',
-  exploitation: 'axe6_exploitation',
-  construction: 'axe7_construction',
-  divers: 'divers',
+// Génère AXES_CONFIG à partir de AXES_CONFIG_FULL + icônes locales
+const AXES_CONFIG: Record<AxeType, { label: string; icon: React.ElementType; color: string; bgColor: string; dbCode: string }> = {
+  rh: { label: AXES_CONFIG_FULL.rh.label, icon: AXES_ICONS.rh, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.rh.code },
+  commercial: { label: AXES_CONFIG_FULL.commercialisation.label, icon: AXES_ICONS.commercial, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.commercialisation.code },
+  technique: { label: AXES_CONFIG_FULL.technique.label, icon: AXES_ICONS.technique, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.technique.code },
+  budget: { label: AXES_CONFIG_FULL.budget.label, icon: AXES_ICONS.budget, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.budget.code },
+  marketing: { label: AXES_CONFIG_FULL.marketing.label, icon: AXES_ICONS.marketing, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.marketing.code },
+  exploitation: { label: AXES_CONFIG_FULL.exploitation.label, icon: AXES_ICONS.exploitation, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: AXES_CONFIG_FULL.exploitation.code },
+  construction: { label: 'Construction', icon: AXES_ICONS.construction, color: 'text-slate-700', bgColor: 'bg-slate-100', dbCode: 'axe7_construction' },
+  divers: { label: AXES_CONFIG_FULL.divers.label, icon: AXES_ICONS.divers, color: 'text-slate-600', bgColor: 'bg-slate-50', dbCode: AXES_CONFIG_FULL.divers.code },
 };
+
+// Mapping axe vers code DB (utilise dbCode de AXES_CONFIG)
+const axeToDbCode: Record<AxeType, string> = Object.fromEntries(
+  Object.entries(AXES_CONFIG).map(([key, val]) => [key, val.dbCode])
+) as Record<AxeType, string>;
 
 // Configuration météo - Design Premium (monochrome subtil)
 const METEO_CONFIG: Record<MeteoType, { icon: React.ElementType; color: string; bgColor: string; borderColor: string }> = {

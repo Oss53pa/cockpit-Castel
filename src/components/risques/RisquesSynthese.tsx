@@ -29,8 +29,8 @@ function getNiveauRisque(score: number): RisqueNiveau {
   return 'faible';
 }
 
-// Configuration des axes avec icônes
-const AXES_CONFIG = [
+// Catégories de risques avec icônes
+const RISQUE_CATEGORIES = [
   { id: 'technique', label: 'Technique / Chantier', icon: Building2, color: 'text-blue-600', bgColor: 'bg-blue-50' },
   { id: 'commercial', label: 'Commercial / BEFA', icon: TrendingUp, color: 'text-green-600', bgColor: 'bg-green-50' },
   { id: 'rh', label: 'RH / Équipe', icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-50' },
@@ -79,7 +79,7 @@ export function RisquesSynthese() {
 
   // Statistiques par catégorie
   const statsByCategorie = useMemo(() => {
-    return AXES_CONFIG.map((axe) => {
+    return RISQUE_CATEGORIES.map((axe) => {
       const risquesCategorie = risquesData.filter(
         (r) => r.categorie === axe.id ||
                (axe.id === 'financier' && r.categorie === 'budget') ||

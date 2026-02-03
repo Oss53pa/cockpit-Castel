@@ -11,6 +11,7 @@
 
 import { db, type UpdateLink, type EmailNotification, type EmailTemplate } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 import emailjs from '@emailjs/browser';
 import {
   isFirebaseConfigured,
@@ -652,7 +653,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 
           <div class="contact-info">
             <div class="contact-label">Votre contact</div>
-            <div class="contact-name">Pamela ATOKOUNA</div>
+            <div class="contact-name">${PROJET_CONFIG.presentateur.nom}</div>
             <div class="contact-role">Coordinatrice de projet</div>
           </div>
         </div>
@@ -770,7 +771,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 
           <div class="contact-info">
             <div class="contact-label">Votre contact</div>
-            <div class="contact-name">Pamela ATOKOUNA</div>
+            <div class="contact-name">${PROJET_CONFIG.presentateur.nom}</div>
             <div class="contact-role">Coordinatrice de projet</div>
           </div>
         </div>
@@ -893,7 +894,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 
           <div style="margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px;">
             <div style="font-size: 12px; color: #166534; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
-            <div style="font-weight: 600; color: #14532d; font-size: 15px;">Pamela ATOKOUNA</div>
+            <div style="font-weight: 600; color: #14532d; font-size: 15px;">${PROJET_CONFIG.presentateur.nom}</div>
             <div style="color: #166534; font-size: 13px;">Coordinatrice de projet</div>
           </div>
         </div>
@@ -1030,7 +1031,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 
           <div style="margin-top: 16px; padding: 16px; background: #fef2f2; border-radius: 8px;">
             <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
-            <div style="font-weight: 600; color: #7f1d1d; font-size: 15px;">Pamela ATOKOUNA</div>
+            <div style="font-weight: 600; color: #7f1d1d; font-size: 15px;">${PROJET_CONFIG.presentateur.nom}</div>
             <div style="color: #991b1b; font-size: 13px;">Coordinatrice de projet</div>
           </div>
         </div>

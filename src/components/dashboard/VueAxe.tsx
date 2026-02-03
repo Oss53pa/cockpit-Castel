@@ -24,13 +24,14 @@ import { Card, Badge, Button, Progress } from '@/components/ui';
 import { useJalons, useActions, useUsers } from '@/hooks';
 import { cn } from '@/lib/utils';
 import { AXE_LABELS, AXE_SHORT_LABELS, AXE_CONFIG, type Axe } from '@/types';
+import { METEO_STYLES } from '@/data/constants';
 
-// Configuration météo
-const METEO_CONFIG = {
-  SOLEIL: { icon: Sun, emoji: '☀️', color: 'text-green-500' },
-  NUAGEUX: { icon: Cloud, emoji: '🌤️', color: 'text-amber-500' },
-  ORAGEUX: { icon: CloudRain, emoji: '⛈️', color: 'text-red-500' },
-};
+// Mapping local des icônes météo (les styles viennent de constants.ts)
+const METEO_ICONS = {
+  SOLEIL: Sun,
+  NUAGEUX: Cloud,
+  ORAGEUX: CloudRain,
+} as const;
 
 // Configuration statuts
 const ACTION_STATUT_CONFIG = {
@@ -86,7 +87,7 @@ function JalonCard({ jalon, actions, users, onAddAction }: JalonCardProps) {
 
   const avancement = jalon.avancement_prealables || 0;
   const meteo = calculerMeteoJalon(avancement, jalon.date_prevue);
-  const meteoConfig = METEO_CONFIG[meteo];
+  const meteoConfig = METEO_STYLES[meteo];
   const responsable = users.find((u) => String(u.id) === String(jalon.responsable));
   const isTermine = avancement >= 100;
 
@@ -249,7 +250,7 @@ export function VueAxe({ axe, onBack, onAddJalon, onAddAction }: VueAxeProps) {
   }, [jalonsAxe]);
 
   const meteoGlobal = calculerMeteoJalon(avancementGlobal, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
-  const meteoConfig = METEO_CONFIG[meteoGlobal];
+  const meteoConfig = METEO_STYLES[meteoGlobal];
   const axeConfig = AXE_CONFIG[axe];
 
   return (
