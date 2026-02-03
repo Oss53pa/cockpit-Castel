@@ -49,7 +49,7 @@ import {
 
 // Schema pour les champs obligatoires
 const step1Schema = z.object({
-  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction'] as const, {
+  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction', 'axe8_divers'] as const, {
     required_error: 'L\'axe est obligatoire',
   }),
   titre: z.string().min(3, 'Le libellé doit contenir au moins 3 caractères').max(100, 'Le libellé ne peut pas dépasser 100 caractères'),
@@ -90,6 +90,7 @@ const AXE_PREFIXES: Record<string, string> = {
   'axe5_marketing': 'MKT',
   'axe6_exploitation': 'EXP',
   'axe7_construction': 'CON',
+  'axe8_divers': 'DIV',
 };
 
 export function JalonWizard({

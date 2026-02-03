@@ -1,11 +1,31 @@
-import { Wallet, ArrowDownLeft, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Wallet, ArrowDownLeft, CheckCircle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, Progress } from '@/components/ui';
-import { useBudgetSynthese } from '@/hooks';
+import { Card, Progress, Button, useToast } from '@/components/ui';
+import { useBudgetSynthese, resetBudgetEngagements } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
 
 export function BudgetSynthese() {
   const synthese = useBudgetSynthese();
+  const toast = useToast();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetEngagements = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir réinitialiser tous les engagements et réalisations à 0 ?')) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const count = await resetBudgetEngagements();
+      toast.success('Engagements réinitialisés', `${count} ligne(s) budgétaire(s) mise(s) à jour`);
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur', 'Impossible de réinitialiser les engagements');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const items = [
     {
@@ -113,6 +133,22 @@ export function BudgetSynthese() {
           </p>
         </div>
       </div>
+
+      {/* Bouton réinitialisation */}
+      {(synthese.engage > 0 || synthese.realise > 0) && (
+        <div className="mt-4 pt-4 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResetEngagements}
+            disabled={isResetting}
+            className="w-full text-warning-600 border-warning-300 hover:bg-warning-50"
+          >
+            <RotateCcw className={cn('h-4 w-4 mr-2', isResetting && 'animate-spin')} />
+            {isResetting ? 'Réinitialisation...' : 'Réinitialiser les engagements à 0'}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

@@ -41,7 +41,7 @@ const quickAddSchema = z.object({
   responsableId: z.number({ required_error: 'Veuillez sélectionner un responsable' }),
   date_fin_prevue: z.string().min(1, 'La date d\'échéance est obligatoire'),
   jalonId: z.number().nullable(),
-  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction'] as const).nullable(),
+  axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction', 'axe8_divers'] as const).nullable(),
 });
 
 type QuickAddFormData = z.infer<typeof quickAddSchema>;
@@ -62,6 +62,7 @@ const AXE_PREFIXES: Record<string, string> = {
   'axe5_marketing': 'MKT',
   'axe6_exploitation': 'EXP',
   'axe7_construction': 'CON',
+  'axe8_divers': 'DIV',
 };
 
 export function QuickAddAction({

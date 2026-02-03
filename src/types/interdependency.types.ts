@@ -171,6 +171,8 @@ export const AXE_COLORS: Record<Axe, AxeColorSet> = {
   axe4_budget: { bg: '#F59E0B', light: '#FEF3C7', dark: '#B45309' },
   axe5_marketing: { bg: '#EC4899', light: '#FCE7F3', dark: '#9D174D' },
   axe6_exploitation: { bg: '#10B981', light: '#D1FAE5', dark: '#065F46' },
+  axe7_construction: { bg: '#14B8A6', light: '#CCFBF1', dark: '#0F766E' },
+  axe8_divers: { bg: '#6B7280', light: '#F3F4F6', dark: '#374151' },
 };
 
 /**
