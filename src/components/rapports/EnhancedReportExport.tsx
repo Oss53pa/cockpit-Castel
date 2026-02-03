@@ -42,6 +42,7 @@ import {
   useAlertes,
   useHistorique,
   useSync,
+  useCurrentSite,
 } from '@/hooks';
 import {
   AXE_LABELS,
@@ -79,7 +80,7 @@ import {
   generateExecutiveSummary,
   generateSectionComment,
 } from '@/services/reportAnalysisService';
-import { PROJET_CONFIG } from '@/data/constants';
+// Données du site récupérées via useCurrentSite()
 
 interface ReportSection {
   id: string;
@@ -192,6 +193,10 @@ export function EnhancedReportExport() {
   const alertes = useAlertes();
   const historique = useHistorique(100);
   const syncData = useSync(1, 'cosmos-angre');
+  const currentSite = useCurrentSite();
+
+  // Nom du site depuis la DB
+  const siteName = currentSite?.nom || 'COSMOS ANGRÉ';
 
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'copil',
@@ -202,7 +207,7 @@ export function EnhancedReportExport() {
     'budget',
     'risques',
   ]);
-  const [reportTitle, setReportTitle] = useState(`Rapport de projet ${PROJET_CONFIG.nom}`);
+  const [reportTitle, setReportTitle] = useState(`Rapport de projet ${siteName}`);
   const [generating, setGenerating] = useState<string | null>(null);
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod | null>(() => {
     const now = new Date();
@@ -371,7 +376,7 @@ export function EnhancedReportExport() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text(PROJET_CONFIG.nom, pageWidth / 2, 25, { align: 'center' });
+      doc.text(siteName, pageWidth / 2, 25, { align: 'center' });
 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
@@ -461,7 +466,7 @@ export function EnhancedReportExport() {
       // Pied de page
       doc.setFontSize(8);
       doc.setTextColor(...COLORS.textLight);
-      doc.text(`Document confidentiel - ${PROJET_CONFIG.nom}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+      doc.text(`Document confidentiel - ${siteName}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
       // ==================== DASHBOARD COPIL ====================
       if (selectedSections.includes('copil')) {
@@ -1309,7 +1314,7 @@ export function EnhancedReportExport() {
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.textLight);
         doc.text(
-          `Page ${i}/${pageCount} - ${PROJET_CONFIG.nom} - ${today.toLocaleDateString('fr-FR')}`,
+          `Page ${i}/${pageCount} - ${siteName} - ${today.toLocaleDateString('fr-FR')}`,
           pageWidth / 2,
           pageHeight - 8,
           { align: 'center' }
@@ -1317,7 +1322,7 @@ export function EnhancedReportExport() {
       }
 
       // Sauvegarde
-      doc.save(`rapport-${PROJET_CONFIG.nom.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`rapport-${siteName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
 
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -1345,7 +1350,7 @@ export function EnhancedReportExport() {
       // Summary sheet
       if (selectedSections.includes('summary')) {
         const summaryData = [
-          [`RAPPORT DE PROJET - ${PROJET_CONFIG.nom}`],
+          [`RAPPORT DE PROJET - ${siteName}`],
           [''],
           ['Date de generation', new Date().toLocaleDateString('fr-FR')],
           [''],
@@ -1523,7 +1528,7 @@ export function EnhancedReportExport() {
         }
       }
 
-      XLSX.writeFile(wb, `export-${PROJET_CONFIG.nom.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `export-${siteName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
       console.error('Error generating Excel:', error);
       alert('Erreur lors de la generation Excel');

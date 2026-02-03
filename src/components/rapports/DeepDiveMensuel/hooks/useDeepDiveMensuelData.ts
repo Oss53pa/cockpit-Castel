@@ -12,8 +12,14 @@ import {
   useBudgetParAxe,
   useRisques,
 } from '@/hooks';
-// Utilise uniquement les configurations, pas les données hardcodées
-import { PROJET_CONFIG, SEUILS_METEO, SEUILS_UI } from '@/data/constants';
+// Import seuils pour calculs météo (ces configurations ne changent pas)
+import { SEUILS_METEO, SEUILS_UI } from '@/data/constants';
+
+// Dates du projet (configuration fixe)
+const PROJECT_DATES = {
+  dateDebut: '2026-01-01',
+  dateFin: '2027-02-28',
+};
 import type {
   AxeType,
   MeteoNiveau,

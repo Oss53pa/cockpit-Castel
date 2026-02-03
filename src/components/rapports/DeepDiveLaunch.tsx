@@ -94,8 +94,8 @@ import {
   useBudgetSynthese,
   useBudgetParAxe,
   useRisques,
+  useCurrentSite,
 } from '@/hooks';
-import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -1119,11 +1119,11 @@ AXE COMMUNICATION
     comment: '',
     section: 'etat',
     duration: '6 min',
-    content: `LES ${PROJET_CONFIG.nombreBatiments} BÂTIMENTS DU PROJET ${PROJET_CONFIG.nom}
+    content: `LES ${siteData.nombreBatiments} BÂTIMENTS DU PROJET ${siteData.nom}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CENTRE COMMERCIAL (${PROJET_CONFIG.nom})
+CENTRE COMMERCIAL (${siteData.nom})
 • Surface GLA: 15 000 m² | Niveaux: R+3
 • Galeries commerciales, Food Court, Espaces loisirs
 • Bâtiment PILOTE - Synchronisation Construction/Mobilisation
@@ -1143,7 +1143,7 @@ BIG BOX 1 à 4 (x4)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SURFACE GLA TOTALE: ${PROJET_CONFIG.surfaceGLA.toLocaleString()} m²`
+SURFACE GLA TOTALE: ${siteData.surfaceGLA.toLocaleString()} m²`
   },
   {
     id: 'launch_13',
@@ -1654,7 +1654,7 @@ DOCUMENTS
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-${PROJET_CONFIG.nom}
+${siteData.nom}
 Opening Q4 2026`
   },
 ];
@@ -1920,6 +1920,18 @@ export function DeepDiveLaunch() {
   const budget = useBudgetSynthese();
   const budgetParAxe = useBudgetParAxe();
   const risques = useRisques();
+  const currentSite = useCurrentSite();
+
+  // Données du site (100% temps réel depuis la DB)
+  const siteData = useMemo(() => ({
+    surfaceGLA: currentSite?.surface || 45000,
+    nombreBatiments: currentSite?.nombreBatiments || 8,
+    softOpening: currentSite?.dateOuverture || '2026-11-15',
+    inauguration: currentSite?.dateInauguration || '2026-12-15',
+    occupationCible: currentSite?.occupationCible || 85,
+    nom: currentSite?.nom || 'COSMOS ANGRÉ',
+    code: currentSite?.code || 'COSMOS',
+  }), [currentSite]);
 
   // Helper functions pour récupérer les données par axe
   const getActionsForAxe = (axe: AxeType) => {
@@ -2266,7 +2278,7 @@ export function DeepDiveLaunch() {
     if (slideItem.id === 'launch_1') {
       return (
         <div style={{ ...baseStyles, backgroundColor: primaryColor }} className="h-full flex flex-col items-center justify-center text-white p-8">
-          <h1 className="text-4xl font-bold mb-2">{PROJET_CONFIG.nom}</h1>
+          <h1 className="text-4xl font-bold mb-2">{siteData.nom}</h1>
           <div className="w-24 h-1 mb-6" style={{ backgroundColor: accentColor }} />
           <h2 className="text-2xl mb-2" style={{ color: accentColor }}>Deep Dive #1</h2>
           <p className="text-lg opacity-80">Lancement & Cadrage</p>
@@ -3149,7 +3161,7 @@ export function DeepDiveLaunch() {
             {/* Total footer */}
             <div className="mt-2 p-1.5 rounded-lg text-center" style={{ backgroundColor: `${primaryColor}10` }}>
               <span className="text-xs font-semibold" style={{ color: primaryColor }}>
-                Surface GLA Totale: {PROJET_CONFIG.surfaceGLA.toLocaleString()} m²
+                Surface GLA Totale: {siteData.surfaceGLA.toLocaleString()} m²
               </span>
             </div>
           </div>
@@ -3735,7 +3747,7 @@ export function DeepDiveLaunch() {
           color: textColor,
           bold: true,
         });
-        slide.addText(PROJET_CONFIG.nom, {
+        slide.addText(siteData.nom, {
           x: 7.5,
           y: 0.2,
           w: 2,

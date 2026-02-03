@@ -55,9 +55,9 @@ import {
   markDeepDiveAsPresented,
   createDeepDive,
 } from '@/hooks/useDeepDives';
+import { useCurrentSite } from '@/hooks';
 import type { DeepDive, ProjectWeather } from '@/types/deepDive';
 import { WEATHER_CONFIG } from '@/types/deepDive';
-import { PROJET_CONFIG } from '@/data/constants';
 
 interface JournalProps {
   onOpenDeepDive: (id: number) => void;
@@ -241,6 +241,7 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
 export function Journal({ onOpenDeepDive }: JournalProps) {
   const deepDives = useDeepDives();
   const stats = useDeepDiveStats();
+  const currentSite = useCurrentSite();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -297,7 +298,7 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
   const handleNewDeepDive = async () => {
     const newId = await createDeepDive({
       titre: 'Nouveau DeepDive',
-      projet: PROJET_CONFIG.nom,
+      projet: currentSite?.nom || 'COSMOS ANGRÉ',
       periode: new Date().toISOString().slice(0, 7),
       periodeDebut: new Date().toISOString().slice(0, 7),
       periodeFin: new Date().toISOString().slice(0, 7),

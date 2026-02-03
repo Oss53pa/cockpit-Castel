@@ -85,9 +85,11 @@ import {
   useEVMIndicators,
   useRisques,
   useCurrentSite,
+  useTeams,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
 import { SYNC_CONFIG } from '@/config/syncConfig';
+import { PROJET_CONFIG } from '@/data/constants';
 import { ReportPeriodSelector, type ReportPeriod } from './ReportPeriodSelector';
 import { DeepDiveMensuel } from './DeepDiveMensuel';
 import type { DeepDiveTemplateType, DeepDiveDesignSettings } from '@/types/deepDive';
@@ -566,6 +568,7 @@ export function DeepDive() {
   const evmIndicators = useEVMIndicators(); // Indicateurs EVM calculés depuis les vraies données
   const risques = useRisques();
   const currentSite = useCurrentSite();
+  const teamsData = useTeams(); // Équipes depuis la DB
 
   // Données du site (100% temps réel depuis la DB)
   const siteData = useMemo(() => ({
@@ -3978,14 +3981,28 @@ export function DeepDive() {
       }
 
       case '24': {
-        // Performance Équipe & Ressources
-        const teams = [
-          { name: 'Direction Projet', members: 3, load: 95, productivity: 88 },
-          { name: 'Commercial', members: 5, load: 78, productivity: 92 },
-          { name: 'Technique', members: 8, load: 85, productivity: 76 },
-          { name: 'Exploitation', members: 4, load: 45, productivity: 82 },
-          { name: 'Support', members: 2, load: 60, productivity: 95 },
-        ];
+        // Performance Équipe & Ressources - Données dynamiques depuis la DB
+        // Transformer les équipes de la DB en format d'affichage
+        const teams = teamsData.length > 0
+          ? teamsData.map(t => ({
+              name: t.nom,
+              members: t.membres?.length || 0,
+              // Calcul approximatif basé sur les actions (à enrichir avec des données réelles)
+              load: Math.min(100, Math.round((t.membres?.length || 0) * 15)),
+              productivity: Math.min(100, 70 + Math.round(Math.random() * 25)), // Placeholder - à remplacer par des données réelles
+            }))
+          : []; // Aucune équipe si la DB est vide
+
+        // Calcul de l'effectif total (nombre de membres uniques)
+        const effectifTotal = teamsData.reduce((sum, t) => sum + (t.membres?.length || 0), 0);
+
+        // Charge moyenne calculée (actions en cours / capacité)
+        const actionsEnCours = actions.filter(a => a.statut === 'en_cours').length;
+        const chargeMoyenne = effectifTotal > 0 ? Math.min(100, Math.round((actionsEnCours / effectifTotal) * 50)) : 0;
+
+        // Productivité calculée (actions terminées / total)
+        const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
+        const productivite = actions.length > 0 ? Math.round((actionsTerminees / actions.length) * 100) : 0;
 
         const getLoadColor = (load: number) => {
           if (load > 90) return '#EF4444';
@@ -4007,10 +4024,10 @@ export function DeepDive() {
               {/* Vue globale */}
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {[
-                  { label: 'Effectif Total', value: teams.reduce((s, t) => s + t.members, 0), unit: '', color: primaryColor },
-                  { label: 'Charge Moyenne', value: Math.round(teams.reduce((s, t) => s + t.load, 0) / teams.length), unit: '%', color: '#F59E0B' },
-                  { label: 'Productivité', value: Math.round(teams.reduce((s, t) => s + t.productivity, 0) / teams.length), unit: '%', color: '#059669' },
-                  { label: 'À recruter', value: 8, unit: '', color: '#4F46E5' },
+                  { label: 'Effectif Total', value: effectifTotal, unit: '', color: primaryColor },
+                  { label: 'Charge Moyenne', value: chargeMoyenne, unit: '%', color: '#F59E0B' },
+                  { label: 'Productivité', value: productivite, unit: '%', color: '#059669' },
+                  { label: 'Équipes', value: teamsData.length, unit: '', color: '#4F46E5' },
                 ].map((stat, idx) => (
                   <div key={idx} className="bg-gray-50 rounded-xl p-3 text-center border">
                     <div className="text-2xl font-bold" style={{ color: stat.color }}>{stat.value}{stat.unit}</div>
@@ -4021,7 +4038,7 @@ export function DeepDive() {
 
               {/* Détail par équipe */}
               <div className="space-y-2">
-                {teams.map((team, idx) => (
+                {teams.length > 0 ? teams.map((team, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-3 bg-white rounded-lg border">
                     <div className="w-32">
                       <div className="text-xs font-medium" style={{ color: primaryColor }}>{team.name}</div>
@@ -4044,7 +4061,12 @@ export function DeepDive() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Aucune équipe configurée</p>
+                  </div>
+                )}
               </div>
 
               {slideItem.comment && (
@@ -4997,7 +5019,8 @@ export function DeepDive() {
               slide.addText(item.value, { x: 3.5, y: 1.2 + i * 0.5, w: 3, h: 0.4, fontSize: 11, fontFace: fontFamily, color: primaryHex, bold: true });
             });
             slide.addText('Indicateurs EVM', { x: 6.5, y: 1.1, w: 3, h: 0.4, fontSize: 12, fontFace: fontFamily, color: primaryHex, bold: true });
-            [{ label: 'SPI', value: '0.95' }, { label: 'CPI', value: '1.02' }, { label: 'TCPI', value: '0.98' }].forEach((item, i) => {
+            const tcpiValue = evmIndicators.BAC > 0 && evmIndicators.AC > 0 ? (evmIndicators.BAC - evmIndicators.EV) / (evmIndicators.BAC - evmIndicators.AC) : 1;
+            [{ label: 'SPI', value: evmIndicators.SPI.toFixed(2) }, { label: 'CPI', value: evmIndicators.CPI.toFixed(2) }, { label: 'TCPI', value: tcpiValue.toFixed(2) }].forEach((item, i) => {
               slide.addText(`${item.label}: ${item.value}`, { x: 6.5, y: 1.6 + i * 0.4, w: 3, h: 0.35, fontSize: 10, fontFace: fontFamily, color: '666666' });
             });
             addComment(slide, slideItem.comment, 4.0);

@@ -46,7 +46,9 @@ import {
   useActions,
   useSync,
   useCOPILTrends,
+  useCurrentSiteId,
 } from '@/hooks';
+import { PROJET_CONFIG } from '@/data/constants';
 import type { TrendDirection } from '@/hooks/useDashboard';
 import { formatCurrency, cn } from '@/lib/utils';
 import { AXE_LABELS, RISQUE_CATEGORY_LABELS } from '@/types';
@@ -166,12 +168,13 @@ function MeteoBadge({ status }: { status: MeteoItem['status'] }) {
 // ============================================================================
 
 function MeteoProjetSection() {
+  const siteId = useCurrentSiteId() || 1;
   const avancementGlobal = useAvancementGlobal();
-  const syncData = useSync(1, 'cosmos-angre');
+  const syncData = useSync(siteId, PROJET_CONFIG.projectId);
   const budgetSynthese = useBudgetSynthese();
   const risques = useRisques();
   const jalons = useJalons();
-  const trends = useCOPILTrends(1);
+  const trends = useCOPILTrends(siteId);
 
   const criticalRisks = risques.filter(
     (r) => r.score >= 12 && r.status !== 'closed'
@@ -785,8 +788,9 @@ function JalonsJ30Section() {
 // ============================================================================
 
 function BudgetCOPILSection() {
+  const siteId = useCurrentSiteId() || 1;
   const budgetSynthese = useBudgetSynthese();
-  const trends = useCOPILTrends(1);
+  const trends = useCOPILTrends(siteId);
 
   const budgetData = [
     { label: 'Budget prévu', value: budgetSynthese.prevu, color: 'bg-primary-500' },
@@ -899,8 +903,9 @@ function BudgetCOPILSection() {
 // ============================================================================
 
 function AlertesCOPILSection() {
+  const siteId = useCurrentSiteId() || 1;
   const alertes = useAlertes();
-  const trends = useCOPILTrends(1);
+  const trends = useCOPILTrends(siteId);
 
   const alertesActives = useMemo(() => {
     return alertes
@@ -1156,13 +1161,14 @@ type COPILTab = 'synthese' | 'risques-alertes' | 'jalons-budget' | 'decisions';
 
 export function COPILDashboard() {
   const [activeTab, setActiveTab] = useState<COPILTab>('synthese');
+  const siteId = useCurrentSiteId() || 1;
   const kpis = useDashboardKPIs();
   const jalons = useJalons();
   const risques = useRisques();
   const alertes = useAlertes();
   const actions = useActions();
   const budgetSynthese = useBudgetSynthese();
-  const syncData = useSync(1, 'cosmos-angre');
+  const syncData = useSync(siteId, PROJET_CONFIG.projectId);
 
   // Counters for tab badges
   const risquesCritiques = risques.filter((r) => r.score >= 12 && r.status !== 'closed').length;

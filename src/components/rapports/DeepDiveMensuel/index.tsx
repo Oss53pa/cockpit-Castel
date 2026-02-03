@@ -51,7 +51,7 @@ import {
   toggleSectionExpanded,
   countActiveSlides,
 } from '@/data/deepDiveMensuelTemplate';
-import { PROJET_CONFIG } from '@/data/constants';
+import { useCurrentSite } from '@/hooks';
 import { useDeepDiveMensuelData } from './hooks/useDeepDiveMensuelData';
 
 // Import slides
@@ -225,8 +225,12 @@ export function DeepDiveMensuel({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Data hook
+  // Data hooks
   const data = useDeepDiveMensuelData();
+  const currentSite = useCurrentSite();
+
+  // Nom du site depuis la DB
+  const siteName = currentSite?.nom || 'COSMOS ANGRÉ';
 
   // Afficher un état de chargement si les données ne sont pas prêtes
   if (data.isLoading) {
@@ -321,10 +325,10 @@ export function DeepDiveMensuel({
           return (
             <PageGardeSlide
               data={{
-                projectName: PROJET_CONFIG.nom,
+                projectName: siteName,
                 mois: data.periode,
                 date: new Date().toLocaleDateString('fr-FR'),
-                presentateur: PROJET_CONFIG.presentateur.titre,
+                presentateur: 'Pamela Atokouna, DGA',
               }}
               {...props}
             />

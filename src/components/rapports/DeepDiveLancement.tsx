@@ -2010,7 +2010,7 @@ export function DeepDiveLancement() {
       <h1 class="text-3xl font-bold mb-2">DEEP DIVE LANCEMENT</h1>
       <p class="text-lg opacity-90">Projet Cosmos Angré - Validation Stratégique</p>
       <p class="text-sm opacity-75 mt-2">Date: ${dateFormatted}</p>
-      <p class="text-sm opacity-75">Présenté par: Pamela Atokouna, DGA | Destinataires: PDG, Actionnaires</p>
+      <p class="text-sm opacity-75">Présenté par: ${PROJET_CONFIG.presentateur.nom}, ${PROJET_CONFIG.presentateur.titre} | Destinataires: ${PROJET_CONFIG.destinataires.join(', ')}</p>
     </div>
   </div>
 
@@ -2399,7 +2399,7 @@ export function DeepDiveLancement() {
         x: 0.5, y: 4.2, w: 9, h: 0.4,
         fontSize: 16, fontFace: fontFamily, color: accentColor, align: 'center',
       });
-      coverSlide.addText('Présenté par : Pamela Atokouna, DGA', {
+      coverSlide.addText(`Présenté par : ${PROJET_CONFIG.presentateur.nom}, ${PROJET_CONFIG.presentateur.titre}`, {
         x: 0.5, y: 4.8, w: 9, h: 0.3,
         fontSize: 11, fontFace: fontFamily, color: 'CCCCCC', align: 'center',
       });
@@ -2536,7 +2536,7 @@ export function DeepDiveLancement() {
             Projet Cosmos Angré - Validation Stratégique
           </p>
           <p className="text-xs text-primary-400">
-            Présenté par : Pamela Atokouna, DGA | Destinataires : PDG, Actionnaires
+            Présenté par : {PROJET_CONFIG.presentateur.nom}, {PROJET_CONFIG.presentateur.titre} | Destinataires : {PROJET_CONFIG.destinataires.join(', ')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
