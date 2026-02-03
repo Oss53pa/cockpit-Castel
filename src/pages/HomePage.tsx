@@ -52,7 +52,10 @@ export function HomePage() {
 
       {/* Header */}
       <header className="flex items-center justify-between px-12 py-6">
-        <span className="text-lg font-semibold text-primary-900">{currentSite?.nom || kpis.projectName}</span>
+        <div>
+          <span className="text-lg font-semibold text-primary-900">{currentSite?.nom || kpis.projectName}</span>
+          <p className="text-sm text-primary-500">Mobilisation</p>
+        </div>
 
         <nav className="flex items-center gap-6">
           {/* Score de Santé PROPH3T */}
