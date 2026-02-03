@@ -3,7 +3,7 @@
  * Design épuré et élégant - Standards Linear/Stripe
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar,
   Download,
@@ -14,6 +14,8 @@ import {
   Clock,
   Circle,
   MoreHorizontal,
+  FileText,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +25,7 @@ import {
   useDashboardKPIs,
   useCOPILTrends,
   useSync,
+  useBudgetSynthese,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
 import { AXES_CONFIG_FULL } from '@/data/constants';
@@ -99,11 +102,33 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
   const risques = useRisques();
   const kpis = useDashboardKPIs();
   const trends = useCOPILTrends(siteId);
-  const syncData = useSync();
+  const syncData = useSync(siteId, 'cosmos-angre');
+  const budgetSynthese = useBudgetSynthese();
 
   const today = new Date();
   const weekNumber = getWeekNumber(today);
   const todayStr = today.toISOString().split('T')[0];
+
+  // Notes manuelles
+  const notesKey = `weekly-report-notes-${siteId}-${weekNumber}`;
+  const [notes, setNotes] = useState('');
+  const [notesSaved, setNotesSaved] = useState(false);
+
+  useEffect(() => {
+    const savedNotes = localStorage.getItem(notesKey);
+    if (savedNotes) setNotes(savedNotes);
+  }, [notesKey]);
+
+  const handleSaveNotes = useCallback(() => {
+    localStorage.setItem(notesKey, notes);
+    setNotesSaved(true);
+    setTimeout(() => setNotesSaved(false), 2000);
+  }, [notesKey, notes]);
+
+  // Calculer le pourcentage de budget consommé
+  const budgetPct = budgetSynthese.prevu > 0
+    ? Math.round((budgetSynthese.realise / budgetSynthese.prevu) * 100)
+    : 0;
 
   function getWeekNumber(date: Date): number {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -156,19 +181,22 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
       .slice(0, 4);
   }, [risques]);
 
-  // Avancement par axe
+  // Avancement par axe (tous les 8 axes)
   const axeStats = useMemo(() => {
-    return axesList.slice(0, 6).map(axe => {
-      const axeActions = actions.filter(a => a.axe_id === axe.code);
+    return axesList.map(axe => {
+      const axeActions = actions.filter(a => a.axe === axe.code);
       const termine = axeActions.filter(a => a.statut === 'termine').length;
       const total = axeActions.length;
-      return { axe, termine, total, pct: total > 0 ? Math.round((termine / total) * 100) : 0 };
-    }).filter(a => a.total > 0);
+      const avancementMoyen = axeActions.length > 0
+        ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
+        : 0;
+      return { axe, termine, total, pct: avancementMoyen };
+    });
   }, [actions]);
 
-  // Sync
-  const projectProgress = syncData?.projectProgress || 65;
-  const mobilizationProgress = syncData?.mobilizationProgress || 58;
+  // Sync - utiliser les vraies données de syncStatus
+  const projectProgress = syncData?.syncStatus?.projectProgress ?? metrics.avancement;
+  const mobilizationProgress = syncData?.syncStatus?.mobilizationProgress ?? Math.max(0, metrics.avancement - 5);
   const syncGap = projectProgress - mobilizationProgress;
 
   const trendVariation = trends?.avancementProjet?.variation || 0;
@@ -207,7 +235,7 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
             { label: 'Avancement', value: metrics.avancement, suffix: '%', trend: trendVariation, sparkData: [45, 52, 48, 61, 58, 65, metrics.avancement] },
             { label: 'Actions terminées', value: metrics.actionsTerminees, total: metrics.total, sparkData: [12, 15, 14, 18, 22, 25, metrics.actionsTerminees] },
             { label: 'Jalons atteints', value: metrics.jalonsAtteints, total: metrics.jalonsTotal, sparkData: [3, 4, 5, 6, 7, 8, metrics.jalonsAtteints] },
-            { label: 'Budget consommé', value: kpis.budgetConsomme || 0, suffix: '%', sparkData: [20, 25, 30, 35, 38, 42, kpis.budgetConsomme || 0] },
+            { label: 'Budget consommé', value: budgetPct, suffix: '%', sparkData: [20, 25, 30, 35, 38, 42, budgetPct] },
           ].map((metric, idx) => (
             <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
               <div className="flex items-start justify-between mb-4">
@@ -355,7 +383,7 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
             <div className="space-y-3">
               {prochainsJalons.length > 0 ? prochainsJalons.map((jalon, idx) => {
                 const diffDays = Math.ceil((new Date(jalon.date_prevue).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                const axe = axesList.find(a => a.code === jalon.axe_id);
+                const axe = axesList.find(a => a.code === jalon.axe);
 
                 return (
                   <div key={idx} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
@@ -393,7 +421,7 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
             <div className="grid grid-cols-2 gap-4">
               {topRisques.map((risque, idx) => {
                 const score = risque.score || (risque.probabilite || 0) * (risque.impact || 0);
-                const axe = axesList.find(a => a.code === risque.axe_id);
+                const axe = axesList.find(a => a.code === risque.axe);
 
                 return (
                   <div key={idx} className="p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -419,6 +447,34 @@ export function WeeklyReport({ className }: WeeklyReportProps) {
               Aucun risque majeur identifié
             </div>
           )}
+        </div>
+
+        {/* Notes manuelles */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-slate-400" />
+              <h2 className="text-base font-semibold text-slate-900">Notes & Commentaires</h2>
+            </div>
+            <button
+              onClick={handleSaveNotes}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all',
+                notesSaved
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              <Save className="w-4 h-4" />
+              {notesSaved ? 'Enregistré' : 'Enregistrer'}
+            </button>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ajoutez vos notes, observations ou commentaires pour ce rapport..."
+            className="w-full h-32 p-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
+          />
         </div>
 
         {/* Footer */}

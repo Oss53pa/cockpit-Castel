@@ -366,7 +366,13 @@ export function formatMontant(montant: number, compact = false): string {
     }
     return montant.toString();
   }
-  return new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
+  if (montant === 0 || montant === null || montant === undefined) {
+    return '0 FCFA';
+  }
+  return new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(montant) + ' FCFA';
 }
 
 /**

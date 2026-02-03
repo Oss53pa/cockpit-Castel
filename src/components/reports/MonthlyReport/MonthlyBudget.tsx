@@ -94,13 +94,15 @@ export function MonthlyBudget({ className }: MonthlyBudgetProps) {
     };
   }, [budgetItems]);
 
-  // Formatter en FCFA (XOF)
+  // Formatter en FCFA (XOF) avec séparateur de milliers
   const formatCurrency = (value: number) => {
+    if (value === 0 || value === null || value === undefined) {
+      return '0 FCFA';
+    }
     return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(value) + ' FCFA';
   };
 
   const getStatusColors = (status: string) => {

@@ -167,8 +167,6 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
   const budgetItems = useBudget();
   const budgetSynthese = useBudgetSynthese();
   const risquesDb = useRisques();
-  // Note: useSync n'est pas utilisé pour le moment car les données sont calculées directement
-  // const syncData = useSync(1, 'cosmos-angre');
 
   // Détection de l'état de chargement
   // Note: Les hooks utilisent ?? [] donc ils retournent toujours un tableau
@@ -408,7 +406,7 @@ export function useDeepDiveMensuelData(periodeLabel: string = ''): UseDeepDiveMe
         {
           id: 'budget',
           label: 'Budget Consommé',
-          valeur: Math.round((budgetSynthese.realise / budgetSynthese.prevu) * 100) || 0,
+          valeur: budgetSynthese.prevu > 0 ? Math.min(Math.round((budgetSynthese.realise / budgetSynthese.prevu) * 100), 200) : 0,
           cible: 100,
           unite: '%',
           meteo: 'bon',

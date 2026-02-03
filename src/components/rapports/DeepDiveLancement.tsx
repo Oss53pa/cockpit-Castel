@@ -33,6 +33,10 @@ import {
   Share2,
   CircleDot,
   Loader2,
+  Link2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
 import {
   Card,
@@ -65,6 +69,9 @@ import {
   useBudgetSynthese,
   useBudgetParAxe,
   useRisques,
+  useSyncStatus,
+  useSyncStats,
+  useCurrentSiteId,
 } from '@/hooks';
 
 // Types et utilitaires uniquement (pas de données)
@@ -92,25 +99,21 @@ function getStatutIcon(statut: string): string {
 
 // Import constantes centralisées
 import { PROJET_CONFIG } from '@/data/constants';
-import {
-  TECHNIQUE_POINTS_ATTENTION,
-  TECHNIQUE_RISQUE_PRINCIPAL,
-} from '@/data/deepDiveLancementCosmosAngre';
 
 // Types
 type MeteoType = 'soleil' | 'soleil_nuage' | 'nuage' | 'pluie';
 type AxeType = 'rh' | 'commercial' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'construction' | 'divers';
 
-// Configuration des axes
+// Configuration des axes - Design Premium (palette slate/indigo)
 const AXES_CONFIG: Record<AxeType, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  rh: { label: 'RH & Organisation', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  commercial: { label: 'Commercial & Leasing', icon: Building2, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
-  technique: { label: 'Technique & Handover', icon: Wrench, color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  budget: { label: 'Budget & Finances', icon: DollarSign, color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  marketing: { label: 'Marketing & Communication', icon: Megaphone, color: 'text-pink-600', bgColor: 'bg-pink-100' },
-  exploitation: { label: 'Exploitation & Juridique', icon: Settings, color: 'text-green-600', bgColor: 'bg-green-100' },
-  construction: { label: 'Construction', icon: Building2, color: 'text-red-600', bgColor: 'bg-red-100' },
-  divers: { label: 'Divers', icon: Target, color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  rh: { label: 'RH & Organisation', icon: Users, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  commercial: { label: 'Commercial & Leasing', icon: Building2, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  technique: { label: 'Technique & Handover', icon: Wrench, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  budget: { label: 'Budget & Finances', icon: DollarSign, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  marketing: { label: 'Marketing & Communication', icon: Megaphone, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  exploitation: { label: 'Exploitation & Juridique', icon: Settings, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  construction: { label: 'Construction', icon: Building2, color: 'text-slate-700', bgColor: 'bg-slate-100' },
+  divers: { label: 'Divers', icon: Target, color: 'text-slate-600', bgColor: 'bg-slate-50' },
 };
 
 // Mapping axe vers code DB
@@ -125,45 +128,43 @@ const axeToDbCode: Record<AxeType, string> = {
   divers: 'divers',
 };
 
-// Configuration météo
-const METEO_CONFIG: Record<MeteoType, { icon: React.ElementType; color: string; bgColor: string }> = {
-  soleil: { icon: Sun, color: 'text-green-600', bgColor: 'bg-green-100' },
-  soleil_nuage: { icon: CloudSun, color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  nuage: { icon: Cloud, color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  pluie: { icon: CloudRain, color: 'text-red-600', bgColor: 'bg-red-100' },
+// Configuration météo - Design Premium (monochrome subtil)
+const METEO_CONFIG: Record<MeteoType, { icon: React.ElementType; color: string; bgColor: string; borderColor: string }> = {
+  soleil: { icon: Sun, color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
+  soleil_nuage: { icon: CloudSun, color: 'text-slate-600', bgColor: 'bg-slate-50', borderColor: 'border-slate-200' },
+  nuage: { icon: Cloud, color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
+  pluie: { icon: CloudRain, color: 'text-rose-600', bgColor: 'bg-rose-50', borderColor: 'border-rose-200' },
 };
 
-// Composant Section Header
-function SectionHeader({ title, icon: Icon, color }: { title: string; icon: React.ElementType; color: string }) {
+// Composant Section Header - Design Premium
+function SectionHeader({ title, icon: Icon }: { title: string; icon: React.ElementType; color?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <div className={cn('p-2 rounded-lg', color.replace('text-', 'bg-').replace('600', '100'))}>
-        <Icon className={cn('h-5 w-5', color)} />
+    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200">
+      <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm">
+        <Icon className="h-5 w-5 text-white" />
       </div>
-      <h3 className="text-lg font-bold text-primary-900">{title}</h3>
+      <h3 className="text-xl font-semibold text-slate-900 tracking-tight">{title}</h3>
     </div>
   );
 }
 
-// Composant Météo Badge
+// Composant Météo Badge - Design Premium
 function MeteoBadge({ meteo, statut }: { meteo: MeteoType; statut: string }) {
   const config = METEO_CONFIG[meteo];
   const Icon = config.icon;
   return (
-    <div className="flex items-center gap-2">
-      <div className={cn('p-1.5 rounded-full', config.bgColor)}>
-        <Icon className={cn('h-4 w-4', config.color)} />
-      </div>
-      <span className="text-sm text-primary-600">{statut}</span>
+    <div className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-full border', config.bgColor, config.borderColor)}>
+      <Icon className={cn('h-4 w-4', config.color)} />
+      <span className={cn('text-sm font-medium', config.color)}>{statut}</span>
     </div>
   );
 }
 
-// Composant Météo Axe Dynamique - calcule la météo basée sur les données réelles
+// Composant Météo Axe Dynamique - Design Premium avec barre de progression
 function AxeMeteoBadge({ actions, jalons }: { actions: any[]; jalons: any[] }) {
   const meteoData = useMemo(() => {
     if (actions.length === 0 && jalons.length === 0) {
-      return { meteo: 'soleil_nuage' as MeteoType, statut: 'À démarrer' };
+      return { meteo: 'soleil_nuage' as MeteoType, statut: 'À démarrer', progress: 0 };
     }
 
     const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
@@ -178,37 +179,39 @@ function AxeMeteoBadge({ actions, jalons }: { actions: any[]; jalons: any[] }) {
     const tauxCompletion = actions.length > 0 ? (actionsTerminees / actions.length) * 100 : 0;
     const tauxJalons = jalons.length > 0 ? (jalonsAtteints / jalons.length) * 100 : 0;
 
-    // Calcul météo basé sur les indicateurs réels
     if (actionsBloquees > 0 || actionsEnRetard > 2 || jalonsEnDanger > 1) {
-      return { meteo: 'pluie' as MeteoType, statut: `En difficulté - ${actionsBloquees > 0 ? `${actionsBloquees} bloquée(s)` : `${actionsEnRetard} en retard`}` };
+      return { meteo: 'pluie' as MeteoType, statut: `${actionsBloquees > 0 ? `${actionsBloquees} bloquée(s)` : `${actionsEnRetard} en retard`}`, progress: tauxCompletion };
     } else if (tauxCompletion < 30 || actionsEnRetard > 0 || jalonsEnDanger > 0) {
-      return { meteo: 'nuage' as MeteoType, statut: `Vigilance - ${Math.round(tauxCompletion)}% complété` };
+      return { meteo: 'nuage' as MeteoType, statut: `${Math.round(tauxCompletion)}% complété`, progress: tauxCompletion };
     } else if (tauxCompletion < 70 || tauxJalons < 50) {
-      return { meteo: 'soleil_nuage' as MeteoType, statut: `En cours - ${Math.round(tauxCompletion)}% complété` };
+      return { meteo: 'soleil_nuage' as MeteoType, statut: `${Math.round(tauxCompletion)}% complété`, progress: tauxCompletion };
     } else {
-      return { meteo: 'soleil' as MeteoType, statut: `En avance - ${Math.round(tauxCompletion)}% complété` };
+      return { meteo: 'soleil' as MeteoType, statut: `${Math.round(tauxCompletion)}% complété`, progress: tauxCompletion };
     }
   }, [actions, jalons]);
 
   const config = METEO_CONFIG[meteoData.meteo];
   const Icon = config.icon;
-  const bgColors = {
-    soleil: 'bg-green-50 border-green-200',
-    soleil_nuage: 'bg-amber-50 border-amber-200',
-    nuage: 'bg-orange-50 border-orange-200',
-    pluie: 'bg-red-50 border-red-200',
-  };
-  const textColors = {
-    soleil: 'text-green-800',
-    soleil_nuage: 'text-amber-800',
-    nuage: 'text-orange-800',
-    pluie: 'text-red-800',
-  };
 
   return (
-    <div className={cn('flex items-center gap-2 p-3 rounded-lg border', bgColors[meteoData.meteo])}>
-      <Icon className={cn('h-5 w-5', config.color)} />
-      <span className={cn('font-medium', textColors[meteoData.meteo])}>{meteoData.statut}</span>
+    <div className={cn('p-4 rounded-xl border bg-white', config.borderColor)}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon className={cn('h-5 w-5', config.color)} />
+          <span className="text-sm font-medium text-slate-700">{meteoData.statut}</span>
+        </div>
+        <span className="text-lg font-semibold text-slate-900">{Math.round(meteoData.progress)}%</span>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className={cn('h-full rounded-full transition-all',
+            meteoData.meteo === 'soleil' ? 'bg-emerald-500' :
+            meteoData.meteo === 'soleil_nuage' ? 'bg-indigo-500' :
+            meteoData.meteo === 'nuage' ? 'bg-amber-500' : 'bg-rose-500'
+          )}
+          style={{ width: `${meteoData.progress}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -320,17 +323,20 @@ function SlideRappelProjet() {
         </Table>
       </Card>
 
-      {/* Météo par Axe - Calculée dynamiquement */}
-      <Card padding="md">
-        <h3 className="text-lg font-bold text-primary-900 mb-4">Météo par Axe</h3>
-        <div className="space-y-3">
+      {/* Météo par Axe - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h3 className="text-base font-semibold text-slate-800 mb-4">Météo par Axe</h3>
+        <div className="space-y-2">
           {meteoParAxe.map((item) => {
             const config = AXES_CONFIG[item.key];
+            const meteoConfig = METEO_CONFIG[item.meteo];
             return (
-              <div key={item.axe} className="flex items-center justify-between p-3 bg-primary-50 rounded-lg">
+              <div key={item.axe} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <div className="flex items-center gap-3">
-                  <config.icon className={cn('h-5 w-5', config.color)} />
-                  <span className="font-medium text-primary-900">{item.label}</span>
+                  <div className="p-2 rounded-lg bg-slate-100">
+                    <config.icon className="h-4 w-4 text-slate-600" />
+                  </div>
+                  <span className="font-medium text-slate-700 text-sm">{item.label}</span>
                 </div>
                 <MeteoBadge meteo={item.meteo} statut={item.statut} />
               </div>
@@ -339,25 +345,25 @@ function SlideRappelProjet() {
         </div>
       </Card>
 
-      {/* KPIs en temps réel */}
-      <Card padding="md">
-        <h3 className="text-lg font-bold text-primary-900 mb-4">KPIs Temps Réel</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-blue-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-blue-700">{(kpis?.tauxOccupation || 0).toFixed(1)}%</p>
-            <p className="text-xs text-blue-600">Occupation</p>
+      {/* KPIs en temps réel - Design Premium */}
+      <Card padding="md" className="bg-slate-50/50 border-slate-200">
+        <h3 className="text-base font-semibold text-slate-800 mb-4">KPIs Temps Réel</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+            <p className="text-2xl font-bold text-slate-900">{(kpis?.tauxOccupation || 0).toFixed(1)}%</p>
+            <p className="text-xs text-slate-500 mt-1">Occupation</p>
           </div>
-          <div className="p-4 bg-green-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-green-700">{jalonsAtteints}/{jalonsTotal}</p>
-            <p className="text-xs text-green-600">Jalons atteints</p>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+            <p className="text-2xl font-bold text-slate-900">{jalonsAtteints}/{jalonsTotal}</p>
+            <p className="text-xs text-slate-500 mt-1">Jalons atteints</p>
           </div>
-          <div className="p-4 bg-amber-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-amber-700">{actions?.length || 0}</p>
-            <p className="text-xs text-amber-600">Actions totales</p>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+            <p className="text-2xl font-bold text-slate-900">{actions?.length || 0}</p>
+            <p className="text-xs text-slate-500 mt-1">Actions totales</p>
           </div>
-          <div className="p-4 bg-purple-50 rounded-lg text-center">
-            <p className="text-2xl font-bold text-purple-700">{kpis?.equipeTaille || effectifCible}</p>
-            <p className="text-xs text-purple-600">Effectif cible</p>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+            <p className="text-2xl font-bold text-slate-900">{kpis?.equipeTaille || effectifCible}</p>
+            <p className="text-xs text-slate-500 mt-1">Effectif cible</p>
           </div>
         </div>
       </Card>
@@ -388,31 +394,31 @@ function SlideAgenda() {
 
   return (
     <div className="h-full flex flex-col">
-      <SectionHeader title="AGENDA" icon={FileText} color="text-primary-600" />
+      <SectionHeader title="AGENDA" icon={FileText} />
 
-      <div className="flex-1 grid grid-cols-2 gap-6 mt-4">
+      <div className="flex-1 grid grid-cols-2 gap-4 mt-2">
         {/* Colonne gauche */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {leftColumn.map((item) => (
-            <div key={item.num} className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-100 hover:bg-primary-100 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-[#1C3163] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+            <div key={item.num} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50 transition-all">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
                 {item.num}
               </div>
-              <item.icon className="h-5 w-5 text-[#1C3163] flex-shrink-0" />
-              <span className="font-medium text-primary-900">{item.titre}</span>
+              <item.icon className="h-4 w-4 text-slate-500 flex-shrink-0" />
+              <span className="font-medium text-slate-700 text-sm">{item.titre}</span>
             </div>
           ))}
         </div>
 
         {/* Colonne droite */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {rightColumn.map((item) => (
-            <div key={item.num} className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-primary-100 hover:bg-primary-100 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-[#1C3163] text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+            <div key={item.num} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-slate-50 transition-all">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
                 {item.num}
               </div>
-              <item.icon className="h-5 w-5 text-[#1C3163] flex-shrink-0" />
-              <span className="font-medium text-primary-900">{item.titre}</span>
+              <item.icon className="h-4 w-4 text-slate-500 flex-shrink-0" />
+              <span className="font-medium text-slate-700 text-sm">{item.titre}</span>
             </div>
           ))}
         </div>
@@ -446,26 +452,26 @@ function SlideAxeRH() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE RH & ORGANISATION" icon={Users} color="text-blue-600" />
+      <SectionHeader title="AXE RH & ORGANISATION" icon={Users} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsRH} jalons={jalonsRH} />
 
-      {/* Avancement temps réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Avancement Temps Réel</h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-primary-50 rounded-lg">
-            <p className="text-xl font-bold text-primary-700">{actionsRH.length}</p>
-            <p className="text-xs text-primary-500">Actions</p>
+      {/* Avancement temps réel - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Avancement</h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{actionsRH.length}</p>
+            <p className="text-xs text-slate-500">Actions</p>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
-            <p className="text-xs text-green-500">Terminées</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-emerald-600">{actionsTerminees}</p>
+            <p className="text-xs text-slate-500">Terminées</p>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{avancement}%</p>
-            <p className="text-xs text-blue-500">Avancement</p>
+          <div className="text-center p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+            <p className="text-xl font-bold text-indigo-600">{avancement}%</p>
+            <p className="text-xs text-slate-500">Avancement</p>
           </div>
         </div>
       </Card>
@@ -559,7 +565,7 @@ function SlideAxeCommercial() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE COMMERCIAL & LEASING" icon={Building2} color="text-indigo-600" />
+      <SectionHeader title="AXE COMMERCIAL & LEASING" icon={Building2} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsCommerciales} jalons={jalonsCommerciaux} />
@@ -593,25 +599,25 @@ function SlideAxeCommercial() {
         </Table>
       </Card>
 
-      {/* Données Temps Réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
-        <div className="grid grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-indigo-50 rounded-lg">
-            <p className="text-xl font-bold text-indigo-700">{actionsCommerciales.length}</p>
-            <p className="text-xs text-indigo-500">Actions</p>
+      {/* Données Temps Réel - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Indicateurs</h4>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{actionsCommerciales.length}</p>
+            <p className="text-xs text-slate-500">Actions</p>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
-            <p className="text-xs text-green-500">Terminées</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-emerald-600">{actionsTerminees}</p>
+            <p className="text-xs text-slate-500">Terminées</p>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{jalonsCommerciaux.length}</p>
-            <p className="text-xs text-blue-500">Jalons</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{jalonsCommerciaux.length}</p>
+            <p className="text-xs text-slate-500">Jalons</p>
           </div>
-          <div className="text-center p-3 bg-red-50 rounded-lg">
-            <p className="text-xl font-bold text-red-700">{risquesCommerciaux.length}</p>
-            <p className="text-xs text-red-500">Risques</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{risquesCommerciaux.length}</p>
+            <p className="text-xs text-slate-500">Risques</p>
           </div>
         </div>
       </Card>
@@ -696,7 +702,7 @@ function SlideAxeTechnique() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE TECHNIQUE & HANDOVER" icon={Wrench} color="text-purple-600" />
+      <SectionHeader title="AXE TECHNIQUE & HANDOVER" icon={Wrench} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsTechniques} jalons={jalonsTechniques} />
@@ -728,58 +734,71 @@ function SlideAxeTechnique() {
         )}
       </Card>
 
-      {/* KPIs Techniques */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-purple-50 rounded-lg">
-            <p className="text-xl font-bold text-purple-700">{actionsTechniques.length}</p>
-            <p className="text-xs text-purple-500">Actions</p>
+      {/* KPIs Techniques - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Indicateurs</h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{actionsTechniques.length}</p>
+            <p className="text-xs text-slate-500">Actions</p>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{jalonsTechniques.length}</p>
-            <p className="text-xs text-blue-500">Jalons</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{jalonsTechniques.length}</p>
+            <p className="text-xs text-slate-500">Jalons</p>
           </div>
-          <div className="text-center p-3 bg-red-50 rounded-lg">
-            <p className="text-xl font-bold text-red-700">{risquesTechniques.length}</p>
-            <p className="text-xs text-red-500">Risques</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{risquesTechniques.length}</p>
+            <p className="text-xs text-slate-500">Risques</p>
           </div>
         </div>
       </Card>
 
-      {/* Points d'Attention */}
+      {/* Points d'Attention - Actions en cours ou bloquées */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-3">Points d'Attention</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Sujet</TableHead>
-              <TableHead>Responsable</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {TECHNIQUE_POINTS_ATTENTION.map((point, idx) => (
-              <TableRow key={idx}>
-                <TableCell className="font-medium">{point.sujet}</TableCell>
-                <TableCell>{point.responsable}</TableCell>
-                <TableCell>{point.action}</TableCell>
+        {actionsTechniques.filter(a => a.statut !== 'termine').length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Sujet</TableHead>
+                <TableHead>Responsable</TableHead>
+                <TableHead>Statut</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {actionsTechniques
+                .filter(a => a.statut !== 'termine')
+                .slice(0, 5)
+                .map((action) => (
+                  <TableRow key={action.id}>
+                    <TableCell className="font-medium">{action.titre}</TableCell>
+                    <TableCell>{action.responsable_nom || '-'}</TableCell>
+                    <TableCell>{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-center text-gray-400 italic py-4">Aucun point d'attention</p>
+        )}
       </Card>
 
-      {/* Risque Principal */}
-      <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-          <div>
-            <p className="font-semibold text-orange-800">Risque Principal</p>
-            <p className="text-sm text-orange-700">{TECHNIQUE_RISQUE_PRINCIPAL.risque} - {TECHNIQUE_RISQUE_PRINCIPAL.mitigation}</p>
+      {/* Risque Principal - Premier risque technique par criticité */}
+      {risquesTechniques.length > 0 && (
+        <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-100">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-800 text-sm">Risque principal</p>
+              <p className="text-sm text-slate-600 mt-1">
+                {risquesTechniques[0].titre} — {risquesTechniques[0].mitigation || 'Mitigation à définir'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -810,31 +829,31 @@ function SlideAxeBudget() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE BUDGET & FINANCES" icon={DollarSign} color="text-amber-600" />
+      <SectionHeader title="AXE BUDGET & FINANCES" icon={DollarSign} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsBudget} jalons={jalonsBudget} />
 
-      {/* Vue Synthétique Budget - données réelles */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Synthèse Budgétaire</h4>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center p-3 bg-amber-50 rounded-lg">
-            <p className="text-xl font-bold text-amber-700">{formatMontantFCFA(budgetTotalPrevu)}</p>
-            <p className="text-xs text-amber-500">Budget Prévu</p>
+      {/* Vue Synthétique Budget - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-4">Synthèse Budgétaire</h4>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-lg font-bold text-slate-900">{formatMontantFCFA(budgetTotalPrevu)}</p>
+            <p className="text-xs text-slate-500 mt-1">Budget Prévu</p>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{formatMontantFCFA(budget?.engage || 0)}</p>
-            <p className="text-xs text-blue-500">Engagé</p>
+          <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-lg font-bold text-slate-900">{formatMontantFCFA(budget?.engage || 0)}</p>
+            <p className="text-xs text-slate-500 mt-1">Engagé</p>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-bold text-green-700">{formatMontantFCFA(budgetTotalRealise)}</p>
-            <p className="text-xs text-green-500">Réalisé ({tauxConsommation}%)</p>
+          <div className="text-center p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+            <p className="text-lg font-bold text-indigo-600">{formatMontantFCFA(budgetTotalRealise)}</p>
+            <p className="text-xs text-slate-500 mt-1">Réalisé ({tauxConsommation}%)</p>
           </div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
+        <div className="w-full bg-slate-100 rounded-full h-2.5">
           <div
-            className="bg-green-500 h-3 rounded-full transition-all"
+            className="bg-indigo-500 h-2.5 rounded-full transition-all"
             style={{ width: `${Math.min(tauxConsommation, 100)}%` }}
           />
         </div>
@@ -918,7 +937,7 @@ function SlideAxeMarketing() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE MARKETING & COMMUNICATION" icon={Megaphone} color="text-pink-600" />
+      <SectionHeader title="AXE MARKETING & COMMUNICATION" icon={Megaphone} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsMarketing} jalons={jalonsMarketing} />
@@ -977,17 +996,17 @@ function SlideAxeMarketing() {
         )}
       </Card>
 
-      {/* Données temps réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Données Temps Réel</h4>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-pink-50 rounded-lg">
-            <p className="text-xl font-bold text-pink-700">{actionsMarketing.length}</p>
-            <p className="text-xs text-pink-500">Actions</p>
+      {/* Données temps réel - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Indicateurs</h4>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{actionsMarketing.length}</p>
+            <p className="text-xs text-slate-500">Actions</p>
           </div>
-          <div className="text-center p-3 bg-purple-50 rounded-lg">
-            <p className="text-xl font-bold text-purple-700">{jalonsMarketing.length}</p>
-            <p className="text-xs text-purple-500">Jalons</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{jalonsMarketing.length}</p>
+            <p className="text-xs text-slate-500">Jalons</p>
           </div>
         </div>
       </Card>
@@ -1037,26 +1056,26 @@ function SlideAxeExploitation() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="AXE EXPLOITATION & JURIDIQUE" icon={Settings} color="text-green-600" />
+      <SectionHeader title="AXE EXPLOITATION & JURIDIQUE" icon={Settings} />
 
       {/* Météo dynamique */}
       <AxeMeteoBadge actions={actionsExploitation} jalons={jalonsExploitation} />
 
-      {/* Statistiques temps réel */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Avancement</h4>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-primary-50 rounded-lg">
-            <p className="text-xl font-bold text-primary-700">{actionsExploitation.length}</p>
-            <p className="text-xs text-primary-500">Actions</p>
+      {/* Statistiques temps réel - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Avancement</h4>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{actionsExploitation.length}</p>
+            <p className="text-xs text-slate-500">Actions</p>
           </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <p className="text-xl font-bold text-green-700">{actionsTerminees}</p>
-            <p className="text-xs text-green-500">Terminées</p>
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-emerald-600">{actionsTerminees}</p>
+            <p className="text-xs text-slate-500">Terminées</p>
           </div>
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <p className="text-xl font-bold text-blue-700">{avancement}%</p>
-            <p className="text-xs text-blue-500">Avancement</p>
+          <div className="text-center p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+            <p className="text-xl font-bold text-indigo-600">{avancement}%</p>
+            <p className="text-xs text-slate-500">Avancement</p>
           </div>
         </div>
       </Card>
@@ -1155,17 +1174,17 @@ function SlideRisquesMajeurs() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="RISQUES MAJEURS" icon={AlertTriangle} color="text-red-600" />
+      <SectionHeader title="RISQUES MAJEURS" icon={AlertTriangle} />
 
-      {/* Stats risques */}
+      {/* Stats risques - Design Premium */}
       <div className="grid grid-cols-2 gap-4">
-        <Card padding="md" className="text-center">
-          <p className="text-3xl font-bold text-primary-700">{totalRisques}</p>
-          <p className="text-sm text-primary-500">Risques ouverts</p>
+        <Card padding="md" className="text-center border-slate-200">
+          <p className="text-3xl font-bold text-slate-900">{totalRisques}</p>
+          <p className="text-sm text-slate-500 mt-1">Risques ouverts</p>
         </Card>
-        <Card padding="md" className="text-center bg-red-50 border-red-200">
-          <p className="text-3xl font-bold text-red-700">{totalCritiques}</p>
-          <p className="text-sm text-red-500">Risques critiques (score ≥ 12)</p>
+        <Card padding="md" className="text-center border-rose-200 bg-rose-50/50">
+          <p className="text-3xl font-bold text-rose-600">{totalCritiques}</p>
+          <p className="text-sm text-slate-600 mt-1">Critiques (score ≥ 12)</p>
         </Card>
       </div>
 
@@ -1204,19 +1223,19 @@ function SlideRisquesMajeurs() {
         )}
       </Card>
 
-      {/* Détails des risques critiques */}
+      {/* Détails des risques critiques - Design Premium */}
       {top5Risques.filter(r => (r.score || 0) >= 12).length > 0 && (
-        <Card padding="md">
-          <h4 className="font-semibold text-primary-900 mb-3">Risques Critiques - Détails</h4>
+        <Card padding="md" className="border-slate-200">
+          <h4 className="font-semibold text-slate-800 mb-3">Détails Risques Critiques</h4>
           <div className="space-y-2">
             {top5Risques.filter(r => (r.score || 0) >= 12).map((risque, idx) => (
-              <div key={risque.id || idx} className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <div key={risque.id || idx} className="p-3 bg-slate-50 rounded-xl border-l-4 border-rose-500">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-medium text-red-800">{risque.titre}</span>
-                  <Badge className="bg-red-100 text-red-700">Score: {risque.score}</Badge>
+                  <span className="font-medium text-slate-800">{risque.titre}</span>
+                  <Badge className="bg-rose-100 text-rose-700 border border-rose-200">Score: {risque.score}</Badge>
                 </div>
                 {risque.plan_mitigation && (
-                  <p className="text-sm text-red-700">Mitigation: {risque.plan_mitigation}</p>
+                  <p className="text-sm text-slate-600">Mitigation: {risque.plan_mitigation}</p>
                 )}
               </div>
             ))}
@@ -1234,19 +1253,33 @@ function SlideDecisions() {
   const actions = useActions();
   const jalons = useJalons();
 
-  // Décisions = actions de type "decision" ou "validation" non terminées
+  // Décisions = extraites du champ decisions_attendues de chaque action (non cochées uniquement)
   const decisionsAttendues = useMemo(() => {
     if (!actions) return [];
-    return actions
-      .filter(a => a.type_action === 'decision' || a.type_action === 'validation' || a.statut === 'en_validation')
+
+    // Extraire les décisions attendues NON TRANSMISES (non cochées) de toutes les actions non terminées
+    const allDecisions: { numero: number; element: string; statut: string; responsable: string; actionTitre: string }[] = [];
+    let idx = 0;
+
+    actions
       .filter(a => a.statut !== 'termine' && a.statut !== 'annule')
-      .slice(0, 6)
-      .map((a, idx) => ({
-        numero: idx + 1,
-        element: a.titre,
-        statut: a.statut === 'termine' ? 'valide' : 'a_valider',
-        responsable: a.responsable_nom || a.responsable,
-      }));
+      .forEach(action => {
+        const decisions = (action as any).decisions_attendues || [];
+        decisions
+          .filter((decision: { transmis?: boolean }) => !decision.transmis) // Seulement les non cochées
+          .forEach((decision: { id: string; sujet: string; dateCreation: string; transmis?: boolean }) => {
+            idx++;
+            allDecisions.push({
+              numero: idx,
+              element: decision.sujet,
+              statut: 'a_valider',
+              responsable: action.responsable_nom || action.responsable || '-',
+              actionTitre: action.titre,
+            });
+          });
+      });
+
+    return allDecisions.slice(0, 10);
   }, [actions]);
 
   // Prochaines étapes = Top 5 actions les plus importantes du mois suivant
@@ -1295,45 +1328,53 @@ function SlideDecisions() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="DÉCISIONS ATTENDUES" icon={CheckCircle} color="text-indigo-600" />
+      <SectionHeader title="DÉCISIONS ATTENDUES" icon={CheckCircle} />
 
-      {/* Checklist de Validation - Données réelles */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Actions Nécessitant Validation</h4>
+      {/* Checklist de Validation - Design Premium */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Actions Nécessitant Validation</h4>
         {decisionsAttendues.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {decisionsAttendues.map((decision) => (
               <div
                 key={decision.numero}
                 className={cn(
-                  'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
-                  decisionsState[decision.numero] ? 'bg-green-50 border-green-200' : 'bg-primary-50 border-primary-200 hover:bg-primary-100'
+                  'flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all',
+                  decisionsState[decision.numero]
+                    ? 'bg-emerald-50/50 border-emerald-200'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                 )}
                 onClick={() => toggleDecision(decision.numero)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-primary-200 flex items-center justify-center text-sm font-bold">
-                    {decision.numero}
+                  <span className={cn(
+                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                    decisionsState[decision.numero] ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'
+                  )}>
+                    {decisionsState[decision.numero] ? '✓' : decision.numero}
                   </span>
                   <div>
-                    <span className="font-medium">{decision.element}</span>
-                    {decision.responsable && (
-                      <span className="text-xs text-primary-400 ml-2">({decision.responsable})</span>
+                    <span className="font-medium text-slate-800 text-sm">{decision.element}</span>
+                    {(decision as any).actionTitre && (
+                      <p className="text-xs text-slate-400 mt-0.5">Action: {(decision as any).actionTitre}</p>
+                    )}
+                    {decision.responsable && decision.responsable !== '-' && (
+                      <span className="text-xs text-slate-500">Responsable: {decision.responsable}</span>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {decisionsState[decision.numero] ? (
-                    <Badge className="bg-green-100 text-green-700">Validé</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200">Validé</Badge>
                   ) : (
-                    <Badge variant="outline">À valider</Badge>
+                    <Badge variant="outline" className="border-slate-300 text-slate-600">À valider</Badge>
                   )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-400 italic py-4">Aucune décision en attente</p>
+          <p className="text-center text-slate-400 italic py-4">Aucune décision en attente</p>
         )}
       </Card>
 
@@ -1366,6 +1407,230 @@ function SlideDecisions() {
         )}
       </Card>
 
+    </div>
+  );
+}
+
+// ============================================================================
+// SLIDE 11 - SYNCHRONISATION CONSTRUCTION / MOBILISATION
+// ============================================================================
+function SlideSynchronisation() {
+  const siteId = useCurrentSiteId() || 1;
+  const syncStatus = useSyncStatus(siteId);
+  const syncStats = useSyncStats(siteId);
+  const actions = useActions();
+
+  // Calculer les statistiques des actions liées à la synchronisation
+  const syncActionsStats = useMemo(() => {
+    if (!actions) return { total: 0, terminees: 0, enRetard: 0, enCours: 0 };
+
+    const now = new Date();
+    const terminees = actions.filter(a => a.statut === 'termine').length;
+    const enRetard = actions.filter(a => {
+      if (a.statut === 'termine') return false;
+      return a.date_fin_prevue && new Date(a.date_fin_prevue) < now;
+    }).length;
+    const enCours = actions.filter(a => a.statut === 'en_cours').length;
+
+    return {
+      total: actions.length,
+      terminees,
+      enRetard,
+      enCours,
+    };
+  }, [actions]);
+
+  const constructionProgress = syncStatus?.projectProgress || 0;
+  const mobilisationProgress = syncStatus?.mobilizationProgress || 0;
+  const gap = syncStatus?.gap || 0;
+  const alertLevel = syncStatus?.alertLevel || 'GREEN';
+
+  // Configuration des couleurs selon le niveau d'alerte
+  const getAlertConfig = () => {
+    switch (alertLevel) {
+      case 'GREEN':
+        return { color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Synchronisé' };
+      case 'ORANGE':
+        return { color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Écart modéré' };
+      case 'RED':
+        return { color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200', label: 'Désynchronisé' };
+      default:
+        return { color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200', label: 'Non défini' };
+    }
+  };
+
+  const alertConfig = getAlertConfig();
+
+  // Composant pour la jauge circulaire
+  const CircularGauge = ({ value, label, color }: { value: number; label: string; color: string }) => {
+    const radius = 45;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (value / 100) * circumference;
+
+    return (
+      <div className="flex flex-col items-center">
+        <svg width="120" height="120" className="transform -rotate-90">
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            stroke="#E2E8F0"
+            strokeWidth="10"
+            fill="none"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            stroke={color}
+            strokeWidth="10"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-all duration-500"
+          />
+        </svg>
+        <div className="absolute flex flex-col items-center justify-center" style={{ marginTop: '35px' }}>
+          <span className="text-2xl font-bold text-slate-900">{value.toFixed(0)}%</span>
+        </div>
+        <span className="mt-2 text-sm font-medium text-slate-600">{label}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader title="SYNCHRONISATION CHANTIER / MOBILISATION" icon={Link2} />
+
+      {/* Statut global de synchronisation */}
+      <div className={cn('p-4 rounded-xl border', alertConfig.bg, alertConfig.border)}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {alertLevel === 'GREEN' && <CheckCircle className={cn('h-6 w-6', alertConfig.color)} />}
+            {alertLevel === 'ORANGE' && <AlertTriangle className={cn('h-6 w-6', alertConfig.color)} />}
+            {alertLevel === 'RED' && <AlertTriangle className={cn('h-6 w-6', alertConfig.color)} />}
+            <div>
+              <p className={cn('font-semibold', alertConfig.color)}>{alertConfig.label}</p>
+              <p className="text-sm text-slate-500">Écart de synchronisation: {gap > 0 ? '+' : ''}{gap.toFixed(1)}%</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {gap > 0 ? (
+              <TrendingUp className="h-5 w-5 text-indigo-500" />
+            ) : gap < 0 ? (
+              <TrendingDown className="h-5 w-5 text-amber-500" />
+            ) : (
+              <Minus className="h-5 w-5 text-slate-400" />
+            )}
+            <span className="text-lg font-bold text-slate-700">{Math.abs(gap).toFixed(1)}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card padding="md" className="border-slate-200 text-center">
+          <div className="p-2 rounded-xl bg-indigo-50 w-fit mx-auto mb-2">
+            <Building2 className="h-5 w-5 text-indigo-600" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{constructionProgress.toFixed(0)}%</p>
+          <p className="text-xs text-slate-500 mt-1">Avancement Construction</p>
+        </Card>
+        <Card padding="md" className="border-slate-200 text-center">
+          <div className="p-2 rounded-xl bg-emerald-50 w-fit mx-auto mb-2">
+            <Users className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{mobilisationProgress.toFixed(0)}%</p>
+          <p className="text-xs text-slate-500 mt-1">Avancement Mobilisation</p>
+        </Card>
+        <Card padding="md" className={cn('text-center', alertConfig.border)}>
+          <div className={cn('p-2 rounded-xl w-fit mx-auto mb-2', alertConfig.bg)}>
+            <Link2 className={cn('h-5 w-5', alertConfig.color)} />
+          </div>
+          <p className={cn('text-2xl font-bold', alertConfig.color)}>{gap > 0 ? '+' : ''}{gap.toFixed(1)}%</p>
+          <p className="text-xs text-slate-500 mt-1">Écart</p>
+        </Card>
+      </div>
+
+      {/* Jauges de comparaison */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-4 text-center">Comparaison Avancement</h4>
+        <div className="flex items-center justify-around">
+          <div className="relative">
+            <CircularGauge value={constructionProgress} label="Construction" color="#4F46E5" />
+          </div>
+          <div className="flex flex-col items-center px-4">
+            <div className={cn('p-3 rounded-full', alertConfig.bg)}>
+              <Link2 className={cn('h-6 w-6', alertConfig.color)} />
+            </div>
+            <span className={cn('text-sm font-medium mt-2', alertConfig.color)}>
+              {gap > 0 ? 'Avance' : gap < 0 ? 'Retard' : 'Sync'}
+            </span>
+          </div>
+          <div className="relative">
+            <CircularGauge value={mobilisationProgress} label="Mobilisation" color="#059669" />
+          </div>
+        </div>
+      </Card>
+
+      {/* Statistiques Actions */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-3">Statistiques Actions</h4>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xl font-bold text-slate-900">{syncStats?.totalActions || syncActionsStats.total}</p>
+            <p className="text-xs text-slate-500">Total Actions</p>
+          </div>
+          <div className="text-center p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+            <p className="text-xl font-bold text-emerald-600">{syncStats?.actionsTerminees || syncActionsStats.terminees}</p>
+            <p className="text-xs text-slate-500">Terminées</p>
+          </div>
+          <div className="text-center p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+            <p className="text-xl font-bold text-indigo-600">{syncActionsStats.enCours}</p>
+            <p className="text-xs text-slate-500">En cours</p>
+          </div>
+          <div className="text-center p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <p className="text-xl font-bold text-amber-600">{syncActionsStats.enRetard}</p>
+            <p className="text-xs text-slate-500">En retard</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Barre de progression comparative */}
+      <Card padding="md" className="border-slate-200">
+        <h4 className="font-semibold text-slate-800 mb-4">Progression Comparative</h4>
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-indigo-500" /> Construction
+              </span>
+              <span className="text-sm font-bold text-indigo-600">{constructionProgress.toFixed(0)}%</span>
+            </div>
+            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 rounded-full transition-all"
+                style={{ width: `${constructionProgress}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                <Users className="h-4 w-4 text-emerald-500" /> Mobilisation
+              </span>
+              <span className="text-sm font-bold text-emerald-600">{mobilisationProgress.toFixed(0)}%</span>
+            </div>
+            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all"
+                style={{ width: `${mobilisationProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1484,8 +1749,9 @@ export function DeepDiveLancement() {
     { numero: 6, titre: 'AXE Budget & Finances', component: SlideAxeBudget },
     { numero: 7, titre: 'AXE Marketing & Communication', component: SlideAxeMarketing },
     { numero: 8, titre: 'AXE Exploitation & Juridique', component: SlideAxeExploitation },
-    { numero: 9, titre: 'Risques Majeurs', component: SlideRisquesMajeurs },
-    { numero: 10, titre: 'Décisions Attendues', component: SlideDecisions },
+    { numero: 9, titre: 'Synchronisation Chantier / Mobilisation', component: SlideSynchronisation },
+    { numero: 10, titre: 'Risques Majeurs', component: SlideRisquesMajeurs },
+    { numero: 11, titre: 'Décisions Attendues', component: SlideDecisions },
   ];
 
   // Navigation dans le preview

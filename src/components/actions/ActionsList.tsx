@@ -307,7 +307,7 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
 
   return (
     <>
-      <div className="rounded-lg border bg-white overflow-x-auto">
+      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
         <Table>
           <TableHeader>
             <TableRow>

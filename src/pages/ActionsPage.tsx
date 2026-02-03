@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { List, LayoutGrid, Columns, GanttChart, CalendarDays, Network, Plus, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
-import { Button, Tooltip } from '@/components/ui';
+import { Button, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
 import { useActions, createAction, updateAction } from '@/hooks';
 import {
@@ -32,6 +32,7 @@ export function ActionsPage() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actions = useActions(actionFilters);
+  const toast = useToast();
 
   const handleEdit = (action: Action) => {
     setSelectedAction(action);
@@ -90,11 +91,11 @@ export function ActionsPage() {
       }
 
       if (result.data.length > 0) {
-        alert(`Import réussi: ${result.data.length} action(s) importée(s)`);
+        toast.success(`Import réussi: ${result.data.length} action(s) importée(s)`);
       }
     } catch (error) {
       console.error('Erreur import Excel:', error);
-      alert('Erreur lors de l\'import du fichier Excel');
+      toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);
       if (fileInputRef.current) {

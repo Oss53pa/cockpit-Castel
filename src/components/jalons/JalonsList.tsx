@@ -317,7 +317,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
 
   return (
     <>
-      <div className="rounded-lg border bg-white overflow-x-auto">
+      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
         <Table>
           <TableHeader>
             <TableRow className="bg-primary-50/50">

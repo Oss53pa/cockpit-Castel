@@ -146,6 +146,9 @@ export function ActionWizard({
   const [showSousTaches, setShowSousTaches] = useState(false);
   const [showPreuves, setShowPreuves] = useState(false);
   const [newNote, setNewNote] = useState('');
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkLabel, setNewLinkLabel] = useState('');
 
   const users = useUsers();
   const jalons = useJalons();
@@ -287,17 +290,20 @@ export function ActionWizard({
 
   // Ajouter un lien comme preuve
   const handleAddLien = () => {
-    const url = prompt('Entrez l\'URL du lien:');
-    if (url) {
-      const nom = prompt('Libellé du lien (optionnel):', url) || url;
-      appendPreuve({
-        id: crypto.randomUUID(),
-        type: 'lien',
-        nom,
-        url,
-        dateAjout: new Date().toISOString(),
-      });
+    if (!newLinkUrl.trim()) {
+      toast.error('Veuillez entrer une URL valide');
+      return;
     }
+    appendPreuve({
+      id: crypto.randomUUID(),
+      type: 'lien',
+      nom: newLinkLabel.trim() || newLinkUrl.trim(),
+      url: newLinkUrl.trim(),
+      dateAjout: new Date().toISOString(),
+    });
+    setNewLinkUrl('');
+    setNewLinkLabel('');
+    setShowLinkForm(false);
   };
 
   // Ajouter une note
@@ -870,7 +876,7 @@ export function ActionWizard({
                       const file = e.target.files?.[0];
                       if (file) {
                         if (file.size > 10 * 1024 * 1024) {
-                          alert('Le fichier ne doit pas dépasser 10MB');
+                          toast.error('Le fichier ne doit pas dépasser 10MB');
                           return;
                         }
                         appendPreuve({
@@ -900,16 +906,55 @@ export function ActionWizard({
                 </div>
 
                 {/* Ajouter un lien */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddLien}
-                  className="w-full"
-                >
-                  <LinkIcon className="w-4 h-4 mr-1" />
-                  Ajouter un lien
-                </Button>
+                {!showLinkForm ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowLinkForm(true)}
+                    className="w-full"
+                  >
+                    <LinkIcon className="w-4 h-4 mr-1" />
+                    Ajouter un lien
+                  </Button>
+                ) : (
+                  <div className="space-y-2 p-3 border rounded-lg bg-gray-50">
+                    <Input
+                      placeholder="URL du lien (ex: https://...)"
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Libellé (optionnel)"
+                      value={newLinkLabel}
+                      onChange={(e) => setNewLinkLabel(e.target.value)}
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddLien}
+                        className="flex-1"
+                      >
+                        Ajouter
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowLinkForm(false);
+                          setNewLinkUrl('');
+                          setNewLinkLabel('');
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

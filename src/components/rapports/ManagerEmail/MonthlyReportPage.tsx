@@ -229,16 +229,16 @@ export function MonthlyReportPage() {
         {/* === KPIs === */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Actions du mois', value: data.stats.totalActions, icon: ClipboardList, gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50' },
-            { label: 'Jalons du mois', value: data.stats.totalJalons, icon: Flag, gradient: 'from-purple-500 to-violet-600', light: 'bg-purple-50' },
-            { label: 'En retard', value: data.stats.actionsEnRetard, icon: AlertTriangle, gradient: data.stats.actionsEnRetard > 0 ? 'from-red-500 to-rose-600' : 'from-emerald-500 to-teal-600', light: data.stats.actionsEnRetard > 0 ? 'bg-red-50' : 'bg-emerald-50' },
-            { label: 'Terminées', value: data.stats.actionsTerminees, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50' },
+            { label: 'Actions du mois', value: data.stats.totalActions, icon: ClipboardList, gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', iconColor: 'text-blue-600' },
+            { label: 'Jalons du mois', value: data.stats.totalJalons, icon: Flag, gradient: 'from-purple-500 to-violet-600', light: 'bg-purple-50', iconColor: 'text-purple-600' },
+            { label: 'En retard', value: data.stats.actionsEnRetard, icon: AlertTriangle, gradient: data.stats.actionsEnRetard > 0 ? 'from-red-500 to-rose-600' : 'from-emerald-500 to-teal-600', light: data.stats.actionsEnRetard > 0 ? 'bg-red-50' : 'bg-emerald-50', iconColor: data.stats.actionsEnRetard > 0 ? 'text-red-600' : 'text-emerald-600' },
+            { label: 'Terminées', value: data.stats.actionsTerminees, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', iconColor: 'text-emerald-600' },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
               <div className={`h-1 bg-gradient-to-r ${kpi.gradient}`} />
               <div className="p-5">
                 <div className={`w-12 h-12 ${kpi.light} rounded-xl flex items-center justify-center mb-4`}>
-                  <kpi.icon className={`w-6 h-6 bg-gradient-to-r ${kpi.gradient} bg-clip-text`} style={{ color: 'transparent', backgroundClip: 'text', WebkitBackgroundClip: 'text' }} />
+                  <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />
                 </div>
                 <p className="text-3xl font-bold text-slate-900">{kpi.value}</p>
                 <p className="text-sm text-slate-500 mt-1">{kpi.label}</p>

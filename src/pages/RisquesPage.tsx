@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText, BarChart3, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
-import { Button, Select, SelectOption, Card, Badge, Tooltip } from '@/components/ui';
+import { Button, Select, SelectOption, Card, Badge, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
 import { useRisques, createRisque, updateRisque } from '@/hooks';
 import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
@@ -28,6 +28,7 @@ export function RisquesPage() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const risques = useRisques(risqueFilters);
+  const toast = useToast();
 
   // État pour les risques de la cellule sélectionnée dans la matrice
   const [selectedCellRisques, setSelectedCellRisques] = useState<{
@@ -82,8 +83,8 @@ export function RisquesPage() {
       const result = await excelService.importRisques(file);
 
       if (result.errors.length > 0) {
-        const errorMessages = result.errors.map(err => `Ligne ${err.row}: ${err.message}`).join('\n');
-        alert(`Erreurs d'import:\n${errorMessages}`);
+        const errorMessages = result.errors.map(err => `Ligne ${err.row}: ${err.message}`).join(', ');
+        toast.error(`Erreurs d'import: ${errorMessages}`);
       }
 
       for (const risqueData of result.data) {
@@ -97,11 +98,11 @@ export function RisquesPage() {
       }
 
       if (result.data.length > 0) {
-        alert(`Import réussi: ${result.data.length} risque(s) importé(s)`);
+        toast.success(`Import réussi: ${result.data.length} risque(s) importé(s)`);
       }
     } catch (error) {
       console.error('Erreur import Excel:', error);
-      alert('Erreur lors de l\'import du fichier Excel');
+      toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);
       if (fileInputRef.current) {

@@ -147,15 +147,15 @@ interface AxeDetailData {
   meteo: AxeMeteo;
 }
 
-// Axes configuration - 6 axes alignés avec le modèle projet (Construction vs 5 axes Mobilisation)
+// Axes configuration - Design Premium (palette slate/indigo uniforme)
 const axesConfig: Record<AxeType, { label: string; color: string; icon: React.ElementType; shortLabel: string }> = {
-  rh: { label: 'RH & Organisation', color: '#EF4444', icon: Users, shortLabel: 'RH' },
-  commercialisation: { label: 'Commercialisation', color: '#3B82F6', icon: Building2, shortLabel: 'COM' },
-  technique: { label: 'Technique & Handover', color: '#8B5CF6', icon: Wrench, shortLabel: 'TECH' },
-  budget: { label: 'Budget & Pilotage', color: '#F59E0B', icon: DollarSign, shortLabel: 'BUD' },
-  marketing: { label: 'Marketing & Comm.', color: '#EC4899', icon: Megaphone, shortLabel: 'MKT' },
-  exploitation: { label: 'Exploitation & Systèmes', color: '#10B981', icon: Briefcase, shortLabel: 'EXP' },
-  general: { label: 'Général / Transverse', color: '#6B7280', icon: Target, shortLabel: 'GEN' },
+  rh: { label: 'RH & Organisation', color: '#4F46E5', icon: Users, shortLabel: 'RH' },
+  commercialisation: { label: 'Commercialisation', color: '#4F46E5', icon: Building2, shortLabel: 'COM' },
+  technique: { label: 'Technique & Handover', color: '#4F46E5', icon: Wrench, shortLabel: 'TECH' },
+  budget: { label: 'Budget & Pilotage', color: '#4F46E5', icon: DollarSign, shortLabel: 'BUD' },
+  marketing: { label: 'Marketing & Comm.', color: '#4F46E5', icon: Megaphone, shortLabel: 'MKT' },
+  exploitation: { label: 'Exploitation & Systèmes', color: '#4F46E5', icon: Briefcase, shortLabel: 'EXP' },
+  general: { label: 'Général / Transverse', color: '#64748B', icon: Target, shortLabel: 'GEN' },
 };
 
 // Mapping entre les axes DeepDive et les codes d'axes de la base de données
@@ -169,72 +169,81 @@ const axeToDbCode: Record<AxeType, string> = {
   general: 'general',
 };
 
-// Weather config
+// Weather config - Design Premium (couleurs subtiles)
 const weatherConfig: Record<
   ProjectWeather,
-  { label: string; emoji: string; color: string; bgColor: string; textColor: string; icon: React.ElementType }
+  { label: string; emoji: string; color: string; bgColor: string; textColor: string; borderColor: string; icon: React.ElementType }
 > = {
   green: {
-    label: 'Vert (Sur la bonne voie)',
-    emoji: '☀️',
-    color: '#10B981',
-    bgColor: 'bg-success-100',
-    textColor: 'text-success-600',
+    label: 'Sur la bonne voie',
+    emoji: '●',
+    color: '#059669',
+    bgColor: 'bg-emerald-50',
+    textColor: 'text-emerald-700',
+    borderColor: 'border-emerald-200',
     icon: Sun,
   },
   yellow: {
-    label: 'Jaune (Attention requise)',
-    emoji: '⛅',
-    color: '#F59E0B',
-    bgColor: 'bg-warning-100',
-    textColor: 'text-warning-600',
+    label: 'Attention requise',
+    emoji: '●',
+    color: '#64748B',
+    bgColor: 'bg-slate-50',
+    textColor: 'text-slate-700',
+    borderColor: 'border-slate-200',
     icon: CloudSun,
   },
   orange: {
-    label: 'Orange (Vigilance)',
-    emoji: '☁️',
-    color: '#F97316',
-    bgColor: 'bg-orange-100',
-    textColor: 'text-orange-600',
+    label: 'Vigilance',
+    emoji: '●',
+    color: '#D97706',
+    bgColor: 'bg-amber-50',
+    textColor: 'text-amber-700',
+    borderColor: 'border-amber-200',
     icon: Cloud,
   },
   red: {
-    label: 'Rouge (Critique)',
-    emoji: '🌧️',
-    color: '#EF4444',
-    bgColor: 'bg-error-100',
-    textColor: 'text-error-600',
+    label: 'Critique',
+    emoji: '●',
+    color: '#E11D48',
+    bgColor: 'bg-rose-50',
+    textColor: 'text-rose-700',
+    borderColor: 'border-rose-200',
     icon: CloudRain,
   },
 };
 
+// Urgency config - Design Premium (monochrome avec indicateurs subtils)
 const urgencyConfig: Record<
   UrgencyLevel,
-  { label: string; emoji: string; color: string; bgColor: string }
+  { label: string; emoji: string; color: string; bgColor: string; borderColor: string }
 > = {
   critical: {
-    label: 'Critique (Bloquant)',
-    emoji: '',
-    color: '#EF4444',
-    bgColor: 'bg-error-50',
+    label: 'Critique',
+    emoji: '●',
+    color: '#E11D48',
+    bgColor: 'bg-rose-50',
+    borderColor: 'border-rose-200',
   },
   high: {
-    label: 'Haute (Cette semaine)',
-    emoji: '',
-    color: '#F97316',
-    bgColor: 'bg-orange-50',
+    label: 'Haute',
+    emoji: '●',
+    color: '#D97706',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-200',
   },
   medium: {
-    label: 'Moyenne (Ce mois)',
-    emoji: '🟡',
-    color: '#F59E0B',
-    bgColor: 'bg-warning-50',
+    label: 'Moyenne',
+    emoji: '●',
+    color: '#64748B',
+    bgColor: 'bg-slate-50',
+    borderColor: 'border-slate-200',
   },
   low: {
-    label: 'Basse (Ce trimestre)',
-    emoji: '🟢',
-    color: '#10B981',
-    bgColor: 'bg-success-50',
+    label: 'Basse',
+    emoji: '●',
+    color: '#059669',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
   },
 };
 
@@ -380,7 +389,7 @@ function SortableSlideItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`p-2 rounded-lg border transition-all ${slide.included ? 'bg-primary-50 border-primary-200' : 'bg-gray-50 border-gray-200 opacity-60'} ${isDragging ? 'shadow-lg ring-2 ring-primary-400' : ''}`}
+      className={`p-2 rounded-xl border transition-all ${slide.included ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-200 opacity-60'} ${isDragging ? 'shadow-lg ring-2 ring-indigo-400' : ''}`}
     >
       <div className="flex items-center gap-2">
         <div
@@ -392,7 +401,7 @@ function SortableSlideItem({
         </div>
 
         <div
-          className={`w-6 h-6 rounded flex items-center justify-center text-xs font-medium ${slide.included ? 'bg-primary-600 text-white' : 'bg-gray-300 text-gray-600'}`}
+          className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-semibold ${slide.included ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-500'}`}
         >
           {slide.included ? index + 1 : '-'}
         </div>
@@ -407,7 +416,7 @@ function SortableSlideItem({
           className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
         >
           {React.createElement(slide.icon, {
-            className: `h-4 w-4 shrink-0 ${slide.included ? 'text-primary-600' : 'text-gray-400'}`,
+            className: `h-4 w-4 shrink-0 ${slide.included ? 'text-slate-600' : 'text-slate-400'}`,
           })}
           {isEditingTitle ? (
             <input
@@ -420,17 +429,17 @@ function SortableSlideItem({
               }}
               onClick={(e) => e.stopPropagation()}
               autoFocus
-              className="flex-1 text-xs border border-primary-300 rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="flex-1 text-xs border border-indigo-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           ) : (
-            <span className={`flex-1 text-left text-xs truncate ${slide.included ? 'text-primary-900' : 'text-gray-500'}`}>
+            <span className={`flex-1 text-left text-xs truncate ${slide.included ? 'text-slate-800' : 'text-slate-500'}`}>
               {slide.title}
             </span>
           )}
           {slide.included ? (
-            <CheckCircle className="h-4 w-4 text-success-500 shrink-0" />
+            <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
           ) : (
-            <div className="h-4 w-4 rounded-full border-2 border-gray-300 shrink-0" />
+            <div className="h-4 w-4 rounded-full border-2 border-slate-300 shrink-0" />
           )}
         </div>
 
@@ -672,12 +681,13 @@ export function DeepDive() {
     alert('Paramètres de design enregistrés !');
   };
 
-  // KPIs state
+  // KPIs state - calcul sécurisé du budget consommé
+  const budgetConsumedCalc = budget.prevu > 0 ? Math.round((budget.realise / budget.prevu) * 100) : 0;
   const [kpiValues, setKpiValues] = useState({
-    occupation: Math.round(kpis.tauxOccupation) || 45,
-    budgetConsumed: Math.round((budget.realise / budget.prevu) * 100) || 32,
-    milestonesAchieved: kpis.jalonsAtteints || 8,
-    teamRecruited: kpis.equipeTaille || 4,
+    occupation: Math.round(kpis.tauxOccupation) || 0,
+    budgetConsumed: Math.min(budgetConsumedCalc, 200), // Plafonner à 200% max pour éviter les valeurs aberrantes
+    milestonesAchieved: kpis.jalonsAtteints || 0,
+    teamRecruited: kpis.equipeTaille || 0,
   });
 
   // DG Decision points with axe
@@ -1064,145 +1074,143 @@ export function DeepDive() {
         )}
         <div className="flex-1 p-3">
           <div className="grid grid-cols-2 gap-3">
-            {/* Actions - compact */}
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-xs font-semibold" style={{ color: primaryColor }}>Actions</h3>
-                <span className="text-lg font-bold" style={{ color: axeConfig.color }}>{data.actions}</span>
+            {/* Actions - Design Premium */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-slate-700">Actions</h3>
+                <span className="text-lg font-bold text-slate-900">{data.actions}</span>
               </div>
               <div className="grid grid-cols-3 gap-1 text-[10px]">
-                <div className="text-center p-1 bg-green-100 rounded">
-                  <div className="font-bold text-green-700">{data.actionsTerminees}</div>
-                  <div className="text-green-600">Terminées</div>
+                <div className="text-center p-1.5 bg-white rounded-lg border border-slate-100">
+                  <div className="font-bold text-emerald-600">{data.actionsTerminees}</div>
+                  <div className="text-slate-500">Terminées</div>
                 </div>
-                <div className="text-center p-1 bg-blue-100 rounded">
-                  <div className="font-bold text-blue-700">{data.actionsEnCours}</div>
-                  <div className="text-blue-600">En cours</div>
+                <div className="text-center p-1.5 bg-white rounded-lg border border-slate-100">
+                  <div className="font-bold text-indigo-600">{data.actionsEnCours}</div>
+                  <div className="text-slate-500">En cours</div>
                 </div>
-                <div className="text-center p-1 bg-red-100 rounded">
-                  <div className="font-bold text-red-700">{data.actionsEnRetard}</div>
-                  <div className="text-red-600">Retard</div>
+                <div className="text-center p-1.5 bg-white rounded-lg border border-slate-100">
+                  <div className="font-bold text-slate-600">{data.actionsEnRetard}</div>
+                  <div className="text-slate-500">Retard</div>
                 </div>
               </div>
             </div>
 
-            {/* Jalons - avec détails */}
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-xs font-semibold" style={{ color: primaryColor }}>Jalons</h3>
-                <span className="text-lg font-bold" style={{ color: axeConfig.color }}>
+            {/* Jalons - Design Premium */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-slate-700">Jalons</h3>
+                <span className="text-lg font-bold text-slate-900">
                   {jalonsAtteints.length}/{axeJalons.length || data.jalons}
                 </span>
               </div>
               {jalonsAtteints.length > 0 && (
-                <div className="mb-1">
-                  <div className="text-[9px] text-green-600 font-medium mb-0.5">✓ Atteints:</div>
+                <div className="mb-1.5">
+                  <div className="text-[9px] text-emerald-600 font-medium mb-0.5">● Atteints:</div>
                   {jalonsAtteints.slice(0, 2).map((j, idx) => (
-                    <div key={idx} className="text-[9px] text-gray-600 truncate pl-2">• {j.titre}</div>
+                    <div key={idx} className="text-[9px] text-slate-600 truncate pl-2">• {j.titre}</div>
                   ))}
                 </div>
               )}
               {jalonsEnDanger.length > 0 && (
-                <div className="mb-1">
-                  <div className="text-[9px] text-red-600 font-medium mb-0.5">En danger:</div>
+                <div className="mb-1.5">
+                  <div className="text-[9px] text-rose-600 font-medium mb-0.5">● En danger:</div>
                   {jalonsEnDanger.slice(0, 2).map((j, idx) => (
-                    <div key={idx} className="text-[9px] text-gray-600 truncate pl-2">• {j.titre}</div>
+                    <div key={idx} className="text-[9px] text-slate-600 truncate pl-2">• {j.titre}</div>
                   ))}
                 </div>
               )}
               {jalonsAVenir.length > 0 && jalonsAtteints.length === 0 && jalonsEnDanger.length === 0 && (
                 <div>
-                  <div className="text-[9px] text-blue-600 font-medium mb-0.5">A venir:</div>
+                  <div className="text-[9px] text-indigo-600 font-medium mb-0.5">● A venir:</div>
                   {jalonsAVenir.slice(0, 2).map((j, idx) => (
-                    <div key={idx} className="text-[9px] text-gray-600 truncate pl-2">• {j.titre}</div>
+                    <div key={idx} className="text-[9px] text-slate-600 truncate pl-2">• {j.titre}</div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Risques - avec détails des critiques */}
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-xs font-semibold" style={{ color: primaryColor }}>Risques</h3>
-                <span className="text-lg font-bold" style={{ color: axeConfig.color }}>{axeRisques.length || data.risques}</span>
+            {/* Risques - Design Premium */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-slate-700">Risques</h3>
+                <span className="text-lg font-bold text-slate-900">{axeRisques.length || data.risques}</span>
               </div>
               {risquesCritiques.length > 0 && (
-                <div className="mb-1">
-                  <div className="text-[9px] text-red-600 font-medium mb-0.5">Critiques ({risquesCritiques.length}):</div>
+                <div className="mb-1.5">
+                  <div className="text-[9px] text-rose-600 font-medium mb-0.5">● Critiques ({risquesCritiques.length}):</div>
                   {risquesCritiques.slice(0, 2).map((r, idx) => (
-                    <div key={idx} className="text-[9px] text-gray-600 truncate pl-2 flex items-center gap-1">
+                    <div key={idx} className="text-[9px] text-slate-600 truncate pl-2 flex items-center gap-1">
                       <span>• {r.titre}</span>
-                      <span className="text-red-500 font-medium">(P{r.probabilite}×I{r.impact}={r.score})</span>
+                      <span className="text-rose-500 font-medium">(P{r.probabilite}×I{r.impact}={r.score})</span>
                     </div>
                   ))}
                 </div>
               )}
               {risquesEleves.length > 0 && (
                 <div>
-                  <div className="text-[9px] text-orange-600 font-medium mb-0.5">Eleves ({risquesEleves.length}):</div>
+                  <div className="text-[9px] text-amber-600 font-medium mb-0.5">● Élevés ({risquesEleves.length}):</div>
                   {risquesEleves.slice(0, 2).map((r, idx) => (
-                    <div key={idx} className="text-[9px] text-gray-600 truncate pl-2">• {r.titre}</div>
+                    <div key={idx} className="text-[9px] text-slate-600 truncate pl-2">• {r.titre}</div>
                   ))}
                 </div>
               )}
               {risquesCritiques.length === 0 && risquesEleves.length === 0 && axeRisques.length > 0 && (
-                <div className="text-[9px] text-green-600">✓ Aucun risque critique ou élevé</div>
+                <div className="text-[9px] text-emerald-600">● Aucun risque critique ou élevé</div>
               )}
             </div>
 
-            {/* Budget - compact */}
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <h3 className="text-xs font-semibold mb-1" style={{ color: primaryColor }}>Budget</h3>
-              <div className="text-[10px] space-y-0.5">
+            {/* Budget - Design Premium */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <h3 className="text-xs font-semibold text-slate-700 mb-2">Budget</h3>
+              <div className="text-[10px] space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Prévu:</span>
-                  <span className="font-medium">{data.budgetPrevu.toLocaleString('fr-FR')} FCFA</span>
+                  <span className="text-slate-500">Prévu:</span>
+                  <span className="font-medium text-slate-800">{data.budgetPrevu.toLocaleString('fr-FR')} FCFA</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Réalisé:</span>
-                  <span className="font-medium" style={{ color: axeConfig.color }}>
+                  <span className="text-slate-500">Réalisé:</span>
+                  <span className="font-medium text-indigo-600">
                     {data.budgetRealise.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
-                <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full"
+                    className="h-full rounded-full bg-indigo-500"
                     style={{
-                      width: `${Math.min((data.budgetRealise / data.budgetPrevu) * 100, 100)}%`,
-                      backgroundColor: axeConfig.color
+                      width: `${Math.min((data.budgetRealise / data.budgetPrevu) * 100, 100)}%`
                     }}
                   />
                 </div>
-                <div className="text-[9px] text-gray-400 text-right">
+                <div className="text-[9px] text-slate-500 text-right">
                   {Math.round((data.budgetRealise / data.budgetPrevu) * 100)}% consommé
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Decisions DG for this axe - avec plus de détails */}
+          {/* Decisions DG - Design Premium */}
           {axeDecisions.length > 0 && (
-            <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
-              <h3 className="text-xs font-semibold mb-1 flex items-center gap-1" style={{ color: '#9A3412' }}>
-                <AlertTriangle className="h-3 w-3" />
-                Points DG en attente ({axeDecisions.length})
+            <div className="mt-3 p-3 bg-amber-50/50 rounded-xl border border-amber-200">
+              <h3 className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-slate-700">
+                <AlertTriangle className="h-3 w-3 text-amber-600" />
+                Points DG ({axeDecisions.length})
               </h3>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {axeDecisions.map((point) => (
                   <div
                     key={point.id}
-                    className="p-1.5 bg-white rounded text-[10px]"
-                    style={{ borderLeft: `3px solid ${urgencyConfig[point.urgency].color}` }}
+                    className="p-2 bg-white rounded-lg text-[10px] border-l-3"
+                    style={{ borderLeftColor: urgencyConfig[point.urgency].color }}
                   >
-                    <div className="flex items-center gap-1 font-medium text-gray-800">
-                      <span>{urgencyConfig[point.urgency].emoji}</span>
+                    <div className="flex items-center gap-1 font-medium text-slate-700">
                       <span className="flex-1 truncate">{point.subject}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-gray-500">
-                      {point.amount && point.amount !== '-' && <span>💰 {point.amount}</span>}
+                    <div className="flex items-center gap-2 mt-0.5 text-slate-500">
+                      {point.amount && point.amount !== '-' && <span>{point.amount}</span>}
                       <span>{point.deadline ? new Date(point.deadline).toLocaleDateString('fr-FR') : '-'}</span>
                     </div>
-                    <div className="text-[9px] italic text-gray-600 mt-0.5">{point.recommendation}</div>
+                    <div className="text-[9px] text-slate-500 mt-0.5">{point.recommendation}</div>
                   </div>
                 ))}
               </div>
@@ -1325,12 +1333,12 @@ export function DeepDive() {
               <tbody>
                 {actionsToShow.map((action, idx) => {
                   const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-                    termine: { bg: 'bg-green-100', text: 'text-green-700', label: 'Terminé' },
-                    en_cours: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'En cours' },
-                    en_retard: { bg: 'bg-red-100', text: 'text-red-700', label: 'En retard' },
-                    bloque: { bg: 'bg-red-100', text: 'text-red-700', label: 'Bloqué' },
-                    a_faire: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'À faire' },
-                    planifie: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Planifié' },
+                    termine: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Terminé' },
+                    en_cours: { bg: 'bg-indigo-50', text: 'text-indigo-700', label: 'En cours' },
+                    en_retard: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'En retard' },
+                    bloque: { bg: 'bg-rose-50', text: 'text-rose-700', label: 'Bloqué' },
+                    a_faire: { bg: 'bg-slate-100', text: 'text-slate-600', label: 'À faire' },
+                    planifie: { bg: 'bg-slate-100', text: 'text-slate-500', label: 'Planifié' },
                   };
                   const status = statusConfig[action.statut] || statusConfig.a_faire;
                   return (
@@ -1383,26 +1391,26 @@ export function DeepDive() {
             </span>
           </div>
           <div className="flex-1 p-3 overflow-hidden">
-            {/* Résumé */}
+            {/* Résumé - Design Premium */}
             <div className="flex gap-2 mb-3">
-              <div className="flex-1 p-2 bg-green-50 rounded-lg border border-green-200 text-center">
-                <div className="text-xl font-bold text-green-600">{jalonsAtteints.length}</div>
-                <div className="text-[9px] text-green-700">Atteints</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-emerald-600">{jalonsAtteints.length}</div>
+                <div className="text-[9px] text-slate-500">Atteints</div>
               </div>
-              <div className="flex-1 p-2 bg-red-50 rounded-lg border border-red-200 text-center">
-                <div className="text-xl font-bold text-red-600">{jalonsEnDanger.length}</div>
-                <div className="text-[9px] text-red-700">En danger</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-rose-600">{jalonsEnDanger.length}</div>
+                <div className="text-[9px] text-slate-500">En danger</div>
               </div>
-              <div className="flex-1 p-2 bg-blue-50 rounded-lg border border-blue-200 text-center">
-                <div className="text-xl font-bold text-blue-600">{jalonsAVenir.length}</div>
-                <div className="text-[9px] text-blue-700">À venir</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-indigo-600">{jalonsAVenir.length}</div>
+                <div className="text-[9px] text-slate-500">À venir</div>
               </div>
             </div>
             {/* Timeline */}
             <div className="space-y-1.5">
               {axeJalons.slice(0, 6).map((jalon, idx) => {
                 const statusColors: Record<string, string> = {
-                  atteint: '#22C55E', en_danger: '#EF4444', depasse: '#DC2626', en_approche: '#3B82F6', a_venir: '#6B7280'
+                  atteint: '#059669', en_danger: '#E11D48', depasse: '#BE123C', en_approche: '#4F46E5', a_venir: '#64748B'
                 };
                 return (
                   <div key={idx} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded">
@@ -1444,28 +1452,28 @@ export function DeepDive() {
             </span>
           </div>
           <div className="flex-1 p-4 overflow-hidden">
-            {/* KPIs Budget */}
+            {/* KPIs Budget - Design Premium */}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="p-3 bg-gray-50 rounded-lg text-center border">
-                <div className="text-[10px] text-gray-500 mb-1">Budget Alloué</div>
-                <div className="text-lg font-bold" style={{ color: primaryColor }}>
+              <div className="p-3 bg-white rounded-xl text-center border border-slate-200 shadow-sm">
+                <div className="text-[10px] text-slate-500 mb-1">Budget Alloué</div>
+                <div className="text-lg font-bold text-slate-900">
                   {(data.budgetPrevu / 1000000).toFixed(0)}M
                 </div>
-                <div className="text-[9px] text-gray-400">FCFA</div>
+                <div className="text-[9px] text-slate-400">FCFA</div>
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg text-center border" style={{ borderColor: axeConfig.color }}>
-                <div className="text-[10px] text-gray-500 mb-1">Consommé</div>
-                <div className="text-lg font-bold" style={{ color: axeConfig.color }}>
+              <div className="p-3 bg-indigo-50 rounded-xl text-center border border-indigo-200 shadow-sm">
+                <div className="text-[10px] text-slate-500 mb-1">Consommé</div>
+                <div className="text-lg font-bold text-indigo-600">
                   {(data.budgetRealise / 1000000).toFixed(0)}M
                 </div>
-                <div className="text-[9px] text-gray-400">FCFA</div>
+                <div className="text-[9px] text-slate-400">FCFA</div>
               </div>
-              <div className={`p-3 rounded-lg text-center border ${isOverBudget ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-                <div className="text-[10px] text-gray-500 mb-1">Écart</div>
-                <div className={`text-lg font-bold ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
+              <div className={`p-3 rounded-xl text-center border shadow-sm ${isOverBudget ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                <div className="text-[10px] text-slate-500 mb-1">Écart</div>
+                <div className={`text-lg font-bold ${isOverBudget ? 'text-rose-600' : 'text-emerald-600'}`}>
                   {isOverBudget ? '-' : '+'}{(Math.abs(ecart) / 1000000).toFixed(0)}M
                 </div>
-                <div className="text-[9px] text-gray-400">FCFA</div>
+                <div className="text-[9px] text-slate-400">FCFA</div>
               </div>
             </div>
             {/* Barre de progression */}
@@ -1484,10 +1492,10 @@ export function DeepDive() {
                 />
               </div>
             </div>
-            {/* Prévisions */}
-            <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-[10px] font-semibold text-blue-700 mb-1">Prevision de cloture</div>
-              <div className="text-[9px] text-blue-600">
+            {/* Prévisions - Design Premium */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="text-[10px] font-semibold text-slate-700 mb-1">Prévision de clôture</div>
+              <div className="text-[9px] text-slate-600">
                 Estimation fin de projet: {((data.budgetRealise / (data.avancement || 1)) * 100 / 1000000).toFixed(0)}M FCFA
                 ({Math.round(((data.budgetRealise / (data.avancement || 1)) * 100 / data.budgetPrevu) * 100)}% du budget initial)
               </div>
@@ -1516,26 +1524,26 @@ export function DeepDive() {
             </span>
           </div>
           <div className="flex-1 p-3 overflow-hidden">
-            {/* Résumé par niveau */}
+            {/* Résumé par niveau - Design Premium */}
             <div className="flex gap-2 mb-3">
-              <div className="flex-1 p-2 bg-red-50 rounded-lg border border-red-200 text-center">
-                <div className="text-xl font-bold text-red-600">{risquesCritiques.length}</div>
-                <div className="text-[9px] text-red-700">Critiques</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-rose-600">{risquesCritiques.length}</div>
+                <div className="text-[9px] text-slate-500">Critiques</div>
               </div>
-              <div className="flex-1 p-2 bg-orange-50 rounded-lg border border-orange-200 text-center">
-                <div className="text-xl font-bold text-orange-600">{risquesEleves.length}</div>
-                <div className="text-[9px] text-orange-700">Élevés</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-amber-600">{risquesEleves.length}</div>
+                <div className="text-[9px] text-slate-500">Élevés</div>
               </div>
-              <div className="flex-1 p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-center">
-                <div className="text-xl font-bold text-yellow-600">{risquesMoyens.length}</div>
-                <div className="text-[9px] text-yellow-700">Moyens</div>
+              <div className="flex-1 p-2.5 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-slate-600">{risquesMoyens.length}</div>
+                <div className="text-[9px] text-slate-500">Moyens</div>
               </div>
             </div>
             {/* Liste des risques avec mesures */}
             <div className="space-y-1.5">
               {axeRisques.slice(0, 4).map((risque, idx) => {
                 const score = risque.score || 0;
-                const scoreColor = score >= 12 ? '#EF4444' : score >= 8 ? '#F97316' : score >= 4 ? '#EAB308' : '#22C55E';
+                const scoreColor = score >= 12 ? '#E11D48' : score >= 8 ? '#D97706' : score >= 4 ? '#94A3B8' : '#059669';
                 return (
                   <div key={idx} className="p-2 bg-gray-50 rounded-lg border-l-3" style={{ borderLeftColor: scoreColor }}>
                     <div className="flex items-start justify-between gap-2">
@@ -1622,12 +1630,12 @@ export function DeepDive() {
       const actionsTerminees = axeActions.filter(a => a.statut === 'termine').length;
       const actionsEnRetard = axeActions.filter(a => a.statut === 'en_retard' || a.statut === 'bloque').length;
 
-      // Météo badge config
+      // Météo badge config - Design Premium
       const meteoConfig: Record<AxeMeteo, { emoji: string; label: string; bgColor: string }> = {
-        sunny: { emoji: '☀️', label: 'Favorable', bgColor: 'rgba(34, 197, 94, 0.2)' },
-        cloudy: { emoji: '⛅', label: 'Attention', bgColor: 'rgba(234, 179, 8, 0.2)' },
-        rainy: { emoji: '🌧️', label: 'À risque', bgColor: 'rgba(249, 115, 22, 0.2)' },
-        stormy: { emoji: '⛈️', label: 'Critique', bgColor: 'rgba(239, 68, 68, 0.2)' },
+        sunny: { emoji: '●', label: 'Favorable', bgColor: 'rgba(5, 150, 105, 0.15)' },
+        cloudy: { emoji: '●', label: 'Attention', bgColor: 'rgba(100, 116, 139, 0.15)' },
+        rainy: { emoji: '●', label: 'À risque', bgColor: 'rgba(217, 119, 6, 0.15)' },
+        stormy: { emoji: '●', label: 'Critique', bgColor: 'rgba(225, 29, 72, 0.15)' },
       };
       const axeMeteo = data.meteo || 'cloudy';
       const meteoStyle = meteoConfig[axeMeteo];
@@ -1669,7 +1677,7 @@ export function DeepDive() {
                 <div className="space-y-1">
                   {axeActions.slice(0, 8).map((action, idx) => {
                     const statusColors: Record<string, string> = {
-                      termine: '#22C55E', en_cours: '#3B82F6', en_retard: '#EF4444', bloque: '#DC2626', a_faire: '#6B7280', planifie: '#9CA3AF'
+                      termine: '#059669', en_cours: '#4F46E5', en_retard: '#D97706', bloque: '#E11D48', a_faire: '#64748B', planifie: '#94A3B8'
                     };
                     return (
                       <div key={idx} className="flex items-center gap-1.5 p-1 bg-white rounded text-[9px]">
@@ -1696,7 +1704,7 @@ export function DeepDive() {
                 <div className="space-y-1">
                   {axeJalons.slice(0, 8).map((jalon, idx) => {
                     const statusColors: Record<string, string> = {
-                      atteint: '#22C55E', en_danger: '#EF4444', depasse: '#DC2626', en_approche: '#3B82F6', a_venir: '#6B7280'
+                      atteint: '#059669', en_danger: '#E11D48', depasse: '#BE123C', en_approche: '#4F46E5', a_venir: '#64748B'
                     };
                     return (
                       <div key={idx} className="flex items-center gap-1.5 p-1 bg-white rounded text-[9px]">
@@ -1778,7 +1786,7 @@ export function DeepDive() {
                 <div className="space-y-1">
                   {axeRisques.slice(0, 5).map((risque, idx) => {
                     const score = risque.score || 0;
-                    const scoreColor = score >= 12 ? '#EF4444' : score >= 8 ? '#F97316' : score >= 4 ? '#EAB308' : '#22C55E';
+                    const scoreColor = score >= 12 ? '#E11D48' : score >= 8 ? '#D97706' : score >= 4 ? '#94A3B8' : '#059669';
                     return (
                       <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: scoreColor }}>
                         <div className="flex items-center justify-between">
@@ -2835,10 +2843,10 @@ export function DeepDive() {
 
         const getJalonStatusConfig = (statut: string) => {
           const configs: Record<string, { color: string; bg: string; label: string; icon: string }> = {
-            atteint: { color: '#22C55E', bg: 'bg-green-50', label: 'Atteint', icon: '✓' },
-            en_danger: { color: '#EF4444', bg: 'bg-red-50', label: 'En danger', icon: '' },
+            atteint: { color: '#059669', bg: 'bg-emerald-50', label: 'Atteint', icon: '✓' },
+            en_danger: { color: '#E11D48', bg: 'bg-rose-50', label: 'En danger', icon: '' },
             depasse: { color: '#DC2626', bg: 'bg-red-100', label: 'Dépassé', icon: '✗' },
-            en_approche: { color: '#3B82F6', bg: 'bg-blue-50', label: 'En approche', icon: '→' },
+            en_approche: { color: '#4F46E5', bg: 'bg-indigo-50', label: 'En approche', icon: '→' },
             a_venir: { color: '#6B7280', bg: 'bg-gray-50', label: 'A venir', icon: '' },
           };
           return configs[statut] || configs.a_venir;
@@ -2969,9 +2977,9 @@ export function DeepDive() {
 
         const statusColors: Record<string, string> = {
           termine: '#10B981',
-          en_cours: '#3B82F6',
-          en_retard: '#EF4444',
-          bloque: '#EF4444',
+          en_cours: '#4F46E5',
+          en_retard: '#D97706',
+          bloque: '#E11D48',
           planifie: '#6B7280',
           a_faire: '#F59E0B',
         };
@@ -3007,12 +3015,12 @@ export function DeepDive() {
                           <span className="text-xs text-gray-600">{terminees}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4F46E5' }} />
                           <span className="text-xs text-gray-600">{enCours}</span>
                         </div>
                         {enRetard > 0 && (
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444' }} />
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#E11D48' }} />
                             <span className="text-xs text-gray-600">{enRetard}</span>
                           </div>
                         )}
@@ -3050,11 +3058,11 @@ export function DeepDive() {
                   <span className="text-xs text-gray-500">Terminée</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#3B82F6' }} />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4F46E5' }} />
                   <span className="text-xs text-gray-500">En cours</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#EF4444' }} />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#E11D48' }} />
                   <span className="text-xs text-gray-500">En retard/Bloquée</span>
                 </div>
               </div>
@@ -3630,10 +3638,10 @@ export function DeepDive() {
               {/* Légende */}
               <div className="flex justify-center gap-4 mt-3 pt-3 border-t">
                 {[
-                  { label: 'Critique (≥12)', color: '#EF4444' },
+                  { label: 'Critique (≥12)', color: '#E11D48' },
                   { label: 'Élevé (8-11)', color: '#F97316' },
                   { label: 'Modéré (4-7)', color: '#EAB308' },
-                  { label: 'Faible (1-3)', color: '#22C55E' },
+                  { label: 'Faible (1-3)', color: '#059669' },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }} />
@@ -3665,12 +3673,12 @@ export function DeepDive() {
 
         const getHealthColor = (sante: string) => {
           const colors: Record<string, string> = {
-            vert: '#22C55E',
+            vert: '#059669',
             jaune: '#EAB308',
             orange: '#F97316',
-            rouge: '#EF4444',
+            rouge: '#E11D48',
             gris: '#6B7280',
-            bleu: '#3B82F6',
+            bleu: '#4F46E5',
           };
           return colors[sante] || '#6B7280';
         };
@@ -3689,9 +3697,9 @@ export function DeepDive() {
               {/* Stats rapides */}
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[
-                  { label: 'Sur chemin critique', value: actions.filter(a => a.chemin_critique).length, color: '#EF4444' },
+                  { label: 'Sur chemin critique', value: actions.filter(a => a.chemin_critique).length, color: '#E11D48' },
                   { label: 'Priorité critique', value: actions.filter(a => a.priorite === 'critique').length, color: '#F97316' },
-                  { label: 'Santé rouge', value: actions.filter(a => a.sante === 'rouge').length, color: '#EF4444' },
+                  { label: 'Santé rouge', value: actions.filter(a => a.sante === 'rouge').length, color: '#E11D48' },
                   { label: 'Bloquées', value: actions.filter(a => a.statut === 'bloque').length, color: '#991B1B' },
                 ].map((stat, idx) => (
                   <div key={idx} className="bg-gray-50 rounded-lg p-2 text-center">
@@ -3873,8 +3881,8 @@ export function DeepDive() {
                 {[
                   { label: 'Effectif Total', value: teams.reduce((s, t) => s + t.members, 0), unit: '', color: primaryColor },
                   { label: 'Charge Moyenne', value: Math.round(teams.reduce((s, t) => s + t.load, 0) / teams.length), unit: '%', color: '#F59E0B' },
-                  { label: 'Productivité', value: Math.round(teams.reduce((s, t) => s + t.productivity, 0) / teams.length), unit: '%', color: '#22C55E' },
-                  { label: 'À recruter', value: 8, unit: '', color: '#3B82F6' },
+                  { label: 'Productivité', value: Math.round(teams.reduce((s, t) => s + t.productivity, 0) / teams.length), unit: '%', color: '#059669' },
+                  { label: 'À recruter', value: 8, unit: '', color: '#4F46E5' },
                 ].map((stat, idx) => (
                   <div key={idx} className="bg-gray-50 rounded-xl p-3 text-center border">
                     <div className="text-2xl font-bold" style={{ color: stat.color }}>{stat.value}{stat.unit}</div>
@@ -3902,7 +3910,7 @@ export function DeepDive() {
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-gray-500 w-16">Productivité</span>
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${team.productivity}%`, backgroundColor: '#22C55E' }} />
+                          <div className="h-full rounded-full" style={{ width: `${team.productivity}%`, backgroundColor: '#4F46E5' }} />
                         </div>
                         <span className="text-xs font-medium w-10 text-right text-green-600">{team.productivity}%</span>
                       </div>
@@ -4082,10 +4090,10 @@ export function DeepDive() {
 
         const getPriorityColor = (priority: string) => {
           const colors: Record<string, string> = {
-            critical: '#EF4444',
+            critical: '#E11D48',
             high: '#F97316',
             medium: '#EAB308',
-            low: '#22C55E',
+            low: '#059669',
           };
           return colors[priority] || '#6B7280';
         };

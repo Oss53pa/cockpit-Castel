@@ -40,7 +40,7 @@ export function ReportHeader({
           {subtitle && <p className="text-primary-200 mt-1">{subtitle}</p>}
           <div className="flex items-center gap-4 mt-3">
             {period && (
-              <Badge variant="secondary\" className="bg-white/20 text-white border-0">
+              <Badge variant="secondary" className="bg-white/20 text-white border-0">
                 <Calendar className="h-3 w-3 mr-1" />
                 {period}
               </Badge>

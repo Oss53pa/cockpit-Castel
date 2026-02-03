@@ -25,7 +25,7 @@ import {
 import { db } from '@/db';
 import { getUpdateLink, markLinkAccessed, markLinkUpdated } from '@/services/emailService';
 import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase';
-import { useUsers } from '@/hooks';
+import { useUsers, updateAction, updateJalon } from '@/hooks';
 import type { UpdateLink } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
@@ -184,7 +184,6 @@ export function ExternalUpdatePage() {
             sous_taches: actionData.sousTaches,
             points_attention: actionData.pointsAttention,
             decisions_attendues: actionData.decisionsAttendues,
-            updated_at: new Date().toISOString(),
             derniere_mise_a_jour_externe: new Date().toISOString(),
           };
           // Convertir preuves en documents si présents
@@ -197,7 +196,8 @@ export function ExternalUpdatePage() {
               dateAjout: p.dateAjout,
             }));
           }
-          await db.actions.update(link.entityId, actionUpdate);
+          // Utiliser updateAction avec flag externe pour le tracking
+          await updateAction(link.entityId, actionUpdate, { isExternal: true });
         } else if (type === 'jalon') {
           const jalonData = data as JalonFormSaveData;
           const jalonUpdate: Record<string, any> = {
@@ -206,10 +206,10 @@ export function ExternalUpdatePage() {
             notes_mise_a_jour: jalonData.notes_mise_a_jour,
             commentaires_externes: jalonData.commentaires_externes,
             date_validation: jalonData.date_validation,
-            updated_at: new Date().toISOString(),
             derniere_mise_a_jour_externe: new Date().toISOString(),
           };
-          await db.jalons.update(link.entityId, jalonUpdate);
+          // Utiliser updateJalon avec flag externe pour le tracking
+          await updateJalon(link.entityId, jalonUpdate, { isExternal: true });
         } else if (type === 'risque') {
           const risqueData = data as RisqueFormSaveData;
           const risqueUpdate: Record<string, any> = {
@@ -226,15 +226,19 @@ export function ExternalUpdatePage() {
           await db.risques.update(link.entityId, risqueUpdate);
         }
 
-        await db.historique.add({
-          timestamp: new Date().toISOString(),
-          entiteType: type,
-          entiteId: link.entityId,
-          champModifie: 'update_externe',
-          ancienneValeur: '',
-          nouvelleValeur: `Mise à jour externe par ${link.recipientName} (${link.recipientEmail})`,
-          auteurId: 0,
-        });
+        // Note: Le tracking granulaire est maintenant fait par updateAction/updateJalon
+        // On ajoute juste une entrée générale pour les risques (pas encore migrés)
+        if (type === 'risque') {
+          await db.historique.add({
+            timestamp: new Date().toISOString(),
+            entiteType: type,
+            entiteId: link.entityId,
+            champModifie: 'update_externe',
+            ancienneValeur: '',
+            nouvelleValeur: `Mise à jour externe par ${link.recipientName} (${link.recipientEmail})`,
+            auteurId: 0,
+          });
+        }
 
         const entityTypeLabel = type === 'action' ? 'Action' : type === 'jalon' ? 'Jalon' : 'Risque';
         const actionData = data as ActionFormSaveData;

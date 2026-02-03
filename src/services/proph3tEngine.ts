@@ -105,7 +105,6 @@ export interface AIResponse {
 // ============================================================================
 
 const CONFIG_KEY = 'proph3t_engine_config';
-// const CACHE_KEY = 'proph3t_cache';
 
 const DEFAULT_CONFIG: Proph3tConfig = {
   provider: 'local',

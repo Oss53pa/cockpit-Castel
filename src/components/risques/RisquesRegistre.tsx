@@ -182,7 +182,7 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
 
   return (
     <>
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
         <Table>
           <TableHeader>
             <TableRow>

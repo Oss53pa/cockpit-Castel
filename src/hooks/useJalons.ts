@@ -11,6 +11,22 @@ import {
   calculerMeteoJalon,
 } from '@/lib/calculations';
 import { autoUpdateJalonStatus } from '@/services/autoCalculationService';
+import { trackChange } from './useHistorique';
+import { useAppStore } from '@/stores/appStore';
+
+// Champs à tracker pour l'historique des modifications
+const TRACKED_JALON_FIELDS: (keyof Jalon)[] = [
+  'titre',
+  'description',
+  'statut',
+  'date_prevue',
+  'date_reelle',
+  'date_validation',
+  'avancement_prealables',
+  'axe',
+  'projectPhase',
+  'responsable',
+];
 
 export function useJalons(filters?: JalonFilters) {
   const jalons = useLiveQuery(async () => {
@@ -91,12 +107,24 @@ export async function createJalon(
 
 export async function updateJalon(
   id: number,
-  updates: Partial<Jalon>
+  updates: Partial<Jalon>,
+  options?: { skipTracking?: boolean; isExternal?: boolean }
 ): Promise<void> {
+  // Récupérer le jalon actuel pour comparaison
+  const currentJalon = await db.jalons.get(id);
+
+  // Appliquer les updates
   await db.jalons.update(id, {
     ...updates,
     updatedAt: new Date().toISOString(),
   });
+
+  // Tracker les modifications dans l'historique
+  if (!options?.skipTracking && currentJalon) {
+    const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
+    const newData = { ...currentJalon, ...updates };
+    await trackChange('jalon', id, auteurId, currentJalon, newData, TRACKED_JALON_FIELDS);
+  }
 }
 
 /**

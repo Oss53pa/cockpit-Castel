@@ -6,12 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency = 'XOF'): string {
+  if (amount === 0 || amount === null || amount === undefined) {
+    return '0 FCFA';
+  }
   return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount) + ' FCFA';
 }
 
 export function formatNumber(value: number, decimals?: number): string {
@@ -24,8 +25,8 @@ export function formatNumber(value: number, decimals?: number): string {
 export function formatPercent(value: number): string {
   return new Intl.NumberFormat('fr-FR', {
     style: 'percent',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value / 100);
 }
 
@@ -128,10 +129,10 @@ export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
 // COSMOS ANGRÉ - UTILITAIRES PARTAGÉS
 // ============================================================================
 
-// Type pour les codes bâtiment Cosmos Angré
-export type BuildingCode = 'CC' | 'BB1' | 'BB2' | 'BB3' | 'BB4' | 'ZE' | 'MA' | 'PK';
+// Type pour les codes bâtiment Cosmos Angré (unifié avec BATIMENTS_CONFIG)
+export type BuildingCode = 'CC' | 'MKT' | 'BB1' | 'BB2' | 'BB3' | 'BB4';
 
-export const VALID_BUILDING_CODES: BuildingCode[] = ['CC', 'BB1', 'BB2', 'BB3', 'BB4', 'ZE', 'MA', 'PK'];
+export const VALID_BUILDING_CODES: BuildingCode[] = ['CC', 'MKT', 'BB1', 'BB2', 'BB3', 'BB4'];
 
 // Convertir une Date en string ISO (YYYY-MM-DD)
 export function toDateString(date: Date): string {

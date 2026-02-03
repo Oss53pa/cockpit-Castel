@@ -7,7 +7,30 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, ...props }, ref) => {
+  ({ className, type, error, onFocus, onChange, ...props }, ref) => {
+    // Pour les champs numériques, effacer le 0 au focus
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      if (type === 'number' && e.target.value === '0') {
+        e.target.value = '';
+      }
+      // Sélectionner tout le contenu
+      e.target.select();
+      onFocus?.(e);
+    };
+
+    // Pour les champs numériques, supprimer les zéros en tête
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (type === 'number') {
+        let value = e.target.value;
+        // Supprimer les zéros en tête (ex: "08000" -> "8000")
+        if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
+          value = value.replace(/^0+/, '');
+          e.target.value = value;
+        }
+      }
+      onChange?.(e);
+    };
+
     return (
       <input
         type={type}
@@ -17,6 +40,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onFocus={handleFocus}
+        onChange={handleChange}
         {...props}
       />
     );

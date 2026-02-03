@@ -14,6 +14,7 @@ import {
   Cloud,
   Cpu,
   BookOpen,
+  GripHorizontal,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import {
@@ -54,8 +55,61 @@ export function ProphetChat() {
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<AIConfig>(getConfig());
 
+  // Drag state - position from bottom-right corner
+  const [position, setPosition] = useState({ x: 24, y: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({
+    startX: 0,
+    startY: 0,
+    startPosX: 0,
+    startPosY: 0,
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Drag handlers
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPosX: position.x,
+      startPosY: position.y,
+    };
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const deltaX = dragRef.current.startX - moveEvent.clientX;
+      const deltaY = dragRef.current.startY - moveEvent.clientY;
+
+      const newX = dragRef.current.startPosX + deltaX;
+      const newY = dragRef.current.startPosY + deltaY;
+
+      // Constrain to viewport
+      const maxX = window.innerWidth - 100;
+      const maxY = window.innerHeight - 100;
+
+      setPosition({
+        x: Math.max(10, Math.min(newX, maxX)),
+        y: Math.max(10, Math.min(newY, maxY)),
+      });
+    };
+
+    const handleUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  };
 
   // Get all project data
   const actions = useActions();
@@ -173,43 +227,90 @@ export function ProphetChat() {
 
       {/* Floating Button */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-50 group overflow-hidden ring-2 ring-primary-900 hover:ring-primary-700"
+        <div
+          className="fixed z-50 group"
+          style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+          onMouseDown={(e) => {
+            // Track if this is a drag or a click
+            const startX = e.clientX;
+            const startY = e.clientY;
+            let hasMoved = false;
+
+            const handleMove = (moveEvent: MouseEvent) => {
+              const deltaX = Math.abs(moveEvent.clientX - startX);
+              const deltaY = Math.abs(moveEvent.clientY - startY);
+              if (deltaX > 5 || deltaY > 5) {
+                hasMoved = true;
+              }
+            };
+
+            const handleUp = () => {
+              document.removeEventListener('mousemove', handleMove);
+              document.removeEventListener('mouseup', handleUp);
+              // Only open if it wasn't a drag
+              if (!hasMoved && !isDragging) {
+                setIsOpen(true);
+              }
+            };
+
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('mouseup', handleUp);
+
+            // Start drag
+            handleDragStart(e);
+          }}
         >
-          <img
-            src="/avatar-proph3t.jpg"
-            alt="Proph3t"
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-          />
-          {/* Sparkles indicator */}
-          <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-md animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-white" />
+          {/* Drag indicator - appears on hover */}
+          <div
+            className={`absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ${isDragging ? 'opacity-100' : ''}`}
+          >
+            <GripHorizontal className="w-3 h-3 text-white" />
+            <span className="text-[10px] text-white font-medium">Glisser</span>
+          </div>
+          <div
+            className={`w-16 h-16 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center overflow-hidden ring-2 ring-primary-900 hover:ring-primary-700 ${isDragging ? 'cursor-grabbing scale-95' : 'cursor-grab'}`}
+          >
+            <img
+              src="/avatar-proph3t.jpg"
+              alt="Proph3t"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+            />
+            {/* Sparkles indicator */}
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-md animate-pulse">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
           </div>
           <span
-            className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-primary-900 text-sm opacity-0 group-hover:opacity-100 transition-opacity bg-white px-3 py-1 rounded-full shadow"
-            style={{ fontFamily: "'Grand Hotel', cursive", fontSize: '18px' }}
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-primary-900 text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-white px-2 py-0.5 rounded-full shadow"
+            style={{ fontFamily: "'Grand Hotel', cursive", fontSize: '14px' }}
           >
             Proph3t
           </span>
-        </button>
+        </div>
       )}
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[420px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-200 overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 flex items-center justify-between">
+        <div
+          className="fixed w-[420px] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-200 overflow-hidden"
+          style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+        >
+          {/* Header - Draggable */}
+          <div
+            className={`bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-4 flex items-center justify-between ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onMouseDown={handleDragStart}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/30">
                 <img src="/avatar-proph3t.jpg" alt="Proph3t" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h3
-                  className="text-xl"
+                  className="text-xl flex items-center gap-2"
                   style={{ fontFamily: "'Grand Hotel', cursive" }}
                 >
                   Proph3t
+                  <GripHorizontal className="w-4 h-4 opacity-50" />
                 </h3>
                 <div className="flex items-center gap-1 text-xs text-white/80">
                   {getProviderIcon(config.provider)}
@@ -217,7 +318,7 @@ export function ProphetChat() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" onMouseDown={(e) => e.stopPropagation()}>
               <button
                 onClick={() => {
                   setIsCapabilitiesOpen(!isCapabilitiesOpen);

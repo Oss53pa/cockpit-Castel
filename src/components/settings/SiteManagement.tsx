@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Building2, MapPin, Calendar, Ruler } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, MapPin, Calendar, Ruler, Store, Banknote, Warehouse } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { useSites, createSite, updateSite, deleteSite, cleanupDuplicateSites } from '@/hooks/useSites';
 import { useSiteStore } from '@/stores/siteStore';
@@ -12,7 +12,12 @@ interface SiteFormData {
   description: string;
   localisation: string;
   dateOuverture: string;
+  dateInauguration: string;
   surface: number;
+  boutiquesMin: number;
+  boutiquesMax: number;
+  investissement: number;
+  nombreBatiments: number;
   couleur: string;
 }
 
@@ -22,7 +27,12 @@ const defaultFormData: SiteFormData = {
   description: '',
   localisation: '',
   dateOuverture: '',
+  dateInauguration: '',
   surface: 0,
+  boutiquesMin: 0,
+  boutiquesMax: 0,
+  investissement: 0,
+  nombreBatiments: 0,
   couleur: '#18181b',
 };
 
@@ -70,7 +80,12 @@ export function SiteManagement() {
       description: site.description ?? '',
       localisation: site.localisation ?? '',
       dateOuverture: site.dateOuverture ?? '',
+      dateInauguration: site.dateInauguration ?? '',
       surface: site.surface ?? 0,
+      boutiquesMin: site.boutiquesMin ?? 0,
+      boutiquesMax: site.boutiquesMax ?? 0,
+      investissement: site.investissement ?? 0,
+      nombreBatiments: site.nombreBatiments ?? 0,
       couleur: site.couleur,
     });
     setIsEditing(true);
@@ -199,26 +214,12 @@ export function SiteManagement() {
                     value={formData.localisation}
                     onChange={(e) => setFormData({ ...formData, localisation: e.target.value })}
                     className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    placeholder="Abidjan, Côte d'Ivoire"
+                    placeholder="Angré, Abidjan, Côte d'Ivoire"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-primary-700 mb-1">
-                    Date d'ouverture
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dateOuverture}
-                    onChange={(e) => setFormData({ ...formData, dateOuverture: e.target.value })}
-                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary-700 mb-1">
-                    Surface (m²)
+                    Surface GLA (m²)
                   </label>
                   <input
                     type="number"
@@ -227,6 +228,88 @@ export function SiteManagement() {
                     className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
                     placeholder="45000"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Soft Opening
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dateOuverture}
+                    onChange={(e) => setFormData({ ...formData, dateOuverture: e.target.value })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Inauguration
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dateInauguration}
+                    onChange={(e) => setFormData({ ...formData, dateInauguration: e.target.value })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Boutiques (min)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.boutiquesMin || ''}
+                    onChange={(e) => setFormData({ ...formData, boutiquesMin: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Boutiques (max)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.boutiquesMax || ''}
+                    onChange={(e) => setFormData({ ...formData, boutiquesMax: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="120"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Nb Bâtiments
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.nombreBatiments || ''}
+                    onChange={(e) => setFormData({ ...formData, nombreBatiments: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="6"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-primary-700 mb-1">
+                    Investissement (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.investissement || ''}
+                    onChange={(e) => setFormData({ ...formData, investissement: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="85000000000"
+                  />
+                  <p className="text-xs text-primary-400 mt-1">
+                    {formData.investissement > 0 && `${(formData.investissement / 1_000_000_000).toFixed(0)} milliards FCFA`}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-primary-700 mb-1">
@@ -302,16 +385,43 @@ export function SiteManagement() {
                         {site.localisation}
                       </span>
                     )}
-                    {site.dateOuverture && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(site.dateOuverture).toLocaleDateString('fr-FR')}
-                      </span>
-                    )}
                     {site.surface && (
                       <span className="flex items-center gap-1">
                         <Ruler className="h-3 w-3" />
                         {site.surface.toLocaleString()} m²
+                      </span>
+                    )}
+                    {(site.boutiquesMin || site.boutiquesMax) && (
+                      <span className="flex items-center gap-1">
+                        <Store className="h-3 w-3" />
+                        {site.boutiquesMin && site.boutiquesMax
+                          ? `${site.boutiquesMin} - ${site.boutiquesMax} boutiques`
+                          : `${site.boutiquesMin || site.boutiquesMax} boutiques`
+                        }
+                      </span>
+                    )}
+                    {site.investissement && (
+                      <span className="flex items-center gap-1">
+                        <Banknote className="h-3 w-3" />
+                        {(site.investissement / 1_000_000_000).toFixed(0)} Mds FCFA
+                      </span>
+                    )}
+                    {site.dateOuverture && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Soft: {new Date(site.dateOuverture).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
+                    {site.dateInauguration && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Inaug: {new Date(site.dateInauguration).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
+                    {site.nombreBatiments && (
+                      <span className="flex items-center gap-1">
+                        <Warehouse className="h-3 w-3" />
+                        {site.nombreBatiments} bâtiments
                       </span>
                     )}
                   </div>

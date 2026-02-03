@@ -6,10 +6,6 @@
 
 const isDev = import.meta.env.DEV;
 
-// URL du Cloudflare Worker (a configurer apres deploiement)
-// Exemple: 'https://cosmos-angre-proxy.votre-compte.workers.dev'
-// const WORKER_URL = import.meta.env.VITE_WORKER_URL || '';
-
 export const API_ENDPOINTS = {
   // Anthropic (Claude)
   anthropic: {

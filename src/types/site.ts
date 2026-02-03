@@ -8,8 +8,13 @@ export interface Site {
   nom: string;               // Nom complet du site
   description?: string;      // Description du projet
   localisation?: string;     // Ville/Pays
-  dateOuverture?: string;    // Date d'ouverture prévue
-  surface?: number;          // Surface en m²
+  dateOuverture?: string;    // Date d'ouverture prévue (Soft Opening)
+  dateInauguration?: string; // Date d'inauguration officielle
+  surface?: number;          // Surface GLA en m²
+  boutiquesMin?: number;     // Nombre minimum de boutiques
+  boutiquesMax?: number;     // Nombre maximum de boutiques
+  investissement?: number;   // Investissement total en FCFA
+  nombreBatiments?: number;  // Nombre de bâtiments
   couleur: string;           // Couleur pour l'UI (#hex)
   logo?: string;             // URL ou base64 du logo
   actif: boolean;            // Site actif ou archivé
@@ -21,9 +26,14 @@ export const DEFAULT_SITE: Omit<Site, 'id' | 'createdAt' | 'updatedAt'> = {
   code: 'COSMOS',
   nom: 'COSMOS ANGRE',
   description: 'Centre commercial Cosmos Angré - Abidjan',
-  localisation: 'Abidjan, Côte d\'Ivoire',
-  dateOuverture: '2026-11-01',
+  localisation: 'Angré, Abidjan, Côte d\'Ivoire',
+  dateOuverture: '2026-11-15',
+  dateInauguration: '2026-12-15',
   surface: 45000,
+  boutiquesMin: 100,
+  boutiquesMax: 120,
+  investissement: 85_000_000_000, // 85 milliards FCFA
+  nombreBatiments: 6,
   couleur: '#18181b',
   actif: true,
 };

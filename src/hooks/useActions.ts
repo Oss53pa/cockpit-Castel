@@ -6,6 +6,23 @@ import {
   autoUpdateJalonStatus,
   propagateDateChangeToSuccessors,
 } from '@/services/autoCalculationService';
+import { trackChange } from './useHistorique';
+import { useAppStore } from '@/stores/appStore';
+
+// Champs à tracker pour l'historique des modifications
+const TRACKED_ACTION_FIELDS: (keyof Action)[] = [
+  'titre',
+  'description',
+  'statut',
+  'avancement',
+  'priorite',
+  'date_debut_prevue',
+  'date_fin_prevue',
+  'responsableId',
+  'axe',
+  'phase',
+  'sante',
+];
 
 export function useActions(filters?: ActionFilters) {
   const actions = useLiveQuery(async () => {
@@ -100,7 +117,8 @@ export async function createAction(
 
 export async function updateAction(
   id: number,
-  updates: Partial<Action>
+  updates: Partial<Action>,
+  options?: { skipTracking?: boolean; isExternal?: boolean }
 ): Promise<void> {
   // Récupérer l'action actuelle pour comparaison
   const currentAction = await db.actions.get(id);
@@ -111,17 +129,24 @@ export async function updateAction(
     updatedAt: new Date().toISOString(),
   });
 
-  // 2. Si avancement change → vérifier transition statut automatique
+  // 2. Tracker les modifications dans l'historique
+  if (!options?.skipTracking && currentAction) {
+    const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
+    const newData = { ...currentAction, ...updates };
+    await trackChange('action', id, auteurId, currentAction, newData, TRACKED_ACTION_FIELDS);
+  }
+
+  // 3. Si avancement change → vérifier transition statut automatique
   if (updates.avancement !== undefined && updates.avancement !== currentAction?.avancement) {
     await autoUpdateActionStatus(id);
   }
 
-  // 3. Si date_fin_prevue change → propager aux successeurs
+  // 4. Si date_fin_prevue change → propager aux successeurs
   if (updates.date_fin_prevue && updates.date_fin_prevue !== currentAction?.date_fin_prevue) {
     await propagateDateChangeToSuccessors(id, updates.date_fin_prevue, updates.date_debut_prevue);
   }
 
-  // 4. Mettre à jour le jalon parent si lié
+  // 5. Mettre à jour le jalon parent si lié
   const action = await db.actions.get(id);
   if (action?.jalonId) {
     await autoUpdateJalonStatus(action.jalonId);
@@ -137,7 +162,7 @@ export async function updateActionStatus(
   status: ActionStatus
 ): Promise<void> {
   const updates: Partial<Action> = {
-    status,
+    statut: status,
     updatedAt: new Date().toISOString(),
   };
 
@@ -146,7 +171,8 @@ export async function updateActionStatus(
     updates.avancement = 100;
   }
 
-  await db.actions.update(id, updates);
+  // Utiliser updateAction pour bénéficier du tracking
+  await updateAction(id, updates);
 }
 
 export async function addCommentaire(

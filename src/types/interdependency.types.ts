@@ -163,13 +163,14 @@ export interface AxeColorSet {
   dark: string;
 }
 
+// Couleurs unifiées avec AXES_CONFIG_FULL de constants.ts
 export const AXE_COLORS: Record<Axe, AxeColorSet> = {
-  axe1_rh: { bg: '#3B82F6', light: '#DBEAFE', dark: '#1E40AF' },
-  axe2_commercial: { bg: '#10B981', light: '#D1FAE5', dark: '#065F46' },
-  axe3_technique: { bg: '#F97316', light: '#FFEDD5', dark: '#9A3412' },
-  axe4_budget: { bg: '#8B5CF6', light: '#EDE9FE', dark: '#5B21B6' },
+  axe1_rh: { bg: '#EF4444', light: '#FEE2E2', dark: '#B91C1C' },
+  axe2_commercial: { bg: '#3B82F6', light: '#DBEAFE', dark: '#1E40AF' },
+  axe3_technique: { bg: '#8B5CF6', light: '#EDE9FE', dark: '#5B21B6' },
+  axe4_budget: { bg: '#F59E0B', light: '#FEF3C7', dark: '#B45309' },
   axe5_marketing: { bg: '#EC4899', light: '#FCE7F3', dark: '#9D174D' },
-  axe6_exploitation: { bg: '#06B6D4', light: '#CFFAFE', dark: '#0E7490' },
+  axe6_exploitation: { bg: '#10B981', light: '#D1FAE5', dark: '#065F46' },
 };
 
 /**

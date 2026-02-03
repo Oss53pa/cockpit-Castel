@@ -76,12 +76,16 @@ interface PointAttention {
   responsableId: number | null;
   responsableNom?: string;
   dateCreation: string;
+  transmis?: boolean;
+  dateTransmission?: string;
 }
 
 interface DecisionAttendue {
   id: string;
   sujet: string;
   dateCreation: string;
+  transmis?: boolean;
+  dateTransmission?: string;
 }
 
 interface UserOption {
@@ -224,6 +228,9 @@ export function ActionFormContent({
     })) || [];
   });
   const [newNote, setNewNote] = useState('');
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkLabel, setNewLinkLabel] = useState('');
   const [pointsAttention, setPointsAttention] = useState<PointAttention[]>(
     (action as any).points_attention || []
   );
@@ -312,11 +319,17 @@ export function ActionFormContent({
 
   // Handlers preuves
   const handleAddLien = () => {
-    const url = prompt('Entrez l\'URL du lien:');
-    if (url) {
-      const nom = prompt('Libellé du lien (optionnel):', url) || url;
-      setPreuves([...preuves, { id: crypto.randomUUID(), type: 'lien', nom, url, dateAjout: new Date().toISOString() }]);
-    }
+    if (!newLinkUrl.trim()) return;
+    setPreuves([...preuves, {
+      id: crypto.randomUUID(),
+      type: 'lien',
+      nom: newLinkLabel.trim() || newLinkUrl.trim(),
+      url: newLinkUrl.trim(),
+      dateAjout: new Date().toISOString()
+    }]);
+    setNewLinkUrl('');
+    setNewLinkLabel('');
+    setShowLinkForm(false);
   };
 
   const handleAddFichier = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,28 +772,55 @@ export function ActionFormContent({
                 {pointsAttention.map((pa, index) => (
                   <div
                     key={pa.id}
-                    className="p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                    className={`p-3 border rounded-lg ${pa.transmis ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}
                   >
                     <div className="space-y-3">
+                      {/* Checkbox Transmis */}
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={pa.transmis || false}
+                            onChange={(e) => {
+                              handleUpdatePointAttention(index, 'transmis', e.target.checked);
+                              if (e.target.checked) {
+                                handleUpdatePointAttention(index, 'dateTransmission', new Date().toISOString());
+                              }
+                            }}
+                            disabled={!isEditing}
+                            className="w-4 h-4 rounded border-green-300 text-green-600 focus:ring-green-500"
+                          />
+                          <span className={`text-sm font-medium ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>
+                            <CheckCircle className="w-4 h-4 inline mr-1" />
+                            Transmis
+                          </span>
+                        </label>
+                        {pa.transmis && pa.dateTransmission && (
+                          <span className="text-xs text-green-600">
+                            le {new Date(pa.dateTransmission).toLocaleDateString('fr-FR')}
+                          </span>
+                        )}
+                      </div>
+
                       {/* Sujet */}
                       <div>
-                        <Label className="text-xs text-amber-700 mb-1">Sujet</Label>
+                        <Label className={`text-xs mb-1 ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>Sujet</Label>
                         {isEditing ? (
                           <Input
                             value={pa.sujet}
                             onChange={(e) => handleUpdatePointAttention(index, 'sujet', e.target.value)}
                             placeholder="Décrivez le point d'attention..."
-                            className="border-amber-300 focus:border-amber-500"
+                            className={pa.transmis ? 'border-green-300 focus:border-green-500' : 'border-amber-300 focus:border-amber-500'}
                           />
                         ) : (
-                          <p className="text-sm">{pa.sujet || 'Non renseigné'}</p>
+                          <p className={`text-sm ${pa.transmis ? 'line-through text-green-600' : ''}`}>{pa.sujet || 'Non renseigné'}</p>
                         )}
                       </div>
 
                       {/* Responsable */}
                       <div className="flex items-center gap-3">
                         <div className="flex-1">
-                          <Label className="text-xs text-amber-700 mb-1">Responsable</Label>
+                          <Label className={`text-xs mb-1 ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>Responsable</Label>
                           {isEditing ? (
                             <Select
                               value={pa.responsableId?.toString() || ''}
@@ -857,32 +897,62 @@ export function ActionFormContent({
                 {decisionsAttendues.map((da, index) => (
                   <div
                     key={da.id}
-                    className="p-3 bg-purple-50 border border-purple-200 rounded-lg"
+                    className={`p-3 border rounded-lg ${da.transmis ? 'bg-green-50 border-green-200' : 'bg-purple-50 border-purple-200'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <Label className="text-xs text-purple-700 mb-1">Sujet</Label>
-                        {isEditing ? (
-                          <Input
-                            value={da.sujet}
-                            onChange={(e) => handleUpdateDecisionAttendue(index, 'sujet', e.target.value)}
-                            placeholder="Décrivez la décision attendue..."
-                            className="border-purple-300 focus:border-purple-500"
+                    <div className="space-y-3">
+                      {/* Checkbox Transmis */}
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={da.transmis || false}
+                            onChange={(e) => {
+                              handleUpdateDecisionAttendue(index, 'transmis', e.target.checked);
+                              if (e.target.checked) {
+                                handleUpdateDecisionAttendue(index, 'dateTransmission', new Date().toISOString());
+                              }
+                            }}
+                            disabled={!isEditing}
+                            className="w-4 h-4 rounded border-green-300 text-green-600 focus:ring-green-500"
                           />
-                        ) : (
-                          <p className="text-sm">{da.sujet || 'Non renseigné'}</p>
+                          <span className={`text-sm font-medium ${da.transmis ? 'text-green-700' : 'text-purple-700'}`}>
+                            <CheckCircle className="w-4 h-4 inline mr-1" />
+                            Transmis
+                          </span>
+                        </label>
+                        {da.transmis && da.dateTransmission && (
+                          <span className="text-xs text-green-600">
+                            le {new Date(da.dateTransmission).toLocaleDateString('fr-FR')}
+                          </span>
                         )}
                       </div>
 
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDecisionAttendue(index)}
-                          className="text-red-500 hover:text-red-700 p-1 mt-5"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      {/* Sujet */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Label className={`text-xs mb-1 ${da.transmis ? 'text-green-700' : 'text-purple-700'}`}>Sujet</Label>
+                          {isEditing ? (
+                            <Input
+                              value={da.sujet}
+                              onChange={(e) => handleUpdateDecisionAttendue(index, 'sujet', e.target.value)}
+                              placeholder="Décrivez la décision attendue..."
+                              className={da.transmis ? 'border-green-300 focus:border-green-500' : 'border-purple-300 focus:border-purple-500'}
+                            />
+                          ) : (
+                            <p className={`text-sm ${da.transmis ? 'line-through text-green-600' : ''}`}>{da.sujet || 'Non renseigné'}</p>
+                          )}
+                        </div>
+
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDecisionAttendue(index)}
+                            className="text-red-500 hover:text-red-700 p-1 mt-5"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1004,23 +1074,65 @@ export function ActionFormContent({
             )}
 
             {isEditing && (
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={handleAddLien} className="flex-1">
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Ajouter un lien
-                </Button>
-                <label className="flex-1 cursor-pointer">
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleAddFichier}
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                  />
-                  <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors border border-primary-300 bg-transparent hover:bg-primary-100 active:bg-primary-200 h-10 px-4 w-full">
-                    <FileIcon className="w-4 h-4" />
-                    Joindre un fichier
-                  </span>
-                </label>
+              <div className="space-y-3">
+                {!showLinkForm ? (
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setShowLinkForm(true)} className="flex-1">
+                      <LinkIcon className="w-4 h-4 mr-2" />
+                      Ajouter un lien
+                    </Button>
+                    <label className="flex-1 cursor-pointer">
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={handleAddFichier}
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                      />
+                      <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors border border-primary-300 bg-transparent hover:bg-primary-100 active:bg-primary-200 h-10 px-4 w-full">
+                        <FileIcon className="w-4 h-4" />
+                        Joindre un fichier
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-3 border rounded-lg bg-gray-50">
+                    <Input
+                      placeholder="URL du lien (ex: https://...)"
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      className="text-sm"
+                    />
+                    <Input
+                      placeholder="Libellé (optionnel)"
+                      value={newLinkLabel}
+                      onChange={(e) => setNewLinkLabel(e.target.value)}
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddLien}
+                        disabled={!newLinkUrl.trim()}
+                        className="flex-1"
+                      >
+                        Ajouter
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowLinkForm(false);
+                          setNewLinkUrl('');
+                          setNewLinkLabel('');
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { List, LayoutGrid, Columns, GanttChart, Network, Plus, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import { useAppStore } from '@/stores';
-import { Button, Select, SelectOption, Tooltip } from '@/components/ui';
+import { Button, Select, SelectOption, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
 import { useJalons, createJalon, updateJalon } from '@/hooks';
 import {
@@ -32,6 +32,7 @@ export function JalonsPage() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jalons = useJalons(jalonFilters);
+  const toast = useToast();
 
   const handleEdit = (jalon: Jalon) => {
     setSelectedJalon(jalon);
@@ -92,11 +93,11 @@ export function JalonsPage() {
       }
 
       if (result.data.length > 0) {
-        alert(`Import réussi: ${result.data.length} jalon(s) importé(s)`);
+        toast.success(`Import réussi: ${result.data.length} jalon(s) importé(s)`);
       }
     } catch (error) {
       console.error('Erreur import Excel:', error);
-      alert('Erreur lors de l\'import du fichier Excel');
+      toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);
       // Reset file input

@@ -349,11 +349,12 @@ export function exportCOPILToPDF(data: COPILExportData): void {
   currentY = drawKPIRow(doc, margin, currentY, contentWidth, budgetKPIs);
   currentY += 10;
 
-  // Budget bars
+  // Budget bars - calcul sécurisé pour éviter division par zéro
+  const budgetPrevu = data.budget.prevu || 1; // Éviter division par zéro
   const budgetBars = [
     { label: 'Prévu', value: 100, color: COLORS.primary },
-    { label: 'Engagé', value: (data.budget.engage / data.budget.prevu) * 100, color: COLORS.info },
-    { label: 'Réalisé', value: (data.budget.realise / data.budget.prevu) * 100, color: COLORS.success },
+    { label: 'Engagé', value: data.budget.prevu > 0 ? Math.min((data.budget.engage / budgetPrevu) * 100, 200) : 0, color: COLORS.info },
+    { label: 'Réalisé', value: data.budget.prevu > 0 ? Math.min((data.budget.realise / budgetPrevu) * 100, 200) : 0, color: COLORS.success },
   ];
 
   budgetBars.forEach((bar) => {

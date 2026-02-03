@@ -3,7 +3,7 @@
  * Design épuré et élégant - Standards Linear/Stripe/Notion
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar,
   Download,
@@ -14,6 +14,8 @@ import {
   Clock,
   BarChart3,
   PieChart,
+  FileText,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -23,7 +25,7 @@ import {
   useDashboardKPIs,
   useCOPILTrends,
   useSync,
-  useBudget,
+  useBudgetSynthese,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
 import { AXES_CONFIG_FULL } from '@/data/constants';
@@ -105,12 +107,28 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
   const risques = useRisques();
   const kpis = useDashboardKPIs();
   const trends = useCOPILTrends(siteId);
-  const syncData = useSync();
-  const budgetData = useBudget();
+  const syncData = useSync(siteId, 'cosmos-angre');
+  const budgetSynthese = useBudgetSynthese();
 
   const today = new Date();
   const currentMonth = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const todayStr = today.toISOString().split('T')[0];
+
+  // Notes manuelles
+  const notesKey = `monthly-report-notes-${siteId}-${today.getFullYear()}-${today.getMonth() + 1}`;
+  const [notes, setNotes] = useState('');
+  const [notesSaved, setNotesSaved] = useState(false);
+
+  useEffect(() => {
+    const savedNotes = localStorage.getItem(notesKey);
+    if (savedNotes) setNotes(savedNotes);
+  }, [notesKey]);
+
+  const handleSaveNotes = useCallback(() => {
+    localStorage.setItem(notesKey, notes);
+    setNotesSaved(true);
+    setTimeout(() => setNotesSaved(false), 2000);
+  }, [notesKey, notes]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -131,12 +149,17 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
       ? Math.round(actions.reduce((sum, a) => sum + (a.avancement || 0), 0) / actions.length)
       : 0;
 
+    // Calcul du pourcentage de budget consommé
+    const budgetPct = budgetSynthese.prevu > 0
+      ? Math.round((budgetSynthese.realise / budgetSynthese.prevu) * 100)
+      : 0;
+
     return {
       actionsTerminees, actionsEnCours, actionsEnRetard, jalonsAtteints, risquesCritiques, avancement,
       total: actions.length, jalonsTotal: jalons.length, risquesTotal: risques.filter(r => r.status !== 'ferme').length,
-      occupation: kpis.tauxOccupation || 0, budgetConsomme: kpis.budgetConsomme || 0
+      occupation: kpis.tauxOccupation || 0, budgetConsomme: budgetPct
     };
-  }, [actions, jalons, risques, kpis, today, todayStr]);
+  }, [actions, jalons, risques, kpis, budgetSynthese, today, todayStr]);
 
   // Top risques
   const topRisques = useMemo(() => {
@@ -167,19 +190,23 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
       .slice(0, 6);
   }, [actions, today]);
 
-  // Avancement par axe
+  // Avancement par axe (tous les 8 axes)
   const axeStats = useMemo(() => {
     return axesList.map(axe => {
-      const axeActions = actions.filter(a => a.axe_id === axe.code);
+      const axeActions = actions.filter(a => a.axe === axe.code);
       const termine = axeActions.filter(a => a.statut === 'termine').length;
       const total = axeActions.length;
-      return { axe, termine, total, pct: total > 0 ? Math.round((termine / total) * 100) : 0 };
-    }).filter(a => a.total > 0);
+      // Utiliser l'avancement moyen au lieu du pourcentage terminé
+      const avancementMoyen = axeActions.length > 0
+        ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
+        : 0;
+      return { axe, termine, total, pct: avancementMoyen };
+    });
   }, [actions]);
 
-  // Sync
-  const projectProgress = syncData?.projectProgress || 65;
-  const mobilizationProgress = syncData?.mobilizationProgress || 58;
+  // Sync - utiliser les vraies données de syncStatus
+  const projectProgress = syncData?.syncStatus?.projectProgress ?? metrics.avancement;
+  const mobilizationProgress = syncData?.syncStatus?.mobilizationProgress ?? Math.max(0, metrics.avancement - 5);
   const syncGap = projectProgress - mobilizationProgress;
 
   const trendVariation = trends?.avancementProjet?.variation || 0;
@@ -330,7 +357,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         {/* Avancement par axe */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
           <h2 className="text-base font-semibold text-slate-900 mb-6">Avancement par axe stratégique</h2>
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
             {axeStats.map((item, idx) => (
               <div key={idx} className="text-center">
                 <DonutChart value={item.pct} size={72} strokeWidth={6} color="#6366f1" />
@@ -352,7 +379,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
             <div className="space-y-3">
               {topRisques.length > 0 ? topRisques.map((risque, idx) => {
                 const score = risque.score || (risque.probabilite || 0) * (risque.impact || 0);
-                const axe = axesList.find(a => a.code === risque.axe_id);
+                const axe = axesList.find(a => a.code === risque.axe);
 
                 return (
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -386,7 +413,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
             </div>
             <div className="space-y-3">
               {actionsPrioritaires.length > 0 ? actionsPrioritaires.map((action, idx) => {
-                const axe = axesList.find(a => a.code === action.axe_id);
+                const axe = axesList.find(a => a.code === action.axe);
                 const priorityDot = action.priorite === 'critique' ? 'bg-rose-400' :
                   action.priorite === 'haute' ? 'bg-amber-400' : 'bg-indigo-400';
 
@@ -419,15 +446,15 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         </div>
 
         {/* Budget Section */}
-        {budgetData && (
+        {budgetSynthese.prevu > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <h2 className="text-base font-semibold text-slate-900 mb-6">Exécution budgétaire</h2>
             <div className="grid grid-cols-4 gap-6">
               {[
-                { label: 'Budget prévu', value: budgetData.budgetTotal || 0, color: 'bg-slate-500' },
-                { label: 'Engagé', value: budgetData.totalEngage || 0, color: 'bg-indigo-500' },
-                { label: 'Réalisé', value: budgetData.totalRealise || 0, color: 'bg-emerald-500' },
-                { label: 'Reste à engager', value: (budgetData.budgetTotal || 0) - (budgetData.totalEngage || 0), color: 'bg-amber-500' },
+                { label: 'Budget prévu', value: budgetSynthese.prevu, color: 'bg-slate-500' },
+                { label: 'Engagé', value: budgetSynthese.engage, color: 'bg-indigo-500' },
+                { label: 'Réalisé', value: budgetSynthese.realise, color: 'bg-emerald-500' },
+                { label: 'Reste à engager', value: budgetSynthese.ecartEngagement, color: 'bg-amber-500' },
               ].map((item, idx) => (
                 <div key={idx} className="p-4 rounded-xl bg-slate-50">
                   <div className="flex items-center gap-2 mb-2">
@@ -439,16 +466,44 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
               ))}
             </div>
             <div className="mt-4 h-3 bg-slate-100 rounded-full overflow-hidden flex">
-              <div className="h-full bg-emerald-500" style={{ width: `${((budgetData.totalRealise || 0) / (budgetData.budgetTotal || 1)) * 100}%` }} />
-              <div className="h-full bg-indigo-500" style={{ width: `${(((budgetData.totalEngage || 0) - (budgetData.totalRealise || 0)) / (budgetData.budgetTotal || 1)) * 100}%` }} />
+              <div className="h-full bg-emerald-500" style={{ width: `${budgetSynthese.tauxRealisation}%` }} />
+              <div className="h-full bg-indigo-500" style={{ width: `${Math.max(0, budgetSynthese.tauxEngagement - budgetSynthese.tauxRealisation)}%` }} />
             </div>
             <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
               <span>0%</span>
-              <span>Réalisé {((budgetData.totalRealise || 0) / (budgetData.budgetTotal || 1) * 100).toFixed(0)}% • Engagé {((budgetData.totalEngage || 0) / (budgetData.budgetTotal || 1) * 100).toFixed(0)}%</span>
+              <span>Réalisé {budgetSynthese.tauxRealisation.toFixed(0)}% • Engagé {budgetSynthese.tauxEngagement.toFixed(0)}%</span>
               <span>100%</span>
             </div>
           </div>
         )}
+
+        {/* Notes manuelles */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-slate-400" />
+              <h2 className="text-base font-semibold text-slate-900">Notes & Commentaires COPIL</h2>
+            </div>
+            <button
+              onClick={handleSaveNotes}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all',
+                notesSaved
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              <Save className="w-4 h-4" />
+              {notesSaved ? 'Enregistré' : 'Enregistrer'}
+            </button>
+          </div>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ajoutez vos notes, décisions prises, points de vigilance ou commentaires pour ce COPIL..."
+            className="w-full h-40 p-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-slate-400"
+          />
+        </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-slate-400 pt-4">
