@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Building2,
   ShoppingBag,
@@ -946,7 +946,8 @@ export function SynchronisationPage() {
                           const status = getLinkStatus(actionTech, actionMob);
 
                           return (
-                            <TableRow key={lien.id}>
+                            <React.Fragment key={lien.id}>
+                            <TableRow>
                               <TableCell>
                                 <button
                                   onClick={() => setExpandedLien(expandedLien === lien.id ? null : lien.id!)}
@@ -1009,6 +1010,89 @@ export function SynchronisationPage() {
                                 </Button>
                               </TableCell>
                             </TableRow>
+                            {/* Panneau d'expansion avec dépendances */}
+                            {expandedLien === lien.id && (
+                              <TableRow className="bg-neutral-50">
+                                <TableCell colSpan={7} className="p-4">
+                                  <div className="grid grid-cols-2 gap-6">
+                                    {/* Prédécesseurs de l'action technique */}
+                                    <div>
+                                      <h5 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                                        <ArrowRight className="w-4 h-4 rotate-180 text-blue-500" />
+                                        Prédécesseurs (Action Technique)
+                                      </h5>
+                                      {actionTech?.predecesseurs && actionTech.predecesseurs.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {actionTech.predecesseurs.map((dep, idx) => {
+                                            const predAction = [...actionsTechniques, ...actionsMobilisation].find(
+                                              a => a.id_action === dep.actionId || a.id === dep.actionId
+                                            );
+                                            return (
+                                              <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-white rounded border border-neutral-200">
+                                                <span className="text-neutral-500">{dep.actionId || predAction?.id_action}</span>
+                                                <span className="text-neutral-700">{predAction?.titre || 'Action non trouvée'}</span>
+                                                {predAction?.statut === 'termine' && (
+                                                  <CheckCircle className="w-3 h-3 text-green-500 ml-auto" />
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-neutral-400 italic">Aucun prédécesseur</p>
+                                      )}
+                                    </div>
+
+                                    {/* Successeurs de l'action mobilisation */}
+                                    <div>
+                                      <h5 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+                                        <ArrowRight className="w-4 h-4 text-orange-500" />
+                                        Successeurs (Action Mobilisation)
+                                      </h5>
+                                      {actionMob?.successeurs && actionMob.successeurs.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {actionMob.successeurs.map((dep, idx) => {
+                                            const succAction = [...actionsTechniques, ...actionsMobilisation].find(
+                                              a => a.id_action === dep.actionId || a.id === dep.actionId
+                                            );
+                                            return (
+                                              <div key={idx} className="flex items-center gap-2 text-sm p-2 bg-white rounded border border-neutral-200">
+                                                <span className="text-neutral-500">{dep.actionId || succAction?.id_action}</span>
+                                                <span className="text-neutral-700">{succAction?.titre || 'Action non trouvée'}</span>
+                                                {succAction?.statut === 'termine' ? (
+                                                  <CheckCircle className="w-3 h-3 text-green-500 ml-auto" />
+                                                ) : (
+                                                  <AlertCircle className="w-3 h-3 text-amber-500 ml-auto" />
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm text-neutral-400 italic">Aucun successeur</p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Impact en cascade */}
+                                  {actionTech && actionTech.statut !== 'termine' && actionTech.date_fin_prevue && new Date(actionTech.date_fin_prevue) < new Date() && (
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                      <div className="flex items-start gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5" />
+                                        <div>
+                                          <p className="text-sm font-medium text-red-700">Impact en cascade potentiel</p>
+                                          <p className="text-xs text-red-600 mt-1">
+                                            Cette action technique est en retard. Si la propagation est active,
+                                            l'action mobilisation liée et ses {actionMob?.successeurs?.length || 0} successeur(s) pourraient être impactés.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </React.Fragment>
                           );
                         })}
                       </TableBody>
