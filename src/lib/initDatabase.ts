@@ -94,16 +94,24 @@ export async function forceReseed(): Promise<{
   jalonsCreated: number;
   actionsCreated: number;
 }> {
-  console.log('[initDatabase] Force reseed des données v2.0...');
+  console.log('[initDatabase] Force reseed des données de production...');
 
-  // Effacer les données existantes
-  await db.transaction('rw', [db.users, db.jalons, db.actions], async () => {
+  // Effacer TOUTES les données existantes
+  await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams], async () => {
     await db.users.clear();
     await db.jalons.clear();
     await db.actions.clear();
+    await db.risques.clear();
+    await db.budget.clear();
+    await db.alertes.clear();
+    await db.teams.clear();
   });
 
-  // Reseeder
+  // Charger les vraies données de production avec siteId
+  const { seedDatabase } = await import('@/data/cosmosAngre');
+  await seedDatabase();
+
+  // Aussi exécuter seedDatabaseV2 pour les données complémentaires
   const result = await seedDatabaseV2(false);
   console.log('[initDatabase] Force reseed terminé:', result);
 
