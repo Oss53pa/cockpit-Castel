@@ -68,9 +68,10 @@ function MeteoIcon({ meteo, className }: { meteo: MeteoJalon; className?: string
 // ============================================================================
 
 export interface JalonFormContentProps {
-  jalon: Partial<Jalon> & { titre: string };
+  jalon?: Partial<Jalon> & { titre?: string };
   isEditing?: boolean;
   isExternal?: boolean;
+  isCreate?: boolean; // Mode création - tous les champs éditables
   onStatutChange?: (statut: StatutJalon) => void;
   onSave?: (data: JalonFormSaveData) => void;
   onCancel?: () => void;
@@ -84,6 +85,7 @@ export interface JalonFormSaveData {
   description?: string;
   date_prevue?: string;
   responsable?: string;
+  responsableId?: number;
   axe?: Axe;
   projectPhase?: ProjectPhase;
   // Champs éditables en interne ET externe
@@ -101,26 +103,29 @@ export function JalonFormContent({
   jalon,
   isEditing = true,
   isExternal = false,
+  isCreate = false,
   onStatutChange,
   onSave,
   onCancel,
   isSaving = false,
 }: JalonFormContentProps) {
-  // Champs éditables en interne uniquement
-  const canEditInternal = isEditing && !isExternal;
+  // Champs éditables: en mode création OU en mode édition interne
+  const canEditInternal = isCreate || (isEditing && !isExternal);
   const users = useUsers();
-  const [titre, setTitre] = useState(jalon.titre || '');
-  const [description, setDescription] = useState(jalon.description || '');
-  const [datePrevue, setDatePrevue] = useState(jalon.date_prevue || '');
-  const [responsable, setResponsable] = useState(jalon.responsable || '');
-  const [axe, setAxe] = useState<Axe | undefined>(jalon.axe);
-  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(jalon.projectPhase);
+  const [titre, setTitre] = useState(jalon?.titre || '');
+  const [description, setDescription] = useState(jalon?.description || '');
+  const [datePrevue, setDatePrevue] = useState(jalon?.date_prevue || '');
+  const [responsable, setResponsable] = useState(jalon?.responsable || '');
+  const [responsableId, setResponsableId] = useState<number | undefined>(jalon?.responsableId);
+  const [axe, setAxe] = useState<Axe | undefined>(jalon?.axe || (isCreate ? 'axe3_technique' : undefined));
+  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(jalon?.projectPhase);
 
   // Champs éditables en interne ET externe
-  const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
-  const [preuveUrl, setPreuveUrl] = useState(jalon.preuve_url || '');
-  const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any).notes_mise_a_jour || '');
+  const [dateValidation, setDateValidation] = useState<string | null>((jalon as any)?.date_validation || null);
+  const [preuveUrl, setPreuveUrl] = useState(jalon?.preuve_url || '');
+  const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any)?.notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(() => {
+    if (!jalon) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
     const externesStr = (jalon as any).commentaires_externes;
     if (externesStr) {
@@ -145,9 +150,10 @@ export function JalonFormContent({
   });
   const [newComment, setNewComment] = useState('');
 
-  // Calculs
-  const joursRestants = jalon.date_prevue
-    ? Math.ceil((new Date(jalon.date_prevue).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  // Calculs - utiliser datePrevue (state) au lieu de jalon.date_prevue pour le mode création
+  const dateToUse = datePrevue || jalon?.date_prevue;
+  const joursRestants = dateToUse
+    ? Math.ceil((new Date(dateToUse).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
   // Calcul automatique du statut
@@ -155,10 +161,10 @@ export function JalonFormContent({
     // Si validé → atteint
     if (dateValidation) return 'atteint';
 
-    if (!jalon.date_prevue) return 'a_venir';
+    if (!dateToUse) return 'a_venir';
 
     const now = new Date();
-    const echeance = new Date(jalon.date_prevue);
+    const echeance = new Date(dateToUse);
 
     // Si échéance dépassée → dépassé
     if (echeance < now) return 'depasse';
@@ -168,16 +174,16 @@ export function JalonFormContent({
 
     // Sinon → à venir
     return 'a_venir';
-  }, [jalon.date_prevue, joursRestants, dateValidation]);
+  }, [dateToUse, joursRestants, dateValidation]);
 
   const statut = calculerStatutAuto();
 
   const calculerMeteo = useCallback((): MeteoJalon => {
-    if (!jalon.date_prevue) return 'SOLEIL';
+    if (!dateToUse) return 'SOLEIL';
     if (joursRestants && joursRestants < 0) return 'ORAGEUX';
     if (joursRestants && joursRestants <= 7) return 'NUAGEUX';
     return 'SOLEIL';
-  }, [jalon.date_prevue, joursRestants]);
+  }, [dateToUse, joursRestants]);
 
   const meteo = calculerMeteo();
 
@@ -217,14 +223,31 @@ export function JalonFormContent({
 
   // Sauvegarde
   const handleSave = () => {
+    // Validation basique pour le mode création
+    if (isCreate) {
+      if (!titre.trim()) {
+        alert('Le titre est obligatoire');
+        return;
+      }
+      if (!datePrevue) {
+        alert('La date est obligatoire');
+        return;
+      }
+      if (!axe) {
+        alert('L\'axe est obligatoire');
+        return;
+      }
+    }
+
     onSave?.({
       statut,
-      // Champs internes (seulement si édition interne)
+      // Champs internes (seulement si édition interne ou création)
       ...(canEditInternal && {
         titre,
         description,
         date_prevue: datePrevue,
         responsable,
+        responsableId,
         axe,
         projectPhase,
       }),
@@ -294,21 +317,23 @@ export function JalonFormContent({
       <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
         <h3 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
           <Target className="w-4 h-4" />
-          Informations du jalon
+          {isCreate ? 'Nouveau jalon' : 'Informations du jalon'}
           {isExternal && <span className="text-xs font-normal text-purple-500">(lecture seule)</span>}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-              <Target className="w-4 h-4 text-purple-600" />
-              ID Jalon
-            </Label>
-            <div className="p-2 bg-white rounded border text-sm font-mono">{jalon.id_jalon || '-'}</div>
-          </div>
+          {!isCreate && (
+            <div>
+              <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                <Target className="w-4 h-4 text-purple-600" />
+                ID Jalon
+              </Label>
+              <div className="p-2 bg-white rounded border text-sm font-mono">{jalon?.id_jalon || '-'}</div>
+            </div>
+          )}
 
           <div>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-              Axe
+              Axe {isCreate && '*'}
             </Label>
             {canEditInternal ? (
               <Select
@@ -346,9 +371,9 @@ export function JalonFormContent({
             )}
           </div>
 
-          <div className="md:col-span-2">
+          <div className={isCreate ? 'md:col-span-2' : 'md:col-span-2'}>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-              Libellé
+              Libellé {isCreate && '*'}
             </Label>
             {canEditInternal ? (
               <Input
@@ -365,7 +390,7 @@ export function JalonFormContent({
           <div>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               <Calendar className="w-4 h-4 text-blue-600" />
-              Échéance
+              Échéance {isCreate && '*'}
             </Label>
             {canEditInternal ? (
               <Input
@@ -384,17 +409,22 @@ export function JalonFormContent({
           <div>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               <User className="w-4 h-4 text-green-600" />
-              Responsable
+              Responsable {isCreate && '*'}
             </Label>
             {canEditInternal ? (
               <select
-                value={responsable}
-                onChange={(e) => setResponsable(e.target.value)}
+                value={responsableId || ''}
+                onChange={(e) => {
+                  const userId = e.target.value ? parseInt(e.target.value) : undefined;
+                  setResponsableId(userId);
+                  const user = users.find(u => u.id === userId);
+                  setResponsable(user ? `${user.prenom} ${user.nom}` : '');
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
               >
                 <option value="">Sélectionner un responsable...</option>
                 {users.map((user) => (
-                  <option key={user.id} value={`${user.prenom} ${user.nom}`}>
+                  <option key={user.id} value={user.id!}>
                     {user.prenom} {user.nom} {user.role ? `(${user.role})` : ''}
                   </option>
                 ))}
@@ -533,7 +563,7 @@ export function JalonFormContent({
             {isSaving ? (
               <><Clock className="w-4 h-4 mr-1 animate-spin" />Enregistrement...</>
             ) : (
-              <><Save className="w-4 h-4 mr-1" />Enregistrer</>
+              <><Save className="w-4 h-4 mr-1" />{isCreate ? 'Créer' : 'Enregistrer'}</>
             )}
           </Button>
         </div>

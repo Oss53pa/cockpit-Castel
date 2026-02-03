@@ -128,8 +128,8 @@ const FORM_TABS = [
 // ============================================================================
 
 export interface ActionFormContentProps {
-  // Données de l'action
-  action: Partial<Action> & { titre: string };
+  // Données de l'action (optionnel en mode création)
+  action?: Partial<Action> & { titre?: string };
 
   // Options pour les selects (vide en mode externe si pas dispo)
   users?: UserOption[];
@@ -139,6 +139,10 @@ export interface ActionFormContentProps {
   // Mode
   isEditing?: boolean;
   isExternal?: boolean;
+  isCreate?: boolean; // Mode création - tous les champs éditables
+
+  // Valeurs par défaut (mode création)
+  defaultJalonId?: number;
 
   // Callbacks
   onStatutChange?: (statut: StatutAction) => void;
@@ -180,6 +184,8 @@ export function ActionFormContent({
   actionsDisponibles = [],
   isEditing = true,
   isExternal = false,
+  isCreate = false,
+  defaultJalonId,
   onStatutChange,
   onAvancementChange,
   onSave,
@@ -188,18 +194,21 @@ export function ActionFormContent({
 }: ActionFormContentProps) {
   const [activeTab, setActiveTab] = useState('general');
 
+  // Champs éditables: en mode création OU en mode édition interne
+  const canEditInternal = isCreate || (isEditing && !isExternal);
+
   // État des champs principaux (éditables en interne)
-  const [titre, setTitre] = useState(action.titre || '');
-  const [jalonId, setJalonId] = useState<number | null>(action.jalonId ?? null);
-  const [responsableId, setResponsableId] = useState<number | null>(action.responsableId ?? null);
-  const [echeance, setEcheance] = useState(action.date_fin_prevue || '');
-  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(action.projectPhase);
+  const [titre, setTitre] = useState(action?.titre || '');
+  const [jalonId, setJalonId] = useState<number | null>(action?.jalonId ?? defaultJalonId ?? null);
+  const [responsableId, setResponsableId] = useState<number | null>(action?.responsableId ?? null);
+  const [echeance, setEcheance] = useState(action?.date_fin_prevue || '');
+  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(action?.projectPhase);
 
   // État du formulaire
-  const [avancement, setAvancement] = useState(action.avancement ?? 0);
-  const [isBloque, setIsBloque] = useState((action.statut as StatutAction) === 'bloque');
-  const [sousTaches, setSousTaches] = useState<SousTache[]>((action as any).sous_taches || []);
-  const [preuves, setPreuves] = useState<Preuve[]>(action.documents?.map(d => ({
+  const [avancement, setAvancement] = useState(action?.avancement ?? 0);
+  const [isBloque, setIsBloque] = useState((action?.statut as StatutAction) === 'bloque');
+  const [sousTaches, setSousTaches] = useState<SousTache[]>((action as any)?.sous_taches || []);
+  const [preuves, setPreuves] = useState<Preuve[]>(action?.documents?.map(d => ({
     id: d.id || crypto.randomUUID(),
     type: d.type?.includes('lien') ? 'lien' as const : 'fichier' as const,
     nom: d.nom,

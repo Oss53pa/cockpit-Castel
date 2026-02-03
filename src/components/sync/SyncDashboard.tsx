@@ -313,7 +313,7 @@ function SyncGlassmorphismHeader({
               <p className="text-indigo-300 text-xs uppercase tracking-wider mb-1">Écart Sync</p>
               <p className="text-4xl font-bold">
                 {gap > 0 ? '+' : ''}
-                {gap}%
+                {gap.toFixed(0)}%
               </p>
               <div
                 className={cn(
@@ -543,11 +543,11 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projec
             />
             <KPICard
               title="Écart Sync"
-              value={`${syncGap > 0 ? '+' : ''}${syncGap}%`}
+              value={`${syncGap > 0 ? '+' : ''}${syncGap.toFixed(0)}%`}
               subtitle={Math.abs(syncGap) <= 5 ? 'Dans la norme' : 'Attention requise'}
               icon={Zap}
               trend={syncGap > 5 ? 'up' : syncGap < -5 ? 'down' : 'stable'}
-              trendValue={`${Math.abs(syncGap)}%`}
+              trendValue={`${Math.abs(syncGap).toFixed(0)}%`}
               variant={Math.abs(syncGap) <= 5 ? 'success' : Math.abs(syncGap) <= 15 ? 'warning' : 'error'}
               animationDelay={650}
             />
