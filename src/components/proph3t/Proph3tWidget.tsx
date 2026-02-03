@@ -25,6 +25,8 @@ import {
   AlertCircle,
   Info,
   Target,
+  GitBranch,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button, Badge } from '@/components/ui';
@@ -39,6 +41,7 @@ import {
 import { useProph3tProactive } from '@/hooks/useProph3tProactive';
 import ReactMarkdown from 'react-markdown';
 import { Proph3tConfigModal } from './Proph3tConfigModal';
+import { ConfidenceScore, CriticalPath, WorkloadAnalysis, OccupancyProjection } from './modules';
 
 // ============================================================================
 // WIDGET PRINCIPAL
@@ -63,7 +66,7 @@ export function Proph3tWidget({
   showProactive = true,
   onClose,
 }: Proph3tWidgetProps) {
-  const [activeTab, setActiveTab] = useState<'proactive' | 'chat' | 'health' | 'recommendations'>('proactive');
+  const [activeTab, setActiveTab] = useState<'proactive' | 'chat' | 'health' | 'recommendations' | 'confiance' | 'chemin' | 'charge' | 'occupation'>('proactive');
   const [isExpanded, setIsExpanded] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const { criticalCount, warningCount } = useProph3tProactive();
@@ -205,12 +208,68 @@ export function Proph3tWidget({
             )}
           </div>
 
+          {/* Tabs secondaires - Modules avancés */}
+          <div className="flex border-b border-primary-100 bg-neutral-50">
+            <button
+              onClick={() => setActiveTab('confiance')}
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                activeTab === 'confiance'
+                  ? 'text-primary-900 border-b-2 border-primary-900 bg-white'
+                  : 'text-primary-500 hover:text-primary-700'
+              )}
+            >
+              <Target className="h-3 w-3 inline mr-1" />
+              Confiance
+            </button>
+            <button
+              onClick={() => setActiveTab('chemin')}
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                activeTab === 'chemin'
+                  ? 'text-primary-900 border-b-2 border-primary-900 bg-white'
+                  : 'text-primary-500 hover:text-primary-700'
+              )}
+            >
+              <GitBranch className="h-3 w-3 inline mr-1" />
+              Critique
+            </button>
+            <button
+              onClick={() => setActiveTab('charge')}
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                activeTab === 'charge'
+                  ? 'text-primary-900 border-b-2 border-primary-900 bg-white'
+                  : 'text-primary-500 hover:text-primary-700'
+              )}
+            >
+              <Users className="h-3 w-3 inline mr-1" />
+              Charge
+            </button>
+            <button
+              onClick={() => setActiveTab('occupation')}
+              className={cn(
+                'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
+                activeTab === 'occupation'
+                  ? 'text-primary-900 border-b-2 border-primary-900 bg-white'
+                  : 'text-primary-500 hover:text-primary-700'
+              )}
+            >
+              <TrendingUp className="h-3 w-3 inline mr-1" />
+              Occupation
+            </button>
+          </div>
+
           {/* Content */}
-          <div className={cn('p-4', variant === 'full' && 'h-[calc(100%-100px)] overflow-auto')}>
+          <div className={cn('p-4', variant === 'full' && 'h-[calc(100%-140px)] overflow-auto')}>
             {activeTab === 'proactive' && <Proph3tProactivePanel />}
             {activeTab === 'health' && <Proph3tHealthPanel />}
             {activeTab === 'recommendations' && <Proph3tRecommendationsPanel />}
             {activeTab === 'chat' && <Proph3tChatPanel />}
+            {activeTab === 'confiance' && <ConfidenceScore />}
+            {activeTab === 'chemin' && <CriticalPath />}
+            {activeTab === 'charge' && <WorkloadAnalysis />}
+            {activeTab === 'occupation' && <OccupancyProjection />}
           </div>
         </>
       )}

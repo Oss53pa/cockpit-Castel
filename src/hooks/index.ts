@@ -23,3 +23,7 @@ export * from './useSousTachesPreuvesNotes';
 export * from './useFirebaseRealtimeSync';
 export * from './useAutoRecalculate';
 export * from './useBudgetExploitation';
+export * from './useConfidenceScore';
+export * from './useCriticalPath';
+export * from './useWorkloadAnalysis';
+export * from './useOccupancyProjection';
