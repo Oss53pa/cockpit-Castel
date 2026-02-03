@@ -183,14 +183,14 @@ const dbCodeToAxe: Record<string, AxeType> = {
   general: 'general',
 };
 
-// Weather config - Design Premium (couleurs subtiles)
+// Weather config - Design Premium avec vrais emojis météo
 const weatherConfig: Record<
   ProjectWeather,
   { label: string; emoji: string; color: string; bgColor: string; textColor: string; borderColor: string; icon: React.ElementType }
 > = {
   green: {
     label: 'Sur la bonne voie',
-    emoji: '●',
+    emoji: '☀️',
     color: '#059669',
     bgColor: 'bg-emerald-50',
     textColor: 'text-emerald-700',
@@ -199,7 +199,7 @@ const weatherConfig: Record<
   },
   yellow: {
     label: 'Attention requise',
-    emoji: '●',
+    emoji: '🌤️',
     color: '#64748B',
     bgColor: 'bg-slate-50',
     textColor: 'text-slate-700',
@@ -208,7 +208,7 @@ const weatherConfig: Record<
   },
   orange: {
     label: 'Vigilance',
-    emoji: '●',
+    emoji: '⛅',
     color: '#D97706',
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-700',
@@ -217,7 +217,7 @@ const weatherConfig: Record<
   },
   red: {
     label: 'Critique',
-    emoji: '●',
+    emoji: '⛈️',
     color: '#E11D48',
     bgColor: 'bg-rose-50',
     textColor: 'text-rose-700',
