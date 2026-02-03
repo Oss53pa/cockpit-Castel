@@ -65,8 +65,7 @@ import {
 } from './LigneBudgetaireModal';
 import { BudgetImportExport } from './BudgetImportExport';
 import { BudgetEditModal } from './BudgetEditModal';
-import { useBudgetExploitation } from '@/hooks/useBudgetExploitation';
-import { resetBudgetEngagements } from '@/hooks';
+import { useBudgetExploitation, resetBudgetExploitationEngagements } from '@/hooks/useBudgetExploitation';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // Types pour le budget mobilisation
@@ -1256,13 +1255,13 @@ export function BudgetMobilisation() {
 
   // Handler de reset des engagements uniquement
   const handleResetEngagementsOnly = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir remettre tous les engagements et réalisations à 0 ?\n\nLes montants prévus seront conservés.')) {
+    if (!window.confirm('Êtes-vous sûr de vouloir remettre tous les engagements et consommations à 0 ?\n\nLes montants prévus seront conservés.')) {
       return;
     }
     setIsResettingEngagements(true);
     try {
-      const count = await resetBudgetEngagements();
-      alert(`✅ ${count} ligne(s) budgétaire(s) mise(s) à jour.\n\nEngagé = 0\nRéalisé = 0`);
+      const count = await resetBudgetExploitationEngagements('mobilisation');
+      alert(`✅ ${count} ligne(s) budgétaire(s) mise(s) à jour.\n\nEngagé = 0\nConsommé = 0`);
     } catch (error) {
       console.error('Reset engagements error:', error);
       alert('❌ Erreur lors de la réinitialisation des engagements');
