@@ -24,7 +24,7 @@ const UrgencyBadge: React.FC<{ urgency: UrgencyLevel }> = ({ urgency }) => {
     medium: { bg: '#FEF9C3', color: '#A16207', label: 'Moyenne', icon: Clock },
     low: { bg: '#DCFCE7', color: '#15803D', label: 'Basse', icon: Clock },
   };
-  const config = configs[urgency];
+  const config = configs[urgency] || configs.medium;
   const Icon = config.icon;
 
   return (
@@ -141,12 +141,14 @@ export function DecisionsTableSlide({ data, designSettings, periode }: Decisions
                         <span className="font-bold text-lg" style={{ color: primaryColor }}>
                           #{decision.numero}
                         </span>
+                        {axeConfig && (
                         <span
                           className="px-2 py-0.5 rounded text-xs font-medium"
                           style={{ backgroundColor: axeConfig.color, color: '#fff' }}
                         >
                           {axeConfig.labelCourt}
                         </span>
+                        )}
                         <UrgencyBadge urgency={decision.urgence} />
                         <StatutBadge statut={decision.statut} />
                       </div>

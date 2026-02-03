@@ -225,6 +225,11 @@ const urgencyConfig: Record<
   },
 };
 
+// Helper to safely get urgency config with fallback
+const getUrgencyConfig = (urgency: string) => {
+  return urgencyConfig[urgency as UrgencyLevel] || urgencyConfig.medium;
+};
+
 const colorPresets = [
   { name: 'Cosmos Angré', primary: '#1C3163', accent: '#D4AF37' },
   { name: 'Corporate Blue', primary: '#0F172A', accent: '#3B82F6' },
@@ -3284,11 +3289,11 @@ export function DeepDiveLaunch() {
           <div className="flex-1 p-4">
             <div className="space-y-2">
               {decisionPoints.map((decision) => (
-                <div key={decision.id} className="p-3 rounded-lg border" style={{ borderLeftWidth: 4, borderLeftColor: urgencyConfig[decision.urgency].color }}>
+                <div key={decision.id} className="p-3 rounded-lg border" style={{ borderLeftWidth: 4, borderLeftColor: getUrgencyConfig(decision.urgency).color }}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        {React.createElement(urgencyConfig[decision.urgency].icon, { className: 'h-4 w-4', style: { color: urgencyConfig[decision.urgency].color } })}
+                        {React.createElement(getUrgencyConfig(decision.urgency).icon, { className: 'h-4 w-4', style: { color: getUrgencyConfig(decision.urgency).color } })}
                         <span className="font-medium text-sm">{decision.subject || 'Point de décision'}</span>
                       </div>
                       <p className="text-xs text-gray-600">{decision.recommendation}</p>
@@ -3626,9 +3631,9 @@ export function DeepDiveLaunch() {
                 {axeDecisions.length > 0 ? (
                   <div className="space-y-2">
                     {axeDecisions.map(decision => (
-                      <div key={decision.id} className="p-3 rounded-lg border" style={{ borderLeftWidth: 4, borderLeftColor: urgencyConfig[decision.urgency].color }}>
+                      <div key={decision.id} className="p-3 rounded-lg border" style={{ borderLeftWidth: 4, borderLeftColor: getUrgencyConfig(decision.urgency).color }}>
                         <div className="flex items-center gap-2 mb-1">
-                          {React.createElement(urgencyConfig[decision.urgency].icon, { className: 'h-4 w-4', style: { color: urgencyConfig[decision.urgency].color } })}
+                          {React.createElement(getUrgencyConfig(decision.urgency).icon, { className: 'h-4 w-4', style: { color: getUrgencyConfig(decision.urgency).color } })}
                           <span className="font-medium text-sm">{decision.subject}</span>
                         </div>
                         <p className="text-xs text-gray-600">{decision.recommendation}</p>

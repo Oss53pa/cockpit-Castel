@@ -261,6 +261,11 @@ const urgencyConfig: Record<
   },
 };
 
+// Helper to safely get urgency config with fallback
+const getUrgencyConfig = (urgency: string) => {
+  return urgencyConfig[urgency as UrgencyLevel] || urgencyConfig.medium;
+};
+
 const colorPresets = [
   { name: 'Cosmos Angré', primary: '#1C3163', accent: '#D4AF37' },
   { name: 'Corporate Blue', primary: '#0F172A', accent: '#3B82F6' },
@@ -1296,7 +1301,7 @@ export function DeepDive() {
                   <div
                     key={point.id}
                     className="p-2 bg-white rounded-lg text-[10px] border-l-3"
-                    style={{ borderLeftColor: urgencyConfig[point.urgency].color }}
+                    style={{ borderLeftColor: getUrgencyConfig(point.urgency).color }}
                   >
                     <div className="flex items-center gap-1 font-medium text-slate-700">
                       <span className="flex-1 truncate">{point.subject}</span>
@@ -1736,15 +1741,15 @@ export function DeepDive() {
                   <div
                     key={idx}
                     className="p-2 bg-white rounded-lg border-l-3 shadow-sm"
-                    style={{ borderLeftColor: urgencyConfig[point.urgency].color }}
+                    style={{ borderLeftColor: getUrgencyConfig(point.urgency).color }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h4 className="text-[11px] font-semibold" style={{ color: primaryColor }}>{point.subject}</h4>
                       <span
                         className="px-1.5 py-0.5 rounded text-[8px] font-medium whitespace-nowrap"
-                        style={{ backgroundColor: `${urgencyConfig[point.urgency].color}20`, color: urgencyConfig[point.urgency].color }}
+                        style={{ backgroundColor: `${getUrgencyConfig(point.urgency).color}20`, color: getUrgencyConfig(point.urgency).color }}
                       >
-                        {urgencyConfig[point.urgency].emoji} {urgencyConfig[point.urgency].label.split(' ')[0]}
+                        {getUrgencyConfig(point.urgency).emoji} {getUrgencyConfig(point.urgency).label.split(' ')[0]}
                       </span>
                     </div>
                     <div className="text-[9px] text-gray-500 mb-1">
@@ -1958,7 +1963,7 @@ export function DeepDive() {
                 ) : (
                   <div className="space-y-1">
                     {axeDecisions.slice(0, 4).map((point, idx) => (
-                      <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: urgencyConfig[point.urgency].color }}>
+                      <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: getUrgencyConfig(point.urgency).color }}>
                         <div className="font-medium truncate">{point.subject}</div>
                         <div className="text-gray-500 truncate">{point.recommendation}</div>
                       </div>
@@ -2924,7 +2929,7 @@ export function DeepDive() {
                             <div className="flex items-start gap-2">
                               <div
                                 className="w-1 self-stretch rounded-full flex-shrink-0"
-                                style={{ backgroundColor: urgencyConfig[point.urgency].color }}
+                                style={{ backgroundColor: getUrgencyConfig(point.urgency).color }}
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-1">
@@ -2934,11 +2939,11 @@ export function DeepDive() {
                                   <span
                                     className="flex-shrink-0 px-1 py-0.5 rounded text-[8px] font-medium"
                                     style={{
-                                      backgroundColor: `${urgencyConfig[point.urgency].color}20`,
-                                      color: urgencyConfig[point.urgency].color
+                                      backgroundColor: `${getUrgencyConfig(point.urgency).color}20`,
+                                      color: getUrgencyConfig(point.urgency).color
                                     }}
                                   >
-                                    {urgencyConfig[point.urgency].emoji}
+                                    {getUrgencyConfig(point.urgency).emoji}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-[9px] text-gray-500">
@@ -4671,9 +4676,9 @@ export function DeepDive() {
         if (axeDecisions.length > 0) {
           slide.addText(`🚨 Points DG en attente (${axeDecisions.length})`, { x: 0.5, y: 4.4, w: 4, h: 0.3, fontSize: 10, fontFace: fontFamily, color: 'F97316', bold: true });
           axeDecisions.slice(0, 2).forEach((point, i) => {
-            const urgColor = urgencyConfig[point.urgency].color.replace('#', '');
+            const urgColor = getUrgencyConfig(point.urgency).color.replace('#', '');
             slide.addShape('rect', { x: 0.5, y: 4.75 + i * 0.4, w: 9, h: 0.35, fill: { color: urgColor + '15' }, line: { color: urgColor, width: 1 } });
-            slide.addText(`${urgencyConfig[point.urgency].emoji} ${point.subject}`, { x: 0.6, y: 4.8 + i * 0.4, w: 8.8, h: 0.25, fontSize: 9, fontFace: fontFamily, color: primaryHex });
+            slide.addText(`${getUrgencyConfig(point.urgency).emoji} ${point.subject}`, { x: 0.6, y: 4.8 + i * 0.4, w: 8.8, h: 0.25, fontSize: 9, fontFace: fontFamily, color: primaryHex });
           });
         }
 
@@ -5069,9 +5074,9 @@ export function DeepDive() {
 
               // Points
               points.slice(0, 2).forEach((point) => {
-                const urgColor = urgencyConfig[point.urgency].color.replace('#', '');
+                const urgColor = getUrgencyConfig(point.urgency).color.replace('#', '');
                 slide.addShape('rect', { x: 1.0, y: yPos, w: 8.5, h: 0.55, fill: { color: urgColor + '10' }, line: { color: urgColor, width: 1 } });
-                slide.addText(`${urgencyConfig[point.urgency].emoji} ${point.subject}`, { x: 1.1, y: yPos + 0.05, w: 5.5, h: 0.25, fontSize: 9, fontFace: fontFamily, color: primaryHex, bold: true });
+                slide.addText(`${getUrgencyConfig(point.urgency).emoji} ${point.subject}`, { x: 1.1, y: yPos + 0.05, w: 5.5, h: 0.25, fontSize: 9, fontFace: fontFamily, color: primaryHex, bold: true });
                 if (point.amount && point.amount !== '-') {
                   slide.addText(point.amount, { x: 6.8, y: yPos + 0.05, w: 2.5, h: 0.25, fontSize: 9, fontFace: fontFamily, color: accentHex, bold: true, align: 'right' });
                 }
@@ -5709,12 +5714,12 @@ export function DeepDive() {
                                   <span
                                     className="px-2 py-1 rounded-lg text-xs font-medium"
                                     style={{
-                                      backgroundColor: `${urgencyConfig[point.urgency].color}15`,
-                                      color: urgencyConfig[point.urgency].color,
-                                      border: `1px solid ${urgencyConfig[point.urgency].color}40`
+                                      backgroundColor: `${getUrgencyConfig(point.urgency).color}15`,
+                                      color: getUrgencyConfig(point.urgency).color,
+                                      border: `1px solid ${getUrgencyConfig(point.urgency).color}40`
                                     }}
                                   >
-                                    {urgencyConfig[point.urgency].emoji} {urgencyConfig[point.urgency].label}
+                                    {getUrgencyConfig(point.urgency).emoji} {getUrgencyConfig(point.urgency).label}
                                   </span>
                                 </div>
                                 <Button variant="ghost" size="sm" className="text-error-500 hover:text-error-700 hover:bg-error-50" onClick={() => removeDecisionPoint(point.id)}>

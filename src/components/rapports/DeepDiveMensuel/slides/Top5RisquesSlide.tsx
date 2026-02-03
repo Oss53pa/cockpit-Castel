@@ -113,12 +113,14 @@ export function Top5RisquesSlide({ data, designSettings, periode }: Top5RisquesS
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-bold text-gray-900">{risque.code}</span>
+                          {axeConfig && (
                           <span
                             className="px-2 py-0.5 rounded text-xs font-medium"
                             style={{ backgroundColor: axeConfig.color, color: '#fff' }}
                           >
                             {axeConfig.labelCourt}
                           </span>
+                          )}
                         </div>
                         <h3 className="font-semibold text-gray-800">{risque.titre}</h3>
                       </div>
