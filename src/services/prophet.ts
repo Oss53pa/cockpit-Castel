@@ -13,7 +13,7 @@
  * - Recommandations intelligentes avec scoring
  */
 
-import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team, EVMIndicators, DashboardKPIs } from '../types';
+import type { Action, Jalon, Risque, Alerte, User, Team, EVMIndicators, DashboardKPIs } from '../types';
 import { API_ENDPOINTS } from '../lib/apiEndpoints';
 
 export type AIProvider = 'openrouter' | 'anthropic' | 'local' | 'hybrid';
@@ -31,11 +31,22 @@ export interface AIMessage {
   content: string;
 }
 
+// Budget synthese type (matches useBudgetSynthese() return)
+export interface BudgetSynthese {
+  prevu: number;
+  engage: number;
+  realise: number;
+  ecartEngagement: number;
+  ecartRealisation: number;
+  tauxEngagement: number;
+  tauxRealisation: number;
+}
+
 export interface ProjectContext {
   actions: Action[];
   jalons: Jalon[];
   risques: Risque[];
-  budget: BudgetItem[];
+  budget: BudgetSynthese;
   alertes: Alerte[];
   users: User[];
   teams: Team[];

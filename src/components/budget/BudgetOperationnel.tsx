@@ -90,6 +90,14 @@ import {
   FONCTIONNEMENT_2026,
   MARKETING_2026,
   TOTAL_EFFECTIF_2026,
+  // Totaux 2026
+  TOTAL_SECURITE_2026,
+  TOTAL_NETTOYAGE_2026,
+  TOTAL_MAINTENANCE_2026,
+  TOTAL_FLUIDES_2026,
+  TOTAL_ASSURANCES_2026,
+  TOTAL_FONCTIONNEMENT_2026,
+  TOTAL_MARKETING_2026,
   // Détails 2027
   PRESTATIONS_SECURITE_2027,
   PRESTATIONS_NETTOYAGE_2027,
@@ -101,6 +109,16 @@ import {
   PROVISIONS_2027,
   MASSE_SALARIALE_2027,
   TOTAL_EFFECTIF_2027,
+  // Totaux 2027
+  TOTAL_SECURITE_2027,
+  TOTAL_NETTOYAGE_2027,
+  TOTAL_MAINTENANCE_2027,
+  TOTAL_FLUIDES_2027,
+  TOTAL_ASSURANCES_2027,
+  TOTAL_FONCTIONNEMENT_2027,
+  TOTAL_MARKETING_2027,
+  TOTAL_PROVISIONS_2027,
+  TOTAL_MASSE_SALARIALE_2027,
   // Types
   type BudgetExploitationAnnee,
   type CategorieExploitation,
@@ -415,7 +433,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
       <div className="space-y-4">
         {/* Masse Salariale 2026 */}
         <Card padding="none">
-          <SectionHeader id="salaires" title="1. Masse Salariale 2026" total={98_500_000} icon={Users} />
+          <SectionHeader id="salaires" title="1. Masse Salariale 2026" total={BUDGET_EXPLOITATION_2026.postes.find(p => p.categorie === 'masse_salariale')?.budgetAnnuel || 0} icon={Users} />
           {expandedSections.salaires && (
             <div className="p-4 border-t space-y-4">
               {/* Grille salariale */}
@@ -488,7 +506,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Prestations Sécurité */}
         <Card padding="none">
-          <SectionHeader id="securite" title="2.1 Sécurité (Nov-Déc)" total={24_000_000} icon={Shield} />
+          <SectionHeader id="securite" title="2.1 Sécurité (Nov-Déc)" total={TOTAL_SECURITE_2026} icon={Shield} />
           {expandedSections.securite && (
             <div className="p-4 border-t">
               <Table>
@@ -527,7 +545,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Prestations Nettoyage */}
         <Card padding="none">
-          <SectionHeader id="nettoyage" title="2.2 Nettoyage (Nov-Déc)" total={22_500_000} icon={Droplets} />
+          <SectionHeader id="nettoyage" title="2.2 Nettoyage (Nov-Déc)" total={TOTAL_NETTOYAGE_2026} icon={Droplets} />
           {expandedSections.nettoyage && (
             <div className="p-4 border-t">
               <Table>
@@ -566,7 +584,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Prestations Maintenance */}
         <Card padding="none">
-          <SectionHeader id="maintenance" title="2.3 Maintenance (Nov-Déc)" total={2_500_000} icon={Building2} />
+          <SectionHeader id="maintenance" title="2.3 Maintenance (Nov-Déc)" total={TOTAL_MAINTENANCE_2026} icon={Building2} />
           {expandedSections.maintenance && (
             <div className="p-4 border-t">
               <Table>
@@ -607,7 +625,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Fluides */}
         <Card padding="none">
-          <SectionHeader id="fluides" title="3. Fluides & Énergies (Nov-Déc)" total={28_000_000} icon={Zap} />
+          <SectionHeader id="fluides" title="3. Fluides & Énergies (Nov-Déc)" total={TOTAL_FLUIDES_2026} icon={Zap} />
           {expandedSections.fluides && (
             <div className="p-4 border-t">
               <Table>
@@ -642,7 +660,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Assurances */}
         <Card padding="none">
-          <SectionHeader id="assurances" title="4. Assurances (prorata Nov-Déc)" total={5_000_000} icon={FileText} />
+          <SectionHeader id="assurances" title="4. Assurances (prorata Nov-Déc)" total={TOTAL_ASSURANCES_2026} icon={FileText} />
           {expandedSections.assurances && (
             <div className="p-4 border-t">
               <Table>
@@ -676,7 +694,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Fonctionnement */}
         <Card padding="none">
-          <SectionHeader id="fonctionnement" title="5. Fonctionnement (Nov-Déc)" total={4_000_000} icon={Building2} />
+          <SectionHeader id="fonctionnement" title="5. Fonctionnement (Nov-Déc)" total={TOTAL_FONCTIONNEMENT_2026} icon={Building2} />
           {expandedSections.fonctionnement && (
             <div className="p-4 border-t">
               <Table>
@@ -711,7 +729,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
         {/* Marketing */}
         <Card padding="none">
-          <SectionHeader id="marketing" title="6. Marketing Exploitation (Nov-Déc)" total={6_000_000} icon={Megaphone} />
+          <SectionHeader id="marketing" title="6. Marketing Exploitation (Nov-Déc)" total={TOTAL_MARKETING_2026} icon={Megaphone} />
           {expandedSections.marketing && (
             <div className="p-4 border-t">
               <Table>
@@ -748,7 +766,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
     <div className="space-y-4">
       {/* Masse Salariale 2027 */}
       <Card padding="none">
-        <SectionHeader id="salaires" title="1. Masse Salariale 2027" total={165_000_000} icon={Users} />
+        <SectionHeader id="salaires" title="1. Masse Salariale 2027" total={TOTAL_MASSE_SALARIALE_2027} icon={Users} />
         {expandedSections.salaires && (
           <div className="p-4 border-t">
             <Table>
@@ -793,7 +811,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Prestations 2027 */}
       <Card padding="none">
-        <SectionHeader id="securite" title="2.1 Sécurité" total={145_000_000} icon={Shield} />
+        <SectionHeader id="securite" title="2.1 Sécurité" total={TOTAL_SECURITE_2027} icon={Shield} />
         {expandedSections.securite && (
           <div className="p-4 border-t">
             <Table>
@@ -829,7 +847,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
       </Card>
 
       <Card padding="none">
-        <SectionHeader id="nettoyage" title="2.2 Nettoyage" total={100_000_000} icon={Droplets} />
+        <SectionHeader id="nettoyage" title="2.2 Nettoyage" total={TOTAL_NETTOYAGE_2027} icon={Droplets} />
         {expandedSections.nettoyage && (
           <div className="p-4 border-t">
             <Table>
@@ -865,7 +883,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
       </Card>
 
       <Card padding="none">
-        <SectionHeader id="maintenance" title="2.3 Maintenance" total={50_000_000} icon={Building2} />
+        <SectionHeader id="maintenance" title="2.3 Maintenance" total={TOTAL_MAINTENANCE_2027} icon={Building2} />
         {expandedSections.maintenance && (
           <div className="p-4 border-t">
             <Table>
@@ -904,7 +922,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Fluides 2027 */}
       <Card padding="none">
-        <SectionHeader id="fluides" title="3. Fluides & Énergies" total={160_000_000} icon={Zap} />
+        <SectionHeader id="fluides" title="3. Fluides & Énergies" total={TOTAL_FLUIDES_2027} icon={Zap} />
         {expandedSections.fluides && (
           <div className="p-4 border-t">
             <Table>
@@ -939,7 +957,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Assurances 2027 */}
       <Card padding="none">
-        <SectionHeader id="assurances" title="4. Assurances" total={26_000_000} icon={FileText} />
+        <SectionHeader id="assurances" title="4. Assurances" total={TOTAL_ASSURANCES_2027} icon={FileText} />
         {expandedSections.assurances && (
           <div className="p-4 border-t">
             <Table>
@@ -970,7 +988,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Fonctionnement 2027 */}
       <Card padding="none">
-        <SectionHeader id="fonctionnement" title="5. Fonctionnement" total={24_000_000} icon={Building2} />
+        <SectionHeader id="fonctionnement" title="5. Fonctionnement" total={TOTAL_FONCTIONNEMENT_2027} icon={Building2} />
         {expandedSections.fonctionnement && (
           <div className="p-4 border-t">
             <Table>
@@ -1003,7 +1021,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Marketing 2027 */}
       <Card padding="none">
-        <SectionHeader id="marketing" title="6. Marketing & Communication" total={35_000_000} icon={Megaphone} />
+        <SectionHeader id="marketing" title="6. Marketing & Communication" total={TOTAL_MARKETING_2027} icon={Megaphone} />
         {expandedSections.marketing && (
           <div className="p-4 border-t">
             <Table>
@@ -1034,7 +1052,7 @@ function VueDetails({ annee }: { annee: 2026 | 2027 }) {
 
       {/* Provisions 2027 */}
       <Card padding="none">
-        <SectionHeader id="provisions" title="7. Provisions" total={20_000_000} icon={PiggyBank} />
+        <SectionHeader id="provisions" title="7. Provisions" total={TOTAL_PROVISIONS_2027} icon={PiggyBank} />
         {expandedSections.provisions && (
           <div className="p-4 border-t">
             <Table>
