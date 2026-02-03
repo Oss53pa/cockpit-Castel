@@ -30,7 +30,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useUsers } from '@/hooks';
-import { AXES, AXE_LABELS, type Jalon, type Axe, type MeteoJalon } from '@/types';
+import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Jalon, type Axe, type MeteoJalon, type ProjectPhase } from '@/types';
 
 // ============================================================================
 // TYPES
@@ -85,6 +85,7 @@ export interface JalonFormSaveData {
   date_prevue?: string;
   responsable?: string;
   axe?: Axe;
+  projectPhase?: ProjectPhase;
   // Champs éditables en interne ET externe
   preuve_url?: string;
   notes_mise_a_jour?: string;
@@ -113,6 +114,7 @@ export function JalonFormContent({
   const [datePrevue, setDatePrevue] = useState(jalon.date_prevue || '');
   const [responsable, setResponsable] = useState(jalon.responsable || '');
   const [axe, setAxe] = useState<Axe | undefined>(jalon.axe);
+  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(jalon.projectPhase);
 
   // Champs éditables en interne ET externe
   const [dateValidation, setDateValidation] = useState<string | null>((jalon as any).date_validation || null);
@@ -224,6 +226,7 @@ export function JalonFormContent({
         date_prevue: datePrevue,
         responsable,
         axe,
+        projectPhase,
       }),
       // Champs communs (interne + externe)
       preuve_url: preuveUrl,
@@ -320,6 +323,26 @@ export function JalonFormContent({
               </Select>
             ) : (
               <div className="p-2 bg-white rounded border text-sm">{axe ? AXE_LABELS[axe] : '-'}</div>
+            )}
+          </div>
+
+          <div>
+            <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+              Phase projet
+            </Label>
+            {canEditInternal ? (
+              <Select
+                value={projectPhase || ''}
+                onChange={(e) => setProjectPhase(e.target.value as ProjectPhase || undefined)}
+                className="bg-white"
+              >
+                <SelectOption value="">Non définie</SelectOption>
+                {PROJECT_PHASES.map((phase) => (
+                  <SelectOption key={phase} value={phase}>{PROJECT_PHASE_LABELS[phase]}</SelectOption>
+                ))}
+              </Select>
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">{projectPhase ? PROJECT_PHASE_LABELS[projectPhase] : '-'}</div>
             )}
           </div>
 

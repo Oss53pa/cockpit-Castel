@@ -46,7 +46,7 @@ import { useUsers, useJalons } from '@/hooks';
 import { createAction } from '@/hooks/useActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import { AXE_LABELS, type Axe } from '@/types';
+import { AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Axe, type ProjectPhase } from '@/types';
 
 // ============================================================================
 // TYPES & SCHEMAS
@@ -87,6 +87,9 @@ const actionFormSchema = z.object({
   libelle: z.string().min(3, 'Le libellé doit contenir au moins 3 caractères').max(150, 'Maximum 150 caractères'),
   echeance: z.string().min(1, 'L\'échéance est obligatoire'),
   responsableId: z.number({ required_error: 'Le responsable est obligatoire' }),
+
+  // Phase projet
+  projectPhase: z.enum(['phase1_preparation', 'phase2_mobilisation', 'phase3_lancement', 'phase4_stabilisation'] as const).optional(),
 
   // Champs complémentaires (4)
   dependances: z.array(z.number()).default([]),
@@ -170,6 +173,7 @@ export function ActionWizard({
       libelle: '',
       echeance: '',
       responsableId: undefined,
+      projectPhase: undefined,
       dependances: [],
       livrable: '',
       format: '',
@@ -250,6 +254,7 @@ export function ActionWizard({
         libelle: '',
         echeance: '',
         responsableId: undefined,
+        projectPhase: undefined,
         dependances: [],
         livrable: '',
         format: '',
@@ -348,6 +353,7 @@ export function ActionWizard({
         // Classification (axe hérité du jalon)
         axe: axeHerite,
         phase: 'execution',
+        projectPhase: data.projectPhase || undefined,
         categorie: 'operationnel',
         sous_categorie: null,
         type_action: 'tache',
@@ -575,6 +581,22 @@ export function ActionWizard({
                 {errors.responsableId && (
                   <p className="text-red-500 text-xs mt-1">{errors.responsableId.message}</p>
                 )}
+              </div>
+
+              {/* Phase projet */}
+              <div>
+                <Label htmlFor="projectPhase" className="text-sm font-medium mb-1.5 block">
+                  Phase projet
+                </Label>
+                <Select
+                  id="projectPhase"
+                  {...register('projectPhase')}
+                >
+                  <SelectOption value="">Non définie</SelectOption>
+                  {PROJECT_PHASES.map((phase) => (
+                    <SelectOption key={phase} value={phase}>{PROJECT_PHASE_LABELS[phase]}</SelectOption>
+                  ))}
+                </Select>
               </div>
             </div>
           </div>

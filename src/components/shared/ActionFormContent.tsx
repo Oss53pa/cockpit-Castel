@@ -38,7 +38,7 @@ import {
   PercentInput,
 } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { AXE_LABELS, type Action, type Axe } from '@/types';
+import { AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Action, type Axe, type ProjectPhase } from '@/types';
 import { calculerPourcentageAction } from '@/lib/calculations';
 
 // ============================================================================
@@ -156,6 +156,7 @@ export interface ActionFormSaveData {
   jalonId?: number | null;
   responsableId?: number | null;
   date_fin_prevue?: string;
+  projectPhase?: ProjectPhase;
   // Statut et avancement
   statut: StatutAction;
   avancement: number;
@@ -192,6 +193,7 @@ export function ActionFormContent({
   const [jalonId, setJalonId] = useState<number | null>(action.jalonId ?? null);
   const [responsableId, setResponsableId] = useState<number | null>(action.responsableId ?? null);
   const [echeance, setEcheance] = useState(action.date_fin_prevue || '');
+  const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(action.projectPhase);
 
   // État du formulaire
   const [avancement, setAvancement] = useState(action.avancement ?? 0);
@@ -429,6 +431,7 @@ export function ActionFormContent({
       jalonId: jalonId !== action.jalonId ? jalonId : undefined,
       responsableId: responsableId !== action.responsableId ? responsableId : undefined,
       date_fin_prevue: echeance !== action.date_fin_prevue ? echeance : undefined,
+      projectPhase: projectPhase !== action.projectPhase ? projectPhase : undefined,
       // Statut et avancement
       statut,
       avancement,
@@ -633,6 +636,28 @@ export function ActionFormContent({
                   ) : (
                     <div className="p-2 bg-white rounded border text-sm">
                       {action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Phase projet */}
+                <div>
+                  <Label className="text-sm font-medium mb-1.5 block">
+                    Phase projet
+                  </Label>
+                  {isEditing && !isExternal ? (
+                    <Select
+                      value={projectPhase || ''}
+                      onChange={(e) => setProjectPhase(e.target.value as ProjectPhase || undefined)}
+                    >
+                      <SelectOption value="">Non définie</SelectOption>
+                      {PROJECT_PHASES.map((phase) => (
+                        <SelectOption key={phase} value={phase}>{PROJECT_PHASE_LABELS[phase]}</SelectOption>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {projectPhase ? PROJECT_PHASE_LABELS[projectPhase] : '-'}
                     </div>
                   )}
                 </div>

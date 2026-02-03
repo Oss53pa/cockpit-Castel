@@ -38,8 +38,11 @@ import { cn } from '@/lib/utils';
 import {
   AXES,
   AXE_LABELS,
+  PROJECT_PHASES,
+  PROJECT_PHASE_LABELS,
   type Jalon,
   type Axe,
+  type ProjectPhase,
 } from '@/types';
 
 // Schema simplifié
@@ -47,6 +50,7 @@ const jalonSchema = z.object({
   axe: z.enum(['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation', 'axe7_construction', 'axe8_divers'] as const, {
     required_error: 'L\'axe est obligatoire',
   }),
+  projectPhase: z.enum(['phase1_preparation', 'phase2_mobilisation', 'phase3_lancement', 'phase4_stabilisation'] as const).optional(),
   titre: z.string().min(3, 'Minimum 3 caractères').max(100, 'Maximum 100 caractères'),
   cible: z.string().min(1, 'La cible est obligatoire').max(50, 'Maximum 50 caractères'),
   date_prevue: z.string().min(1, 'L\'échéance est obligatoire'),
@@ -92,6 +96,7 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
     resolver: zodResolver(jalonSchema),
     defaultValues: {
       axe: 'axe3_technique',
+      projectPhase: undefined,
       titre: '',
       cible: '',
       date_prevue: '',
@@ -109,6 +114,7 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
     if (open) {
       reset({
         axe: 'axe3_technique',
+        projectPhase: undefined,
         titre: '',
         cible: '',
         date_prevue: '',
@@ -146,6 +152,7 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
         titre: data.titre,
         description: data.cible,
         axe: data.axe,
+        projectPhase: data.projectPhase || undefined,
         date_prevue: data.date_prevue,
         responsable: responsableName,
         responsableId: data.responsableId,
@@ -227,8 +234,8 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
-          {/* Axe + Échéance sur la même ligne */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Axe + Phase + Échéance */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-sm font-medium mb-1.5 block">Axe *</Label>
               <Select {...register('axe')} className={errors.axe ? 'border-red-500' : ''}>
@@ -237,6 +244,16 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
                 ))}
               </Select>
               {errors.axe && <p className="text-red-500 text-xs mt-1">{errors.axe.message}</p>}
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">Phase projet</Label>
+              <Select {...register('projectPhase')}>
+                <SelectOption value="">Non définie</SelectOption>
+                {PROJECT_PHASES.map((phase) => (
+                  <SelectOption key={phase} value={phase}>{PROJECT_PHASE_LABELS[phase]}</SelectOption>
+                ))}
+              </Select>
             </div>
 
             <div>

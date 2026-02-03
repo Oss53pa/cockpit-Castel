@@ -62,6 +62,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
           responsable: responsableNom,
         }),
         ...(data.date_fin_prevue !== undefined && { date_fin_prevue: data.date_fin_prevue }),
+        ...(data.projectPhase !== undefined && { projectPhase: data.projectPhase }),
         // Statut et avancement
         statut: data.statut,
         avancement: data.avancement,

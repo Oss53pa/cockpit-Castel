@@ -12,6 +12,7 @@ import {
   ActionsCalendar,
   ActionsPert,
   ActionForm,
+  ActionWizard,
   ActionFiltersBar,
 } from '@/components/actions';
 import type { Action, ActionViewMode } from '@/types';
@@ -28,6 +29,7 @@ const viewModes: { id: ActionViewMode; label: string; icon: typeof List }[] = [
 export function ActionsPage() {
   const { actionsViewMode, setActionsViewMode, actionFilters } = useAppStore();
   const [formOpen, setFormOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<Action | undefined>();
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,8 +47,7 @@ export function ActionsPage() {
   };
 
   const handleAdd = () => {
-    setSelectedAction(undefined);
-    setFormOpen(true);
+    setWizardOpen(true);
   };
 
   const handleFormClose = () => {
@@ -234,12 +235,19 @@ export function ActionsPage() {
       {/* Content based on view mode */}
       {renderContent()}
 
-      {/* Action Form Modal */}
+      {/* Action Form Modal (édition) */}
       <ActionForm
         action={selectedAction}
         open={formOpen}
         onClose={handleFormClose}
         onSuccess={() => {}}
+      />
+
+      {/* Action Wizard (création) */}
+      <ActionWizard
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onSuccess={() => setWizardOpen(false)}
       />
     </div>
   );

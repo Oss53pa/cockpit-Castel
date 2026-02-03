@@ -76,6 +76,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         ...(data.date_prevue && { date_prevue: data.date_prevue }),
         ...(data.responsable && { responsable: data.responsable }),
         ...(data.axe && { axe: data.axe }),
+        ...(data.projectPhase !== undefined && { projectPhase: data.projectPhase }),
         // Statut et validation
         statut: data.statut,
         preuve_url: data.preuve_url || null,
