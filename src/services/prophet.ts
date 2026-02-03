@@ -1753,6 +1753,23 @@ export async function chat(
     let response: string;
 
     switch (config.provider) {
+      case 'hybrid':
+        // Mode hybride: local + OpenRouter en parallèle
+        const localResponse = localAnalysis(userMessage, context, history);
+
+        if (config.openrouterApiKey) {
+          try {
+            const aiResponse = await callOpenRouter(messages, systemPrompt, config);
+            // Combiner les résultats
+            response = `${localResponse}\n\n---\n\n## Analyse IA Complémentaire\n\n${aiResponse}`;
+          } catch (apiError) {
+            // Si l'API échoue, retourner juste l'analyse locale
+            response = localResponse + `\n\n---\n*Mode hybride: API indisponible, analyse locale uniquement*`;
+          }
+        } else {
+          response = localResponse + `\n\n---\n*Mode hybride: Configurez une clé API OpenRouter pour des analyses enrichies*`;
+        }
+        break;
       case 'openrouter':
         response = await callOpenRouter(messages, systemPrompt, config);
         break;
@@ -1770,7 +1787,7 @@ export async function chat(
     console.error('Prophet chat error:', error);
 
     // Fallback to local analysis if API fails
-    if (config.provider !== 'local') {
+    if (config.provider !== 'local' && config.provider !== 'hybrid') {
       return localAnalysis(userMessage, context, history) +
         `\n\n---\n*Mode local active (erreur API: ${error instanceof Error ? error.message : 'Inconnue'})*`;
     }

@@ -200,6 +200,8 @@ export function ProphetChat() {
 
   const getProviderIcon = (provider: AIProvider) => {
     switch (provider) {
+      case 'hybrid':
+        return <Zap className="h-4 w-4" />;
       case 'openrouter':
         return <Zap className="h-4 w-4" />;
       case 'anthropic':
@@ -211,6 +213,8 @@ export function ProphetChat() {
 
   const getProviderLabel = (provider: AIProvider) => {
     switch (provider) {
+      case 'hybrid':
+        return 'Hybride';
       case 'openrouter':
         return 'OpenRouter';
       case 'anthropic':
@@ -373,8 +377,8 @@ export function ProphetChat() {
                 <label className="block text-xs font-medium text-gray-600 mb-2">
                   Fournisseur
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['local', 'openrouter', 'anthropic'] as AIProvider[]).map((provider) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {(['hybrid', 'local', 'openrouter', 'anthropic'] as AIProvider[]).map((provider) => (
                     <button
                       key={provider}
                       onClick={() => handleConfigChange({ provider })}
@@ -392,7 +396,7 @@ export function ProphetChat() {
               </div>
 
               {/* OpenRouter API Key */}
-              {config.provider === 'openrouter' && (
+              {(config.provider === 'openrouter' || config.provider === 'hybrid') && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Cle API OpenRouter
@@ -433,6 +437,13 @@ export function ProphetChat() {
                 <p className="text-xs text-gray-500 bg-white p-3 rounded-lg">
                   Mode local: Analyse basee sur des algorithmes integres.
                   Pas besoin de cle API. Cliquez sur <BookOpen className="inline h-3 w-3" /> pour voir toutes les capacites.
+                </p>
+              )}
+
+              {config.provider === 'hybrid' && (
+                <p className="text-xs text-gray-500 bg-white p-3 rounded-lg">
+                  Mode hybride: Combine l'analyse locale instantanee avec OpenRouter pour des reponses enrichies.
+                  Cle API recommandee pour de meilleurs resultats.
                 </p>
               )}
             </div>
