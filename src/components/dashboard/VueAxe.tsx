@@ -127,7 +127,7 @@ function JalonCard({ jalon, actions, users, onAddAction }: JalonCardProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-2xl">{meteoConfig.emoji}</span>
+          <span className="text-2xl emoji">{meteoConfig.emoji}</span>
           <div className="text-right">
             <span className={cn('text-xl font-bold', isTermine ? 'text-green-600' : 'text-neutral-900')}>
               {Math.round(avancement)}%
@@ -274,7 +274,7 @@ export function VueAxe({ axe, onBack, onAddJalon, onAddAction }: VueAxeProps) {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-3xl">{meteoConfig.emoji}</span>
+            <span className="text-3xl emoji">{meteoConfig.emoji}</span>
             <div className="text-right">
               <p className="text-2xl font-bold text-neutral-900">{avancementGlobal}%</p>
               <p className="text-xs text-neutral-500">global</p>

@@ -2123,7 +2123,7 @@ export function DeepDive() {
             <div className="flex-1 p-6">
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg border-2 text-center" style={{ borderColor: weatherConfig[projectWeather].color, backgroundColor: `${weatherConfig[projectWeather].color}10` }}>
-                  <div className="text-3xl mb-2">{weatherConfig[projectWeather].emoji}</div>
+                  <div className="text-3xl mb-2 emoji">{weatherConfig[projectWeather].emoji}</div>
                   <div className="text-sm font-semibold" style={{ color: weatherConfig[projectWeather].color }}>
                     {weatherConfig[projectWeather].label.split(' ')[0]}
                   </div>
@@ -2178,7 +2178,7 @@ export function DeepDive() {
                 <div className="p-3 rounded-lg border" style={{ borderColor: weatherConfig[projectWeather].color, backgroundColor: `${weatherConfig[projectWeather].color}15` }}>
                   <h3 className="text-xs font-semibold text-gray-600 mb-2">Météo Projet</h3>
                   <div className="text-center">
-                    <span className="text-2xl">{weatherConfig[projectWeather].emoji}</span>
+                    <span className="text-2xl emoji">{weatherConfig[projectWeather].emoji}</span>
                     <p className="text-sm font-bold mt-1" style={{ color: weatherConfig[projectWeather].color }}>
                       {weatherConfig[projectWeather].label.split(' ')[0]}
                     </p>
@@ -3356,7 +3356,7 @@ export function DeepDive() {
               <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: `${primaryColor}10` }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl" style={{ backgroundColor: weatherConfig[projectWeather].color }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl emoji" style={{ backgroundColor: weatherConfig[projectWeather].color }}>
                       {weatherConfig[projectWeather].emoji}
                     </div>
                     <div>

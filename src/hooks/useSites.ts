@@ -11,12 +11,35 @@ export function useSites() {
 
   const { setSites, currentSite, setCurrentSite } = useSiteStore();
 
-  // Sync sites with store
+  // Sync sites with store - TOUJOURS synchroniser avec la DB
   useEffect(() => {
     if (sites.length > 0) {
       setSites(sites);
-      // Auto-select first site if none selected
-      if (!currentSite) {
+
+      // Trouver le site correspondant dans la DB
+      const currentSiteId = currentSite?.id;
+      const freshSite = currentSiteId
+        ? sites.find(s => s.id === currentSiteId)
+        : null;
+
+      if (freshSite) {
+        // Vérifier si les données ont changé avant de mettre à jour (évite boucle infinie)
+        const hasChanged =
+          freshSite.surface !== currentSite?.surface ||
+          freshSite.nombreBatiments !== currentSite?.nombreBatiments ||
+          freshSite.dateOuverture !== currentSite?.dateOuverture ||
+          freshSite.dateInauguration !== currentSite?.dateInauguration ||
+          freshSite.nom !== currentSite?.nom ||
+          freshSite.updatedAt !== currentSite?.updatedAt;
+
+        if (hasChanged) {
+          setCurrentSite(freshSite);
+        }
+      } else if (!currentSite) {
+        // Aucun site sélectionné: prendre le premier
+        setCurrentSite(sites[0]);
+      } else {
+        // Le site sélectionné n'existe plus, prendre le premier
         setCurrentSite(sites[0]);
       }
     }

@@ -51,6 +51,7 @@ export function SiteManagement() {
   const sites = useSites();
   const currentSite = useSiteStore((state) => state.currentSite);
   const setCurrentSite = useSiteStore((state) => state.setCurrentSite);
+  const updateSiteInStore = useSiteStore((state) => state.updateSite);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
@@ -110,10 +111,19 @@ export function SiteManagement() {
 
     try {
       if (editingSite?.id) {
-        await updateSite(editingSite.id, {
+        const updatedData = {
           ...formData,
           actif: true,
-        });
+        };
+        await updateSite(editingSite.id, updatedData);
+
+        // Synchroniser le store Zustand avec les nouvelles données
+        const updatedSite: Site = {
+          ...editingSite,
+          ...updatedData,
+          updatedAt: new Date().toISOString(),
+        };
+        updateSiteInStore(updatedSite);
       } else {
         await createSite({
           ...formData,

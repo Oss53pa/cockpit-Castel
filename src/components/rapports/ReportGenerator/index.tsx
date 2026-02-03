@@ -542,7 +542,7 @@ export function ReportGenerator({
                 {/* Meteo globale */}
                 {generatedReport.meteoGlobale && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-                    <span className="text-2xl">{getMeteoEmoji(generatedReport.meteoGlobale)}</span>
+                    <span className="text-2xl emoji">{getMeteoEmoji(generatedReport.meteoGlobale)}</span>
                     <span className="text-sm font-medium capitalize">{generatedReport.meteoGlobale}</span>
                   </div>
                 )}
@@ -783,7 +783,7 @@ function SectionContent({ section }: { section: ReportSection }) {
     case 'meteo':
       return (
         <div className="flex items-center gap-4">
-          <div className="text-4xl">{getMeteoEmoji((data.meteo as string) || 'bon')}</div>
+          <div className="text-4xl emoji">{getMeteoEmoji((data.meteo as string) || 'bon')}</div>
           <div>
             <p className="font-semibold capitalize">{data.meteo as string}</p>
             {data.compteARebours && (
