@@ -18,6 +18,7 @@ import { db } from '@/db';
 import {
   previewRecalculation,
   applyRecalculation,
+  migrateToPhaseReferences,
   type RecalculationPreview,
 } from '@/lib/dateCalculations';
 
@@ -111,6 +112,7 @@ export function ProjectSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [migrating, setMigrating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [stats, setStats] = useState<{ jalons: number; actions: number } | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -213,6 +215,24 @@ export function ProjectSettings() {
       setMessage({ type: 'error', text: 'Erreur lors du recalcul des dates' });
     } finally {
       setRecalculating(false);
+    }
+  };
+
+  // Migrer toutes les dates vers le système de références de phase
+  const handleMigrate = async () => {
+    setMigrating(true);
+    setMessage(null);
+    try {
+      const result = await migrateToPhaseReferences(config);
+      setMessage({
+        type: 'success',
+        text: `Migration réussie: ${result.jalons} jalon(s) et ${result.actions} action(s) convertis en délais relatifs au Soft Opening`,
+      });
+    } catch (error) {
+      console.error('Error migrating:', error);
+      setMessage({ type: 'error', text: 'Erreur lors de la migration' });
+    } finally {
+      setMigrating(false);
     }
   };
 
@@ -319,10 +339,14 @@ export function ProjectSettings() {
 
         {/* Actions */}
         <div className="flex flex-col gap-3 mt-6">
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+            </Button>
+            <Button variant="outline" onClick={handleMigrate} disabled={migrating}>
+              <ArrowRight className={`h-4 w-4 mr-2 ${migrating ? 'animate-pulse' : ''}`} />
+              {migrating ? 'Migration...' : 'Convertir en délais relatifs'}
             </Button>
             <Button variant="secondary" onClick={handleRecalculate} disabled={recalculating}>
               <RefreshCw className={`h-4 w-4 mr-2 ${recalculating ? 'animate-spin' : ''}`} />

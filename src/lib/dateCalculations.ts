@@ -489,3 +489,104 @@ export async function recalculateActionsForJalon(
 
   return updated;
 }
+
+// ============================================================================
+// MIGRATION: CONVERT HARDCODED DATES TO PHASE REFERENCES
+// ============================================================================
+
+/**
+ * Calculate the delay in days between a date and the soft opening date.
+ * Negative = before soft opening, Positive = after soft opening.
+ */
+export function calculateDelayFromSoftOpening(dateStr: string, softOpeningStr: string): number {
+  const date = new Date(normalizeDate(dateStr));
+  const softOpening = new Date(normalizeDate(softOpeningStr));
+  const diffMs = date.getTime() - softOpening.getTime();
+  return Math.round(diffMs / MS_PER_DAY);
+}
+
+/**
+ * Migrate all jalons and actions to use phase references.
+ * This function:
+ * 1. Calculates the delay (in days) between each date and the soft opening
+ * 2. Sets jalon_reference = 'dateSoftOpening' and delai_declenchement for each item
+ *
+ * After migration, changing the soft opening date will automatically update all dates.
+ */
+export async function migrateToPhaseReferences(
+  config: ProjectConfig
+): Promise<{ jalons: number; actions: number }> {
+  const jalons = await db.jalons.toArray();
+  const actions = await db.actions.toArray();
+  const softOpening = config.dateSoftOpening;
+
+  let jalonsUpdated = 0;
+  let actionsUpdated = 0;
+
+  // Migrate jalons
+  for (const jalon of jalons) {
+    if (!jalon.date_prevue) continue;
+
+    const delai = calculateDelayFromSoftOpening(jalon.date_prevue, softOpening);
+
+    await db.jalons.update(jalon.id!, {
+      jalon_reference: 'dateSoftOpening' as PhaseReference,
+      delai_declenchement: delai,
+    });
+    jalonsUpdated++;
+  }
+
+  // Migrate actions - use date_fin_prevue as the reference point
+  for (const action of actions) {
+    if (!action.date_fin_prevue) continue;
+
+    // Calculate delay based on the START date (date_debut_prevue)
+    const delaiDebut = action.date_debut_prevue
+      ? calculateDelayFromSoftOpening(action.date_debut_prevue, softOpening)
+      : calculateDelayFromSoftOpening(action.date_fin_prevue, softOpening) - (action.duree_prevue_jours || 7);
+
+    await db.actions.update(action.id!, {
+      jalon_reference: 'dateSoftOpening' as PhaseReference,
+      delai_declenchement: delaiDebut,
+    });
+    actionsUpdated++;
+  }
+
+  return { jalons: jalonsUpdated, actions: actionsUpdated };
+}
+
+/**
+ * Preview migration: show what would be migrated without applying changes.
+ */
+export async function previewMigration(
+  config: ProjectConfig
+): Promise<{
+  jalons: Array<{ id: number; titre: string; date: string; delai: number }>;
+  actions: Array<{ id: number; titre: string; date: string; delai: number }>;
+}> {
+  const jalons = await db.jalons.toArray();
+  const actions = await db.actions.toArray();
+  const softOpening = config.dateSoftOpening;
+
+  const jalonPreviews = jalons
+    .filter(j => j.date_prevue)
+    .map(j => ({
+      id: j.id!,
+      titre: j.titre,
+      date: j.date_prevue,
+      delai: calculateDelayFromSoftOpening(j.date_prevue, softOpening),
+    }));
+
+  const actionPreviews = actions
+    .filter(a => a.date_fin_prevue)
+    .map(a => ({
+      id: a.id!,
+      titre: a.titre,
+      date: a.date_fin_prevue,
+      delai: a.date_debut_prevue
+        ? calculateDelayFromSoftOpening(a.date_debut_prevue, softOpening)
+        : calculateDelayFromSoftOpening(a.date_fin_prevue, softOpening) - (a.duree_prevue_jours || 7),
+    }));
+
+  return { jalons: jalonPreviews, actions: actionPreviews };
+}
