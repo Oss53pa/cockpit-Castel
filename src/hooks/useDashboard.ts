@@ -41,13 +41,10 @@ export function useDashboardKPIs() {
     const budgetTotal = budget.reduce((sum, b) => sum + b.montantPrevu, 0);
     const budgetConsomme = budget.reduce((sum, b) => sum + b.montantRealise, 0);
 
-    // Calculate occupation rate (example: based on commercial actions progress)
-    const commercialActions = actions.filter((a) => a.axe === 'axe2_commercial');
-    const tauxOccupation =
-      commercialActions.length > 0
-        ? commercialActions.reduce((sum, a) => sum + a.avancement, 0) /
-          commercialActions.length
-        : 0;
+    // Taux d'occupation = avancement de l'action A-COM-J8.6 (Commercialisation surfaces)
+    // Cette action représente le pourcentage de surfaces louées
+    const actionOccupation = actions.find((a) => a.id_action === 'A-COM-J8.6');
+    const tauxOccupation = actionOccupation?.avancement ?? 0;
 
     const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
 
