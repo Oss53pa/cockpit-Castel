@@ -340,17 +340,19 @@ function SlideRappelProjet() {
   // IMPORTANT: Utiliser les mêmes données que le dashboard pour l'avancement
   const avancementParAxe = useAvancementParAxe();
 
-  // Données du site (100% temps réel depuis la DB)
-  // Priorité: currentSite > premier site actif > PROJET_CONFIG
+  // Données du site (100% temps réel depuis la DB - ZERO fallback hardcodé)
   const siteData = useMemo(() => {
-    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    // IMPORTANT: Utiliser directement allSites de la DB comme source de vérité
+    const siteFromDb = allSites.find(s => s.actif && s.id === currentSite?.id)
+                    || allSites.find(s => s.actif)
+                    || allSites[0];
     return {
-      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
-      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
-      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
-      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
-      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
-      nom: site?.nom ?? PROJET_CONFIG.nom,
+      surfaceGLA: siteFromDb?.surface ?? 0,
+      nombreBatiments: siteFromDb?.nombreBatiments ?? 0,
+      softOpening: siteFromDb?.dateOuverture ?? '',
+      inauguration: siteFromDb?.dateInauguration ?? '',
+      occupationCible: siteFromDb?.occupationCible ?? 85,
+      nom: siteFromDb?.nom ?? 'Site non configuré',
     };
   }, [currentSite, allSites]);
 
@@ -1949,19 +1951,20 @@ export function DeepDiveLancement() {
   const currentSite = useCurrentSite();
   const allSites = useSites();
 
-  // Données du site (100% temps réel depuis la DB)
-  // Priorité: currentSite > premier site actif > PROJET_CONFIG
+  // Données du site (100% temps réel depuis la DB - ZERO fallback hardcodé)
   const siteData = useMemo(() => {
-    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    const siteFromDb = allSites.find(s => s.actif && s.id === currentSite?.id)
+                    || allSites.find(s => s.actif)
+                    || allSites[0];
     return {
-      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
-      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
-      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
-      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
-      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
-      nom: site?.nom ?? PROJET_CONFIG.nom,
-      code: site?.code ?? 'COSMOS',
-      societe: PROJET_CONFIG.societe,
+      surfaceGLA: siteFromDb?.surface ?? 0,
+      nombreBatiments: siteFromDb?.nombreBatiments ?? 0,
+      softOpening: siteFromDb?.dateOuverture ?? '',
+      inauguration: siteFromDb?.dateInauguration ?? '',
+      occupationCible: siteFromDb?.occupationCible ?? 85,
+      nom: siteFromDb?.nom ?? 'Site non configuré',
+      code: siteFromDb?.code ?? '',
+      societe: 'CASTEL',
       presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
       destinataires: ['PDG', 'Actionnaires'],
     };

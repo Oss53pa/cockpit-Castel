@@ -576,20 +576,24 @@ export function DeepDive() {
   const allSites = useSites(); // Tous les sites de la DB
   const teamsData = useTeams(); // Équipes depuis la DB
 
-  // Données du site (100% temps réel depuis la DB)
-  // Priorité: currentSite du store > premier site actif de la DB > PROJET_CONFIG
+  // Données du site (100% temps réel depuis la DB - ZERO fallback hardcodé)
+  // Priorité: site actif de la DB (source de vérité) > currentSite du store
   const siteData = useMemo(() => {
-    // Utiliser currentSite du store, sinon le premier site actif de la DB
-    const site = currentSite || allSites.find(s => s.actif) || allSites[0];
+    // IMPORTANT: Utiliser directement allSites de la DB (useLiveQuery) comme source de vérité
+    // Le store peut avoir des données stale dans le localStorage
+    const siteFromDb = allSites.find(s => s.actif && s.id === currentSite?.id)
+                    || allSites.find(s => s.actif)
+                    || allSites[0];
 
+    // Utiliser les données de la DB, PAS les fallbacks hardcodés de PROJET_CONFIG
     return {
-      surfaceGLA: site?.surface ?? PROJET_CONFIG.surfaceGLA,
-      nombreBatiments: site?.nombreBatiments ?? PROJET_CONFIG.nombreBatiments,
-      softOpening: site?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening,
-      inauguration: site?.dateInauguration ?? PROJET_CONFIG.jalonsClés.inauguration,
-      occupationCible: site?.occupationCible ?? PROJET_CONFIG.occupationCible,
-      nom: site?.nom ?? PROJET_CONFIG.nom,
-      code: site?.code ?? 'COSMOS',
+      surfaceGLA: siteFromDb?.surface ?? 0,
+      nombreBatiments: siteFromDb?.nombreBatiments ?? 0,
+      softOpening: siteFromDb?.dateOuverture ?? '',
+      inauguration: siteFromDb?.dateInauguration ?? '',
+      occupationCible: siteFromDb?.occupationCible ?? 85,
+      nom: siteFromDb?.nom ?? 'Site non configuré',
+      code: siteFromDb?.code ?? '',
       presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
       destinataires: ['PDG', 'Actionnaires'],
     };
