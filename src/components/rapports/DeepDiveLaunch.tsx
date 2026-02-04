@@ -98,6 +98,7 @@ import {
   useSites,
 } from '@/hooks';
 import { PROJET_CONFIG } from '@/data/constants';
+import { BATIMENTS_CONFIG, TOTAL_GLA } from '@/types';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -1935,14 +1936,18 @@ export function DeepDiveLaunch() {
   const currentSite = useCurrentSite();
   const allSites = useSites();
 
-  // Données du site (100% temps réel depuis la DB - ZERO fallback hardcodé)
+  // Données du site - TOUJOURS utiliser BATIMENTS_CONFIG comme source de vérité
   const siteData = useMemo(() => {
     const siteFromDb = allSites.find(s => s.actif && s.id === currentSite?.id)
                     || allSites.find(s => s.actif)
                     || allSites[0];
+
+    // IMPORTANT: Nombre de bâtiments = TOUJOURS depuis BATIMENTS_CONFIG (source de vérité cockpit)
+    const nombreBatiments = Object.keys(BATIMENTS_CONFIG).length; // = 6
+
     return {
-      surfaceGLA: siteFromDb?.surface ?? 0,
-      nombreBatiments: siteFromDb?.nombreBatiments ?? 0,
+      surfaceGLA: siteFromDb?.surface || TOTAL_GLA,
+      nombreBatiments: nombreBatiments, // TOUJOURS 6 depuis BATIMENTS_CONFIG
       softOpening: siteFromDb?.dateOuverture ?? '',
       inauguration: siteFromDb?.dateInauguration ?? '',
       occupationCible: siteFromDb?.occupationCible ?? 85,

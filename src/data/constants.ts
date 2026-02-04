@@ -131,8 +131,8 @@ export const PROJET_CONFIG = {
   // Informations générales
   nom: 'COSMOS ANGRÉ',
   societe: 'CRMC / New Heaven SA',
-  surfaceGLA: 45_000, // m²
-  nombreBatiments: 8,
+  surfaceGLA: 16_184, // m² - Surface GLA réelle
+  nombreBatiments: 6, // 6 bâtiments configurés
   occupationCible: 85, // %
 
   // Timeline du projet

@@ -615,7 +615,10 @@ class CockpitDatabase extends Dexie {
         description: 'Centre commercial Cosmos Angré - Abidjan',
         localisation: 'Abidjan, Côte d\'Ivoire',
         dateOuverture: '2026-11-01',
-        surface: 45000,
+        dateInauguration: '2027-03-01',
+        surface: 16184,
+        nombreBatiments: 6,
+        occupationCible: 85,
         couleur: '#18181b',
         actif: true,
         createdAt: now,
@@ -903,6 +906,66 @@ class CockpitDatabase extends Dexie {
       // NEW: Budget Exploitation tables (modifiable)
       budgetExploitation: '++id, siteId, budgetType, annee, ordre, categorie',
       budgetConfigurations: '++id, siteId, budgetType, annee',
+    });
+
+    // Version 17: Add nombreBatiments to existing sites
+    this.version(17).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId, responsableId, emailEnvoye',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+      sousTaches: '++id, actionId, ordre',
+      preuves: '++id, actionId, type, createdAt',
+      notesAction: '++id, actionId, createdAt',
+      alerteEmailHistorique: '++id, alerteId, type, destinataireEmail, envoyeAt, statut',
+      budgetExploitation: '++id, siteId, budgetType, annee, ordre, categorie',
+      budgetConfigurations: '++id, siteId, budgetType, annee',
+    }).upgrade(async (tx) => {
+      // Migration v17: Ajouter nombreBatiments aux sites existants qui n'ont pas cette valeur
+      const sites = tx.table('sites');
+      const allSites = await sites.toArray();
+
+      for (const site of allSites) {
+        if (site.nombreBatiments === undefined || site.nombreBatiments === null) {
+          // Valeur par défaut de 6 pour COSMOS Angré, sinon 0
+          const defaultValue = site.code === 'COSMOS' ? 6 : 0;
+          await sites.update(site.id, {
+            nombreBatiments: defaultValue,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
     });
   }
 }
