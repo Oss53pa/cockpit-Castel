@@ -1173,3 +1173,97 @@ function normalizeTitle(title: string): string {
     .replace(/[^a-z0-9\s]/g, '') // Garde uniquement lettres, chiffres, espaces
     .replace(/\s+/g, ' '); // Normalise les espaces
 }
+
+/**
+ * Recalcule l'avancement de TOUTES les actions basé sur la DATE ACTUELLE
+ *
+ * Cette fonction met à jour l'avancement en fonction des dates prévues :
+ * - Action terminée (date_fin_prevue < aujourd'hui) → 100%
+ * - Action en cours (date_debut_prevue <= aujourd'hui < date_fin_prevue) → calculé
+ * - Action future → 0%
+ *
+ * NE MODIFIE PAS les actions avec date_verrouillage_manuel définie
+ */
+export async function recalculateAllAvancement(): Promise<{ updated: number; skipped: number }> {
+  let updated = 0;
+  let skipped = 0;
+
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    const dbActions = await db.actions.toArray();
+
+    for (const action of dbActions) {
+      // Ne pas modifier les actions verrouillées manuellement
+      if ((action as any).date_verrouillage_manuel) {
+        skipped++;
+        continue;
+      }
+
+      const dateFinPrevue = action.date_fin_prevue ? new Date(action.date_fin_prevue) : null;
+      const dateDebutPrevue = action.date_debut_prevue ? new Date(action.date_debut_prevue) : null;
+
+      if (!dateFinPrevue) {
+        skipped++;
+        continue;
+      }
+
+      dateFinPrevue.setHours(0, 0, 0, 0);
+      if (dateDebutPrevue) dateDebutPrevue.setHours(0, 0, 0, 0);
+
+      let newAvancement = 0;
+      let newStatut: 'a_faire' | 'en_cours' | 'termine' = 'a_faire';
+      let newSante: 'vert' | 'jaune' | 'orange' | 'rouge' | 'gris' = 'gris';
+
+      if (dateFinPrevue < today) {
+        // Action passée - terminée
+        newAvancement = 100;
+        newStatut = 'termine';
+        newSante = 'vert';
+      } else if (dateDebutPrevue && dateDebutPrevue <= today && dateFinPrevue >= today) {
+        // Action en cours
+        const totalDays = (dateFinPrevue.getTime() - dateDebutPrevue.getTime()) / (1000 * 60 * 60 * 24);
+        const elapsedDays = (today.getTime() - dateDebutPrevue.getTime()) / (1000 * 60 * 60 * 24);
+        newAvancement = Math.min(95, Math.max(5, Math.round((elapsedDays / totalDays) * 100)));
+        newStatut = 'en_cours';
+        newSante = newAvancement >= 50 ? 'vert' : 'jaune';
+      } else {
+        // Action future
+        newAvancement = 0;
+        newStatut = 'a_faire';
+        newSante = 'gris';
+      }
+
+      // Mettre à jour seulement si différent
+      if (action.avancement !== newAvancement || action.statut !== newStatut) {
+        const updates: Partial<Action> = {
+          avancement: newAvancement,
+          statut: newStatut,
+          sante: newSante,
+        };
+
+        if (newStatut === 'termine' && !action.date_fin_reelle) {
+          updates.date_fin_reelle = action.date_fin_prevue;
+        }
+        if (newStatut === 'en_cours' && !action.date_debut_reelle) {
+          updates.date_debut_reelle = action.date_debut_prevue;
+        }
+
+        if (action.id) {
+          await db.actions.update(action.id, updates);
+          updated++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+
+    console.log(`[RecalculateAvancement] ${updated} actions mises à jour, ${skipped} ignorées`);
+  } catch (error) {
+    console.error('[RecalculateAvancement] Erreur:', error);
+  }
+
+  return { updated, skipped };
+}
