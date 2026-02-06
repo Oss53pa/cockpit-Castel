@@ -635,7 +635,7 @@ function SlideAxeRH() {
               {actionsRH.slice(0, 8).map((action) => (
                 <TableRow key={action.id}>
                   <TableCell className="font-medium">{action.titre}</TableCell>
-                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.responsable || '-'}</TableCell>
                   <TableCell>{action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
                   <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
                 </TableRow>
@@ -922,7 +922,7 @@ function SlideAxeTechnique() {
                 .map((action) => (
                   <TableRow key={action.id}>
                     <TableCell className="font-medium">{action.titre}</TableCell>
-                    <TableCell>{action.responsable_nom || '-'}</TableCell>
+                    <TableCell>{action.responsable || '-'}</TableCell>
                     <TableCell>{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
                   </TableRow>
                 ))}
@@ -1058,7 +1058,7 @@ function SlideAxeBudget() {
               {actionsBudget.slice(0, 5).map((action) => (
                 <TableRow key={action.id}>
                   <TableCell className="font-medium">{action.titre}</TableCell>
-                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.responsable || '-'}</TableCell>
                   <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
                 </TableRow>
               ))}
@@ -1143,7 +1143,7 @@ function SlideAxeMarketing() {
               {actionsMarketing.slice(0, 6).map((action) => (
                 <TableRow key={action.id}>
                   <TableCell className="font-medium">{action.titre}</TableCell>
-                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.responsable || '-'}</TableCell>
                   <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
                 </TableRow>
               ))}
@@ -1259,7 +1259,7 @@ function SlideAxeExploitation() {
               {actionsExploitation.slice(0, 8).map((action) => (
                 <TableRow key={action.id}>
                   <TableCell className="font-medium">{action.titre}</TableCell>
-                  <TableCell>{action.responsable_nom || '-'}</TableCell>
+                  <TableCell>{action.responsable || '-'}</TableCell>
                   <TableCell>{action.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</TableCell>
                   <TableCell className="text-center">{getStatutIcon(action.statut)} {action.avancement}%</TableCell>
                 </TableRow>
@@ -1437,7 +1437,7 @@ function SlidePointsAttention() {
             allPoints.push({
               numero: idx,
               sujet: point.sujet,
-              responsable: action.responsable_nom || action.responsable || '-',
+              responsable: action.responsable || '-',
               responsablePoint: point.responsableNom,
               actionTitre: action.titre,
               axe: action.axe,
@@ -1564,7 +1564,7 @@ function SlideDecisions() {
               numero: idx,
               element: decision.sujet,
               statut: 'a_valider',
-              responsable: action.responsable_nom || action.responsable || '-',
+              responsable: action.responsable || '-',
               actionTitre: action.titre,
             });
           });
@@ -1604,7 +1604,7 @@ function SlideDecisions() {
       .slice(0, 5)
       .map(a => ({
         action: a.titre,
-        responsable: a.responsable_nom || a.responsable || '-',
+        responsable: a.responsable || '-',
         echeance: a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR') : 'À définir',
         priorite: a.priorite,
       }));

@@ -426,10 +426,10 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
                         <span>{axe?.labelCourt}</span>
                         <span>•</span>
                         <span>{action.date_fin_prevue && new Date(action.date_fin_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                        {action.responsable_nom && (
+                        {action.responsable && (
                           <>
                             <span>•</span>
-                            <span>{action.responsable_nom}</span>
+                            <span>{action.responsable}</span>
                           </>
                         )}
                       </div>

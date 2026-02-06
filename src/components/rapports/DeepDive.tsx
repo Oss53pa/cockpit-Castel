@@ -1012,7 +1012,7 @@ export function DeepDive() {
       .slice(0, 5)
       .map(a => ({
         action: a.titre,
-        responsable: a.responsable_nom || a.responsable || '-',
+        responsable: a.responsable || '-',
         echeance: a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR') : 'À définir',
         priorite: a.priorite,
       }));
