@@ -1056,3 +1056,120 @@ export async function migrateActionsFromProductionData(): Promise<{ updated: num
 
   return { updated, skipped };
 }
+
+/**
+ * Migration améliorée: synchronise l'avancement depuis PRODUCTION_DATA
+ * en utilisant le titre + axe pour la correspondance (pas id_action qui peut différer)
+ *
+ * PRIORITÉ:
+ * 1. Correspondance exacte par id_action
+ * 2. Correspondance par titre + axe (normalized)
+ *
+ * MET À JOUR:
+ * - avancement (si 0 dans DB et > 0 dans PRODUCTION_DATA)
+ * - statut (pour cohérence avec avancement)
+ * - sante (si 'gris' dans DB)
+ */
+export async function syncAvancementFromProductionData(): Promise<{ updated: number; skipped: number; matched: number }> {
+  let updated = 0;
+  let skipped = 0;
+  let matched = 0;
+
+  try {
+    const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
+
+    if (!PRODUCTION_DATA?.actions?.length) {
+      console.log('[SyncAvancement] Pas de données PRODUCTION_DATA disponibles');
+      return { updated: 0, skipped: 0, matched: 0 };
+    }
+
+    // Créer des index pour la correspondance
+    const prodByIdAction = new Map<string, any>();
+    const prodByTitreAxe = new Map<string, any>();
+
+    PRODUCTION_DATA.actions.forEach((a: any) => {
+      if (a.id_action) {
+        prodByIdAction.set(a.id_action, a);
+      }
+      // Normaliser le titre pour la correspondance
+      const key = `${normalizeTitle(a.titre)}|${a.axe}`;
+      prodByTitreAxe.set(key, a);
+    });
+
+    const dbActions = await db.actions.toArray();
+
+    for (const action of dbActions) {
+      // Essayer d'abord par id_action
+      let prodAction = prodByIdAction.get(action.id_action);
+
+      // Sinon essayer par titre + axe
+      if (!prodAction) {
+        const key = `${normalizeTitle(action.titre)}|${action.axe}`;
+        prodAction = prodByTitreAxe.get(key);
+      }
+
+      if (!prodAction) {
+        skipped++;
+        continue;
+      }
+
+      matched++;
+
+      const updates: Partial<Action> = {};
+      let needsUpdate = false;
+
+      // Synchroniser avancement si 0 ET PRODUCTION_DATA a une valeur > 0
+      if ((action.avancement === 0 || action.avancement === undefined) && prodAction.avancement > 0) {
+        updates.avancement = prodAction.avancement;
+
+        // Mettre à jour le statut pour cohérence
+        if (prodAction.avancement === 100) {
+          updates.statut = 'termine';
+          updates.date_fin_reelle = action.date_fin_prevue;
+        } else if (prodAction.avancement > 0) {
+          updates.statut = 'en_cours';
+          if (!action.date_debut_reelle) {
+            updates.date_debut_reelle = action.date_debut_prevue;
+          }
+        }
+        needsUpdate = true;
+      }
+
+      // Synchroniser sante si 'gris' (non défini)
+      if (action.sante === 'gris' && prodAction.sante && prodAction.sante !== 'gris') {
+        updates.sante = prodAction.sante;
+        needsUpdate = true;
+      }
+
+      // Synchroniser responsable si vide
+      if (!action.responsable && prodAction.responsable) {
+        updates.responsable = prodAction.responsable;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate && action.id) {
+        await db.actions.update(action.id, updates);
+        updated++;
+      }
+    }
+
+    console.log(`[SyncAvancement] ${matched} actions trouvées, ${updated} mises à jour, ${skipped} non trouvées`);
+  } catch (error) {
+    console.error('[SyncAvancement] Erreur:', error);
+  }
+
+  return { updated, skipped, matched };
+}
+
+/**
+ * Normalise un titre pour la correspondance (lowercase, trim, remove accents)
+ */
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/[^a-z0-9\s]/g, '') // Garde uniquement lettres, chiffres, espaces
+    .replace(/\s+/g, ' '); // Normalise les espaces
+}

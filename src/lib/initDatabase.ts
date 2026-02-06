@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, syncAvancementFromProductionData } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 
@@ -96,6 +96,10 @@ export async function initializeDatabase(): Promise<{
         // Migration vers les références de phase (dates relatives au Soft Opening)
         await migrateToPhaseReferencesIfNeeded();
 
+        // Synchroniser l'avancement depuis PRODUCTION_DATA (valeurs réelles)
+        const avancementSync = await syncAvancementFromProductionData();
+        console.log('[initDatabase] Sync avancement:', avancementSync.updated, 'actions mises à jour');
+
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
       } else {
@@ -113,6 +117,12 @@ export async function initializeDatabase(): Promise<{
         const prodDataMigration = await migrateActionsFromProductionData();
         if (prodDataMigration.updated > 0) {
           console.log('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
+        }
+
+        // Synchronisation améliorée de l'avancement (correspondance par titre+axe si id ne matche pas)
+        const avancementSync = await syncAvancementFromProductionData();
+        if (avancementSync.updated > 0) {
+          console.log('[initDatabase] Sync avancement:', avancementSync.updated, 'actions mises à jour sur', avancementSync.matched, 'trouvées');
         }
 
         isInitialized = true;
