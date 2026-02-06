@@ -87,6 +87,7 @@ import {
   useCurrentSite,
   useSites,
   useTeams,
+  useUsers,
 } from '@/hooks';
 import { useSync } from '@/hooks/useSync';
 import { SYNC_CONFIG } from '@/config/syncConfig';
@@ -576,6 +577,14 @@ export function DeepDive() {
   const currentSite = useCurrentSite();
   const allSites = useSites(); // Tous les sites de la DB
   const teamsData = useTeams(); // Équipes depuis la DB
+  const users = useUsers(); // Utilisateurs depuis la DB
+
+  // Mapping des rôles vers titres professionnels
+  const ROLE_TITRES: Record<string, string> = {
+    admin: 'DGA',
+    manager: 'Manager',
+    viewer: 'Consultant',
+  };
 
   // Données du site - TOUJOURS utiliser BATIMENTS_CONFIG comme source de vérité
   const siteData = useMemo(() => {
@@ -586,6 +595,18 @@ export function DeepDive() {
     // IMPORTANT: Nombre de bâtiments = TOUJOURS depuis BATIMENTS_CONFIG (source de vérité cockpit)
     const nombreBatiments = Object.keys(BATIMENTS_CONFIG).length; // = 6
 
+    // Présentateur dynamique: premier admin ou premier utilisateur
+    const adminUser = users.find(u => u.role === 'admin') || users[0];
+    const presentateur = adminUser
+      ? { nom: `${adminUser.prenom} ${adminUser.nom}`, titre: ROLE_TITRES[adminUser.role] || 'Manager' }
+      : { nom: 'Non configuré', titre: '' };
+
+    // Destinataires dynamiques: tous les admins/managers
+    const destinataires = users
+      .filter(u => u.role === 'admin' || u.role === 'manager')
+      .map(u => `${u.prenom} ${u.nom}`)
+      .slice(0, 3); // Limiter à 3 destinataires pour l'affichage
+
     return {
       surfaceGLA: siteFromDb?.surface || TOTAL_GLA,
       nombreBatiments: nombreBatiments, // TOUJOURS 6 depuis BATIMENTS_CONFIG
@@ -594,10 +615,10 @@ export function DeepDive() {
       occupationCible: siteFromDb?.occupationCible ?? 85,
       nom: siteFromDb?.nom ?? 'Site non configuré',
       code: siteFromDb?.code ?? '',
-      presentateur: { nom: 'Pamela Atokouna', titre: 'DGA' },
-      destinataires: ['PDG', 'Actionnaires'],
+      presentateur,
+      destinataires: destinataires.length > 0 ? destinataires : ['Non configuré'],
     };
-  }, [currentSite, allSites]);
+  }, [currentSite, allSites, users]);
 
   // Sync data (new module)
   const syncData = useSync(1, 'cosmos-angre');

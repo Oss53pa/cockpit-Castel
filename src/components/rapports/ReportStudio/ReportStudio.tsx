@@ -49,6 +49,7 @@ import {
   updateReportStatus,
   exportReport,
 } from '@/hooks/useReports';
+import { useUsers } from '@/hooks';
 
 interface ReportStudioProps {
   reportId: number;
@@ -64,6 +65,12 @@ export function ReportStudio({
   const canUndo = useReportStudioStore(selectCanUndo);
   const canRedo = useReportStudioStore(selectCanRedo);
   const [viewMode, setViewMode] = useState<ViewMode>('single');
+  const users = useUsers(); // Utilisateurs depuis la DB
+
+  // Utilisateur courant (premier admin ou premier utilisateur)
+  const currentUser = users.find(u => u.role === 'admin') || users[0];
+  const userId = currentUser?.id || 1;
+  const userName = currentUser ? `${currentUser.prenom} ${currentUser.nom}` : 'Utilisateur';
 
   // Initialize report in store when loaded
   useEffect(() => {
@@ -135,8 +142,8 @@ export function ReportStudio({
         reportId: store.report.id,
         type: 'edited',
         description: 'Rapport sauvegardé',
-        userId: 1,
-        userName: 'Utilisateur',
+        userId,
+        userName,
       });
     } catch (error) {
       console.error('Failed to save report:', error);
@@ -160,8 +167,8 @@ export function ReportStudio({
         reportId: store.report.id!,
         type: 'exported',
         description: `Rapport exporté en ${options.format.toUpperCase()}`,
-        userId: 1,
-        userName: 'Utilisateur',
+        userId,
+        userName,
       });
     } catch (error) {
       console.error('Failed to export report:', error);

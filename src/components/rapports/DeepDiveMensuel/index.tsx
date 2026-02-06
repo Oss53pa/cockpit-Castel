@@ -51,7 +51,7 @@ import {
   toggleSectionExpanded,
   countActiveSlides,
 } from '@/data/deepDiveMensuelTemplate';
-import { useCurrentSite } from '@/hooks';
+import { useCurrentSite, useUsers } from '@/hooks';
 import { useDeepDiveMensuelData } from './hooks/useDeepDiveMensuelData';
 
 // Import slides
@@ -228,9 +228,17 @@ export function DeepDiveMensuel({
   // Data hooks
   const data = useDeepDiveMensuelData();
   const currentSite = useCurrentSite();
+  const users = useUsers(); // Utilisateurs depuis la DB
 
   // Nom du site depuis la DB
   const siteName = currentSite?.nom || 'COSMOS ANGRÉ';
+
+  // Présentateur dynamique depuis la DB (premier admin ou premier utilisateur)
+  const ROLE_TITRES: Record<string, string> = { admin: 'DGA', manager: 'Manager', viewer: 'Consultant' };
+  const adminUser = users.find(u => u.role === 'admin') || users[0];
+  const presentateur = adminUser
+    ? `${adminUser.prenom} ${adminUser.nom}, ${ROLE_TITRES[adminUser.role] || 'Manager'}`
+    : 'Non configuré';
 
   // Afficher un état de chargement si les données ne sont pas prêtes
   if (data.isLoading) {
@@ -328,7 +336,7 @@ export function DeepDiveMensuel({
                 projectName: siteName,
                 mois: data.periode,
                 date: new Date().toLocaleDateString('fr-FR'),
-                presentateur: 'Pamela Atokouna, DGA',
+                presentateur, // Dynamique depuis useUsers
               }}
               {...props}
             />
