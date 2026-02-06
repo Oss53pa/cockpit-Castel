@@ -1929,8 +1929,8 @@ export function DeepDiveLancement() {
   // Mapping des rôles vers titres professionnels
   const ROLE_TITRES: Record<string, string> = {
     admin: 'DGA',
-    manager: 'Manager',
-    viewer: 'Consultant',
+    manager: 'Consultant',
+    viewer: 'Lecteur',
   };
 
   // Données du site - TOUJOURS utiliser BATIMENTS_CONFIG comme source de vérité
