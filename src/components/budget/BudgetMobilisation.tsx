@@ -23,6 +23,8 @@ import {
   Circle,
   RotateCcw,
   Loader2,
+  Send,
+  ExternalLink,
 } from 'lucide-react';
 import {
   BarChart,
@@ -65,6 +67,7 @@ import {
 } from './LigneBudgetaireModal';
 import { BudgetImportExport } from './BudgetImportExport';
 import { BudgetEditModal } from './BudgetEditModal';
+import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 import { useBudgetExploitation, resetBudgetExploitationEngagements } from '@/hooks/useBudgetExploitation';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 

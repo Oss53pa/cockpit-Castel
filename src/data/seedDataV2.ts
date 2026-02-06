@@ -1217,6 +1217,19 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
         continue;
       }
 
+      // Ne pas modifier les actions spéciales utilisées comme KPIs
+      // (leur avancement représente une valeur réelle, pas une progression basée sur dates)
+      const isKpiAction =
+        action.id_action?.includes('8.6') || // Action taux d'occupation
+        action.titre?.toLowerCase().includes('taux') ||
+        action.titre?.toLowerCase().includes('occupation') ||
+        action.id_action?.startsWith('KPI-');
+
+      if (isKpiAction) {
+        skipped++;
+        continue;
+      }
+
       const dateFinPrevue = action.date_fin_prevue ? new Date(action.date_fin_prevue) : null;
       const dateDebutPrevue = action.date_debut_prevue ? new Date(action.date_debut_prevue) : null;
 
