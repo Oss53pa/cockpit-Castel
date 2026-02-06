@@ -1193,7 +1193,22 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split('T')[0];
 
+    console.log('[RecalculateAvancement] Date actuelle:', todayStr);
+
     const dbActions = await db.actions.toArray();
+    console.log('[RecalculateAvancement] Total actions en DB:', dbActions.length);
+
+    // Debug: afficher les 3 premières actions
+    if (dbActions.length > 0) {
+      console.log('[RecalculateAvancement] Exemple action:', {
+        id: dbActions[0].id_action,
+        titre: dbActions[0].titre,
+        axe: dbActions[0].axe,
+        avancement: dbActions[0].avancement,
+        date_debut: dbActions[0].date_debut_prevue,
+        date_fin: dbActions[0].date_fin_prevue,
+      });
+    }
 
     for (const action of dbActions) {
       // Ne pas modifier les actions verrouillées manuellement
