@@ -849,51 +849,68 @@ export async function resetAndSeedDatabase(): Promise<{
 }
 
 /**
- * Seed uniquement les données budgétaires
- * Utile pour ajouter les budgets sans toucher aux autres données
+ * Seed uniquement les données budgétaires de manière ADDITIVE (non-destructif)
+ *
+ * GARANTIES :
+ * - N'efface JAMAIS les données existantes
+ * - N'écrase JAMAIS les modifications des collaborateurs
+ * - Conserve les montants engagés et réalisés saisis
+ * - Ajoute UNIQUEMENT les postes budgétaires qui n'existent pas encore
+ *
+ * VÉRIFICATION PAR IDENTIFIANT UNIQUE : libelle
  */
-export async function seedBudgetOnly(): Promise<{ budgetCreated: number }> {
-  const result = { budgetCreated: 0 };
+export async function seedBudgetOnly(): Promise<{ budgetCreated: number; budgetSkipped: number }> {
+  const result = { budgetCreated: 0, budgetSkipped: 0 };
   const now = new Date().toISOString();
 
   await db.transaction('rw', [db.budget], async () => {
-    // Vider le budget existant
-    await db.budget.clear();
+    // Récupérer les libellés existants pour éviter les doublons
+    const existingBudget = await db.budget.toArray();
+    const existingLabels = new Set(existingBudget.map(b => b.libelle));
 
-    // Budget 2026
+    // Budget 2026 - ADDITIF uniquement
     for (const poste of BUDGET_EXPLOITATION_2026.postes) {
-      const budgetItem: Omit<BudgetItem, 'id'> = {
-        libelle: poste.poste,
-        categorie: CATEGORIE_MAPPING[poste.categorie],
-        axe: CATEGORIE_AXE_MAPPING[poste.categorie],
-        projectPhase: 'phase2_mobilisation',
-        montantPrevu: poste.budgetAnnuel,
-        montantEngage: 0,
-        montantRealise: 0,
-        commentaire: poste.details || `Budget ${BUDGET_EXPLOITATION_2026.annee} - ${poste.categorie}`,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.budget.add(budgetItem as BudgetItem);
-      result.budgetCreated++;
+      if (!existingLabels.has(poste.poste)) {
+        const budgetItem: Omit<BudgetItem, 'id'> = {
+          libelle: poste.poste,
+          categorie: CATEGORIE_MAPPING[poste.categorie],
+          axe: CATEGORIE_AXE_MAPPING[poste.categorie],
+          projectPhase: 'phase2_mobilisation',
+          montantPrevu: poste.budgetAnnuel,
+          montantEngage: 0,
+          montantRealise: 0,
+          commentaire: poste.details || `Budget ${BUDGET_EXPLOITATION_2026.annee} - ${poste.categorie}`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.budget.add(budgetItem as BudgetItem);
+        result.budgetCreated++;
+      } else {
+        result.budgetSkipped++;
+      }
     }
 
-    // Budget 2027
+    // Budget 2027 - ADDITIF uniquement
     for (const poste of BUDGET_EXPLOITATION_2027.postes) {
-      const budgetItem: Omit<BudgetItem, 'id'> = {
-        libelle: `${poste.poste} (2027)`,
-        categorie: CATEGORIE_MAPPING[poste.categorie],
-        axe: CATEGORIE_AXE_MAPPING[poste.categorie],
-        projectPhase: 'phase4_stabilisation',
-        montantPrevu: poste.budgetAnnuel,
-        montantEngage: 0,
-        montantRealise: 0,
-        commentaire: poste.details || `Budget ${BUDGET_EXPLOITATION_2027.annee} - ${poste.categorie}`,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.budget.add(budgetItem as BudgetItem);
-      result.budgetCreated++;
+      const libelle2027 = `${poste.poste} (2027)`;
+      if (!existingLabels.has(libelle2027)) {
+        const budgetItem: Omit<BudgetItem, 'id'> = {
+          libelle: libelle2027,
+          categorie: CATEGORIE_MAPPING[poste.categorie],
+          axe: CATEGORIE_AXE_MAPPING[poste.categorie],
+          projectPhase: 'phase4_stabilisation',
+          montantPrevu: poste.budgetAnnuel,
+          montantEngage: 0,
+          montantRealise: 0,
+          commentaire: poste.details || `Budget ${BUDGET_EXPLOITATION_2027.annee} - ${poste.categorie}`,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.budget.add(budgetItem as BudgetItem);
+        result.budgetCreated++;
+      } else {
+        result.budgetSkipped++;
+      }
     }
   });
 

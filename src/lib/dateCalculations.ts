@@ -511,6 +511,10 @@ export function calculateDelayFromSoftOpening(dateStr: string, softOpeningStr: s
  * 1. Calculates the delay (in days) between each date and the soft opening
  * 2. Sets jalon_reference = 'dateSoftOpening' and delai_declenchement for each item
  *
+ * IMPORTANT: Cette migration ne modifie PAS les dates existantes (date_prevue, date_fin_prevue).
+ * Elle ajoute uniquement les références de phase pour permettre le recalcul futur.
+ * Les données modifiées par l'utilisateur sont préservées.
+ *
  * After migration, changing the soft opening date will automatically update all dates.
  */
 export async function migrateToPhaseReferences(
@@ -523,12 +527,17 @@ export async function migrateToPhaseReferences(
   let jalonsUpdated = 0;
   let actionsUpdated = 0;
 
-  // Migrate jalons
+  // Migrate jalons - SEULEMENT ajouter les références, NE PAS modifier les dates
   for (const jalon of jalons) {
     if (!jalon.date_prevue) continue;
 
+    // Skip si déjà migré (a déjà une référence de phase)
+    const j = jalon as Jalon & { jalon_reference?: PhaseReference; delai_declenchement?: number };
+    if (j.jalon_reference && j.delai_declenchement != null) continue;
+
     const delai = calculateDelayFromSoftOpening(jalon.date_prevue, softOpening);
 
+    // Ajouter UNIQUEMENT les références, ne pas toucher aux dates existantes
     await db.jalons.update(jalon.id!, {
       jalon_reference: 'dateSoftOpening' as PhaseReference,
       delai_declenchement: delai,
@@ -536,15 +545,20 @@ export async function migrateToPhaseReferences(
     jalonsUpdated++;
   }
 
-  // Migrate actions - use date_fin_prevue as the reference point
+  // Migrate actions - SEULEMENT ajouter les références, NE PAS modifier les dates
   for (const action of actions) {
     if (!action.date_fin_prevue) continue;
+
+    // Skip si déjà migré (a déjà une référence de phase)
+    const a = action as Action & { jalon_reference?: PhaseReference; delai_declenchement?: number };
+    if (a.jalon_reference && a.delai_declenchement != null) continue;
 
     // Calculate delay based on the START date (date_debut_prevue)
     const delaiDebut = action.date_debut_prevue
       ? calculateDelayFromSoftOpening(action.date_debut_prevue, softOpening)
       : calculateDelayFromSoftOpening(action.date_fin_prevue, softOpening) - (action.duree_prevue_jours || 7);
 
+    // Ajouter UNIQUEMENT les références, ne pas toucher aux dates existantes
     await db.actions.update(action.id!, {
       jalon_reference: 'dateSoftOpening' as PhaseReference,
       delai_declenchement: delaiDebut,

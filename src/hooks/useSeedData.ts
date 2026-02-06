@@ -14,6 +14,7 @@ interface SeedResult {
 
 interface BudgetSeedResult {
   budgetCreated: number;
+  budgetSkipped: number;
 }
 
 interface UseSeedDataReturn {
