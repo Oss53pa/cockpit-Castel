@@ -789,38 +789,7 @@ function SlideAxeCommercial() {
         </div>
       </Card>
 
-      {/* Points d'Attention */}
-      <Card padding="md">
-        <h4 className="font-semibold text-primary-900 mb-3">Points d'Attention</h4>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Sujet</TableHead>
-              <TableHead>Responsable</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="font-medium">Négociations locataires ancres</TableCell>
-              <TableCell>MCM</TableCell>
-              <TableCell>Suivi hebdomadaire</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">Pipeline prospects Big Box</TableCell>
-              <TableCell>MCM</TableCell>
-              <TableCell>Relances actives</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-medium">BEFA standards</TableCell>
-              <TableCell>DGA/Juridique</TableCell>
-              <TableCell>Finalisation</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </Card>
-
-      {/* Points d'Attention et Décisions Attendues consolidés */}
+      {/* Points d'Attention - données réelles depuis Cockpit */}
       <PointsAttentionConsolides actions={actionsCommerciales} />
       <DecisionsAttenduesConsolidees actions={actionsCommerciales} />
     </div>
