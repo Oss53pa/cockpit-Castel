@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 
@@ -108,6 +108,12 @@ export async function initializeDatabase(): Promise<{
 
         // Migration vers les références de phase (dates relatives au Soft Opening)
         await migrateToPhaseReferencesIfNeeded();
+
+        // Migration: synchroniser responsable et avancement depuis PRODUCTION_DATA
+        const prodDataMigration = await migrateActionsFromProductionData();
+        if (prodDataMigration.updated > 0) {
+          console.log('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
+        }
 
         isInitialized = true;
         return { wasEmpty: false, seeded: false };

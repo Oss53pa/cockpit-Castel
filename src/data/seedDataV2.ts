@@ -975,3 +975,84 @@ export async function migrateActionsBuildingCode(): Promise<number> {
   console.log(`[Migration] ${updated} actions mises à jour avec buildingCode`);
   return updated;
 }
+
+/**
+ * Migration: Synchronise les données manquantes (responsable, avancement)
+ * depuis PRODUCTION_DATA pour les actions qui ont ces champs vides ou à zéro.
+ *
+ * GARANTIES:
+ * - Ne modifie PAS les champs déjà renseignés par l'utilisateur
+ * - Met à jour UNIQUEMENT si responsable est vide OU avancement est 0 et statut est 'termine'
+ */
+export async function migrateActionsFromProductionData(): Promise<{ updated: number; skipped: number }> {
+  let updated = 0;
+  let skipped = 0;
+
+  try {
+    const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
+
+    if (!PRODUCTION_DATA?.actions?.length) {
+      console.log('[Migration] Pas de données PRODUCTION_DATA disponibles');
+      return { updated: 0, skipped: 0 };
+    }
+
+    // Créer un index par id_action pour un accès rapide
+    const productionActionsMap = new Map<string, any>();
+    PRODUCTION_DATA.actions.forEach((a: any) => {
+      if (a.id_action) {
+        productionActionsMap.set(a.id_action, a);
+      }
+    });
+
+    const dbActions = await db.actions.toArray();
+
+    for (const action of dbActions) {
+      const prodAction = productionActionsMap.get(action.id_action);
+      if (!prodAction) {
+        skipped++;
+        continue;
+      }
+
+      const updates: Partial<Action> = {};
+      let needsUpdate = false;
+
+      // Synchroniser responsable si vide
+      if (!action.responsable && prodAction.responsable) {
+        updates.responsable = prodAction.responsable;
+        needsUpdate = true;
+      }
+
+      // Synchroniser avancement si 0 ET que PRODUCTION_DATA a une valeur > 0
+      // ET que le statut correspond (pour éviter de mettre 100% sur une action non terminée)
+      if (action.avancement === 0 && prodAction.avancement > 0) {
+        // Vérifier la cohérence statut/avancement
+        if (action.statut === 'termine' && prodAction.avancement === 100) {
+          updates.avancement = 100;
+          needsUpdate = true;
+        } else if (action.statut === prodAction.statut) {
+          updates.avancement = prodAction.avancement;
+          needsUpdate = true;
+        }
+      }
+
+      // Synchroniser sante si 'gris' (non défini)
+      if (action.sante === 'gris' && prodAction.sante && prodAction.sante !== 'gris') {
+        updates.sante = prodAction.sante;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate && action.id) {
+        await db.actions.update(action.id, updates);
+        updated++;
+      } else {
+        skipped++;
+      }
+    }
+
+    console.log(`[Migration] ${updated} actions mises à jour depuis PRODUCTION_DATA, ${skipped} ignorées`);
+  } catch (error) {
+    console.error('[Migration] Erreur lors de la migration depuis PRODUCTION_DATA:', error);
+  }
+
+  return { updated, skipped };
+}
