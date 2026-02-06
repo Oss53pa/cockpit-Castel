@@ -945,11 +945,15 @@ function VueSyntheseEditable({
   lignes,
   totaux,
   onEdit,
+  onSend,
+  onShare,
   isLoading,
 }: {
   lignes: LigneBudgetExploitation[];
   totaux: { prevu: number; engage: number; consomme: number; reste: number };
   onEdit: (ligne: LigneBudgetExploitation) => void;
+  onSend: (ligne: LigneBudgetExploitation) => void;
+  onShare: (ligne: LigneBudgetExploitation) => void;
   isLoading?: boolean;
 }) {
   // Afficher un message de chargement si les données sont en cours d'initialisation
@@ -988,6 +992,7 @@ function VueSyntheseEditable({
               <TableHead className="text-right">Consommé</TableHead>
               <TableHead className="text-right">Disponible</TableHead>
               <TableHead className="w-32">% Conso.</TableHead>
+              <TableHead className="w-[100px] text-center">Envoyer</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1002,6 +1007,26 @@ function VueSyntheseEditable({
                   <TableCell className="text-right text-green-600">{formatMontant(ligne.montantConsomme)}</TableCell>
                   <TableCell className="text-right text-orange-600">{formatMontant(disponible)}</TableCell>
                   <TableCell><ProgressBar value={Math.round(tauxConso)} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onSend(ligne)}
+                        title="Envoyer une relance"
+                      >
+                        <Send className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onShare(ligne)}
+                        title="Partager en externe"
+                      >
+                        <ExternalLink className="h-4 w-4 text-emerald-600" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -1014,6 +1039,7 @@ function VueSyntheseEditable({
               <TableCell className="text-right font-bold text-green-700">{formatMontant(totaux.consomme)}</TableCell>
               <TableCell className="text-right font-bold text-orange-700">{formatMontant(totaux.reste)}</TableCell>
               <TableCell className="font-bold"><ProgressBar value={Math.round(tauxConsommation)} /></TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableFooter>
         </Table>
@@ -1045,6 +1071,8 @@ function VueDetailEditable({
   onEdit,
   onAdd,
   onDelete,
+  onSend,
+  onShare,
   isLoading,
 }: {
   lignes: LigneBudgetExploitation[];
@@ -1052,6 +1080,8 @@ function VueDetailEditable({
   onEdit: (ligne: LigneBudgetExploitation) => void;
   onAdd: () => void;
   onDelete: (id: number) => void;
+  onSend: (ligne: LigneBudgetExploitation) => void;
+  onShare: (ligne: LigneBudgetExploitation) => void;
   isLoading?: boolean;
 }) {
   const [filterCategorie, setFilterCategorie] = useState<string>('all');
@@ -1165,6 +1195,28 @@ function VueDetailEditable({
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
+                            onSend(ligne);
+                          }}
+                          title="Envoyer une relance"
+                        >
+                          <Send className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onShare(ligne);
+                          }}
+                          title="Partager en externe"
+                        >
+                          <ExternalLink className="h-4 w-4 text-emerald-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (ligne.id) onDelete(ligne.id);
                           }}
                           title="Supprimer"
@@ -1201,6 +1253,21 @@ export function BudgetMobilisation() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResettingEngagements, setIsResettingEngagements] = useState(false);
 
+  // State pour les modales d'envoi/partage
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedLigne, setSelectedLigne] = useState<LigneBudgetExploitation | null>(null);
+
+  const handleSendClick = (ligne: LigneBudgetExploitation) => {
+    setSelectedLigne(ligne);
+    setSendModalOpen(true);
+  };
+
+  const handleShareClick = (ligne: LigneBudgetExploitation) => {
+    setSelectedLigne(ligne);
+    setShareModalOpen(true);
+  };
+
   // State pour la modale d'ajout
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -1220,12 +1287,14 @@ export function BudgetMobilisation() {
   });
 
   // Handler de sauvegarde
-  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string) => {
+  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string, commentaire?: string, liensJustification?: import('@/types/budgetExploitation.types').LienJustification[]) => {
     await updateLigne(id, {
       montantPrevu: prevu,
       montantEngage: engage,
       montantConsomme: consomme,
       note,
+      commentaire,
+      liensJustification,
     });
   };
 
@@ -1358,7 +1427,7 @@ export function BudgetMobilisation() {
           <TabsTrigger value="par-phase">Par phase</TabsTrigger>
         </TabsList>
         <TabsContent value="synthese">
-          <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} isLoading={isLoading} />
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} onEdit={setEditingLigne} onSend={handleSendClick} onShare={handleShareClick} isLoading={isLoading} />
         </TabsContent>
         <TabsContent value="detail">
           <VueDetailEditable
@@ -1367,6 +1436,8 @@ export function BudgetMobilisation() {
             onEdit={setEditingLigne}
             onAdd={() => setIsAddModalOpen(true)}
             onDelete={handleDelete}
+            onSend={handleSendClick}
+            onShare={handleShareClick}
             isLoading={isLoading}
           />
         </TabsContent>
@@ -1390,6 +1461,35 @@ export function BudgetMobilisation() {
         existingCategories={[...new Set(lignes.map(l => l.categorie))]}
         nextOrdre={lignes.length > 0 ? Math.max(...lignes.map(l => l.ordre)) + 1 : 1}
       />
+
+      {/* Modal d'envoi de relance */}
+      {sendModalOpen && selectedLigne && (
+        <SendReminderModal
+          isOpen={sendModalOpen}
+          onClose={() => { setSendModalOpen(false); setSelectedLigne(null); }}
+          entityType="budget"
+          entityId={selectedLigne.id!}
+          entity={{
+            titre: selectedLigne.poste,
+            description: selectedLigne.description,
+            categorie: selectedLigne.categorie,
+            poste: selectedLigne.poste,
+            montantPrevu: selectedLigne.montantPrevu,
+            montantEngage: selectedLigne.montantEngage,
+            montantConsomme: selectedLigne.montantConsomme,
+          }}
+        />
+      )}
+
+      {/* Modal de partage externe */}
+      {shareModalOpen && selectedLigne && (
+        <ShareExternalModal
+          isOpen={shareModalOpen}
+          onClose={() => { setShareModalOpen(false); setSelectedLigne(null); }}
+          entityType="budget"
+          entity={selectedLigne}
+        />
+      )}
     </div>
   );
 }

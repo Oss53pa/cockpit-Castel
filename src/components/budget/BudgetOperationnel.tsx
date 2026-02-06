@@ -26,6 +26,8 @@ import {
   Plus,
   Trash2,
   X,
+  Send,
+  ExternalLink,
 } from 'lucide-react';
 import {
   BarChart,
@@ -65,6 +67,7 @@ import {
 import { formatNumber } from '@/lib/utils';
 import { BudgetImportExport } from './BudgetImportExport';
 import { BudgetEditModal } from './BudgetEditModal';
+import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 import { useBudgetExploitation } from '@/hooks/useBudgetExploitation';
 import { resetBudgetEngagements } from '@/hooks';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
@@ -1503,6 +1506,8 @@ function VueSyntheseEditable({
   onEdit,
   onAdd,
   onDelete,
+  onSend,
+  onShare,
 }: {
   lignes: LigneBudgetExploitation[];
   totaux: { prevu: number; engage: number; consomme: number; reste: number };
@@ -1510,6 +1515,8 @@ function VueSyntheseEditable({
   onEdit: (ligne: LigneBudgetExploitation) => void;
   onAdd: () => void;
   onDelete: (id: number) => void;
+  onSend: (ligne: LigneBudgetExploitation) => void;
+  onShare: (ligne: LigneBudgetExploitation) => void;
 }) {
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
 
@@ -1575,6 +1582,12 @@ function VueSyntheseEditable({
                     <div className="flex gap-1 justify-end">
                       <Button size="sm" variant="ghost" onClick={() => onEdit(ligne)}>
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => onSend(ligne)} title="Envoyer une relance">
+                        <Send className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => onShare(ligne)} title="Partager en externe">
+                        <ExternalLink className="h-4 w-4 text-emerald-600" />
                       </Button>
                       <Button size="sm" variant="ghost" className="text-error-600 hover:bg-error-50" onClick={() => ligne.id && onDelete(ligne.id)}>
                         <Trash2 className="h-4 w-4" />
@@ -1879,6 +1892,21 @@ export function BudgetOperationnel() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResettingEngagements, setIsResettingEngagements] = useState(false);
 
+  // State pour les modales d'envoi/partage
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedLigne, setSelectedLigne] = useState<LigneBudgetExploitation | null>(null);
+
+  const handleSendClick = (ligne: LigneBudgetExploitation) => {
+    setSelectedLigne(ligne);
+    setSendModalOpen(true);
+  };
+
+  const handleShareClick = (ligne: LigneBudgetExploitation) => {
+    setSelectedLigne(ligne);
+    setShareModalOpen(true);
+  };
+
   const budget = annee === 2026 ? BUDGET_EXPLOITATION_2026 : BUDGET_EXPLOITATION_2027;
 
   // Hook pour les données persistées
@@ -1900,12 +1928,14 @@ export function BudgetOperationnel() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Handler de sauvegarde
-  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string) => {
+  const handleSave = async (id: number, prevu: number, engage: number, consomme: number, note?: string, commentaire?: string, liensJustification?: import('@/types/budgetExploitation.types').LienJustification[]) => {
     await updateLigne(id, {
       montantPrevu: prevu,
       montantEngage: engage,
       montantConsomme: consomme,
       note,
+      commentaire,
+      liensJustification,
     });
   };
 
@@ -2072,7 +2102,7 @@ export function BudgetOperationnel() {
         </TabsList>
 
         <TabsContent value="synthese">
-          <VueSyntheseEditable lignes={lignes} totaux={totaux} annee={annee} onEdit={setEditingLigne} onAdd={() => setIsAddModalOpen(true)} onDelete={handleDelete} />
+          <VueSyntheseEditable lignes={lignes} totaux={totaux} annee={annee} onEdit={setEditingLigne} onAdd={() => setIsAddModalOpen(true)} onDelete={handleDelete} onSend={handleSendClick} onShare={handleShareClick} />
         </TabsContent>
 
         <TabsContent value="detail">
@@ -2104,6 +2134,35 @@ export function BudgetOperationnel() {
         annee={annee}
         nextOrdre={lignes.length + 1}
       />
+
+      {/* Modal d'envoi de relance */}
+      {sendModalOpen && selectedLigne && (
+        <SendReminderModal
+          isOpen={sendModalOpen}
+          onClose={() => { setSendModalOpen(false); setSelectedLigne(null); }}
+          entityType="budget"
+          entityId={selectedLigne.id!}
+          entity={{
+            titre: selectedLigne.poste,
+            description: selectedLigne.description,
+            categorie: selectedLigne.categorie,
+            poste: selectedLigne.poste,
+            montantPrevu: selectedLigne.montantPrevu,
+            montantEngage: selectedLigne.montantEngage,
+            montantConsomme: selectedLigne.montantConsomme,
+          }}
+        />
+      )}
+
+      {/* Modal de partage externe */}
+      {shareModalOpen && selectedLigne && (
+        <ShareExternalModal
+          isOpen={shareModalOpen}
+          onClose={() => { setShareModalOpen(false); setSelectedLigne(null); }}
+          entityType="budget"
+          entity={selectedLigne}
+        />
+      )}
     </div>
   );
 }
