@@ -27,6 +27,7 @@ import {
 import { db } from '@/db';
 import { getFirebaseConfig, isFirebaseConfigured } from '@/services/firebaseConfigService';
 import type { Action, Jalon, Risque } from '@/types';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // ============================================================================
 // TYPES
@@ -35,7 +36,7 @@ import type { Action, Jalon, Risque } from '@/types';
 export interface ExternalUpdateData {
   id?: string;
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
 
   // Liste des utilisateurs (pour sélection responsable en externe)
@@ -97,6 +98,14 @@ export interface ExternalUpdateData {
     impact?: number;
     score?: number;
     plan_mitigation?: string;
+
+    // Budget
+    poste?: string;
+    categorie?: string;
+    montantPrevu?: number;
+    montantEngage?: number;
+    montantConsomme?: number;
+    note?: string;
   };
 
   // Destinataire
@@ -160,6 +169,11 @@ export interface ExternalUpdateData {
       impact?: number;
       score?: number;
       plan_mitigation?: string;
+
+      // Budget
+      montantEngage?: number;
+      montantConsomme?: number;
+      note?: string;
     };
     liens?: Array<{ id: string; title: string; url: string }>;
     comments?: Array<{ id: string; text: string; createdAt: string }>;
@@ -260,9 +274,9 @@ export function getRealtimeFirestore(): Firestore | null {
  */
 export async function createUpdateLinkInFirebase(
   token: string,
-  entityType: 'action' | 'jalon' | 'risque',
+  entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number,
-  entity: Action | Jalon | Risque,
+  entity: Action | Jalon | Risque | LigneBudgetExploitation,
   recipientEmail: string,
   recipientName: string,
   expiresAt: string,
@@ -356,6 +370,16 @@ export async function createUpdateLinkInFirebase(
       if ((risque as any).commentaires) {
         entitySnapshot.commentaires = (risque as any).commentaires;
       }
+    } else if (entityType === 'budget') {
+      const budget = entity as LigneBudgetExploitation;
+      entitySnapshot.titre = budget.poste;
+      entitySnapshot.poste = budget.poste;
+      entitySnapshot.categorie = budget.categorie;
+      entitySnapshot.montantPrevu = budget.montantPrevu;
+      entitySnapshot.montantEngage = budget.montantEngage;
+      entitySnapshot.montantConsomme = budget.montantConsomme;
+      entitySnapshot.note = budget.note;
+      entitySnapshot.description = budget.description;
     }
 
     const updateData: ExternalUpdateData = {
@@ -663,6 +687,18 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
 
       console.log('[SyncToLocal] UpdateData pour risque:', JSON.stringify(updateData, null, 2));
       await db.risques.update(entityId, updateData);
+    } else if (entityType === 'budget') {
+      // Champs Budget
+      const budgetUpdate: Record<string, any> = {
+        updatedAt: new Date().toISOString(),
+      };
+      if (changes.montantEngage !== undefined) budgetUpdate.montantEngage = changes.montantEngage;
+      if (changes.montantConsomme !== undefined) budgetUpdate.montantConsomme = changes.montantConsomme;
+      if (changes.note !== undefined) budgetUpdate.note = changes.note;
+      if (changes.commentaires) budgetUpdate.commentaires_externes = changes.commentaires;
+
+      console.log('[SyncToLocal] UpdateData pour budget:', JSON.stringify(budgetUpdate, null, 2));
+      await db.budgetExploitation.update(entityId, budgetUpdate);
     }
 
     // Ajouter à l'historique
@@ -677,7 +713,7 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
     });
 
     // Créer une alerte
-    const entityTypeLabel = entityType === 'action' ? 'Action' : entityType === 'jalon' ? 'Jalon' : 'Risque';
+    const entityTypeLabel = entityType === 'action' ? 'Action' : entityType === 'jalon' ? 'Jalon' : entityType === 'budget' ? 'Budget' : 'Risque';
     await db.alertes.add({
       type: 'info',
       titre: `Mise à jour reçue de ${response.submittedBy?.name || update.recipientName}`,

@@ -22,7 +22,7 @@ const EXTERNAL_UPDATES_COLLECTION = 'externalUpdates';
 
 export interface FirebaseUpdateLink {
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   recipientEmail: string;
   recipientName: string;
@@ -43,6 +43,11 @@ export interface FirebaseUpdateLink {
     score?: number;
     probabilite?: number;
     impact?: number;
+    // Budget
+    poste?: string;
+    montantPrevu?: number;
+    montantEngage?: number;
+    montantConsomme?: number;
   };
 }
 
@@ -112,7 +117,7 @@ export async function markFirebaseLinkAccessed(token: string): Promise<void> {
  * Récupérer tous les liens pour une entité
  */
 export async function getFirebaseLinksByEntity(
-  entityType: 'action' | 'jalon' | 'risque',
+  entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number
 ): Promise<FirebaseUpdateLink[]> {
   const q = query(
@@ -140,7 +145,7 @@ export async function getAllFirebaseLinks(): Promise<FirebaseUpdateLink[]> {
 export interface ExternalUpdate {
   id?: string;
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   recipientEmail: string;
   recipientName: string;
@@ -155,6 +160,10 @@ export interface ExternalUpdate {
     notes_mise_a_jour?: string;
     liens_documents?: string;
     commentaires_externes?: string;
+    // Budget
+    montantEngage?: number;
+    montantConsomme?: number;
+    note?: string;
   };
   // Statut de synchronisation
   isSynced: boolean;
@@ -199,7 +208,7 @@ export async function getPendingExternalUpdates(): Promise<ExternalUpdate[]> {
  * Récupérer les mises à jour pour une entité spécifique
  */
 export async function getExternalUpdatesByEntity(
-  entityType: 'action' | 'jalon' | 'risque',
+  entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number
 ): Promise<ExternalUpdate[]> {
   const q = query(

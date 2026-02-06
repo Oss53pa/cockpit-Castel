@@ -34,14 +34,17 @@ import {
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
+import { BudgetFormContent, type BudgetFormSaveData } from '@/components/shared/BudgetFormContent';
 import type { Action, Jalon, Risque, User } from '@/types';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { Wallet } from 'lucide-react';
 
 // COCKPIT Fonts
 const cockpitFonts = `
   @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=Grand+Hotel&display=swap');
 `;
 
-type EntityType = 'action' | 'jalon' | 'risque';
+type EntityType = 'action' | 'jalon' | 'risque' | 'budget';
 
 export function ExternalUpdateFirebasePage() {
   const { type, token } = useParams<{ type: EntityType; token: string }>();
@@ -55,7 +58,7 @@ export function ExternalUpdateFirebasePage() {
   const [dialogOpen, setDialogOpen] = useState(true);
 
   // Entity data reconstructed from Firebase snapshot
-  const [entity, setEntity] = useState<Action | Jalon | Risque | null>(null);
+  const [entity, setEntity] = useState<Action | Jalon | Risque | LigneBudgetExploitation | null>(null);
 
   // Users list from Firebase (for external selection)
   const [users, setUsers] = useState<User[]>([]);
@@ -170,6 +173,20 @@ export function ExternalUpdateFirebasePage() {
           proprietaire: data.recipientName,
           commentaires: snapshot.commentaires || [],
         } as Risque);
+      } else if (type === 'budget') {
+        setEntity({
+          id: data.entityId,
+          poste: snapshot.poste || snapshot.titre || 'Sans titre',
+          categorie: snapshot.categorie || '',
+          description: snapshot.description || '',
+          montantPrevu: snapshot.montantPrevu || 0,
+          montantEngage: snapshot.montantEngage || 0,
+          montantConsomme: snapshot.montantConsomme || 0,
+          note: snapshot.note || '',
+          budgetType: 'mobilisation',
+          annee: 2026,
+          ordre: 0,
+        } as LigneBudgetExploitation);
       }
 
       setLoading(false);
@@ -180,7 +197,7 @@ export function ExternalUpdateFirebasePage() {
     }
   };
 
-  const handleSave = async (formData: ActionFormSaveData | JalonFormSaveData | RisqueFormSaveData) => {
+  const handleSave = async (formData: ActionFormSaveData | JalonFormSaveData | RisqueFormSaveData | BudgetFormSaveData) => {
     if (!linkData || !token) return;
 
     setSaving(true);
@@ -240,6 +257,20 @@ export function ExternalUpdateFirebasePage() {
           risqueData.probabilite, risqueData.impact, risqueData.score);
       }
 
+      // Champs spécifiques au budget
+      if (type === 'budget') {
+        const budgetData = formData as BudgetFormSaveData;
+        response.changes.montantEngage = budgetData.montantEngage;
+        response.changes.montantConsomme = budgetData.montantConsomme;
+        response.changes.note = budgetData.note;
+        if (budgetData.commentaires_externes) {
+          response.changes.commentaires = budgetData.commentaires_externes;
+        }
+
+        console.log('[ExternalUpdate] Budget - engage/consomme:',
+          budgetData.montantEngage, budgetData.montantConsomme);
+      }
+
       // DEBUG: Log de la réponse complète
       console.log('[ExternalUpdate] Response à envoyer:', JSON.stringify(response, null, 2));
 
@@ -264,6 +295,7 @@ export function ExternalUpdateFirebasePage() {
     if (type === 'action') return <Target className="w-5 h-5 text-white" />;
     if (type === 'jalon') return <Calendar className="w-5 h-5 text-white" />;
     if (type === 'risque') return <Shield className="w-5 h-5 text-white" />;
+    if (type === 'budget') return <Wallet className="w-5 h-5 text-white" />;
     return <Target className="w-5 h-5 text-white" />;
   };
 
@@ -271,6 +303,7 @@ export function ExternalUpdateFirebasePage() {
     if (type === 'action') return 'from-blue-500 to-cyan-600';
     if (type === 'jalon') return 'from-emerald-500 to-teal-600';
     if (type === 'risque') return 'from-red-500 to-orange-600';
+    if (type === 'budget') return 'from-amber-500 to-yellow-600';
     return 'from-gray-500 to-gray-600';
   };
 
@@ -278,6 +311,7 @@ export function ExternalUpdateFirebasePage() {
     if (type === 'action') return "Modifier l'action";
     if (type === 'jalon') return 'Modifier le jalon';
     if (type === 'risque') return 'Modifier le risque';
+    if (type === 'budget') return 'Modifier le budget';
     return 'Modifier';
   };
 
@@ -286,6 +320,7 @@ export function ExternalUpdateFirebasePage() {
     if (type === 'action') return (entity as any)?.id_action || `A-${linkData.entityId}`;
     if (type === 'jalon') return (entity as any)?.id_jalon || `J-${linkData.entityId}`;
     if (type === 'risque') return (entity as any)?.id_risque || `R-${linkData.entityId}`;
+    if (type === 'budget') return `B-${linkData.entityId}`;
     return null;
   };
 
@@ -427,6 +462,16 @@ export function ExternalUpdateFirebasePage() {
             {type === 'risque' && entity && (
               <RisqueFormContent
                 risque={entity as Risque}
+                isEditing={true}
+                isExternal={true}
+                onSave={handleSave}
+                isSaving={saving}
+              />
+            )}
+
+            {type === 'budget' && entity && (
+              <BudgetFormContent
+                ligne={entity as LigneBudgetExploitation}
                 isEditing={true}
                 isExternal={true}
                 onSave={handleSave}

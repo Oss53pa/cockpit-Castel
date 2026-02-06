@@ -10,12 +10,13 @@
 
 import { db } from '@/db';
 import type { Action, Jalon, Risque, User } from '@/types';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type ShareableItemType = 'action' | 'jalon' | 'risque';
+export type ShareableItemType = 'action' | 'jalon' | 'risque' | 'budget';
 
 export interface ShareToken {
   id?: number;
@@ -187,6 +188,14 @@ export class ExternalShareService {
           clos: 'Clos',
         },
       },
+      budget: {
+        label: 'Budget',
+        labelArticle: 'la ligne budgétaire',
+        color: '#F59E0B',
+        bgColor: '#FEF3C7',
+        textColor: '#92400E',
+        statuses: {},
+      },
     };
     return configs[type];
   }
@@ -274,6 +283,361 @@ export class ExternalShareService {
       extraFields: this.getRisqueExtraFields(risque),
       extraFormFields: this.getRisqueFormFields(),
     });
+  }
+
+  /**
+   * Génère la page HTML pour une ligne budgétaire
+   */
+  generateBudgetPage(ligne: LigneBudgetExploitation, token: string): string {
+    return this.generateBudgetBasePage([ligne], ligne.poste, token);
+  }
+
+  /**
+   * Génère la page HTML pour une catégorie budgétaire (plusieurs lignes)
+   */
+  generateBudgetCategoryPage(lignes: LigneBudgetExploitation[], categoryLabel: string, token: string): string {
+    return this.generateBudgetBasePage(lignes, categoryLabel, token);
+  }
+
+  /**
+   * Formate un montant en FCFA
+   */
+  private formatMontantHtml(montant: number): string {
+    return new Intl.NumberFormat('fr-FR', { style: 'decimal', maximumFractionDigits: 0 }).format(montant) + ' FCFA';
+  }
+
+  /**
+   * Template de base pour les pages budget
+   */
+  private generateBudgetBasePage(lignes: LigneBudgetExploitation[], title: string, token: string): string {
+    const config = this.getTypeConfig('budget');
+    const apiUrl = this.config.apiUrl || 'https://your-api.supabase.co/functions/v1';
+    const isSingle = lignes.length === 1;
+
+    const budgetSections = lignes.map((ligne, index) => {
+      const tauxEngage = ligne.montantPrevu > 0 ? ((ligne.montantEngage / ligne.montantPrevu) * 100).toFixed(1) : '0.0';
+      const tauxConsomme = ligne.montantPrevu > 0 ? ((ligne.montantConsomme / ligne.montantPrevu) * 100).toFixed(1) : '0.0';
+      const disponible = ligne.montantPrevu - ligne.montantConsomme;
+
+      return `
+        <div class="budget-item" ${!isSingle ? `data-item-index="${index}"` : ''}>
+          ${!isSingle ? `<h3 class="budget-item-title">${ligne.poste}</h3>` : ''}
+          <div class="budget-info-grid">
+            <div class="budget-metric">
+              <span class="metric-label">Montant Prévu</span>
+              <span class="metric-value prevu">${this.formatMontantHtml(ligne.montantPrevu)}</span>
+            </div>
+            <div class="budget-metric">
+              <span class="metric-label">Engagé</span>
+              <span class="metric-value engage">${this.formatMontantHtml(ligne.montantEngage)} (${tauxEngage}%)</span>
+            </div>
+            <div class="budget-metric">
+              <span class="metric-label">Consommé</span>
+              <span class="metric-value consomme">${this.formatMontantHtml(ligne.montantConsomme)} (${tauxConsomme}%)</span>
+            </div>
+            <div class="budget-metric">
+              <span class="metric-label">Disponible</span>
+              <span class="metric-value disponible">${this.formatMontantHtml(disponible)}</span>
+            </div>
+          </div>
+          ${ligne.description ? `<p class="budget-description">${ligne.description}</p>` : ''}
+
+          <div class="budget-form-section">
+            <input type="hidden" name="entityId_${index}" value="${ligne.id || 0}">
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="montantEngage_${index}">Montant Engagé (FCFA)</label>
+                <input type="number" id="montantEngage_${index}" name="montantEngage_${index}"
+                       value="${ligne.montantEngage}" min="0" step="1000">
+              </div>
+              <div class="form-group half">
+                <label for="montantConsomme_${index}">Montant Consommé (FCFA)</label>
+                <input type="number" id="montantConsomme_${index}" name="montantConsomme_${index}"
+                       value="${ligne.montantConsomme}" min="0" step="1000">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="note_${index}">Note / Commentaire</label>
+              <textarea id="note_${index}" name="note_${index}" rows="2"
+                        placeholder="Précisions sur les montants...">${ligne.note || ''}</textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('<hr class="budget-separator">');
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget: ${title} | ${this.config.projectName}</title>
+  <style>
+    ${this.getStyles(config)}
+    ${this.getDeepDiveStyles()}
+    ${this.getBudgetStyles()}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="budget-header">
+      <div class="header-left">
+        <div class="logo-text">${this.config.companyName}</div>
+        <div class="project-name">${this.config.projectName}</div>
+      </div>
+      <div class="badge badge-budget">Budget</div>
+    </header>
+
+    <main>
+      <section class="info-card">
+        <h1>${title}</h1>
+        <div class="meta">
+          <span class="budget-category">${isSingle ? `Catégorie: ${lignes[0].categorie}` : `${lignes.length} ligne(s) budgétaire(s)`}</span>
+        </div>
+
+        ${budgetSections}
+      </section>
+
+      ${this.getDeepDiveSection()}
+
+      <section class="update-form">
+        <h2>Soumettre les montants mis à jour</h2>
+        <form id="updateForm">
+          <input type="hidden" name="token" value="${token}">
+          <input type="hidden" name="entityType" value="budget">
+          <input type="hidden" name="itemCount" value="${lignes.length}">
+
+          <div class="form-group">
+            <label for="attachments">Pièces jointes (optionnel)</label>
+            <input type="file" id="attachments" name="attachments" multiple
+                   accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif">
+            <small>Formats: PDF, Word, Excel, Images (max 10 Mo/fichier)</small>
+          </div>
+
+          <div class="form-group">
+            <label for="submitterName">Votre nom</label>
+            <input type="text" id="submitterName" name="submitterName" placeholder="Prénom Nom">
+          </div>
+
+          <div class="form-group">
+            <label for="submitterEmail">Votre email</label>
+            <input type="email" id="submitterEmail" name="submitterEmail" placeholder="email@exemple.com">
+          </div>
+
+          <button type="submit" class="btn-submit">
+            Envoyer la mise à jour budget
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <p>Cette page expire le <strong>${this.formatDate(this.getExpiryDate())}</strong>.</p>
+      <p>En cas de problème, contactez le chef de projet.</p>
+      <p class="powered-by">Propulsé par <strong>Cockpit ${this.config.projectName}</strong></p>
+    </footer>
+  </div>
+
+  <div id="successModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="success-icon"></div>
+      <h2>Mise à jour envoyée !</h2>
+      <p>Les montants budget ont été transmis avec succès.</p>
+      <p>Le chef de projet sera notifié automatiquement.</p>
+      <button onclick="location.reload()" class="btn-secondary">Fermer</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '${apiUrl}/external-updates';
+    const OFFLINE_MODE = ${!this.config.apiUrl};
+    const ITEM_COUNT = ${lignes.length};
+
+    document.getElementById('updateForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
+
+      try {
+        const formData = new FormData(this);
+
+        const files = document.getElementById('attachments').files;
+        const attachments = [];
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) {
+            throw new Error('Fichier ' + file.name + ' trop volumineux (max 10 Mo)');
+          }
+          const base64 = await fileToBase64(file);
+          attachments.push({ name: file.name, type: file.type, size: file.size, data: base64 });
+        }
+
+        const budgetItems = [];
+        for (let i = 0; i < ITEM_COUNT; i++) {
+          budgetItems.push({
+            entityId: parseInt(formData.get('entityId_' + i) || '0'),
+            montantEngage: parseFloat(formData.get('montantEngage_' + i) || '0'),
+            montantConsomme: parseFloat(formData.get('montantConsomme_' + i) || '0'),
+            commentaire: formData.get('note_' + i) || ''
+          });
+        }
+
+        const payload = {
+          token: formData.get('token'),
+          entityType: 'budget',
+          entityId: budgetItems[0]?.entityId || 0,
+          submittedAt: new Date().toISOString(),
+          submittedBy: {
+            name: formData.get('submitterName'),
+            email: formData.get('submitterEmail')
+          },
+          changes: {
+            montantEngage: budgetItems[0]?.montantEngage,
+            montantConsomme: budgetItems[0]?.montantConsomme,
+            commentaireBudget: budgetItems[0]?.commentaire,
+            budgetItems: ITEM_COUNT > 1 ? budgetItems : undefined
+          },
+          attachments: attachments
+        };
+
+        if (OFFLINE_MODE) {
+          const updates = JSON.parse(localStorage.getItem('cockpit_external_updates') || '[]');
+          updates.push(payload);
+          localStorage.setItem('cockpit_external_updates', JSON.stringify(updates));
+        } else {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Erreur serveur');
+          }
+        }
+
+        document.getElementById('successModal').style.display = 'flex';
+      } catch (error) {
+        alert('Erreur: ' + error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
+</body>
+</html>`;
+  }
+
+  /**
+   * Styles spécifiques budget
+   */
+  private getBudgetStyles(): string {
+    return `
+    .budget-header {
+      background: linear-gradient(135deg, #78350f 0%, #B45309 100%) !important;
+    }
+
+    .badge-budget {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
+    .budget-item {
+      margin-bottom: 16px;
+    }
+
+    .budget-item-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #92400E;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #FEF3C7;
+    }
+
+    .budget-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .budget-metric {
+      background: #FFFBEB;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid #FDE68A;
+    }
+
+    .budget-metric .metric-label {
+      display: block;
+      font-size: 12px;
+      color: #92400E;
+      margin-bottom: 4px;
+    }
+
+    .budget-metric .metric-value {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .budget-metric .metric-value.prevu { color: #1F2937; }
+    .budget-metric .metric-value.engage { color: #2563EB; }
+    .budget-metric .metric-value.consomme { color: #059669; }
+    .budget-metric .metric-value.disponible { color: #D97706; }
+
+    .budget-description {
+      color: #6B7280;
+      font-size: 14px;
+      margin-bottom: 16px;
+      font-style: italic;
+    }
+
+    .budget-form-section {
+      background: #F9FAFB;
+      padding: 16px;
+      border-radius: 10px;
+      border: 1px solid #E5E7EB;
+    }
+
+    .budget-separator {
+      border: none;
+      border-top: 2px dashed #FDE68A;
+      margin: 24px 0;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #F59E0B;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+    }
+
+    @media (max-width: 600px) {
+      .budget-info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    `;
   }
 
   private getActionExtraFields(action: Action): string {

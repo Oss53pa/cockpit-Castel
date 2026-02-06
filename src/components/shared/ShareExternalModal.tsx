@@ -22,12 +22,15 @@ import { Button, Badge } from '@/components/ui';
 import { ExternalShareService, type ShareableItemType } from '@/services/externalShareService';
 import { useUser } from '@/hooks';
 import type { Action, Jalon, Risque } from '@/types';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 
 interface ShareExternalModalProps {
   isOpen: boolean;
   onClose: () => void;
   entityType: ShareableItemType;
-  entity: Action | Jalon | Risque;
+  entity: Action | Jalon | Risque | LigneBudgetExploitation;
+  categoryItems?: LigneBudgetExploitation[];
+  categoryLabel?: string;
   onShared?: (token: string) => void;
 }
 
@@ -36,6 +39,8 @@ export function ShareExternalModal({
   onClose,
   entityType,
   entity,
+  categoryItems,
+  categoryLabel,
   onShared,
 }: ShareExternalModalProps) {
   const [step, setStep] = useState<'config' | 'preview' | 'success'>('config');
@@ -53,6 +58,7 @@ export function ShareExternalModal({
     action: { label: 'Action', article: "l'action", color: 'bg-blue-100 text-blue-700' },
     jalon: { label: 'Jalon', article: 'le jalon', color: 'bg-purple-100 text-purple-700' },
     risque: { label: 'Risque', article: 'le risque', color: 'bg-red-100 text-red-700' },
+    budget: { label: 'Budget', article: 'la ligne budgétaire', color: 'bg-amber-100 text-amber-700' },
   };
 
   const typeConfig = typeLabels[entityType];
@@ -97,6 +103,13 @@ export function ShareExternalModal({
           break;
         case 'risque':
           html = shareService.generateRisquePage(entity as Risque, responsible || null, token);
+          break;
+        case 'budget':
+          if (categoryItems && categoryItems.length > 1) {
+            html = shareService.generateBudgetCategoryPage(categoryItems, categoryLabel || 'Budget', token);
+          } else {
+            html = shareService.generateBudgetPage(entity as LigneBudgetExploitation, token);
+          }
           break;
       }
 
@@ -348,7 +361,7 @@ export function ShareExternalModal({
 // HELPER FUNCTIONS
 // ============================================================================
 
-function getResponsableId(entity: Action | Jalon | Risque, type: ShareableItemType): number | undefined {
+function getResponsableId(entity: Action | Jalon | Risque | LigneBudgetExploitation, type: ShareableItemType): number | undefined {
   switch (type) {
     case 'action':
       return (entity as Action).responsableId;
@@ -356,20 +369,24 @@ function getResponsableId(entity: Action | Jalon | Risque, type: ShareableItemTy
       return (entity as Jalon).responsableId;
     case 'risque':
       return (entity as Risque & { responsableId?: number }).responsableId;
+    case 'budget':
+      return undefined;
     default:
       return undefined;
   }
 }
 
-function getEntityTitle(entity: Action | Jalon | Risque, _type: ShareableItemType): string {
-  return entity.titre;
+function getEntityTitle(entity: Action | Jalon | Risque | LigneBudgetExploitation, type: ShareableItemType): string {
+  if (type === 'budget') return (entity as LigneBudgetExploitation).poste;
+  return (entity as Action | Jalon | Risque).titre;
 }
 
-function getEntityDescription(entity: Action | Jalon | Risque, _type: ShareableItemType): string {
-  return entity.description || '';
+function getEntityDescription(entity: Action | Jalon | Risque | LigneBudgetExploitation, type: ShareableItemType): string {
+  if (type === 'budget') return (entity as LigneBudgetExploitation).description || '';
+  return (entity as Action | Jalon | Risque).description || '';
 }
 
-function getEntityDueDate(entity: Action | Jalon | Risque, type: ShareableItemType): string {
+function getEntityDueDate(entity: Action | Jalon | Risque | LigneBudgetExploitation, type: ShareableItemType): string {
   let date: string | undefined;
   switch (type) {
     case 'action':
@@ -381,6 +398,8 @@ function getEntityDueDate(entity: Action | Jalon | Risque, type: ShareableItemTy
     case 'risque':
       date = (entity as Risque).date_cible;
       break;
+    case 'budget':
+      return 'N/A';
   }
   if (!date) return 'Non définie';
   return new Date(date).toLocaleDateString('fr-FR');

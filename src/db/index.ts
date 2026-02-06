@@ -44,7 +44,7 @@ import type {
 export interface UpdateLink {
   id?: number;
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   recipientEmail: string;
   recipientName: string;
@@ -60,7 +60,7 @@ export interface EmailNotification {
   id?: number;
   type: 'link_sent' | 'link_opened' | 'update_made' | 'link_expired';
   linkId: number;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   recipientEmail: string;
   recipientName: string;
@@ -74,7 +74,7 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   bodyHtml: string;
-  entityType: 'action' | 'jalon' | 'risque' | 'rapport' | 'general';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget' | 'rapport' | 'general';
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
@@ -94,7 +94,7 @@ export interface SecureConfig {
 export interface ShareToken {
   id?: number;
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   entityTitle: string;
   recipientEmail: string;
@@ -109,7 +109,7 @@ export interface ShareToken {
 export interface ExternalUpdate {
   id?: number;
   token: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   submittedAt: string;
   submittedBy: {
@@ -125,6 +125,15 @@ export interface ExternalUpdate {
     probability?: number;
     impact?: number;
     newDueDate?: string;
+    montantEngage?: number;
+    montantConsomme?: number;
+    commentaireBudget?: string;
+    budgetItems?: Array<{
+      entityId: number;
+      montantEngage: number;
+      montantConsomme: number;
+      commentaire?: string;
+    }>;
   };
   attachments: Array<{
     name: string;

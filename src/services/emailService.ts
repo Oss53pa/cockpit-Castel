@@ -56,7 +56,7 @@ export interface SendEmailParams {
   toName: string;
   subject: string;
   html: string;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
 }
 
@@ -294,12 +294,12 @@ function generateToken(): string {
 // ============================================
 
 export async function createUpdateLink(
-  entityType: 'action' | 'jalon' | 'risque',
+  entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number,
   recipientEmail: string,
   recipientName: string,
   durationHours?: number,
-  entity?: Action | Jalon | Risque
+  entity?: Action | Jalon | Risque | any
 ): Promise<UpdateLink> {
   const config = getEmailConfig();
   const duration = durationHours || config.defaultLinkDuration;
@@ -419,6 +419,14 @@ export async function getUpdateLink(token: string): Promise<(UpdateLink & { enti
           probabilite: firebaseLink.entitySnapshot.probabilite,
           impact: firebaseLink.entitySnapshot.impact,
           score: firebaseLink.entitySnapshot.score,
+          // Budget
+          poste: firebaseLink.entitySnapshot.poste,
+          categorie: firebaseLink.entitySnapshot.categorie,
+          description: firebaseLink.entitySnapshot.description,
+          montantPrevu: firebaseLink.entitySnapshot.montantPrevu,
+          montantEngage: firebaseLink.entitySnapshot.montantEngage,
+          montantConsomme: firebaseLink.entitySnapshot.montantConsomme,
+          note: firebaseLink.entitySnapshot.note,
         } : undefined,
       };
     }
@@ -1046,6 +1054,126 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 </html>
     `,
   },
+  {
+    name: 'Relance Budget',
+    subject: '[COSMOS ANGRE] Mise à jour requise - Budget: {{budget_libelle}}',
+    entityType: 'budget',
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    bodyHtml: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Grand+Hotel&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Exo 2', system-ui, sans-serif; line-height: 1.6; color: #27272a; background-color: #fffbeb; }
+    .wrapper { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
+    .container { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+    .header { background: linear-gradient(135deg, #78350f 0%, #B45309 50%, #D97706 100%); color: white; padding: 40px 30px; text-align: center; }
+    .header-logo { font-family: 'Grand Hotel', cursive; font-size: 42px; color: #ffffff; margin-bottom: 8px; letter-spacing: 1px; }
+    .header-subtitle { font-size: 14px; color: #FDE68A; text-transform: uppercase; letter-spacing: 3px; font-weight: 500; }
+    .content { padding: 40px 30px; }
+    .greeting { font-size: 18px; color: #18181b; margin-bottom: 20px; }
+    .greeting strong { color: #18181b; font-weight: 600; }
+    .intro-text { color: #52525b; margin-bottom: 24px; font-size: 15px; }
+    .info-card { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 24px; border-radius: 12px; margin: 24px 0; border-left: 4px solid #F59E0B; }
+    .info-card-title { font-size: 18px; font-weight: 600; color: #78350f; margin-bottom: 16px; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #FDE68A; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #92400E; font-size: 14px; }
+    .info-value { color: #78350f; font-weight: 500; font-size: 14px; }
+    .cta-section { text-align: center; padding: 30px 0; }
+    .cta-text { color: #52525b; margin-bottom: 20px; font-size: 15px; }
+    .warning-box { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #f59e0b; }
+    .signature { margin-top: 30px; padding-top: 24px; border-top: 1px solid #FDE68A; }
+    .signature-text { color: #52525b; font-size: 15px; margin-bottom: 8px; }
+    .signature-name { font-weight: 600; color: #18181b; font-size: 15px; }
+    .contact-info { margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 8px; }
+    .contact-label { font-size: 12px; color: #92400E; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .contact-name { font-weight: 600; color: #78350f; font-size: 15px; }
+    .contact-role { color: #92400E; font-size: 13px; }
+    .footer { background: #78350f; padding: 30px; text-align: center; }
+    .footer-text { color: #FDE68A; font-size: 12px; margin-bottom: 8px; }
+    .footer-note { color: #FBBF24; font-size: 11px; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="header-logo">Cockpit</div>
+        <div class="header-subtitle">COSMOS ANGRE</div>
+      </div>
+      <div class="content">
+        <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
+
+        <p class="intro-text">Vous etes invite(e) a mettre a jour les montants budgetaires pour le poste suivant :</p>
+
+        <div class="info-card">
+          <div class="info-card-title">{{budget_libelle}}</div>
+          <div class="info-row">
+            <span class="info-label">Categorie</span>
+            <span class="info-value">{{budget_categorie}}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Montant prevu</span>
+            <span class="info-value">{{budget_montant_prevu}}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Montant engage</span>
+            <span class="info-value">{{budget_montant_engage}}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Montant consomme</span>
+            <span class="info-value">{{budget_montant_consomme}}</span>
+          </div>
+        </div>
+
+        <div class="cta-section" style="text-align: center; padding: 30px 0;">
+          <p class="cta-text" style="color: #52525b; margin-bottom: 20px; font-size: 15px;">Cliquez sur le bouton ci-dessous pour acceder au formulaire de mise a jour :</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+            <tr>
+              <td style="border-radius: 10px; background-color: #D97706;">
+                <a href="{{update_link}}" target="_blank" style="display: inline-block; padding: 16px 40px; font-family: 'Exo 2', Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; background-color: #D97706;">Mettre a jour le budget</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="warning-box" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #f59e0b;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+              <td style="color: #92400e; font-size: 14px;"><strong style="color: #78350f;">Important :</strong> Ce lien expire le <strong style="color: #78350f;">{{expiration_date}}</strong></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #FDE68A;">
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
+          <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
+
+          <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 8px;">
+            <div style="font-size: 12px; color: #92400E; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
+            <div style="font-weight: 600; color: #78350f; font-size: 15px;">${PROJET_CONFIG.presentateur.nom}</div>
+            <div style="color: #92400E; font-size: 13px;">Coordinatrice de projet</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer" style="background: #78350f; padding: 30px; text-align: center;">
+        <p style="color: #FDE68A; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #FBBF24; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `,
+  },
 ];
 
 export async function initDefaultTemplates(): Promise<void> {
@@ -1139,7 +1267,7 @@ export async function getEmailTemplates(): Promise<EmailTemplate[]> {
   return db.emailTemplates.toArray();
 }
 
-export async function getTemplateByType(entityType: 'action' | 'jalon' | 'risque'): Promise<EmailTemplate | undefined> {
+export async function getTemplateByType(entityType: 'action' | 'jalon' | 'risque' | 'budget'): Promise<EmailTemplate | undefined> {
   return db.emailTemplates
     .where('entityType')
     .equals(entityType)
@@ -1180,9 +1308,9 @@ export interface EmailResult {
 }
 
 export async function sendReminderEmail(
-  entityType: 'action' | 'jalon' | 'risque',
+  entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number,
-  entity: Action | Jalon | Risque,
+  entity: Action | Jalon | Risque | any,
   recipientEmail: string,
   recipientName: string,
   durationHours?: number,
@@ -1243,6 +1371,13 @@ export async function sendReminderEmail(
     replacements.risque_probabilite = String(entity.probabilite || 0);
     replacements.risque_impact = String(entity.impact || 0);
     replacements.risque_score_class = entity.score >= 12 ? 'score-high' : entity.score >= 6 ? 'score-medium' : 'score-low';
+  } else if (entityType === 'budget') {
+    const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n || 0);
+    replacements.budget_libelle = entity.poste || entity.titre || '';
+    replacements.budget_categorie = entity.categorie || '';
+    replacements.budget_montant_prevu = fmt(entity.montantPrevu) + ' FCFA';
+    replacements.budget_montant_engage = fmt(entity.montantEngage) + ' FCFA';
+    replacements.budget_montant_consomme = fmt(entity.montantConsomme) + ' FCFA';
   }
 
   // Apply replacements
@@ -1347,13 +1482,13 @@ export function getSentEmails(): SentEmail[] {
 // LINK URL BUILDERS
 // ============================================
 
-export function getUpdateLinkUrl(token: string, entityType: 'action' | 'jalon' | 'risque'): string {
+export function getUpdateLinkUrl(token: string, entityType: 'action' | 'jalon' | 'risque' | 'budget'): string {
   const config = getEmailConfig();
   const baseUrl = config.baseUrl || window.location.origin;
   return `${baseUrl}/update/${entityType}/${token}`;
 }
 
-export function copyLinkToClipboard(token: string, entityType: 'action' | 'jalon' | 'risque'): void {
+export function copyLinkToClipboard(token: string, entityType: 'action' | 'jalon' | 'risque' | 'budget'): void {
   const url = getUpdateLinkUrl(token, entityType);
   navigator.clipboard.writeText(url);
 }

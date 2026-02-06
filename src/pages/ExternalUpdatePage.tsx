@@ -14,6 +14,7 @@ import {
   Target,
   AlertTriangle,
   Shield,
+  Wallet,
 } from 'lucide-react';
 import {
   Dialog,
@@ -28,16 +29,18 @@ import { saveExternalUpdate, type FirebaseUpdateLink } from '@/services/firebase
 import { useUsers, updateAction, updateJalon } from '@/hooks';
 import type { UpdateLink } from '@/db';
 import type { Action, Jalon, Risque } from '@/types';
+import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
+import { BudgetFormContent, type BudgetFormSaveData } from '@/components/shared/BudgetFormContent';
 
 // Fonts
 const cockpitFonts = `
   @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&family=Grand+Hotel&display=swap');
 `;
 
-type EntityType = 'action' | 'jalon' | 'risque';
+type EntityType = 'action' | 'jalon' | 'risque' | 'budget';
 
 // Extended entity type for external updates
 interface ExternalUpdateFields {
@@ -47,7 +50,7 @@ interface ExternalUpdateFields {
   derniere_mise_a_jour_externe?: string;
 }
 
-type ExtendedEntity = (Action | Jalon | Risque) & ExternalUpdateFields;
+type ExtendedEntity = (Action | Jalon | Risque | LigneBudgetExploitation) & ExternalUpdateFields;
 
 export function ExternalUpdatePage() {
   const { type, token } = useParams<{ type: EntityType; token: string }>();
@@ -110,25 +113,40 @@ export function ExternalUpdatePage() {
         entityData = await db.jalons.get(updateLink.entityId);
       } else if (type === 'risque') {
         entityData = await db.risques.get(updateLink.entityId);
+      } else if (type === 'budget') {
+        entityData = await db.budgetExploitation.get(updateLink.entityId) as ExtendedEntity | undefined;
       }
 
       // Si entité non trouvée localement, utiliser les données Firebase
       if (!entityData && updateLink.entityData) {
         setIsFirebaseMode(true);
-        entityData = {
-          id: updateLink.entityId,
-          titre: updateLink.entityData.titre || 'Sans titre',
-          statut: updateLink.entityData.statut || '',
-          date_prevue: updateLink.entityData.date_prevue,
-          date_fin_prevue: updateLink.entityData.date_fin_prevue,
-          avancement: updateLink.entityData.avancement,
-          categorie: updateLink.entityData.categorie,
-          score: updateLink.entityData.score,
-          probabilite: updateLink.entityData.probabilite,
-          impact: updateLink.entityData.impact,
-          // Inclure les sous-tâches si présentes
-          sous_taches: updateLink.entityData.sous_taches || [],
-        } as ExtendedEntity;
+        if (type === 'budget') {
+          entityData = {
+            id: updateLink.entityId,
+            poste: updateLink.entityData.poste || updateLink.entityData.titre || 'Sans titre',
+            categorie: updateLink.entityData.categorie || '',
+            description: updateLink.entityData.description,
+            montantPrevu: updateLink.entityData.montantPrevu || 0,
+            montantEngage: updateLink.entityData.montantEngage || 0,
+            montantConsomme: updateLink.entityData.montantConsomme || 0,
+            note: updateLink.entityData.note,
+          } as ExtendedEntity;
+        } else {
+          entityData = {
+            id: updateLink.entityId,
+            titre: updateLink.entityData.titre || 'Sans titre',
+            statut: updateLink.entityData.statut || '',
+            date_prevue: updateLink.entityData.date_prevue,
+            date_fin_prevue: updateLink.entityData.date_fin_prevue,
+            avancement: updateLink.entityData.avancement,
+            categorie: updateLink.entityData.categorie,
+            score: updateLink.entityData.score,
+            probabilite: updateLink.entityData.probabilite,
+            impact: updateLink.entityData.impact,
+            // Inclure les sous-tâches si présentes
+            sous_taches: updateLink.entityData.sous_taches || [],
+          } as ExtendedEntity;
+        }
       }
 
       if (!entityData) {
@@ -146,7 +164,7 @@ export function ExternalUpdatePage() {
     }
   };
 
-  const handleSave = async (data: ActionFormSaveData | JalonFormSaveData | RisqueFormSaveData) => {
+  const handleSave = async (data: ActionFormSaveData | JalonFormSaveData | RisqueFormSaveData | BudgetFormSaveData) => {
     if (!link || !type || !token) return;
 
     setSaving(true);
@@ -226,9 +244,19 @@ export function ExternalUpdatePage() {
           await db.risques.update(link.entityId, risqueUpdate);
         }
 
+        if (type === 'budget') {
+          const budgetData = data as BudgetFormSaveData;
+          await db.budgetExploitation.update(link.entityId, {
+            montantEngage: budgetData.montantEngage,
+            montantConsomme: budgetData.montantConsomme,
+            note: budgetData.note,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
         // Note: Le tracking granulaire est maintenant fait par updateAction/updateJalon
-        // On ajoute juste une entrée générale pour les risques (pas encore migrés)
-        if (type === 'risque') {
+        // On ajoute juste une entrée générale pour les risques et budget (pas encore migrés)
+        if (type === 'risque' || type === 'budget') {
           await db.historique.add({
             timestamp: new Date().toISOString(),
             entiteType: type,
@@ -240,12 +268,12 @@ export function ExternalUpdatePage() {
           });
         }
 
-        const entityTypeLabel = type === 'action' ? 'Action' : type === 'jalon' ? 'Jalon' : 'Risque';
+        const entityTypeLabel = type === 'action' ? 'Action' : type === 'jalon' ? 'Jalon' : type === 'budget' ? 'Budget' : 'Risque';
         const actionData = data as ActionFormSaveData;
         await db.alertes.add({
           type: 'info' as const,
           titre: `Mise à jour reçue de ${link.recipientName}`,
-          message: `${entityTypeLabel} "${entity?.titre}" a été mis(e) à jour. Statut: ${data.statut || 'N/A'}${type === 'action' && actionData.avancement !== undefined ? `, Avancement: ${actionData.avancement}%` : ''}`,
+          message: `${entityTypeLabel} "${type === 'budget' ? (entity as LigneBudgetExploitation & ExternalUpdateFields)?.poste : (entity as Action & ExternalUpdateFields)?.titre}" a été mis(e) à jour. Statut: ${data.statut || 'N/A'}${type === 'action' && actionData.avancement !== undefined ? `, Avancement: ${actionData.avancement}%` : ''}`,
           criticite: 'medium',
           entiteType: type,
           entiteId: link.entityId,
@@ -270,6 +298,7 @@ export function ExternalUpdatePage() {
     if (type === 'action') return <Target className="w-5 h-5 text-white" />;
     if (type === 'jalon') return <Calendar className="w-5 h-5 text-white" />;
     if (type === 'risque') return <Shield className="w-5 h-5 text-white" />;
+    if (type === 'budget') return <Wallet className="w-5 h-5 text-white" />;
     return <Target className="w-5 h-5 text-white" />;
   };
 
@@ -277,6 +306,7 @@ export function ExternalUpdatePage() {
     if (type === 'action') return 'from-blue-500 to-cyan-600';
     if (type === 'jalon') return 'from-emerald-500 to-teal-600';
     if (type === 'risque') return 'from-red-500 to-orange-600';
+    if (type === 'budget') return 'from-amber-500 to-orange-600';
     return 'from-gray-500 to-gray-600';
   };
 
@@ -284,6 +314,7 @@ export function ExternalUpdatePage() {
     if (type === 'action') return "Modifier l'action";
     if (type === 'jalon') return 'Modifier le jalon';
     if (type === 'risque') return 'Modifier le risque';
+    if (type === 'budget') return 'Modifier le budget';
     return 'Modifier';
   };
 
@@ -413,6 +444,16 @@ export function ExternalUpdatePage() {
             {type === 'risque' && entity && (
               <RisqueFormContent
                 risque={entity as Risque}
+                isEditing={true}
+                isExternal={true}
+                onSave={handleSave}
+                isSaving={saving}
+              />
+            )}
+
+            {type === 'budget' && entity && (
+              <BudgetFormContent
+                ligne={entity as LigneBudgetExploitation}
                 isEditing={true}
                 isExternal={true}
                 onSave={handleSave}

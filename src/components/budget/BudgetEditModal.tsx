@@ -3,8 +3,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Save, RotateCcw, AlertTriangle } from 'lucide-react';
+import { X, Save, RotateCcw, AlertTriangle, Send, ExternalLink } from 'lucide-react';
 import { Button, Input, MoneyInput } from '@/components/ui';
+import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,8 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Mettre à jour les valeurs quand la ligne change
   useEffect(() => {
@@ -184,10 +187,28 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
 
         {/* Footer */}
         <div className="border-t px-6 py-4 bg-primary-50 flex justify-between">
-          <Button variant="ghost" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Réinitialiser
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={handleReset}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Réinitialiser
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setSendModalOpen(true)}
+              title="Envoyer une relance"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Relancer
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setShareModalOpen(true)}
+              title="Partager en externe"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Partager
+            </Button>
+          </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose}>
               Annuler
@@ -203,6 +224,35 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
           </div>
         </div>
       </div>
+
+      {/* Send Reminder Modal */}
+      {sendModalOpen && ligne && (
+        <SendReminderModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+          entityType="budget"
+          entityId={ligne.id!}
+          entity={{
+            titre: ligne.poste,
+            description: ligne.description,
+            categorie: ligne.categorie,
+            poste: ligne.poste,
+            montantPrevu: ligne.montantPrevu,
+            montantEngage: ligne.montantEngage,
+            montantConsomme: ligne.montantConsomme,
+          }}
+        />
+      )}
+
+      {/* Share External Modal */}
+      {shareModalOpen && ligne && (
+        <ShareExternalModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          entityType="budget"
+          entity={ligne}
+        />
+      )}
     </div>
   );
 }

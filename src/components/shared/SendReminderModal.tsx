@@ -32,6 +32,11 @@ interface ReminderEntity {
   score?: number;
   probabilite?: number;
   impact?: number;
+  // Budget fields
+  montantPrevu?: number;
+  montantEngage?: number;
+  montantConsomme?: number;
+  poste?: string;
 }
 
 interface ReminderResult {
@@ -42,7 +47,7 @@ interface ReminderResult {
 interface SendReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entityType: 'action' | 'jalon' | 'risque';
+  entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
   entity: ReminderEntity;
   defaultRecipientId?: number;
@@ -132,6 +137,13 @@ export function SendReminderModal({
       replacements.risque_probabilite = String(entity.probabilite || 0);
       replacements.risque_impact = String(entity.impact || 0);
       replacements.risque_score_class = entity.score >= 12 ? 'score-high' : entity.score >= 6 ? 'score-medium' : 'score-low';
+    } else if (entityType === 'budget') {
+      const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n || 0);
+      replacements.budget_libelle = entity.poste || entity.titre || '[Poste]';
+      replacements.budget_categorie = entity.categorie || '[Catégorie]';
+      replacements.budget_montant_prevu = fmt(entity.montantPrevu || 0) + ' FCFA';
+      replacements.budget_montant_engage = fmt(entity.montantEngage || 0) + ' FCFA';
+      replacements.budget_montant_consomme = fmt(entity.montantConsomme || 0) + ' FCFA';
     }
 
     for (const [key, value] of Object.entries(replacements)) {
@@ -199,7 +211,7 @@ export function SendReminderModal({
 
   if (!isOpen) return null;
 
-  const entityLabel = entityType === 'action' ? 'l\'action' : entityType === 'jalon' ? 'le jalon' : 'le risque';
+  const entityLabel = entityType === 'action' ? 'l\'action' : entityType === 'jalon' ? 'le jalon' : entityType === 'budget' ? 'la ligne budgétaire' : 'le risque';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
