@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { C, AXES_V5 } from '../constants';
+import { C } from '../constants';
 import { SectionHeader, SlideCard } from '../components';
 import type { ExcoV5Data } from '../hooks/useExcoV5Data';
 
@@ -26,13 +26,6 @@ interface PointAttentionFull {
   actionTitre: string;
   actionId: string;
   axe: string;
-}
-
-function getUrgency(dateCreation: string): { label: string; color: string; bg: string } {
-  const days = Math.floor((Date.now() - new Date(dateCreation).getTime()) / (1000 * 60 * 60 * 24));
-  if (days > 30) return { label: 'Critique', color: C.red, bg: C.redBg };
-  if (days > 14) return { label: 'Haute', color: C.orange, bg: C.orangeBg };
-  return { label: 'Moyenne', color: C.blue, bg: C.blueBg };
 }
 
 function formatDateShort(dateStr: string): string {
@@ -137,78 +130,33 @@ export function DecisionsSlide({ data, printMode }: Props) {
         </div>
       );
     }
-    const useColumns = decisions.length >= 2;
     return (
       <div style={{
         display: 'grid',
-        gridTemplateColumns: useColumns ? 'repeat(2, 1fr)' : '1fr',
+        gridTemplateColumns: decisions.length >= 3 ? 'repeat(3, 1fr)' : decisions.length === 2 ? 'repeat(2, 1fr)' : '1fr',
         gap: 10,
       }}>
-        {decisions.map(dec => {
-          const urgency = getUrgency(dec.dateCreation);
-          const axeCfg = AXES_V5.find(a => a.dbCode === dec.axe);
-          const axeLabel = axeCfg?.label.split(' & ')[0] ?? dec.axe;
-
-          return (
-            <div
-              key={dec.id}
-              style={{
-                padding: '16px 20px',
-                backgroundColor: C.white,
-                borderRadius: 10,
-                border: `1px solid ${C.gray200}`,
-              }}
-            >
-              {/* Header: badges left + date right */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: 8,
-              }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    backgroundColor: C.blueBg, color: C.blue,
-                    fontSize: 10, fontWeight: 600,
-                  }}>
-                    {axeLabel}
-                  </span>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    backgroundColor: urgency.bg, color: urgency.color,
-                    fontSize: 10, fontWeight: 600,
-                  }}>
-                    {urgency.label}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: C.gray500 }}>
-                    Prévu {formatDateShort(dec.actionDateFin)}
-                  </span>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    backgroundColor: dec.transmis ? C.greenBg : C.gray100,
-                    border: `1.5px solid ${dec.transmis ? C.green : C.gray300}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 600,
-                    color: dec.transmis ? C.green : C.gray400,
-                  }}>
-                    {dec.transmis ? '✓' : '?'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
-                {dec.sujet}
-              </div>
-
-              {/* Description = action title */}
-              <div style={{ fontSize: 12, color: C.gray500, lineHeight: 1.4 }}>
-                {dec.actionTitre}
-              </div>
+        {decisions.map(dec => (
+          <div
+            key={dec.id}
+            style={{
+              padding: '12px 16px',
+              backgroundColor: C.white,
+              borderRadius: 8,
+              border: `1px solid ${C.gray200}`,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
+              {dec.sujet}
             </div>
-          );
-        })}
+            <div style={{ fontSize: 11, color: C.gray500, marginBottom: 4 }}>
+              {dec.actionTitre}
+            </div>
+            <div style={{ fontSize: 10, color: C.gray400 }}>
+              {dec.transmis ? '✓ Transmise' : `En attente · ${formatDateShort(dec.dateCreation)}`}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -224,78 +172,33 @@ export function DecisionsSlide({ data, printMode }: Props) {
         </div>
       );
     }
-    const useColumns = points.length >= 2;
     return (
       <div style={{
         display: 'grid',
-        gridTemplateColumns: useColumns ? 'repeat(2, 1fr)' : '1fr',
+        gridTemplateColumns: points.length >= 3 ? 'repeat(3, 1fr)' : points.length === 2 ? 'repeat(2, 1fr)' : '1fr',
         gap: 10,
       }}>
-        {points.map(pa => {
-          const urgency = getUrgency(pa.dateCreation);
-          const axeCfg = AXES_V5.find(a => a.dbCode === pa.axe);
-          const axeLabel = axeCfg?.label.split(' & ')[0] ?? pa.axe;
-
-          return (
-            <div
-              key={pa.id}
-              style={{
-                padding: '16px 20px',
-                backgroundColor: C.white,
-                borderRadius: 10,
-                border: `1px solid ${C.gray200}`,
-                borderLeft: `4px solid ${C.orange}`,
-              }}
-            >
-              {/* Header: badges + ancienneté */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: 8,
-              }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    backgroundColor: C.blueBg, color: C.blue,
-                    fontSize: 10, fontWeight: 600,
-                  }}>
-                    {axeLabel}
-                  </span>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    backgroundColor: urgency.bg, color: urgency.color,
-                    fontSize: 10, fontWeight: 600,
-                  }}>
-                    {urgency.label}
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: C.gray500 }}>
-                  Depuis {formatDateShort(pa.dateCreation)}
-                </span>
-              </div>
-
-              {/* Sujet */}
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
-                {pa.sujet}
-              </div>
-
-              {/* Action + responsable */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, color: C.gray500, lineHeight: 1.4 }}>
-                  {pa.actionTitre}
-                </div>
-                {pa.responsableNom && (
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    backgroundColor: C.gray100, color: C.gray600,
-                    fontSize: 10, fontWeight: 500,
-                  }}>
-                    {pa.responsableNom}
-                  </span>
-                )}
-              </div>
+        {points.map(pa => (
+          <div
+            key={pa.id}
+            style={{
+              padding: '12px 16px',
+              backgroundColor: C.white,
+              borderRadius: 8,
+              border: `1px solid ${C.gray200}`,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
+              {pa.sujet}
             </div>
-          );
-        })}
+            <div style={{ fontSize: 11, color: C.gray500, marginBottom: 4 }}>
+              {pa.actionTitre}
+            </div>
+            <div style={{ fontSize: 10, color: C.gray400 }}>
+              {pa.responsableNom ? `${pa.responsableNom} · ` : ''}{formatDateShort(pa.dateCreation)}
+            </div>
+          </div>
+        ))}
       </div>
     );
   };
