@@ -21,6 +21,8 @@ import {
   DEFAULT_AXES_CONFIG_FULL,
   DEFAULT_PROJET_CONFIG,
   DEFAULT_METEO_STYLES,
+  DEFAULT_CONFIG_PROPAGATION,
+  DEFAULT_CONFIG_SCENARIOS,
 } from '@/data/constants';
 
 // ============================================================================
@@ -42,6 +44,8 @@ const DEFAULTS: { [K in ParametreMetierCategory]: ParametresMetierCategories[K] 
   axes_config: DEFAULT_AXES_CONFIG_FULL as unknown as ParametresMetierCategories['axes_config'],
   projet_config: DEFAULT_PROJET_CONFIG as unknown as ParametresMetierCategories['projet_config'],
   meteo_styles: DEFAULT_METEO_STYLES as unknown as ParametresMetierCategories['meteo_styles'],
+  config_propagation: DEFAULT_CONFIG_PROPAGATION as unknown as ParametresMetierCategories['config_propagation'],
+  config_scenarios: DEFAULT_CONFIG_SCENARIOS as unknown as ParametresMetierCategories['config_scenarios'],
 };
 
 // ============================================================================

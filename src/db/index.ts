@@ -1023,6 +1023,63 @@ class CockpitDatabase extends Dexie {
       budgetExploitation: '++id, siteId, budgetType, annee, ordre, categorie',
       budgetConfigurations: '++id, siteId, budgetType, annee',
     });
+
+    // Version 19: Add date_projetee index on jalons for bidirectional date propagation
+    this.version(19).stores({
+      sites: '++id, code, nom, actif',
+      project: '++id, name',
+      users: '++id, nom, email, role',
+      teams: '++id, nom, responsableId, actif',
+      actions: '++id, siteId, axe, status, responsableId, dateDebut, dateFin, priorite, jalonId, projectPhase',
+      jalons: '++id, siteId, axe, date_prevue, date_projetee, statut, projectPhase',
+      risques: '++id, siteId, categorie, score, status, responsableId, projectPhase',
+      budget: '++id, siteId, categorie, axe, projectPhase',
+      alertes: '++id, siteId, type, criticite, lu, traitee, entiteType, entiteId, responsableId, emailEnvoye',
+      historique: '++id, timestamp, entiteType, entiteId, auteurId, source',
+      reports: '++id, siteId, centreId, type, status, author, createdAt, updatedAt, publishedAt',
+      reportVersions: '++id, reportId, versionNumber, createdAt',
+      reportComments: '++id, reportId, sectionId, blockId, authorId, isResolved, createdAt',
+      reportActivities: '++id, reportId, type, userId, createdAt',
+      reportTemplates: 'id, name, category, type',
+      chartTemplates: 'id, name, category, chartType',
+      tableTemplates: 'id, name, category',
+      updateLinks: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isUsed',
+      emailNotifications: '++id, type, linkId, entityType, entityId, isRead, createdAt',
+      emailTemplates: '++id, name, entityType, isDefault',
+      liensSync: '++id, action_technique_id, action_mobilisation_id',
+      iaImports: '++id, importRef, documentType, status, createdAt, createdBy, targetModule',
+      iaExtractions: '++id, importId, field, correctedAt',
+      iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
+      iaFiles: '++id, importId, filename, mimeType, createdAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      syncCategories: 'id, code, dimension, displayOrder',
+      syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
+      syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
+      syncAlerts: '++id, projectId, alertType, isAcknowledged, createdAt',
+      syncActions: '++id, projectId, dimension, status, priority, createdAt',
+      secureConfigs: '++id, key, isEncrypted, updatedAt',
+      shareTokens: '++id, token, entityType, entityId, recipientEmail, createdAt, expiresAt, isActive',
+      externalUpdates: '++id, token, entityType, entityId, submittedAt, isSynchronized, isReviewed',
+      projectSettings: '++id, projectId',
+      sousTaches: '++id, actionId, ordre',
+      preuves: '++id, actionId, type, createdAt',
+      notesAction: '++id, actionId, createdAt',
+      alerteEmailHistorique: '++id, alerteId, type, destinataireEmail, envoyeAt, statut',
+      budgetExploitation: '++id, siteId, budgetType, annee, ordre, categorie',
+      budgetConfigurations: '++id, siteId, budgetType, annee',
+    }).upgrade(async (tx) => {
+      // Migration v19: Initialize date_projetee = date_prevue for all jalons
+      const jalons = tx.table('jalons');
+      const allJalons = await jalons.toArray();
+      for (const jalon of allJalons) {
+        if (jalon.date_prevue && !jalon.date_projetee) {
+          await jalons.update(jalon.id, {
+            date_projetee: jalon.date_prevue,
+            date_projetee_calculee_at: new Date().toISOString(),
+          });
+        }
+      }
+    });
   }
 }
 

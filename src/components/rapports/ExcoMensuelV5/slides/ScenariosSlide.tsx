@@ -62,7 +62,7 @@ export function ScenariosSlide({ data, printMode }: Props) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: C.gray500 }}>Horizon de report :</span>
-          {!printMode && HORIZONS_REPORT.map(h => {
+          {!printMode && (result.horizonsDisponibles || HORIZONS_REPORT).map(h => {
             const active = moisReport === h;
             return (
               <button
@@ -97,8 +97,8 @@ export function ScenariosSlide({ data, printMode }: Props) {
 
       {/* ============ Summary Banner ============ */}
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12,
-        marginBottom: 20,
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+        marginBottom: 12,
       }}>
         <SummaryCard
           label="Coût total report"
@@ -118,11 +118,28 @@ export function ScenariosSlide({ data, printMode }: Props) {
           sub={`sur ${result.impactsParAxe.length} axes analysés`}
           color={result.axesCritiques > 0 ? C.red : C.green}
         />
+      </div>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+        marginBottom: 20,
+      }}>
         <SummaryCard
-          label="Horizon"
-          value={`${moisReport} mois`}
-          sub={`Facteur accélération ×${(1 + (moisReport - 1) * 0.3).toFixed(1)}`}
-          color={C.navy}
+          label="Actions en retard"
+          value={`+${result.totaux_operationnels.actions_en_retard_total}`}
+          sub="nouvelles actions impactées"
+          color={result.totaux_operationnels.actions_en_retard_total > 0 ? C.orange : C.green}
+        />
+        <SummaryCard
+          label="Jalons inatteignables"
+          value={`${result.totaux_operationnels.jalons_inatteignables_total}`}
+          sub="dépassent le soft opening"
+          color={result.totaux_operationnels.jalons_inatteignables_total > 0 ? C.red : C.green}
+        />
+        <SummaryCard
+          label="Complétion projetée"
+          value={`${result.totaux_operationnels.taux_completion_global}%`}
+          sub={`Horizon ${moisReport} mois`}
+          color={result.totaux_operationnels.taux_completion_global >= 80 ? C.green : C.orange}
         />
       </div>
 
@@ -377,6 +394,55 @@ function AxeImpactCard({ axe, moisReport }: { axe: ImpactAxe; moisReport: number
           </div>
         </div>
       </div>
+
+      {/* ---- Impact opérationnel ---- */}
+      {axe.operationnel && (
+        <div style={{
+          padding: '8px 14px',
+          borderTop: `1px solid ${C.gray100}`,
+          backgroundColor: 'rgba(59, 130, 246, 0.03)',
+        }}>
+          <div style={{
+            fontSize: 9, fontWeight: 600, color: C.blue,
+            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
+          }}>
+            Impact opérationnel
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            <OpMetric label="Retard" value={`+${axe.operationnel.actions.actions_nouvellement_en_retard}`} color={axe.operationnel.actions.actions_nouvellement_en_retard > 0 ? C.red : C.green} />
+            <OpMetric label="Jalons KO" value={`${axe.operationnel.jalons.jalons_inatteignables}`} color={axe.operationnel.jalons.jalons_inatteignables > 0 ? C.red : C.green} />
+            <OpMetric label="Vélocité" value={`x${axe.operationnel.actions.ratio_acceleration}`} color={axe.operationnel.actions.ratio_acceleration > 3 ? C.red : axe.operationnel.actions.ratio_acceleration > 1.5 ? C.orange : C.green} />
+            <OpMetric label="Complétion" value={`${axe.operationnel.actions.taux_completion_projete}%`} color={axe.operationnel.actions.taux_completion_projete >= 80 ? C.green : C.orange} />
+          </div>
+        </div>
+      )}
+
+      {/* ---- Top actions à débloquer ---- */}
+      {axe.recommandation && axe.recommandation.actions_prioritaires.length > 0 && (
+        <div style={{
+          padding: '6px 14px 8px',
+          borderTop: `1px solid ${C.gray100}`,
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+            Actions à débloquer
+          </div>
+          {axe.recommandation.actions_prioritaires.map((a, i) => (
+            <div key={i} style={{ fontSize: 10, color: C.gray600, marginBottom: 2 }}>
+              <span style={{ color: C.orange, marginRight: 4 }}>●</span>
+              {a.titre}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OpMetric({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 8, color: C.gray400, textTransform: 'uppercase' }}>{label}</div>
     </div>
   );
 }

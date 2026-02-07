@@ -494,3 +494,36 @@ export const DEFAULT_SEUILS_METEO_AXE_DASHBOARD = {
 
 /** @deprecated Utiliser useParametreMetier('seuils_meteo_axe_dashboard') */
 export const SEUILS_METEO_AXE_DASHBOARD = DEFAULT_SEUILS_METEO_AXE_DASHBOARD;
+
+// ============================================================================
+// CONFIG PROPAGATION — DATES PROJETÉES (DEFAULT)
+// ============================================================================
+
+export const DEFAULT_CONFIG_PROPAGATION = {
+  jalon_buffer_jours: 5,
+  recalcul_auto: true,
+  seuil_alerte_glissement_jours: 7,
+  velocite_fenetre_semaines: 4,
+} as const;
+
+// ============================================================================
+// CONFIG SCÉNARIOS — COEFFICIENTS IMPACT OPÉRATIONNEL (DEFAULT)
+// ============================================================================
+
+export const DEFAULT_CONFIG_SCENARIOS = {
+  dureeFactor_coeff: 0.3,
+  ecartProj_monthly: 5,
+  semRH_monthly: 4,
+  semRH_scale: 0.5,
+  semCOM_monthly: 3,
+  semTech_monthly: 4,
+  semCon_monthly: 4,
+  semBud_base: 0.3,
+  semMkt_monthly: 2,
+  semExp_monthly: 3,
+  semDiv_monthly: 2,
+  tauxOccup_bonus: 5,
+  rampup_q1_factor: 0.5,
+  horizonsReport: [1, 3, 6],
+  facteur_acceleration_retard: 1.3,
+} as const;

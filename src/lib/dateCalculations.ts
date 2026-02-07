@@ -1,6 +1,9 @@
 import { db } from '@/db';
 import type { Jalon, Action, PhaseReference } from '@/types';
 import type { ProjectConfig } from '@/components/settings/ProjectSettings';
+import type { ConfigPropagation } from '@/types/parametresMetier';
+import { getParametreMetier } from '@/hooks/useParametresMetier';
+import { withWriteContext } from '@/db/writeContext';
 
 // ============================================================================
 // CONSTANTS
@@ -603,4 +606,266 @@ export async function previewMigration(
     }));
 
   return { jalons: jalonPreviews, actions: actionPreviews };
+}
+
+// ============================================================================
+// DATE PROJETÉE — PROPAGATION BIDIRECTIONNELLE
+// ============================================================================
+
+/**
+ * Type de conflit détecté dans les dates projetées
+ */
+export interface ConflitDate {
+  type: 'soft_opening_depasse' | 'verrouillage_incompatible' | 'inversion_sequence';
+  criticite: 'critical' | 'high';
+  entiteType: 'action' | 'jalon';
+  entiteId: number;
+  titre: string;
+  details: string;
+}
+
+/**
+ * Calcule la date projetée d'un jalon à partir de l'état de ses actions prérequises.
+ * Ne modifie JAMAIS date_prevue (référence contractuelle).
+ */
+export async function calculerDateProjetee(jalonId: number): Promise<{
+  date_projetee: string | null;
+  glissement_jours: number;
+  actions_en_retard: number;
+  actions_total: number;
+}> {
+  const jalon = await db.jalons.get(jalonId);
+  if (!jalon) return { date_projetee: null, glissement_jours: 0, actions_en_retard: 0, actions_total: 0 };
+
+  const config = await getParametreMetier('config_propagation');
+  const prerequisIds = jalon.actions_prerequises || [];
+
+  if (prerequisIds.length === 0) {
+    return { date_projetee: jalon.date_prevue, glissement_jours: 0, actions_en_retard: 0, actions_total: 0 };
+  }
+
+  const allActions = await db.actions.toArray();
+  const prerequisActions = allActions.filter(a => prerequisIds.includes(a.id_action));
+
+  if (prerequisActions.length === 0) {
+    return { date_projetee: jalon.date_prevue, glissement_jours: 0, actions_en_retard: 0, actions_total: prerequisIds.length };
+  }
+
+  const now = new Date();
+  let maxFinDate = 0;
+  let actionsEnRetard = 0;
+
+  for (const action of prerequisActions) {
+    let dateFin: number;
+    if (action.statut === 'termine' && action.date_fin_reelle) {
+      dateFin = new Date(action.date_fin_reelle).getTime();
+    } else {
+      const dateFinPrevue = new Date(action.date_fin_prevue).getTime();
+      if (dateFinPrevue < now.getTime() && action.statut !== 'termine') {
+        // Action en retard : projeter la fin = now + retard accumulé
+        const retard = now.getTime() - dateFinPrevue;
+        dateFin = dateFinPrevue + retard * 2; // Projection pessimiste
+        actionsEnRetard++;
+      } else {
+        dateFin = dateFinPrevue;
+      }
+    }
+    if (dateFin > maxFinDate) maxFinDate = dateFin;
+  }
+
+  // Ajouter le buffer configurable
+  const dateProjeteeMs = maxFinDate + config.jalon_buffer_jours * MS_PER_DAY;
+  const dateProjetee = new Date(dateProjeteeMs).toISOString().split('T')[0];
+
+  const datePrevueMs = new Date(jalon.date_prevue).getTime();
+  const glissement = Math.round((dateProjeteeMs - datePrevueMs) / MS_PER_DAY);
+
+  return {
+    date_projetee: glissement > 0 ? dateProjetee : jalon.date_prevue,
+    glissement_jours: Math.max(0, glissement),
+    actions_en_retard: actionsEnRetard,
+    actions_total: prerequisActions.length,
+  };
+}
+
+/**
+ * Recalcule la date projetée de TOUS les jalons.
+ * Wrappé dans withWriteContext pour traçabilité.
+ */
+export async function recalculateTousLesJalonsProjetee(): Promise<{
+  jalonsUpdated: number;
+  conflits: Array<{ jalonId: number; titre: string; type: string; details: string }>;
+}> {
+  const jalons = await db.jalons.toArray();
+  let jalonsUpdated = 0;
+  const conflits: Array<{ jalonId: number; titre: string; type: string; details: string }> = [];
+
+  await withWriteContext({ source: 'auto-calc', description: 'Recalcul batch date_projetee' }, async () => {
+    for (const jalon of jalons) {
+      if (!jalon.id) continue;
+      const result = await calculerDateProjetee(jalon.id);
+
+      if (result.date_projetee && result.date_projetee !== jalon.date_projetee) {
+        await db.jalons.update(jalon.id, {
+          date_projetee: result.date_projetee,
+          date_projetee_calculee_at: new Date().toISOString(),
+        });
+        jalonsUpdated++;
+      }
+
+      if (result.glissement_jours > 0) {
+        conflits.push({
+          jalonId: jalon.id,
+          titre: jalon.titre,
+          type: 'glissement',
+          details: `Glissement de ${result.glissement_jours}j (${result.actions_en_retard}/${result.actions_total} actions en retard)`,
+        });
+      }
+    }
+  });
+
+  return { jalonsUpdated, conflits };
+}
+
+/**
+ * Propagation descendante : quand un jalon glisse, propose le recalcul
+ * des actions dépendantes. Ne modifie pas les actions verrouillées.
+ */
+export async function propagerGlissementJalon(jalonId: number): Promise<{
+  actionsRecalculees: number;
+  actionsVerrouillees: number;
+  conflits: Array<{ actionId: number; titre: string; type: string }>;
+}> {
+  const jalon = await db.jalons.get(jalonId);
+  if (!jalon || !jalon.date_projetee || !jalon.date_prevue) {
+    return { actionsRecalculees: 0, actionsVerrouillees: 0, conflits: [] };
+  }
+
+  const glissementMs = new Date(jalon.date_projetee).getTime() - new Date(jalon.date_prevue).getTime();
+  const glissementJours = Math.round(glissementMs / MS_PER_DAY);
+
+  if (glissementJours <= 0) {
+    return { actionsRecalculees: 0, actionsVerrouillees: 0, conflits: [] };
+  }
+
+  // Actions liées à ce jalon (via jalonId ou jalon_reference)
+  const actionsLiees = await db.actions.where('jalonId').equals(jalonId).toArray();
+
+  let actionsRecalculees = 0;
+  let actionsVerrouillees = 0;
+  const conflits: Array<{ actionId: number; titre: string; type: string }> = [];
+
+  await withWriteContext({ source: 'auto-calc', description: `Propagation glissement jalon ${jalonId}` }, async () => {
+    for (const action of actionsLiees) {
+      if (!action.id) continue;
+
+      if (action.date_verrouillage_manuel) {
+        actionsVerrouillees++;
+        conflits.push({
+          actionId: action.id,
+          titre: action.titre,
+          type: 'verrouillage_incompatible',
+        });
+        continue;
+      }
+
+      if (action.date_debut_prevue) {
+        const nouveauDebut = new Date(
+          new Date(action.date_debut_prevue).getTime() + glissementJours * MS_PER_DAY
+        ).toISOString().split('T')[0];
+        const duree = action.duree_prevue_jours || computeDureeJours(action.date_debut_prevue, action.date_fin_prevue);
+        const nouvelleFin = computeEcheance(nouveauDebut, duree);
+
+        await db.actions.update(action.id, {
+          date_debut_prevue: nouveauDebut,
+          date_fin_prevue: nouvelleFin,
+        });
+        actionsRecalculees++;
+      }
+    }
+  });
+
+  return { actionsRecalculees, actionsVerrouillees, conflits };
+}
+
+/**
+ * Détecte les conflits de dates projetées.
+ * Retourne une liste de conflits classés par criticité.
+ */
+export async function detecterConflitsDates(): Promise<ConflitDate[]> {
+  const conflits: ConflitDate[] = [];
+  const projetConfig = await getParametreMetier('projet_config');
+  const config = await getParametreMetier('config_propagation');
+  const softOpening = projetConfig.jalonsClés.softOpening;
+  const softOpeningMs = new Date(softOpening).getTime();
+
+  const jalons = await db.jalons.toArray();
+  const actions = await db.actions.toArray();
+
+  // Type 1: date_projetee dépasse soft opening
+  for (const action of actions) {
+    if (action.statut === 'termine') continue;
+    const dateFin = action.date_fin_prevue;
+    if (!dateFin) continue;
+
+    const dateFinMs = new Date(dateFin).getTime();
+    if (dateFinMs > softOpeningMs && action.id) {
+      conflits.push({
+        type: 'soft_opening_depasse',
+        criticite: 'critical',
+        entiteType: 'action',
+        entiteId: action.id,
+        titre: action.titre,
+        details: `Date fin prévue (${dateFin}) dépasse le soft opening (${softOpening})`,
+      });
+    }
+  }
+
+  // Type 2: verrouillage incompatible (action verrouillée + jalon parent glissé)
+  for (const jalon of jalons) {
+    if (!jalon.date_projetee || !jalon.date_prevue || !jalon.id) continue;
+    const glissement = Math.round(
+      (new Date(jalon.date_projetee).getTime() - new Date(jalon.date_prevue).getTime()) / MS_PER_DAY
+    );
+    if (glissement <= 0) continue;
+
+    const actionsLiees = actions.filter(a => a.jalonId === jalon.id);
+    for (const action of actionsLiees) {
+      if (action.date_verrouillage_manuel && action.id) {
+        conflits.push({
+          type: 'verrouillage_incompatible',
+          criticite: 'high',
+          entiteType: 'action',
+          entiteId: action.id,
+          titre: action.titre,
+          details: `Action verrouillée mais jalon "${jalon.titre}" glissé de ${glissement}j`,
+        });
+      }
+    }
+  }
+
+  // Type 3: inversion de séquence (action N se termine après action N+1 avec dépendance)
+  for (const action of actions) {
+    if (!action.successeurs || action.statut === 'termine') continue;
+    const dateFinA = action.date_fin_prevue;
+    if (!dateFinA) continue;
+
+    for (const dep of action.successeurs) {
+      const succ = actions.find(a => a.id_action === dep.id_action);
+      if (!succ || !succ.date_debut_prevue || !action.id) continue;
+
+      if (new Date(dateFinA).getTime() > new Date(succ.date_debut_prevue).getTime()) {
+        conflits.push({
+          type: 'inversion_sequence',
+          criticite: 'high',
+          entiteType: 'action',
+          entiteId: action.id,
+          titre: action.titre,
+          details: `Fin prévue (${dateFinA}) après début successeur "${succ.titre}" (${succ.date_debut_prevue})`,
+        });
+      }
+    }
+  }
+
+  return conflits;
 }

@@ -179,6 +179,33 @@ export interface MeteoStyles {
   ORAGEUX: MeteoStyleItem;
 }
 
+/** Config propagation des dates projetées */
+export interface ConfigPropagation {
+  jalon_buffer_jours: number;           // Buffer après max(dates prérequis), défaut: 5
+  recalcul_auto: boolean;               // Recalcul auto à chaque modif action, défaut: true
+  seuil_alerte_glissement_jours: number; // Alerte si glissement > X jours, défaut: 7
+  velocite_fenetre_semaines: number;     // Fenêtre pour calcul vélocité, défaut: 4
+}
+
+/** Config scénarios d'impact opérationnel */
+export interface ConfigScenarios {
+  dureeFactor_coeff: number;      // 0.3
+  ecartProj_monthly: number;      // 5
+  semRH_monthly: number;          // 4
+  semRH_scale: number;            // 0.5
+  semCOM_monthly: number;         // 3
+  semTech_monthly: number;        // 4
+  semCon_monthly: number;         // 4
+  semBud_base: number;            // 0.3
+  semMkt_monthly: number;         // 2
+  semExp_monthly: number;         // 3
+  semDiv_monthly: number;         // 2
+  tauxOccup_bonus: number;        // 5
+  rampup_q1_factor: number;       // 0.5
+  horizonsReport: number[];       // [1, 3, 6]
+  facteur_acceleration_retard: number; // 1.3
+}
+
 // ============================================================================
 // MAPPING DES CATÉGORIES
 // ============================================================================
@@ -198,6 +225,8 @@ export interface ParametresMetierCategories {
   axes_config: AxesConfig;
   projet_config: ProjetConfig;
   meteo_styles: MeteoStyles;
+  config_propagation: ConfigPropagation;
+  config_scenarios: ConfigScenarios;
 }
 
 export type ParametreMetierCategory = keyof ParametresMetierCategories;

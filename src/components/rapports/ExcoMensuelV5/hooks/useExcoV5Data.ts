@@ -17,7 +17,17 @@ import { useCurrentSite } from '@/hooks/useSites';
 import { useSyncStatus } from '@/hooks/useSync';
 import { useProjectConfig } from '@/hooks/useProjectConfig';
 import { getSnapshotHistoryV2 } from '@/services/syncServiceV2';
-import { PROJET_CONFIG, SEUILS_METEO_REPORT, SEUILS_RISQUES } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_METEO_REPORT, SEUILS_RISQUES, DEFAULT_CONFIG_PROPAGATION, DEFAULT_CONFIG_SCENARIOS } from '@/data/constants';
+import {
+  calculerImpactActions,
+  calculerImpactJalons,
+  analyserCascades,
+  type ImpactActions,
+  type ImpactJalons,
+  type CascadeAnalysis,
+} from '@/lib/scenarios/impactOperationnel';
+import { buildDependencyGraph } from '@/lib/interdependency/graphBuilder';
+import { calculateCriticalPath } from '@/lib/interdependency/criticalPath';
 import { AXES_V5, LS_KEYS, type MeteoLevel } from '../constants';
 import type { Action, Jalon, Risque } from '@/types';
 import { db } from '@/db';
@@ -310,6 +320,14 @@ export interface ImpactAxe {
   color: string;
   siMaintenant: ImpactSide;
   siReport: ImpactSiReport;
+  operationnel?: {
+    actions: ImpactActions;
+    jalons: ImpactJalons;
+    cascades: CascadeAnalysis;
+  };
+  recommandation?: {
+    actions_prioritaires: Array<{ titre: string; gain_jours: number }>;
+  };
 }
 
 export interface ScenarioSynthese {
@@ -337,6 +355,12 @@ export interface ScenariosOutput {
   coutTotalReport: number;
   semainesPerduesTotal: number;
   axesCritiques: number;
+  totaux_operationnels: {
+    actions_en_retard_total: number;
+    jalons_inatteignables_total: number;
+    taux_completion_global: number;
+    axes_critiques: string[];
+  };
 }
 
 // ============================================================================
@@ -363,28 +387,8 @@ export interface ScenariosOutput {
  * - Pertes An1: calculées proportionnellement aux mois perdus après report
  *   (chaque mois de report = 1 mois de revenus An1 en moins)
  */
-const SCENARIO_CONFIG = {
-  // Facteur d'escalade par mois de retard (30% par mois supplémentaire)
-  dureeFactor_coeff: 0.3,
-  // Escalade écart sync par mois (points)
-  ecartProj_monthly: 5,
-  // Semaines critiques perdues par axe par mois
-  semRH_monthly: 4,
-  semRH_scale: 0.5, // RH impacté à 50% (recrutements peuvent se rattraper)
-  semCOM_monthly: 3,
-  semTech_monthly: 4,
-  semCon_monthly: 4,
-  semBud_base: 0.3,
-  semMkt_monthly: 2,
-  semExp_monthly: 3,
-  semDiv_monthly: 2,
-  // Occupation
-  tauxOccup_bonus: 5, // % d'optimisation possible
-  // Ramp-up revenus An1
-  rampup_q1_factor: 0.5, // Q1 à 50% du CA cible
-  // Note: rampup_q234_months n'est plus utilisé, le calcul est maintenant proportionnel
-  // aux mois effectifs en An1 (12 - moisReport)
-} as const;
+/** @deprecated local config replaced by DEFAULT_CONFIG_SCENARIOS from DB params */
+const SCENARIO_CONFIG = DEFAULT_CONFIG_SCENARIOS;
 
 // ============================================================================
 // FACTEUR D'ACCÉLÉRATION NON-LINÉAIRE
@@ -417,6 +421,8 @@ interface ScenarioInputs {
   joursRestants: number;
   kpis: { tauxOccupation: number; jalonsAtteints: number; jalonsTotal: number; totalActions: number; actionsTerminees: number; budgetTotal: number; budgetConsomme: number; totalRisques: number };
   axesData: AxeData[];
+  allActions?: Action[];
+  allJalons?: Jalon[];
 }
 
 // ============================================================================
@@ -846,6 +852,92 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
 
   const scoreRisque: ScenarioRiskScore = { score, level, label, details: facteurs.map(f => `${f.text} (+${f.points})`), facteurs };
 
+  // ====================================================================
+  // IMPACT OPÉRATIONNEL — Enrichissement par axe
+  // ====================================================================
+  const allActions = inputs.allActions || [];
+  const allJalons = inputs.allJalons || [];
+  const configPropagation = DEFAULT_CONFIG_PROPAGATION;
+  const softOpeningDate = PROJET_CONFIG.jalonsClés.softOpening;
+
+  let totalActionsEnRetard = 0;
+  let totalJalonsInatteignables = 0;
+  let completionNumerator = 0;
+  let completionDenominator = 0;
+  const axesCritiquesOps: string[] = [];
+
+  // Map short axe id to dbCode for filtering
+  const axeIdToDbCode: Record<string, string> = {};
+  for (const ad of axesData) {
+    axeIdToDbCode[ad.id] = ad.dbCode;
+  }
+
+  for (const impact of impactsParAxe) {
+    const dbCode = axeIdToDbCode[impact.axe] || impact.axe;
+    const axeActions = allActions.filter(a => a.axe === dbCode);
+    const axeJalons = allJalons.filter(j => j.axe === dbCode);
+
+    if (axeActions.length === 0 && axeJalons.length === 0) continue;
+
+    const impactActions = calculerImpactActions(axeActions, joursRestants, moisReport, configPropagation);
+    const impactJalons = calculerImpactJalons(axeJalons, axeActions, joursRestants, moisReport, softOpeningDate);
+
+    // Build CPM graph for this axe's actions
+    let cascades: CascadeAnalysis = { profondeur_max: 0, elements_impactes_total: 0, axes_impactes: [], actions_marge_nulle: 0 };
+    if (axeActions.length > 0) {
+      try {
+        const graph = buildDependencyGraph(axeActions);
+        const cpmGraph = calculateCriticalPath(graph);
+        cascades = analyserCascades(cpmGraph, moisReport);
+      } catch {
+        // CPM may fail on sparse data — continue with empty cascades
+      }
+    }
+
+    impact.operationnel = { actions: impactActions, jalons: impactJalons, cascades };
+
+    // Add operational bullets to siReport
+    if (impactActions.actions_nouvellement_en_retard > 0) {
+      impact.siReport.items.push({ text: `+${impactActions.actions_nouvellement_en_retard} actions en retard`, chiffre: `+${impactActions.actions_nouvellement_en_retard}` });
+    }
+    if (impactJalons.jalons_inatteignables > 0) {
+      impact.siReport.items.push({ text: `${impactJalons.jalons_inatteignables} jalon(s) inatteignable(s)`, chiffre: `${impactJalons.jalons_inatteignables}` });
+    }
+    if (impactActions.ratio_acceleration > 2) {
+      impact.siReport.items.push({ text: `Vélocité requise : x${impactActions.ratio_acceleration}`, chiffre: `x${impactActions.ratio_acceleration}` });
+    }
+
+    // Recommandations: top 3 actions bloquantes
+    const actionsBloquantes = axeActions
+      .filter(a => a.statut !== 'termine' && a.successeurs && a.successeurs.length > 0)
+      .sort((a, b) => (b.successeurs?.length || 0) - (a.successeurs?.length || 0))
+      .slice(0, 3);
+    if (actionsBloquantes.length > 0) {
+      impact.recommandation = {
+        actions_prioritaires: actionsBloquantes.map(a => ({
+          titre: a.titre,
+          gain_jours: a.successeurs?.length || 0,
+        })),
+      };
+    }
+
+    // Aggregate totals
+    totalActionsEnRetard += impactActions.actions_nouvellement_en_retard;
+    totalJalonsInatteignables += impactJalons.jalons_inatteignables;
+    completionNumerator += impactActions.taux_completion_projete * axeActions.length;
+    completionDenominator += axeActions.length;
+    if (impactJalons.jalons_inatteignables > 0 || impactActions.ratio_acceleration > 3) {
+      axesCritiquesOps.push(impact.label);
+    }
+  }
+
+  const totaux_operationnels = {
+    actions_en_retard_total: totalActionsEnRetard,
+    jalons_inatteignables_total: totalJalonsInatteignables,
+    taux_completion_global: completionDenominator > 0 ? Math.round(completionNumerator / completionDenominator) : 100,
+    axes_critiques: axesCritiquesOps,
+  };
+
   return {
     moisReport,
     horizonsDisponibles: HORIZONS_REPORT,
@@ -857,6 +949,7 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
     coutTotalReport: totalCout,
     semainesPerduesTotal: maxSemaines,
     axesCritiques,
+    totaux_operationnels,
   };
 }
 
@@ -1187,7 +1280,8 @@ export function useExcoV5Data(savedExcoId?: number | null): ExcoV5Data {
   // Scenarios inputs (exposed so ScenariosSlide can recalculate with different horizons)
   const scenariosInputs: ScenarioInputs = useMemo(() => ({
     budgetSynthese, comparaisonAxes, criticalPath, joursRestants, kpis, axesData,
-  }), [budgetSynthese, comparaisonAxes, criticalPath, joursRestants, kpis, axesData]);
+    allActions, allJalons,
+  }), [budgetSynthese, comparaisonAxes, criticalPath, joursRestants, kpis, axesData, allActions, allJalons]);
 
   // Scenarios (default 1 month for backward compat)
   const { scenarios, scoreRisque } = useMemo(() => generateScenarios(scenariosInputs), [scenariosInputs]);

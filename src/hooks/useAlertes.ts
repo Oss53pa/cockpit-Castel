@@ -7,6 +7,7 @@ import {
   getAlerteResponsableByEntity as getAlerteResponsable,
 } from '@/services/alerteEmailService';
 import { SEUILS_SYNC_REPORT, SEUILS_RISQUES } from '@/data/constants';
+import { detecterConflitsDates } from '@/lib/dateCalculations';
 
 export function useAlertes(filters?: AlerteFilters) {
   const alertes = useLiveQuery(async () => {
@@ -447,6 +448,39 @@ export async function generateAlertesAutomatiques(): Promise<void> {
         traitee: false,
       });
     }
+  }
+
+  // ============================================================================
+  // CONFLITS DATE PROJETÉE
+  // ============================================================================
+  try {
+    const conflits = await detecterConflitsDates();
+    for (const conflit of conflits) {
+      const existing = await db.alertes
+        .filter(
+          (a) =>
+            a.type === 'conflit_date_projetee' &&
+            a.entiteId === conflit.entiteId &&
+            a.entiteType === conflit.entiteType &&
+            !a.traitee
+        )
+        .first();
+
+      if (!existing) {
+        await createAlerte({
+          type: 'conflit_date_projetee',
+          titre: `Conflit date : ${conflit.titre}`,
+          message: conflit.details,
+          criticite: conflit.criticite,
+          entiteType: conflit.entiteType,
+          entiteId: conflit.entiteId,
+          lu: false,
+          traitee: false,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[Alertes] Erreur détection conflits dates:', e);
   }
 
   // ============================================================================

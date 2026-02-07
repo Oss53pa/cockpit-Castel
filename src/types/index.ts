@@ -784,6 +784,7 @@ export const ALERTE_TYPES = [
   'depassement_budget',
   'risque_critique',
   'desynchronisation_chantier_mobilisation',
+  'conflit_date_projetee',
 ] as const;
 export type AlerteType = (typeof ALERTE_TYPES)[number];
 
@@ -794,6 +795,7 @@ export const ALERTE_TYPE_LABELS: Record<AlerteType, string> = {
   depassement_budget: 'Dépassement budget',
   risque_critique: 'Risque critique',
   desynchronisation_chantier_mobilisation: 'Désynchronisation Chantier/Mobilisation',
+  conflit_date_projetee: 'Conflit date projetée',
 };
 
 export const CRITICITES = ['low', 'medium', 'high', 'critical'] as const;
@@ -1346,6 +1348,10 @@ export interface Jalon {
   jalon_reference?: PhaseReference;    // Phase projet de référence pour le calcul
   delai_declenchement?: number;        // Jours relatifs au jalon de référence (négatif = avant, ex: -90)
   date_verrouillage_manuel?: boolean;  // Si true, ignoré lors du recalcul automatique
+
+  // Date projetée (calculée depuis l'état des actions prérequises)
+  date_projetee?: string | null;         // Date réaliste calculée
+  date_projetee_calculee_at?: string;    // Timestamp du dernier calcul
 
   // Alertes automatiques
   alerte_j30: string;
