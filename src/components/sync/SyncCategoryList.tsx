@@ -9,6 +9,8 @@ interface SyncCategoryListProps {
   categories: CategoryProgress[];
   projectId: string;
   onUpdateProgress?: (itemId: number, progress: number) => void;
+  /** When provided, use this weighted progress instead of recalculating a simple average */
+  overallProgress?: number;
 }
 
 interface CategoryCardProps {
@@ -264,13 +266,16 @@ export const SyncCategoryList: React.FC<SyncCategoryListProps> = ({
   title,
   dimension,
   categories,
+  overallProgress: overallProgressProp,
 }) => {
   const color = dimension === 'PROJECT' ? SYNC_CONFIG.colors.project : SYNC_CONFIG.colors.mobilization;
 
-  // Calculate overall progress
-  const overallProgress = categories.length > 0
-    ? categories.reduce((sum, cat) => sum + cat.progress, 0) / categories.length
-    : 0;
+  // Use weighted progress from parent if provided, otherwise fall back to simple average
+  const overallProgress = overallProgressProp != null
+    ? overallProgressProp
+    : categories.length > 0
+      ? categories.reduce((sum, cat) => sum + cat.progress, 0) / categories.length
+      : 0;
 
   const totalItems = categories.reduce((sum, cat) => sum + cat.itemsCount, 0);
   const completedItems = categories.reduce((sum, cat) => sum + cat.completedCount, 0);

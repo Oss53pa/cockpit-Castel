@@ -622,6 +622,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projec
                     dimension="PROJECT"
                     categories={projectCategories}
                     projectId={projectId}
+                    overallProgress={syncStatus?.projectProgress}
                   />
                 )}
                 {syncSubTab !== 'project' && (
@@ -630,6 +631,7 @@ export const SyncDashboard: React.FC<SyncDashboardProps> = ({ siteId = 1, projec
                     dimension="MOBILIZATION"
                     categories={mobilizationCategories}
                     projectId={projectId}
+                    overallProgress={syncStatus?.mobilizationProgress}
                   />
                 )}
               </div>

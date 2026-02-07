@@ -118,7 +118,7 @@ export async function calculateAxeProgress(siteId: number, axe: Axe): Promise<{
     weightedSum += progress * weight;
     totalWeight += weight;
 
-    if (action.status === 'termine') {
+    if (action.statut === 'termine') {
       completedCount++;
     }
   }
