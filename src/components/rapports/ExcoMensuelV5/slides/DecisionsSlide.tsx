@@ -137,8 +137,13 @@ export function DecisionsSlide({ data, printMode }: Props) {
         </div>
       );
     }
+    const useColumns = decisions.length >= 2;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: useColumns ? 'repeat(2, 1fr)' : '1fr',
+        gap: 10,
+      }}>
         {decisions.map(dec => {
           const urgency = getUrgency(dec.dateCreation);
           const axeCfg = AXES_V5.find(a => a.dbCode === dec.axe);
@@ -219,8 +224,13 @@ export function DecisionsSlide({ data, printMode }: Props) {
         </div>
       );
     }
+    const useColumns = points.length >= 2;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: useColumns ? 'repeat(2, 1fr)' : '1fr',
+        gap: 10,
+      }}>
         {points.map(pa => {
           const urgency = getUrgency(pa.dateCreation);
           const axeCfg = AXES_V5.find(a => a.dbCode === pa.axe);
