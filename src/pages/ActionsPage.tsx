@@ -3,7 +3,7 @@ import { List, LayoutGrid, Columns, GanttChart, CalendarDays, Network, Plus, Dow
 import { useAppStore } from '@/stores';
 import { Button, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
-import { useActions, createAction, updateAction } from '@/hooks';
+import { useActions, createAction, updateAction, usePermissions } from '@/hooks';
 import {
   ActionsList,
   ActionsCards,
@@ -16,6 +16,7 @@ import {
   ActionFiltersBar,
 } from '@/components/actions';
 import type { Action, ActionViewMode } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 const viewModes: { id: ActionViewMode; label: string; icon: typeof List }[] = [
   { id: 'list', label: 'Liste', icon: List },
@@ -35,6 +36,7 @@ export function ActionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actions = useActions(actionFilters);
   const toast = useToast();
+  const { canCreate, canEdit, canImport } = usePermissions();
 
   const handleEdit = (action: Action) => {
     setSelectedAction(action);
@@ -170,7 +172,7 @@ export function ActionsPage() {
         <div>
           <h2 className="text-xl font-bold text-primary-900">Plan d'actions</h2>
           <p className="text-sm text-primary-500">
-            Gérez les actions du projet Cosmos Angré
+            {`Gérez les actions du projet ${PROJET_CONFIG.nom}`}
           </p>
         </div>
 
@@ -183,12 +185,14 @@ export function ActionsPage() {
             onChange={handleImportFile}
             className="hidden"
           />
-          <Tooltip content="Importer depuis Excel">
-            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
-              <Upload className="h-4 w-4 mr-2" />
-              {importing ? 'Import...' : 'Importer'}
-            </Button>
-          </Tooltip>
+          {canImport && (
+            <Tooltip content="Importer depuis Excel">
+              <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+                <Upload className="h-4 w-4 mr-2" />
+                {importing ? 'Import...' : 'Importer'}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip content="Exporter vers Excel">
             <Button variant="outline" onClick={handleExportExcel}>
               <Download className="h-4 w-4 mr-2" />
@@ -222,10 +226,12 @@ export function ActionsPage() {
             })}
           </div>
 
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle action
-          </Button>
+          {canCreate && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle action
+            </Button>
+          )}
         </div>
       </div>
 

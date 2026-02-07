@@ -10,6 +10,7 @@
  */
 
 import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -165,7 +166,7 @@ async function callOpenRouter(
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${config.openrouterApiKey}`,
       'HTTP-Referer': window.location.origin,
-      'X-Title': 'Cockpit COSMOS ANGRE',
+      'X-Title': `Cockpit ${PROJET_CONFIG.nom}`,
     },
     body: JSON.stringify({
       model: config.openrouterModel || 'anthropic/claude-3.5-sonnet',
@@ -397,7 +398,7 @@ function buildContextSummary(ctx: ProjectContext): string {
   };
 
   return `
-Projet: ${ctx.projectName || 'COSMOS ANGRE'}
+Projet: ${ctx.projectName || PROJET_CONFIG.nom}
 Date: ${new Date().toLocaleDateString('fr-FR')}
 
 ACTIONS (${stats.actions.total}):
@@ -463,7 +464,7 @@ async function processWithLocalAlgorithm(
 
   // Réponse par défaut
   return context ? generateReportLocal(context) : `
-Je suis PROPH3T, l'assistant IA du Cockpit COSMOS ANGRE.
+Je suis PROPH3T, l'assistant IA du Cockpit ${PROJET_CONFIG.nom}.
 
 Je peux vous aider avec:
 - Analyse de la sante du projet
@@ -689,7 +690,7 @@ function generateReportLocal(ctx: ProjectContext): string {
   const completionRate = ctx.actions.length > 0 ? Math.round(completedActions / ctx.actions.length * 100) : 0;
   const avgProgress = ctx.actions.length > 0 ? Math.round(ctx.actions.reduce((s, a) => s + (a.avancement || 0), 0) / ctx.actions.length) : 0;
 
-  let report = `# Rapport de Synthese - COSMOS ANGRE\n\n`;
+  let report = `# Rapport de Synthese - ${PROJET_CONFIG.nom}\n\n`;
   report += `**Date:** ${new Date().toLocaleDateString('fr-FR')}\n\n`;
 
   // Score de sante
@@ -1107,7 +1108,7 @@ function generateHonestReport(ctx: ProjectContext): HonestReportData {
 
   return {
     generatedAt: now.toISOString(),
-    projectName: ctx.projectName || 'COSMOS ANGRE',
+    projectName: ctx.projectName || PROJET_CONFIG.nom,
     healthScore,
     healthStatus,
     truthStatement,
@@ -1157,7 +1158,7 @@ function generateReportContentForStudio(ctx: ProjectContext): string {
 // SYSTEM PROMPT AVEC PRINCIPE D'HONNÊTETÉ
 // ============================================================================
 
-export const PROPH3T_HONEST_SYSTEM_PROMPT = `Tu es PROPH3T, l'assistant IA du Cockpit de gestion de projet COSMOS ANGRE.
+export const PROPH3T_HONEST_SYSTEM_PROMPT = `Tu es PROPH3T, l'assistant IA du Cockpit de gestion de projet ${PROJET_CONFIG.nom}.
 
 ## PRINCIPE FONDAMENTAL: L'HONNÊTETÉ ABSOLUE
 

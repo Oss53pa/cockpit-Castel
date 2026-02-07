@@ -1083,7 +1083,7 @@ export function SynchronisationPage() {
                                           <p className="text-sm font-medium text-red-700">Impact en cascade potentiel</p>
                                           <p className="text-xs text-red-600 mt-1">
                                             Cette action technique est en retard. Si la propagation est active,
-                                            l'action mobilisation liée et ses {actionMob?.successeurs?.length || 0} successeur(s) pourraient être impactés.
+                                            l'action mobilisation liée et ses {actionMob?.successeurs?.length || 0} successeur{(actionMob?.successeurs?.length || 0) > 1 ? 's' : ''} pourraient être impactés.
                                           </p>
                                         </div>
                                       </div>
@@ -1135,7 +1135,7 @@ export function SynchronisationPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="error">Retard: {retardJours} jour(s)</Badge>
+                          <Badge variant="error">Retard: {retardJours} jour{retardJours > 1 ? 's' : ''}</Badge>
                           <span className="text-xs text-neutral-500">{action.id_action}</span>
                         </div>
                         <h4 className="font-semibold text-neutral-900">{action.titre}</h4>
@@ -1146,7 +1146,7 @@ export function SynchronisationPage() {
                         {linkedActions.length > 0 && (
                           <div className="mt-3 p-3 bg-orange-50 rounded-lg">
                             <p className="text-sm font-medium text-orange-800 mb-2">
-                              {linkedActions.length} action(s) de mobilisation liée(s) :
+                              {linkedActions.length} action{linkedActions.length > 1 ? 's' : ''} de mobilisation liée{linkedActions.length > 1 ? 's' : ''} :
                             </p>
                             <ul className="space-y-1">
                               {linkedActions.map((a) => (
@@ -1449,7 +1449,7 @@ export function SynchronisationPage() {
                   Action source: {propagationData.action_source_titre}
                 </p>
                 <p className="text-sm text-orange-700 mt-1">
-                  Retard de {propagationData.retard_jours} jour(s)
+                  Retard de {propagationData.retard_jours} jour{propagationData.retard_jours > 1 ? 's' : ''}
                 </p>
               </div>
 
@@ -1466,7 +1466,7 @@ export function SynchronisationPage() {
                         {new Date(action.nouvelle_date_fin).toLocaleDateString('fr-FR')}
                       </span>
                       <span className="text-neutral-400">
-                        (+{action.decalage_jours} jour(s))
+                        (+{action.decalage_jours} jour{action.decalage_jours > 1 ? 's' : ''})
                       </span>
                     </div>
                   </div>
@@ -1668,7 +1668,7 @@ export function SynchronisationPage() {
               ) : (
                 <Zap className="w-4 h-4 mr-2" />
               )}
-              Créer {autoLinkSuggestions.filter((s) => s.score >= autoLinkMinScore).length} lien(s)
+              Créer {autoLinkSuggestions.filter((s) => s.score >= autoLinkMinScore).length} lien{autoLinkSuggestions.filter((s) => s.score >= autoLinkMinScore).length > 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -59,7 +59,7 @@ interface RisqueVigilance {
 }
 
 // ============================================================================
-// DATA - Timeline COSMOS ANGRÉ (Calculée dynamiquement)
+// DATA - Timeline (Calculée dynamiquement)
 // ============================================================================
 
 const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
@@ -716,7 +716,7 @@ export function TimelineSynchronisee() {
             Timeline Synchronisée 2026
           </h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Vue consolidée de la construction et des 5 axes de mobilisation — COSMOS ANGRÉ
+            {`Vue consolidée de la construction et des 5 axes de mobilisation — ${PROJET_CONFIG.nom}`}
           </p>
         </div>
         <div className="flex items-center gap-2">

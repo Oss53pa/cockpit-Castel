@@ -29,6 +29,8 @@ import {
   Target,
   TrendingUp,
   Users,
+  Save,
+  BookOpen,
 } from 'lucide-react';
 import { Card, Button, Badge, Input, Textarea, Select, SelectOption } from '@/components/ui';
 import { ReportPeriodSelector, type ReportPeriod } from '../ReportPeriodSelector';
@@ -44,7 +46,10 @@ import {
 import { useJalons, useActions, useRisques, useCurrentSite, useSites } from '@/hooks';
 import { db } from '@/db';
 import { cn } from '@/lib/utils';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_RISQUES, SEUILS_UI, SEUILS_SANTE_AXE } from '@/data/constants';
+import { useExcoV5Data } from '@/components/rapports/ExcoMensuelV5/hooks/useExcoV5Data';
+import { createExco } from '@/hooks/useExcos';
+import { mapGeneratedReportToExco } from '@/lib/mapReportToExco';
 
 // ============================================================================
 // TYPES LOCAUX
@@ -74,8 +79,11 @@ export function ReportGenerator({
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportOptions>(DEFAULT_EXPORT_OPTIONS);
   const [isExporting, setIsExporting] = useState(false);
+  const [savingToExco, setSavingToExco] = useState(false);
+  const [savedToExco, setSavedToExco] = useState(false);
 
   // Hooks donnees
+  const v5Data = useExcoV5Data();
   const jalons = useJalons();
   const actions = useActions();
   const risques = useRisques();
@@ -94,6 +102,7 @@ export function ReportGenerator({
     if (!period) return;
 
     setIsGenerating(true);
+    setSavedToExco(false);
 
     try {
       // Filtrer les donnees selon la periode
@@ -125,6 +134,7 @@ export function ReportGenerator({
       const tauxRetard = totalActions > 0 ? (actionsEnRetard / totalActions) * 100 : 0;
 
       let meteoGlobale: 'excellent' | 'bon' | 'attention' | 'alerte' | 'critique' = 'excellent';
+      // Note: Ces seuils (30, 20, 10) sont spécifiques au générateur et diffèrent des SEUILS_SANTE_AXE
       if (tauxRetard > 30) meteoGlobale = 'critique';
       else if (tauxRetard > 20) meteoGlobale = 'alerte';
       else if (tauxRetard > 10) meteoGlobale = 'attention';
@@ -169,27 +179,27 @@ export function ReportGenerator({
           ).length,
           risquesActifs: periodRisques.length,
           risquesCritiques: periodRisques.filter(r =>
-            r.criticite === 'critique' || r.score >= 15
+            r.criticite === 'critique' || r.score >= SEUILS_RISQUES.critique // Note: 15 in original code differs from 12 in SEUILS_RISQUES.critique - using 12 for consistency
           ).length,
         },
         piecesJointes: [],
         visible: true,
       });
 
-      // Section Jalons critiques (7 jours)
+      // Section Jalons critiques (7 jours = SEUILS_SANTE_AXE.jalons.enDanger)
       const prochains7Jours = new Date();
-      prochains7Jours.setDate(prochains7Jours.getDate() + 7);
+      prochains7Jours.setDate(prochains7Jours.getDate() + SEUILS_SANTE_AXE.jalons.enDanger);
 
       const jalonsCritiques = jalons
         .filter(j => {
           const date = new Date(j.date_prevue);
           return date >= today && date <= prochains7Jours;
         })
-        .slice(0, 5);
+        .slice(0, SEUILS_UI.topJalons);
 
       sections.push({
         id: 'jalons',
-        titre: 'Jalons Critiques (7 jours)',
+        titre: `Jalons Critiques (${SEUILS_SANTE_AXE.jalons.enDanger} jours)`,
         ordre: 3,
         type: 'jalons',
         donnees: jalonsCritiques.map(j => ({
@@ -207,7 +217,7 @@ export function ReportGenerator({
       // Section Actions en retard/bloquees
       const actionsBloquees = periodActions
         .filter(a => a.status === 'bloque' || a.status === 'BLOQUE')
-        .slice(0, 5);
+        .slice(0, SEUILS_UI.topActions);
 
       sections.push({
         id: 'actions_bloquees',
@@ -228,7 +238,7 @@ export function ReportGenerator({
       // Section Alertes
       const alertes = await db.alertes
         .filter(a => !a.traitee)
-        .limit(5)
+        .limit(SEUILS_UI.topJalons)
         .toArray();
 
       sections.push({
@@ -247,11 +257,11 @@ export function ReportGenerator({
         visible: true,
       });
 
-      // Section Risques (pour rapport mensuel et deep dive)
+      // Section Risques (pour rapport mensuel et EXCO)
       if (reportType !== 'flash_hebdo') {
         const top5Risques = periodRisques
           .sort((a, b) => (b.score || 0) - (a.score || 0))
-          .slice(0, 5);
+          .slice(0, SEUILS_UI.topRisques);
 
         sections.push({
           id: 'risques',
@@ -272,8 +282,8 @@ export function ReportGenerator({
         });
       }
 
-      // Section Budget (pour rapport mensuel et deep dive)
-      if (reportType === 'rapport_mensuel' || reportType === 'deep_dive') {
+      // Section Budget (pour rapport mensuel et EXCO)
+      if (reportType === 'rapport_mensuel' || reportType === 'exco') {
         const budget = await db.budget.toArray();
         const budgetTotal = budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
         const budgetConsomme = budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0);
@@ -496,7 +506,7 @@ export function ReportGenerator({
                 <div className="flex items-center gap-2 mb-2">
                   {type === 'flash_hebdo' && <Zap className="h-5 w-5 text-amber-500" />}
                   {type === 'rapport_mensuel' && <FileText className="h-5 w-5 text-blue-500" />}
-                  {type === 'deep_dive' && <Target className="h-5 w-5 text-purple-500" />}
+                  {type === 'exco' && <Target className="h-5 w-5 text-purple-500" />}
                   {type === 'rapport_sync' && <TrendingUp className="h-5 w-5 text-green-500" />}
                   <span className="font-semibold text-primary-900">{config.label}</span>
                 </div>
@@ -765,6 +775,52 @@ export function ReportGenerator({
               </div>
             )}
           </Card>
+
+          {/* Save to EXCO & Journal (exco type only) */}
+          {reportType === 'exco' && (
+            <Card padding="md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-primary-900">Archiver dans le Journal EXCO</h3>
+                    <p className="text-xs text-primary-500">
+                      Sauvegarde un snapshot des données actuelles dans le Journal pour consultation ultérieure
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant={savedToExco ? 'secondary' : 'primary'}
+                  disabled={savingToExco || savedToExco}
+                  onClick={async () => {
+                    if (!generatedReport) return;
+                    setSavingToExco(true);
+                    try {
+                      const siteName = currentSite?.nom || PROJET_CONFIG.nom;
+                      const excoRecord = mapGeneratedReportToExco(generatedReport, v5Data, siteName);
+                      await createExco(excoRecord);
+                      setSavedToExco(true);
+                    } catch (err) {
+                      console.error('Erreur sauvegarde EXCO:', err);
+                      alert('Erreur lors de la sauvegarde');
+                    } finally {
+                      setSavingToExco(false);
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  {savingToExco ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : savedToExco ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  {savingToExco ? 'Sauvegarde...' : savedToExco ? 'Sauvegardé !' : 'Sauvegarder en EXCO & Journal'}
+                </Button>
+              </div>
+            </Card>
+          )}
         </>
       )}
     </div>
@@ -821,7 +877,7 @@ function SectionContent({ section }: { section: ReportSection }) {
     case 'jalons':
       const jalonsData = data as { id: number; titre: string; date: string; responsable: string; statut: string }[];
       if (!Array.isArray(jalonsData) || jalonsData.length === 0) {
-        return <p className="text-sm text-gray-500 italic">Aucun jalon critique dans les 7 prochains jours</p>;
+        return <p className="text-sm text-gray-500 italic">Aucun jalon critique dans les {SEUILS_SANTE_AXE.jalons.enDanger} prochains jours</p>;
       }
       return (
         <div className="space-y-2">
@@ -901,7 +957,7 @@ function SectionContent({ section }: { section: ReportSection }) {
                 <p className="font-medium">{risque.titre}</p>
                 <p className="text-xs text-gray-500">{risque.mitigation || 'Aucune mitigation definie'}</p>
               </div>
-              <Badge variant={risque.score >= 15 ? 'danger' : 'warning'}>
+              <Badge variant={risque.score >= SEUILS_RISQUES.critique ? 'danger' : 'warning'}>
                 Score: {risque.score}
               </Badge>
             </div>

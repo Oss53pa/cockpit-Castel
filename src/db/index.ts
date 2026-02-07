@@ -31,7 +31,8 @@ import type {
   ChartTemplate,
   TableTemplate,
 } from '@/types/reportStudio';
-import type { DeepDive } from '@/types/deepDive';
+import type { Exco } from '@/types/exco';
+import { PROJET_CONFIG } from '@/data/constants';
 import type {
   SyncCategory,
   SyncItem,
@@ -188,8 +189,8 @@ class CockpitDatabase extends Dexie {
   iaIntegrations!: EntityTable<IAIntegration, 'id'>;
   iaFiles!: EntityTable<IAFile, 'id'>;
 
-  // DeepDive / Journal tables
-  deepDives!: EntityTable<DeepDive, 'id'>;
+  // Exco / Journal tables
+  excos!: EntityTable<Exco, 'id'>;
 
   // Synchronisation Projet vs Mobilisation tables
   syncCategories!: EntityTable<SyncCategory, 'id'>;
@@ -356,7 +357,7 @@ class CockpitDatabase extends Dexie {
       iaFiles: '++id, importId, filename, mimeType, createdAt',
     });
 
-    // Version 7: Add DeepDive / Journal table
+    // Version 7: Add Exco / Journal table
     this.version(7).stores({
       project: '++id, name',
       users: '++id, nom, email, role',
@@ -386,8 +387,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
     });
 
     // Version 8: Add Synchronisation Projet vs Mobilisation tables
@@ -420,8 +421,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       // Synchronisation Projet vs Mobilisation tables
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
@@ -460,8 +461,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       // Synchronisation Projet vs Mobilisation tables
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
@@ -502,8 +503,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       // Synchronisation Projet vs Mobilisation tables
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
@@ -547,8 +548,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       // Synchronisation Projet vs Mobilisation tables
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
@@ -597,8 +598,8 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      // DeepDive / Journal table
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      // Exco / Journal table
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       // Synchronisation Projet vs Mobilisation tables
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
@@ -620,10 +621,10 @@ class CockpitDatabase extends Dexie {
       // Create default site
       const defaultSiteId = await sites.add({
         code: 'COSMOS',
-        nom: 'COSMOS ANGRE',
+        nom: PROJET_CONFIG.nom,
         description: 'Centre commercial Cosmos Angré - Abidjan',
         localisation: 'Abidjan, Côte d\'Ivoire',
-        dateOuverture: '2026-11-01',
+        dateOuverture: PROJET_CONFIG.jalonsClés.softOpening,
         dateInauguration: '2027-03-01',
         surface: 16184,
         nombreBatiments: 6,
@@ -635,7 +636,7 @@ class CockpitDatabase extends Dexie {
       });
 
       // Assign siteId to all existing records
-      const tables = ['actions', 'jalons', 'risques', 'budget', 'alertes', 'reports', 'deepDives'];
+      const tables = ['actions', 'jalons', 'risques', 'budget', 'alertes', 'reports', 'excos'];
       for (const tableName of tables) {
         const table = tx.table(tableName);
         const records = await table.toArray();
@@ -674,7 +675,7 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
       syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
@@ -800,7 +801,7 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
       syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
@@ -844,7 +845,7 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
       syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
@@ -898,7 +899,7 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
       syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
@@ -944,7 +945,7 @@ class CockpitDatabase extends Dexie {
       iaExtractions: '++id, importId, field, correctedAt',
       iaIntegrations: '++id, importId, targetModule, targetTable, recordId, integratedAt',
       iaFiles: '++id, importId, filename, mimeType, createdAt',
-      deepDives: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
+      excos: '++id, siteId, titre, projectName, status, createdAt, updatedAt, createdBy, presentedAt',
       syncCategories: 'id, code, dimension, displayOrder',
       syncItems: '++id, projectId, categoryId, code, status, [projectId+categoryId]',
       syncSnapshots: '++id, projectId, snapshotDate, syncStatus',
@@ -1023,8 +1024,8 @@ export async function exportDatabase(): Promise<string> {
     iaImports: await db.iaImports.toArray(),
     iaExtractions: await db.iaExtractions.toArray(),
     iaIntegrations: await db.iaIntegrations.toArray(),
-    // DeepDive / Journal data
-    deepDives: await db.deepDives.toArray(),
+    // Exco / Journal data
+    excos: await db.excos.toArray(),
     // Synchronisation Projet vs Mobilisation data
     syncCategories: await db.syncCategories.toArray(),
     syncItems: await db.syncItems.toArray(),
@@ -1083,8 +1084,8 @@ export async function importDatabase(jsonData: string): Promise<void> {
     if (data.iaExtractions?.length) await db.iaExtractions.bulkAdd(data.iaExtractions);
     if (data.iaIntegrations?.length) await db.iaIntegrations.bulkAdd(data.iaIntegrations);
 
-    // Import DeepDive / Journal data
-    if (data.deepDives?.length) await db.deepDives.bulkAdd(data.deepDives);
+    // Import Exco / Journal data
+    if (data.excos?.length) await db.excos.bulkAdd(data.excos);
 
     // Import Synchronisation Projet vs Mobilisation data
     if (data.syncCategories?.length) await db.syncCategories.bulkAdd(data.syncCategories);

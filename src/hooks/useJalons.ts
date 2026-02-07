@@ -13,6 +13,7 @@ import {
 import { autoUpdateJalonStatus } from '@/services/autoCalculationService';
 import { trackChange } from './useHistorique';
 import { useAppStore } from '@/stores/appStore';
+import { SEUILS_SANTE_AXE } from '@/data/constants';
 
 // Champs à tracker pour l'historique des modifications
 const TRACKED_JALON_FIELDS: (keyof Jalon)[] = [
@@ -152,12 +153,16 @@ export async function updateJalonWithPropagation(
 }
 
 export async function deleteJalon(id: number): Promise<void> {
-  // Also unlink actions
-  const actions = await db.actions.where('jalonId').equals(id).toArray();
-  for (const action of actions) {
-    await db.actions.update(action.id!, { jalonId: undefined });
-  }
-  await db.jalons.delete(id);
+  await db.transaction('rw', [db.jalons, db.actions, db.alertes], async () => {
+    // Unlink actions
+    const actions = await db.actions.where('jalonId').equals(id).toArray();
+    for (const action of actions) {
+      await db.actions.update(action.id!, { jalonId: undefined });
+    }
+    // Cascade: supprimer alertes liées au jalon
+    await db.alertes.filter(a => a.entiteType === 'jalon' && a.entiteId === id).delete();
+    await db.jalons.delete(id);
+  });
 }
 
 export function calculateJalonStatus(
@@ -180,13 +185,13 @@ export function calculateJalonStatus(
     return 'depasse';
   }
 
-  // At risk: less than 15 days and progress < 80%
-  if (daysUntil < 15 && avgAvancement < 80) {
+  // At risk: less than enDanger days and progress < 80%
+  if (daysUntil < SEUILS_SANTE_AXE.jalons.enDanger && avgAvancement < 80) {
     return 'en_danger';
   }
 
-  // Approaching: less than 30 days
-  if (daysUntil < 30) {
+  // Approaching: less than enApproche days
+  if (daysUntil < SEUILS_SANTE_AXE.jalons.enApproche) {
     return 'en_approche';
   }
 
@@ -271,10 +276,10 @@ function getPhaseFromDate(dateStr: string): ProjectPhase {
   const m = d.getMonth();
 
   if (y < 2026) return 'phase1_preparation';
-  if (y === 2026 && m <= 2) return 'phase1_preparation';
-  if (y === 2026 && m <= 8) return 'phase2_mobilisation';
-  if (y === 2026) return 'phase3_lancement';
-  return 'phase4_stabilisation';
+  if (y === 2026 && m <= 2) return 'phase1_preparation';     // Jan-Mar
+  if (y === 2026 && m <= 8) return 'phase2_mobilisation';    // Apr-Sep
+  if (y === 2026 && m <= 10) return 'phase3_lancement';      // Oct-Nov
+  return 'phase4_stabilisation';                              // Dec 2026 + 2027+
 }
 
 /**

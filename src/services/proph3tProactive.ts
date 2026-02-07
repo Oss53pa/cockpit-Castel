@@ -523,7 +523,17 @@ function analyzeVelocity(
 
       // Prédiction: combien de jours pour atteindre 100%?
       const remainingProgress = 100 - avancement;
-      const predictedDaysToComplete = velocity > 0 ? Math.ceil(remainingProgress / velocity) : Infinity;
+      // P2 AUDIT: Protection velocity=0 → fallback au nombre de jours restants × 2 (estimation pessimiste)
+      let predictedDaysToComplete: number;
+      if (velocity > 0) {
+        predictedDaysToComplete = Math.ceil(remainingProgress / velocity);
+      } else if (daysRemaining > 0) {
+        // Fallback: si pas de progression, estimer 2x le temps restant (pessimiste)
+        predictedDaysToComplete = daysRemaining * 2;
+      } else {
+        // Échéance passée sans progression = critique
+        predictedDaysToComplete = Math.max(30, totalDuration); // Au moins 30 jours ou la durée totale
+      }
       const predictedEndDate = new Date(now.getTime() + predictedDaysToComplete * 24 * 60 * 60 * 1000);
 
       // Écart prédit vs échéance

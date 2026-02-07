@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { AvancementAxe, MeteoProjet, Axe } from '@/types';
+import { PROJET_CONFIG, SEUILS_SYNC_REPORT, AXES_CONFIG_FULL, SEUILS_METEO_DASHBOARD, SEUILS_METEO_AXE_DASHBOARD } from '@/data/constants';
 
 // ============================================================================
 // TYPES POUR TENDANCES
@@ -38,17 +39,37 @@ export function useDashboardKPIs() {
 
     const projectData = project[0];
     const siteData = sites[0];
-    const budgetTotal = budget.reduce((sum, b) => sum + b.montantPrevu, 0);
-    const budgetConsomme = budget.reduce((sum, b) => sum + b.montantRealise, 0);
 
-    // Taux d'occupation = avancement de l'action de suivi du taux d'occupation
-    // Cherche par ID exact ou par titre contenant "taux" et "occupation"
+    // Exclure les parents qui ont des enfants pour éviter le double-comptage
+    const parentIdsWithChildren = new Set<number>();
+    budget.forEach(b => { if (b.parentId) parentIdsWithChildren.add(b.parentId); });
+    const leafBudget = budget.filter(b => !(b.id && parentIdsWithChildren.has(b.id)));
+    const budgetTotal = leafBudget.reduce((sum, b) => sum + b.montantPrevu, 0);
+    const budgetConsomme = leafBudget.reduce((sum, b) => sum + b.montantRealise, 0);
+
+    // Taux d'occupation = avancement des actions commerciales liées à l'occupation
+    // Cherche par ID exact, puis par titre, puis moyenne axe commercial
     const actionOccupation = actions.find((a) =>
       a.id_action === 'A-COM-J8.6' ||
       a.id_action === 'A-COM-8.6' ||
       (a.titre?.toLowerCase().includes('taux') && a.titre?.toLowerCase().includes('occupation'))
     );
-    const tauxOccupation = actionOccupation?.avancement ?? 0;
+    let tauxOccupation: number;
+    if (actionOccupation) {
+      tauxOccupation = actionOccupation.avancement ?? 0;
+    } else {
+      // Fallback: moyenne d'avancement des actions commerciales de leasing/occupation
+      const actionsLeasing = actions.filter((a) =>
+        a.axe === 'axe2_commercial' &&
+        (a.titre?.toLowerCase().includes('bail') ||
+         a.titre?.toLowerCase().includes('locataire') ||
+         a.titre?.toLowerCase().includes('leasing') ||
+         a.titre?.toLowerCase().includes('occupation'))
+      );
+      tauxOccupation = actionsLeasing.length > 0
+        ? actionsLeasing.reduce((sum, a) => sum + a.avancement, 0) / actionsLeasing.length
+        : 0;
+    }
 
     const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
     const actionsTerminees = actions.filter((a) => a.statut === 'termine').length;
@@ -67,7 +88,7 @@ export function useDashboardKPIs() {
       projectName,
       totalActions: actions.length,
       totalJalons: jalons.length,
-      totalRisques: risques.filter(r => r.status !== 'closed').length,
+      totalRisques: risques.filter(r => r.status !== 'closed' && r.status !== 'ferme').length,
     };
   }) ?? {
     tauxOccupation: 0,
@@ -91,23 +112,11 @@ export function useAvancementParAxe(): AvancementAxe[] {
       db.sites.filter(s => !!s.actif).toArray(),
     ]);
 
-    // Get project dates from site configuration
-    const site = sites[0];
-    const dateOuverture = site?.dateOuverture || '2026-11-15';
-    // Estimate project start as 2.5 years before opening
-    const projectEnd = new Date(dateOuverture);
-    projectEnd.setMonth(projectEnd.getMonth() + 1); // Buffer of 1 month after soft opening
-    const projectStart = new Date(projectEnd);
-    projectStart.setFullYear(projectStart.getFullYear() - 3); // 3 years project duration
+    // Dates du projet depuis la configuration centralisée
+    const projectStart = new Date(PROJET_CONFIG.dateDebut);
+    const projectEnd = new Date(PROJET_CONFIG.dateFin);
 
-    const axes: Axe[] = [
-      'axe1_rh',
-      'axe2_commercial',
-      'axe3_technique',
-      'axe4_budget',
-      'axe5_marketing',
-      'axe6_exploitation',
-    ];
+    const axes: Axe[] = Object.values(AXES_CONFIG_FULL).map(a => a.code) as Axe[];
 
     return axes.map((axe) => {
       const axeActions = actions.filter((a) => a.axe === axe);
@@ -126,7 +135,9 @@ export function useAvancementParAxe(): AvancementAxe[] {
         (projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
       const elapsedDays =
         (today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
-      const expectedProgress = Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100));
+      const expectedProgress = totalDays > 0
+        ? Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100))
+        : (today >= projectEnd ? 100 : 0);
 
       let tendance: 'up' | 'down' | 'stable' = 'stable';
       if (avancement > expectedProgress + 5) tendance = 'up';
@@ -146,33 +157,101 @@ export function useAvancementParAxe(): AvancementAxe[] {
   return data ?? [];
 }
 
+/**
+ * Calcule la météo d'un axe basée sur l'écart entre avancement réel et prévu
+ * Seuils unifiés : soleil >= -5%, nuageux >= -15%, orageux < -15%
+ */
+function calculateAxeMeteo(avancement: number, prevu: number): 'SOLEIL' | 'NUAGEUX' | 'ORAGEUX' {
+  const ecart = avancement - prevu;
+  if (ecart >= SEUILS_METEO_AXE_DASHBOARD.soleil) return 'SOLEIL';  // >= -5%
+  if (ecart >= SEUILS_METEO_AXE_DASHBOARD.nuageux) return 'NUAGEUX'; // >= -15%
+  return 'ORAGEUX'; // < -15%
+}
+
+/**
+ * Météo Projet dérivée des météos par axe + surcharge alertes critiques
+ *
+ * Règle de dérivation :
+ * - Si >= 50% des axes sont ORAGEUX → Global = ROUGE
+ * - Si >= 1 axe ORAGEUX ou >= 50% NUAGEUX → Global = ORANGE
+ * - Sinon → Global = VERT
+ *
+ * Surcharge alertes : si alertes critiques >= seuil → ROUGE forcé
+ */
 export function useMeteoProjet(): MeteoProjet {
   const data = useLiveQuery(async () => {
-    const alertes = await db.alertes.toArray();
-    const alertesNonTraitees = alertes.filter((a) => !a.traitee);
+    const [alertes, actions, sites] = await Promise.all([
+      db.alertes.toArray(),
+      db.actions.toArray(),
+      db.sites.filter(s => !!s.actif).toArray(),
+    ]);
 
-    const alertesCritiques = alertesNonTraitees.filter(
-      (a) => a.criticite === 'critical'
-    ).length;
-    const alertesHautes = alertesNonTraitees.filter(
-      (a) => a.criticite === 'high'
-    ).length;
+    // === 1. Calculer la météo par axe ===
+    const projectStart = new Date(PROJET_CONFIG.dateDebut);
+    const projectEnd = new Date(PROJET_CONFIG.dateFin);
+    const today = new Date();
+    const totalDays = (projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
+    const elapsedDays = (today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
+    const expectedProgress = totalDays > 0
+      ? Math.max(0, Math.min(100, (elapsedDays / totalDays) * 100))
+      : (today >= projectEnd ? 100 : 0);
+
+    const axes: Axe[] = Object.values(AXES_CONFIG_FULL).map(a => a.code) as Axe[];
+    const axeMeteos: Array<'SOLEIL' | 'NUAGEUX' | 'ORAGEUX'> = [];
+
+    for (const axe of axes) {
+      const axeActions = actions.filter((a) => a.axe === axe);
+      if (axeActions.length === 0) {
+        // Axe sans actions = NUAGEUX par défaut (pas de données)
+        axeMeteos.push('NUAGEUX');
+        continue;
+      }
+      const avancement = axeActions.reduce((sum, a) => sum + a.avancement, 0) / axeActions.length;
+      axeMeteos.push(calculateAxeMeteo(avancement, expectedProgress));
+    }
+
+    // === 2. Dériver la météo globale des axes ===
+    const totalAxes = axeMeteos.length;
+    const orageuxCount = axeMeteos.filter(m => m === 'ORAGEUX').length;
+    const nuageuxCount = axeMeteos.filter(m => m === 'NUAGEUX').length;
+
+    let meteoFromAxes: MeteoProjet;
+    if (orageuxCount >= totalAxes * 0.5) {
+      // >= 50% des axes sont ORAGEUX → ROUGE
+      meteoFromAxes = 'rouge';
+    } else if (orageuxCount >= 1 || nuageuxCount >= totalAxes * 0.5) {
+      // >= 1 axe ORAGEUX ou >= 50% NUAGEUX → ORANGE (utilisé comme 'jaune')
+      meteoFromAxes = 'jaune';
+    } else {
+      meteoFromAxes = 'vert';
+    }
+
+    // === 3. Surcharge par les alertes critiques ===
+    const alertesNonTraitees = alertes.filter((a) => !a.traitee);
+    const alertesCritiques = alertesNonTraitees.filter((a) => a.criticite === 'critical').length;
+    const alertesHautes = alertesNonTraitees.filter((a) => a.criticite === 'high').length;
 
     // Check for late actions
-    const today = new Date().toISOString().split('T')[0];
-    const actions = await db.actions.toArray();
+    const todayStr = today.toISOString().split('T')[0];
     const actionsEnRetard = actions.filter(
-      (a) => a.statut !== 'termine' && a.date_fin_prevue < today
+      (a) => a.statut !== 'termine' && a.date_fin_prevue < todayStr
     ).length;
 
-    // Calculate meteo
-    if (alertesCritiques >= 3 || actionsEnRetard >= 5) {
+    // Si alertes critiques dépassent le seuil → forcer ROUGE
+    if (alertesCritiques >= SEUILS_METEO_DASHBOARD.rouge.alertesCritiques ||
+        actionsEnRetard >= SEUILS_METEO_DASHBOARD.rouge.actionsEnRetard) {
       return 'rouge' as MeteoProjet;
     }
-    if (alertesCritiques >= 1 || alertesHautes >= 3 || actionsEnRetard >= 2) {
+
+    // Si alertes élevées dépassent le seuil → forcer au moins JAUNE
+    if (meteoFromAxes === 'vert' && (
+        alertesCritiques >= SEUILS_METEO_DASHBOARD.jaune.alertesCritiques ||
+        alertesHautes >= SEUILS_METEO_DASHBOARD.jaune.alertesHautes ||
+        actionsEnRetard >= SEUILS_METEO_DASHBOARD.jaune.actionsEnRetard)) {
       return 'jaune' as MeteoProjet;
     }
-    return 'vert' as MeteoProjet;
+
+    return meteoFromAxes;
   });
 
   return data ?? 'vert';
@@ -183,8 +262,28 @@ export function useAvancementGlobal(): number {
     const actions = await db.actions.toArray();
     if (actions.length === 0) return 0;
 
-    const totalAvancement = actions.reduce((sum, a) => sum + a.avancement, 0);
-    return totalAvancement / actions.length;
+    // Avancement pondéré par le poids de chaque axe (AXES_CONFIG_FULL)
+    const axeWeightMap: Record<string, number> = {};
+    Object.values(AXES_CONFIG_FULL).forEach(a => { axeWeightMap[a.code] = a.poids; });
+
+    // Calculer l'avancement moyen par axe
+    const axeAvancements: { axe: string; avancement: number; poids: number }[] = [];
+    const axes = [...new Set(actions.map(a => a.axe))];
+
+    for (const axe of axes) {
+      const axeActions = actions.filter(a => a.axe === axe);
+      const avg = axeActions.reduce((sum, a) => sum + a.avancement, 0) / axeActions.length;
+      const poids = axeWeightMap[axe] ?? 0;
+      axeAvancements.push({ axe, avancement: avg, poids });
+    }
+
+    const totalPoids = axeAvancements.reduce((sum, a) => sum + a.poids, 0);
+    if (totalPoids === 0) {
+      // Fallback: moyenne simple si aucun poids configuré
+      return actions.reduce((sum, a) => sum + a.avancement, 0) / actions.length;
+    }
+
+    return axeAvancements.reduce((sum, a) => sum + a.avancement * (a.poids / totalPoids), 0);
   });
 
   return data ?? 0;
@@ -211,54 +310,57 @@ export function useActionsStats() {
 }
 
 /**
- * Hook pour comparer l'avancement entre AXE 2 (Commercial) et AXE 3 (Technique)
+ * Hook pour comparer l'avancement entre Construction (AXE 7) et Mobilisation (5 axes)
+ * Construction = axe7_construction (anciennement axe3_technique)
+ * Mobilisation = axe1_rh, axe2_commercial, axe4_budget, axe5_marketing, axe6_exploitation
  */
 export function useComparaisonAxes() {
   return useLiveQuery(async () => {
     const actions = await db.actions.toArray();
 
-    // AXE 2 - Commercial (Mobilisation)
-    const actionsCommercial = actions.filter((a) => a.axe === 'axe2_commercial');
-    const avancementCommercial =
-      actionsCommercial.length > 0
-        ? actionsCommercial.reduce((sum, a) => sum + a.avancement, 0) / actionsCommercial.length
+    // Construction (AXE 7)
+    const actionsConstruction = actions.filter((a) => a.axe === 'axe7_construction');
+    const avancementConstruction =
+      actionsConstruction.length > 0
+        ? actionsConstruction.reduce((sum, a) => sum + a.avancement, 0) / actionsConstruction.length
         : 0;
-    const actionsCommercialTerminees = actionsCommercial.filter(
+    const actionsConstructionTerminees = actionsConstruction.filter(
       (a) => a.statut === 'termine'
     ).length;
 
-    // AXE 3 - Technique (Chantier)
-    const actionsTechnique = actions.filter((a) => a.axe === 'axe3_technique');
-    const avancementTechnique =
-      actionsTechnique.length > 0
-        ? actionsTechnique.reduce((sum, a) => sum + a.avancement, 0) / actionsTechnique.length
+    // Mobilisation (5 axes hors construction, technique et divers)
+    const axesMobilisation: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+    const actionsMobilisation = actions.filter((a) => axesMobilisation.includes(a.axe));
+    const avancementMobilisation =
+      actionsMobilisation.length > 0
+        ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
         : 0;
-    const actionsTechniqueTerminees = actionsTechnique.filter(
+    const actionsMobilisationTerminees = actionsMobilisation.filter(
       (a) => a.statut === 'termine'
     ).length;
 
-    // Calcul de l'écart
-    const ecart = avancementCommercial - avancementTechnique;
+    // Calcul de l'écart (mobilisation - construction)
+    const ecart = avancementMobilisation - avancementConstruction;
 
     return {
       commercial: {
-        label: 'AXE 2 - Commercial',
-        avancement: Math.round(avancementCommercial * 10) / 10,
-        actionsTotal: actionsCommercial.length,
-        actionsTerminees: actionsCommercialTerminees,
+        label: 'Mobilisation (5 axes)',
+        avancement: Math.round(avancementMobilisation * 10) / 10,
+        actionsTotal: actionsMobilisation.length,
+        actionsTerminees: actionsMobilisationTerminees,
       },
       technique: {
-        label: 'AXE 3 - Technique',
-        avancement: Math.round(avancementTechnique * 10) / 10,
-        actionsTotal: actionsTechnique.length,
-        actionsTerminees: actionsTechniqueTerminees,
+        label: 'AXE 7 - Construction',
+        avancement: Math.round(avancementConstruction * 10) / 10,
+        actionsTotal: actionsConstruction.length,
+        actionsTerminees: actionsConstructionTerminees,
       },
       ecart: Math.round(ecart * 10) / 10,
-      estSynchronise: Math.abs(ecart) <= 10,
+      estSynchronise: Math.abs(ecart) <= SEUILS_SYNC_REPORT.synchronise,
     };
   }) ?? {
-    commercial: { label: 'AXE 2 - Commercial', avancement: 0, actionsTotal: 0, actionsTerminees: 0 },
-    technique: { label: 'AXE 3 - Technique', avancement: 0, actionsTotal: 0, actionsTerminees: 0 },
+    commercial: { label: 'Mobilisation (5 axes)', avancement: 0, actionsTotal: 0, actionsTerminees: 0 },
+    technique: { label: 'AXE 7 - Construction', avancement: 0, actionsTotal: 0, actionsTerminees: 0 },
     ecart: 0,
     estSynchronise: true,
   };
@@ -331,7 +433,7 @@ export function useCOPILTrends(siteId: number = 1): COPILTrends | null {
       const budgetRealise = budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
       const currentBudgetRatio = budgetPrevu > 0 ? (budgetRealise / budgetPrevu) * 100 : 0;
 
-      const currentRisquesCritiques = risques.filter(r => r.score >= 12 && r.status !== 'closed').length;
+      const currentRisquesCritiques = risques.filter(r => (r.score ?? 0) >= 12 && r.status !== 'closed' && r.status !== 'ferme').length;
 
       const currentJalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
       const currentJalonsRatio = jalons.length > 0 ? (currentJalonsAtteints / jalons.length) * 100 : 0;

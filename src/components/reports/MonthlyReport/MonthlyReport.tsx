@@ -28,7 +28,7 @@ import {
   useBudgetSynthese,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
-import { AXES_CONFIG_FULL } from '@/data/constants';
+import { AXES_CONFIG_FULL, SEUILS_RISQUES, SEUILS_SYNC_REPORT, SEUILS_UI } from '@/data/constants';
 
 const axesList = Object.values(AXES_CONFIG_FULL);
 
@@ -143,7 +143,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
     const jalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
     const risquesCritiques = risques.filter(r => {
       const score = r.score || (r.probabilite || 0) * (r.impact || 0);
-      return score >= 12 && r.status !== 'ferme';
+      return score >= SEUILS_RISQUES.critique && r.status !== 'ferme';
     }).length;
     const avancement = actions.length > 0
       ? Math.round(actions.reduce((sum, a) => sum + (a.avancement || 0), 0) / actions.length)
@@ -170,7 +170,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         const scoreB = b.score || (b.probabilite || 0) * (b.impact || 0);
         return scoreB - scoreA;
       })
-      .slice(0, 5);
+      .slice(0, SEUILS_UI.topRisques);
   }, [risques]);
 
   // Actions prioritaires M+1
@@ -211,11 +211,207 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
 
   const trendVariation = trends?.avancementProjet?.variation || 0;
 
-  // Budget
+  // Budget formatter (used by both PDF export and render)
   const formatBudget = (amount: number) => {
     if (amount >= 1e9) return `${(amount / 1e9).toFixed(1)} Mds`;
     if (amount >= 1e6) return `${(amount / 1e6).toFixed(0)} M`;
     return amount.toLocaleString('fr-FR');
+  };
+
+  // ---- Export PDF (plain function — no useCallback to avoid stale closures) ----
+  const handleExportPdf = async () => {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+      const doc = new jsPDF();
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const navy = [30, 41, 59];
+      const gray = [100, 116, 139];
+      const dark = [15, 23, 42];
+      const getY = () => (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+      const sectionTitle = (title: string, y: number) => {
+        if (y > 245) { doc.addPage(); y = 20; }
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...dark);
+        doc.text(title, 14, y);
+        return y + 6;
+      };
+
+      const tableOpts = {
+        theme: 'grid' as const,
+        headStyles: { fillColor: navy, fontStyle: 'bold' as const, fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      };
+
+      // =============================================
+      // HEADER (bandeau bleu)
+      // =============================================
+      doc.setFillColor(...navy);
+      doc.rect(0, 0, pageW, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Rapport Mensuel', 14, 14);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`COPIL — ${currentMonth}`, 14, 22);
+      doc.setFontSize(9);
+      doc.text(todayStr, pageW - 14, 14, { align: 'right' });
+
+      // =============================================
+      // 1. INDICATEURS CLÉS  (mêmes 5 KPIs que les cards)
+      // =============================================
+      let y = sectionTitle('Indicateurs clés', 36);
+      autoTable(doc, {
+        startY: y,
+        head: [['Indicateur', 'Valeur', 'Détail']],
+        body: [
+          ['Avancement', `${metrics.avancement}%`, trendVariation !== 0 ? `${trendVariation > 0 ? '+' : ''}${trendVariation.toFixed(1)}%` : '—'],
+          ['Actions', `${metrics.actionsTerminees}`, `sur ${metrics.total} (${metrics.total > 0 ? Math.round((metrics.actionsTerminees / metrics.total) * 100) : 0}%)`],
+          ['Jalons', `${metrics.jalonsAtteints}`, `sur ${metrics.jalonsTotal} (${metrics.jalonsTotal > 0 ? Math.round((metrics.jalonsAtteints / metrics.jalonsTotal) * 100) : 0}%)`],
+          ['Occupation', `${metrics.occupation}%`, ''],
+          ['Budget', `${metrics.budgetConsomme}%`, ''],
+        ],
+        ...tableOpts,
+      });
+
+      // =============================================
+      // 2. SYNCHRONISATION PROJET / MOBILISATION
+      // =============================================
+      y = sectionTitle('Synchronisation Projet / Mobilisation', getY() + 10);
+      const syncLabel = Math.abs(syncGap) <= SEUILS_SYNC_REPORT.synchronise ? 'Synchronisé' : Math.abs(syncGap) <= SEUILS_SYNC_REPORT.attention ? 'Attention' : 'Écart critique';
+      autoTable(doc, {
+        startY: y,
+        head: [['Construction', 'Mobilisation', 'Écart', 'Statut']],
+        body: [[
+          `${Math.round(projectProgress)}%`,
+          `${Math.round(mobilizationProgress)}%`,
+          `${syncGap > 0 ? '+' : ''}${Math.round(syncGap)}%  (~${Math.abs(Math.round(syncGap * SEUILS_SYNC_REPORT.joursConversion))} jours)`,
+          syncLabel,
+        ]],
+        ...tableOpts,
+      });
+
+      // =============================================
+      // 3. POINTS D'ATTENTION
+      // =============================================
+      y = sectionTitle('Points d\'attention', getY() + 10);
+      autoTable(doc, {
+        startY: y,
+        head: [['Indicateur', 'Valeur']],
+        body: [
+          ['Actions en retard', String(metrics.actionsEnRetard)],
+          ['Risques critiques', String(metrics.risquesCritiques)],
+          ['Budget consommé', `${metrics.budgetConsomme}%`],
+        ],
+        ...tableOpts,
+      });
+
+      // =============================================
+      // 4. AVANCEMENT PAR AXE STRATÉGIQUE
+      // =============================================
+      y = sectionTitle('Avancement par axe stratégique', getY() + 10);
+      autoTable(doc, {
+        startY: y,
+        head: [['Axe', 'Avancement', 'Actions terminées']],
+        body: axeStats.map(item => [
+          item.axe.labelCourt || item.axe.label,
+          `${item.pct}%`,
+          `${item.termine}/${item.total}`,
+        ]),
+        ...tableOpts,
+      });
+
+      // =============================================
+      // 5. RISQUES MAJEURS
+      // =============================================
+      if (topRisques.length > 0) {
+        y = sectionTitle(`Risques majeurs (${metrics.risquesTotal} actifs)`, getY() + 10);
+        autoTable(doc, {
+          startY: y,
+          head: [['Risque', 'Axe', 'P × I', 'Score']],
+          body: topRisques.map(r => {
+            const score = r.score || (r.probabilite || 0) * (r.impact || 0);
+            const axe = axesList.find(a => a.code === r.axe);
+            return [r.titre, axe?.labelCourt || '', `P${r.probabilite} × I${r.impact}`, String(score)];
+          }),
+          ...tableOpts,
+          columnStyles: { 0: { cellWidth: 80 } },
+        });
+      }
+
+      // =============================================
+      // 6. PLAN D'ACTION M+1
+      // =============================================
+      if (actionsPrioritaires.length > 0) {
+        y = sectionTitle(`Plan d'action M+1 (${actionsPrioritaires.length} prioritaires)`, getY() + 10);
+        autoTable(doc, {
+          startY: y,
+          head: [['Action', 'Axe', 'Priorité', 'Échéance']],
+          body: actionsPrioritaires.map(a => {
+            const axe = axesList.find(ax => ax.code === a.axe);
+            const d = a.date_fin_prevue ? new Date(a.date_fin_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+            return [a.titre, axe?.labelCourt || '', a.priorite || '', d];
+          }),
+          ...tableOpts,
+          columnStyles: { 0: { cellWidth: 75 } },
+        });
+      }
+
+      // =============================================
+      // 7. EXÉCUTION BUDGÉTAIRE
+      // =============================================
+      if (budgetSynthese.prevu > 0) {
+        y = sectionTitle('Exécution budgétaire', getY() + 10);
+        autoTable(doc, {
+          startY: y,
+          head: [['Poste', 'Montant']],
+          body: [
+            ['Budget prévu', `${formatBudget(budgetSynthese.prevu)} FCFA`],
+            ['Engagé', `${formatBudget(budgetSynthese.engage)} FCFA`],
+            ['Réalisé', `${formatBudget(budgetSynthese.realise)} FCFA`],
+            ['Reste à engager', `${formatBudget(budgetSynthese.ecartEngagement)} FCFA`],
+            ['Taux réalisation', `${budgetSynthese.tauxRealisation.toFixed(0)}%`],
+            ['Taux engagement', `${budgetSynthese.tauxEngagement.toFixed(0)}%`],
+          ],
+          ...tableOpts,
+        });
+      }
+
+      // =============================================
+      // 8. NOTES
+      // =============================================
+      if (notes.trim()) {
+        y = sectionTitle('Notes & Commentaires COPIL', getY() + 10);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...dark);
+        const lines = doc.splitTextToSize(notes, pageW - 28);
+        doc.text(lines, 14, y);
+      }
+
+      // =============================================
+      // FOOTER (chaque page)
+      // =============================================
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...gray);
+        doc.text(`Rapport Mensuel COPIL — ${currentMonth}`, 14, pageH - 10);
+        doc.text(`Page ${i}/${pageCount}`, pageW - 14, pageH - 10, { align: 'right' });
+      }
+
+      doc.save(`Rapport-Mensuel-${todayStr}.pdf`);
+    } catch (error) {
+      console.error('Erreur export PDF:', error);
+      alert('Erreur lors de la génération du PDF. Vérifiez la console (F12).');
+    }
   };
 
   return (
@@ -235,7 +431,10 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">COPIL</span>
-              <button className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+              <button
+                onClick={handleExportPdf}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+              >
                 <Download className="w-4 h-4" />
                 Exporter PDF
               </button>
@@ -289,11 +488,11 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
               <h2 className="text-base font-semibold text-slate-900">Synchronisation Projet / Mobilisation</h2>
               <span className={cn(
                 'text-xs font-medium px-2.5 py-1 rounded-full',
-                Math.abs(syncGap) <= 5 ? 'bg-emerald-50 text-emerald-600' :
-                Math.abs(syncGap) <= 15 ? 'bg-amber-50 text-amber-600' :
+                Math.abs(syncGap) <= SEUILS_SYNC_REPORT.synchronise ? 'bg-emerald-50 text-emerald-600' :
+                Math.abs(syncGap) <= SEUILS_SYNC_REPORT.attention ? 'bg-amber-50 text-amber-600' :
                 'bg-rose-50 text-rose-600'
               )}>
-                {Math.abs(syncGap) <= 5 ? 'Synchronisé' : Math.abs(syncGap) <= 15 ? 'Attention' : 'Écart critique'}
+                {Math.abs(syncGap) <= SEUILS_SYNC_REPORT.synchronise ? 'Synchronisé' : Math.abs(syncGap) <= SEUILS_SYNC_REPORT.attention ? 'Attention' : 'Écart critique'}
               </span>
             </div>
 
@@ -306,13 +505,13 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
               <div className="flex flex-col items-center">
                 <div className={cn(
                   'text-3xl font-bold',
-                  Math.abs(syncGap) <= 5 ? 'text-emerald-600' :
-                  Math.abs(syncGap) <= 15 ? 'text-amber-600' : 'text-rose-600'
+                  Math.abs(syncGap) <= SEUILS_SYNC_REPORT.synchronise ? 'text-emerald-600' :
+                  Math.abs(syncGap) <= SEUILS_SYNC_REPORT.attention ? 'text-amber-600' : 'text-rose-600'
                 )}>
                   {syncGap > 0 ? '+' : ''}{syncGap}%
                 </div>
                 <p className="text-sm text-slate-400 mt-1">Écart</p>
-                <p className="text-xs text-slate-400 mt-2">~{Math.abs(Math.round(syncGap * 1.5))} jours</p>
+                <p className="text-xs text-slate-400 mt-2">~{Math.abs(Math.round(syncGap * SEUILS_SYNC_REPORT.joursConversion))} jours</p>
               </div>
 
               <div className="text-center">
@@ -327,8 +526,8 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
             <h2 className="text-base font-semibold text-slate-900 mb-5">Points d'attention</h2>
             <div className="space-y-4">
               {[
-                { label: 'Actions en retard', value: metrics.actionsEnRetard, max: 10 },
-                { label: 'Risques critiques', value: metrics.risquesCritiques, max: 5 },
+                { label: 'Actions en retard', value: metrics.actionsEnRetard, max: SEUILS_UI.topActions },
+                { label: 'Risques critiques', value: metrics.risquesCritiques, max: SEUILS_UI.topRisques },
                 { label: 'Budget consommé', value: metrics.budgetConsomme, max: 100, suffix: '%' },
               ].map((item, idx) => (
                 <div key={idx}>
@@ -385,8 +584,8 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
                     <div className={cn(
                       'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold',
-                      score >= 12 ? 'bg-rose-100 text-rose-700' :
-                      score >= 8 ? 'bg-amber-100 text-amber-700' :
+                      score >= SEUILS_RISQUES.critique ? 'bg-rose-100 text-rose-700' :
+                      score >= SEUILS_RISQUES.majeur ? 'bg-amber-100 text-amber-700' :
                       'bg-slate-200 text-slate-600'
                     )}>
                       {score}

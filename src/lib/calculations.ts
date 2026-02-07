@@ -1,5 +1,6 @@
 import type { Action, Jalon, Risque, MeteoProjet, SousTache, MeteoJalon, StatutJalonV2, StatutActionV2 } from '@/types';
 import { getDaysUntil } from './utils';
+import { SEUILS_METEO_DASHBOARD } from '@/data/constants';
 
 // ============================================================================
 // SPÉCIFICATIONS V2.0 - CALCULS AUTOMATISÉS
@@ -105,7 +106,9 @@ export function calculerMeteoJalon(
   // Calcul du % théorique basé sur le temps écoulé
   const dureeTotal = fin.getTime() - debut.getTime();
   const dureeEcoulee = Math.max(0, now.getTime() - debut.getTime());
-  const pourcentageTheorique = Math.min(100, (dureeEcoulee / dureeTotal) * 100);
+  const pourcentageTheorique = dureeTotal > 0
+    ? Math.min(100, (dureeEcoulee / dureeTotal) * 100)
+    : (now >= fin ? 100 : 0);
 
   // Écart entre réel et théorique
   const ecart = pourcentageReel - pourcentageTheorique;
@@ -211,21 +214,21 @@ export function calculateMeteo(factors: MeteoFactors): MeteoProjet {
 
   // Rouge: Critical issues
   if (
-    alertesCritiques >= 3 ||
-    actionsEnRetard >= 5 ||
-    risquesCritiques >= 2 ||
-    depassementsBudget >= 2
+    alertesCritiques >= SEUILS_METEO_DASHBOARD.rouge.alertesCritiques ||
+    actionsEnRetard >= SEUILS_METEO_DASHBOARD.rouge.actionsEnRetard ||
+    risquesCritiques >= SEUILS_METEO_DASHBOARD.rouge.risquesCritiques ||
+    depassementsBudget >= SEUILS_METEO_DASHBOARD.rouge.depassementsBudget
   ) {
     return 'rouge';
   }
 
   // Jaune: Warning level
   if (
-    alertesCritiques >= 1 ||
-    alertesHautes >= 3 ||
-    actionsEnRetard >= 2 ||
-    risquesCritiques >= 1 ||
-    depassementsBudget >= 1
+    alertesCritiques >= SEUILS_METEO_DASHBOARD.jaune.alertesCritiques ||
+    alertesHautes >= SEUILS_METEO_DASHBOARD.jaune.alertesHautes ||
+    actionsEnRetard >= SEUILS_METEO_DASHBOARD.jaune.actionsEnRetard ||
+    risquesCritiques >= SEUILS_METEO_DASHBOARD.jaune.risquesCritiques ||
+    depassementsBudget >= SEUILS_METEO_DASHBOARD.jaune.depassementsBudget
   ) {
     return 'jaune';
   }
@@ -295,7 +298,7 @@ export function buildRiskMatrix(risques: Risque[]): number[][] {
     .map(() => Array(4).fill(0));
 
   risques.forEach((r) => {
-    if (r.status === 'open') {
+    if (r.status !== 'closed' && r.status !== 'ferme') {
       matrix[r.impact - 1][r.probabilite - 1]++;
     }
   });
@@ -317,11 +320,11 @@ export function calculateBudgetVariance(
 }
 
 export function calculateSPI(EV: number, PV: number): number {
-  return PV > 0 ? EV / PV : 0;
+  return PV > 0 ? EV / PV : 1;
 }
 
 export function calculateCPI(EV: number, AC: number): number {
-  return AC > 0 ? EV / AC : 0;
+  return AC > 0 ? EV / AC : 1;
 }
 
 export function interpretSPI(spi: number): 'ahead' | 'on_track' | 'behind' {

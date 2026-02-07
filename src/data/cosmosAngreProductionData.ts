@@ -14,26 +14,13 @@ export const PRODUCTION_DATA = {
       "nom": "COSMOS ANGRE",
       "description": "Centre commercial Cosmos Angré - Abidjan",
       "localisation": "Abidjan, Côte d'Ivoire",
-      "dateOuverture": "2026-11-01",
+      "dateOuverture": "2026-11-15",
       "surface": 45000,
       "couleur": "#18181b",
       "actif": true,
       "createdAt": "2026-01-29T20:04:43.249Z",
       "updatedAt": "2026-01-29T20:04:43.249Z",
       "id": 1
-    },
-    {
-      "code": "COSMOS",
-      "nom": "COSMOS ANGRE",
-      "description": "Centre commercial Cosmos Angré - Abidjan",
-      "localisation": "Abidjan, Côte d'Ivoire",
-      "dateOuverture": "2026-11-01",
-      "surface": 45000,
-      "couleur": "#18181b",
-      "actif": true,
-      "createdAt": "2026-01-29T20:04:43.251Z",
-      "updatedAt": "2026-01-29T20:04:43.251Z",
-      "id": 2
     }
   ],
   "project": [
@@ -14066,7 +14053,7 @@ export const PRODUCTION_DATA = {
   "iaImports": [],
   "iaExtractions": [],
   "iaIntegrations": [],
-  "deepDives": [],
+  "excos": [],
   "syncCategories": [],
   "syncItems": [],
   "syncSnapshots": [],

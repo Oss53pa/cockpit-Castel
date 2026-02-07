@@ -13,7 +13,7 @@ import type { User, Jalon, Action, Axe, ProjectPhase, BuildingCode } from '@/typ
 export const PROJECT_METADATA = {
   nom: 'COSMOS ANGRÉ',
   localisation: 'Angré, Abidjan, Côte d\'Ivoire',
-  gla: 45000,
+  gla: 16_184,  // Surface locative brute (GLA) — ne pas confondre avec SHON (45 000)
   nombreBoutiques: { min: 100, max: 120 },
   placesParking: 1500,
   emploisCrees: { directs: 1200, indirects: 3000, total: 4200 },

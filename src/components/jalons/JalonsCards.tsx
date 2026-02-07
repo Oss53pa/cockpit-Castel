@@ -1,4 +1,5 @@
 import { Flag, Calendar, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
+import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
   Card,
@@ -43,6 +44,7 @@ function JalonCard({
   const actions = useActionsByJalon(jalon.id);
   const config = statusConfig[jalon.statut] || statusConfig.a_venir;
   const daysUntil = getDaysUntil(jalon.date_prevue);
+  const { canEdit, canDelete } = usePermissions();
 
   const actionsTerminees = actions.filter((a) => a.statut === 'termine').length;
   const avancement =
@@ -52,7 +54,12 @@ function JalonCard({
 
   const handleDelete = async () => {
     if (jalon.id && confirm('Supprimer ce jalon ?')) {
-      await deleteJalon(jalon.id);
+      try {
+        await deleteJalon(jalon.id);
+      } catch (error) {
+        console.error('Erreur suppression jalon:', error);
+        alert('Erreur lors de la suppression du jalon');
+      }
     }
   };
 
@@ -73,15 +80,21 @@ function JalonCard({
               <Eye className="h-4 w-4 mr-2" />
               Voir
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit}>
-              <Edit className="h-4 w-4 mr-2" />
-              Modifier
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="text-error-600">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Supprimer
-            </DropdownMenuItem>
+            {canEdit && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Modifier
+              </DropdownMenuItem>
+            )}
+            {canDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDelete} className="text-error-600">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BudgetMobilisation, BudgetOperationnel, BudgetPhaseDetail, BudgetExploitation2027 } from '@/components/budget';
+import { PROJET_CONFIG } from '@/data/constants';
 
 type BudgetType = 'mobilisation' | 'operationnel' | 'exploitation2027' | 'estimatif';
 
@@ -24,7 +25,7 @@ export function BudgetPage() {
         <div>
           <h1 className="text-2xl font-bold text-primary-900">Gestion du Budget</h1>
           <p className="text-sm text-primary-500">
-            Suivi budgetaire et financier du projet COSMOS ANGRE
+            {`Suivi budgetaire et financier du projet ${PROJET_CONFIG.nom}`}
           </p>
         </div>
       </div>

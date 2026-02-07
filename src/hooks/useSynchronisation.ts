@@ -8,6 +8,7 @@ import type {
   Axe,
 } from '@/types';
 import { AXE_SHORT_LABELS } from '@/types';
+import { SEUILS_SYNC_REPORT } from '@/data/constants';
 
 /**
  * Les 5 axes de mobilisation (tous sauf axe3_technique qui est la Construction)
@@ -94,21 +95,24 @@ export function useSynchronisationMetrics(): SynchronisationMetricsExtended {
     // Calculer l'écart (mobilisation - technique)
     const ecartPoints = avancementMobilisation - avancementTechnique;
 
-    // Déterminer le statut de synchronisation
+    // Déterminer le statut de synchronisation (seuils depuis SEUILS_SYNC_REPORT)
+    const seuilAttention = SEUILS_SYNC_REPORT.attention; // ±15%
+    const seuilSync = SEUILS_SYNC_REPORT.synchronise;    // ±5%
     let syncStatus: SyncStatus = 'en_phase';
-    if (ecartPoints > 20) {
+    if (ecartPoints > seuilAttention) {
       syncStatus = 'critique'; // Mobilisation trop en avance = risque de gaspillage
-    } else if (ecartPoints > 10) {
+    } else if (ecartPoints > seuilSync) {
       syncStatus = 'en_avance'; // Mobilisation en avance
-    } else if (ecartPoints < -20) {
+    } else if (ecartPoints < -seuilAttention) {
       syncStatus = 'critique'; // Technique trop en retard = risque retard ouverture
-    } else if (ecartPoints < -10) {
+    } else if (ecartPoints < -seuilSync) {
       syncStatus = 'en_retard'; // Mobilisation en retard par rapport au technique
     }
 
-    // Analyser les risques
-    const risqueGaspillage = ecartPoints > 15; // Mobilisation trop en avance
-    const risqueRetardOuverture = ecartPoints < -15; // Technique en retard
+    // Analyser les risques (seuil desync depuis constants)
+    const seuilDesync = SEUILS_SYNC_REPORT.desyncAlerte;
+    const risqueGaspillage = ecartPoints > seuilDesync;
+    const risqueRetardOuverture = ecartPoints < -seuilDesync;
 
     return {
       avancement_technique: Math.round(avancementTechnique * 10) / 10,

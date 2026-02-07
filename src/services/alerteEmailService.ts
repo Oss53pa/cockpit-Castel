@@ -5,6 +5,7 @@
 import { db } from '@/db';
 import type { Alerte, AlerteEmailHistorique, User } from '@/types';
 import { getEmailConfig, sendEmail } from './emailService';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -52,7 +53,7 @@ function generateAlertEmailHtml(options: AlerteEmailOptions): string {
   const typeLabel = TYPE_LABELS[alerte.type] || alerte.type;
 
   const typePrefix = type === 'relance' ? '🔔 RELANCE - ' : type === 'escalade' ? '⚠️ ESCALADE - ' : '';
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cockpit.cosmos-angre.com';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : PROJET_CONFIG.baseUrl;
 
   return `
 <!DOCTYPE html>
@@ -68,7 +69,7 @@ function generateAlertEmailHtml(options: AlerteEmailOptions): string {
     <tr>
       <td style="background: linear-gradient(135deg, #1E3A5F 0%, #0F172A 100%); padding: 30px; text-align: center;">
         <h1 style="color: #FFFFFF; margin: 0; font-size: 24px;">🚨 COCKPIT ALERTE</h1>
-        <p style="color: #94A3B8; margin: 10px 0 0 0; font-size: 14px;">COSMOS ANGRÉ - Système d'alertes automatiques</p>
+        <p style="color: #94A3B8; margin: 10px 0 0 0; font-size: 14px;">${PROJET_CONFIG.nom} - Système d'alertes automatiques</p>
       </td>
     </tr>
 
@@ -168,7 +169,7 @@ function generateAlertEmailHtml(options: AlerteEmailOptions): string {
     <tr>
       <td style="padding: 30px; text-align: center;">
         <p style="color: #9CA3AF; font-size: 12px; margin: 0 0 10px 0;">
-          Cet email a été envoyé automatiquement par le Cockpit COSMOS ANGRÉ.
+          Cet email a été envoyé automatiquement par le Cockpit ${PROJET_CONFIG.nom}.
         </p>
         <p style="color: #9CA3AF; font-size: 12px; margin: 0;">
           Pour désactiver ces notifications, rendez-vous dans les paramètres du Cockpit.

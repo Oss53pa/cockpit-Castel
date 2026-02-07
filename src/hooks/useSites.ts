@@ -3,6 +3,7 @@ import { db } from '@/db';
 import type { Site } from '@/types/site';
 import { useSiteStore } from '@/stores/siteStore';
 import { useEffect } from 'react';
+import { PROJET_CONFIG } from '@/data/constants';
 
 export function useSites() {
   const sites = useLiveQuery(async () => {
@@ -94,14 +95,14 @@ export async function initializeDefaultSite(): Promise<void> {
       const now = new Date().toISOString();
       await db.sites.add({
         code: 'COSMOS',
-        nom: 'COSMOS ANGRE',
-        description: 'Centre commercial Cosmos Angré - Abidjan',
+        nom: PROJET_CONFIG.nom,
+        description: `Centre commercial ${PROJET_CONFIG.nom} - Abidjan`,
         localisation: 'Abidjan, Côte d\'Ivoire',
-        dateOuverture: '2026-11-01',
+        dateOuverture: PROJET_CONFIG.jalonsClés.softOpening,
         dateInauguration: '2027-03-01',
-        surface: 16184,
-        nombreBatiments: 6,
-        occupationCible: 85,
+        surface: PROJET_CONFIG.surface.gla,
+        nombreBatiments: PROJET_CONFIG.nombreBatiments,
+        occupationCible: PROJET_CONFIG.occupationCible,
         couleur: '#18181b',
         actif: true,
         createdAt: now,

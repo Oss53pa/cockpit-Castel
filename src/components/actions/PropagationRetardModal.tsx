@@ -45,6 +45,7 @@ export function PropagationRetardModal({
       onClose();
     } catch (error) {
       console.error('Erreur lors de la propagation:', error);
+      alert('Erreur lors de la propagation du retard');
     } finally {
       setIsApplying(false);
     }

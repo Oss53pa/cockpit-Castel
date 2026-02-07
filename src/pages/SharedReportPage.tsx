@@ -43,6 +43,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
+import { PROJET_CONFIG } from '@/data/constants';
 
 const COLORS = {
   primary: '#1C3163',
@@ -265,7 +266,7 @@ export function SharedReportPage() {
             <div>
               <div className="flex items-center gap-2 text-[#D4AF37] text-sm font-medium mb-2">
                 <Building className="h-4 w-4" />
-                <span>COSMOS ANGRÉ</span>
+                <span>{PROJET_CONFIG.nom}</span>
                 <span className="text-white/50">•</span>
                 <span className="text-white/70">Projet Handover</span>
               </div>
@@ -762,7 +763,7 @@ export function SharedReportPage() {
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <Building className="h-4 w-4 text-[#1C3163]" />
-              <span className="font-semibold text-[#1C3163]">COSMOS ANGRÉ</span>
+              <span className="font-semibold text-[#1C3163]">{PROJET_CONFIG.nom}</span>
               <span>•</span>
               <span>Projet Handover</span>
             </div>

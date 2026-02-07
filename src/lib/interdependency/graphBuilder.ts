@@ -39,9 +39,13 @@ export function buildDependencyGraph(actions: Action[]): InterdependencyGraph {
     const startDate = parseISO(action.date_debut_prevue);
     const endDate = parseISO(action.date_fin_prevue);
 
+    // Guard: skip actions avec dates invalides
+    const startValid = !isNaN(startDate.getTime());
+    const endValid = !isNaN(endDate.getTime());
+
     // ES/EF initiaux basés sur les dates prévues (sera recalculé par CPM)
-    const ES = differenceInDays(startDate, projectStart);
-    const duration = action.duree_prevue_jours || differenceInDays(endDate, startDate) || 1;
+    const ES = startValid ? differenceInDays(startDate, projectStart) : 0;
+    const duration = action.duree_prevue_jours || (startValid && endValid ? differenceInDays(endDate, startDate) : 0) || 1;
     const EF = ES + duration;
 
     const node: DependencyNode = {

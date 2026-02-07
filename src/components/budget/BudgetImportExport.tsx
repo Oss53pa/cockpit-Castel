@@ -13,6 +13,7 @@ import { Button, useToast } from '@/components/ui';
 import { db } from '@/db';
 import { useSeedData } from '@/hooks/useSeedData';
 import type { BudgetItem } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface BudgetImportExportProps {
   budgetType: 'mobilisation' | 'operationnel' | 'estimatif';
@@ -22,7 +23,7 @@ interface BudgetImportExportProps {
 const BUDGET_TEMPLATE = {
   version: '1.0',
   type: 'budget',
-  description: 'Template d\'import budget COSMOS ANGRE',
+  description: `Template d'import budget ${PROJET_CONFIG.nom}`,
   colonnes: [
     'libelle (obligatoire)',
     'categorie (obligatoire)',
@@ -211,16 +212,16 @@ export function BudgetImportExport({ budgetType }: BudgetImportExportProps) {
     }
   };
 
-  // Load default budget from COSMOS ANGRE data
+  // Load default budget data
   const handleLoadDefaultBudget = async () => {
     setShowDropdown(false);
-    if (confirm('Cette action va ajouter les donnees d\'exploitation COSMOS ANGRE.\n\nContinuer ?')) {
+    if (confirm(`Cette action va ajouter les donnees d'exploitation ${PROJET_CONFIG.nom}.\n\nContinuer ?`)) {
       try {
         await seedBudget();
-        toast.success('Donnees chargees', 'Les donnees COSMOS ANGRE ont ete ajoutees');
+        toast.success('Donnees chargees', `Les donnees ${PROJET_CONFIG.nom} ont ete ajoutees`);
         setTimeout(() => window.location.reload(), 1500);
       } catch (err) {
-        toast.error('Erreur', 'Echec du chargement des donnees COSMOS');
+        toast.error('Erreur', `Echec du chargement des donnees ${PROJET_CONFIG.nom}`);
       }
     }
   };
@@ -319,7 +320,7 @@ export function BudgetImportExport({ budgetType }: BudgetImportExportProps) {
                 ) : (
                   <Database className="h-4 w-4" />
                 )}
-                Charger donnees COSMOS
+                {`Charger donnees ${PROJET_CONFIG.nom}`}
               </button>
             </div>
           )}

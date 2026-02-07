@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   EmptyState,
 } from '@/components/ui';
-import { useActions, deleteAction } from '@/hooks';
+import { useActions, deleteAction, usePermissions } from '@/hooks';
 import { formatDate, getDaysUntil } from '@/lib/utils';
 import {
   AXE_LABELS,
@@ -61,10 +61,16 @@ function ActionCard({
 }) {
   const statusStyle = statusColors[action.statut] || statusColors.a_planifier;
   const daysUntil = getDaysUntil(action.date_fin_prevue);
+  const { canEdit, canDelete } = usePermissions();
 
   const handleDelete = async () => {
     if (action.id && confirm('Supprimer cette action ?')) {
-      await deleteAction(action.id);
+      try {
+        await deleteAction(action.id);
+      } catch (error) {
+        console.error('Erreur suppression action:', error);
+        alert('Erreur lors de la suppression de l\'action');
+      }
     }
   };
 
@@ -91,15 +97,21 @@ function ActionCard({
                 <Eye className="h-4 w-4 mr-2" />
                 Voir
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onEdit}>
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-error-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} className="text-error-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

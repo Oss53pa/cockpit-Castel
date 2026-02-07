@@ -131,7 +131,10 @@ export const PROJET_CONFIG = {
   // Informations générales
   nom: 'COSMOS ANGRÉ',
   societe: 'CRMC / New Heaven SA',
-  surfaceGLA: 16_184, // m² - Surface GLA réelle
+  surface: {
+    gla: 16_184,        // m² — Surface locative brute (Gross Leasable Area)
+    shon: 45_000,       // m² — Surface hors œuvre nette totale (tous bâtiments)
+  },
   nombreBatiments: 6, // 6 bâtiments configurés
   occupationCible: 85, // %
 
@@ -160,6 +163,37 @@ export const PROJET_CONFIG = {
     titre: 'DGA',
   },
   destinataires: ['PDG', 'Actionnaires'],
+
+  // Communication
+  devise: 'FCFA',
+  baseUrl: 'https://cockpit.cosmos-angre.com',
+  confidentialite: 'Confidentiel — Exco',
+  emailExpediteur: {
+    email: 'patokouna@cosmos-angre.com',
+    nom: 'Cockpit-Cosmos Angré',
+  },
+
+  // Seuils commerciaux
+  seuilSoftOpening: 45,       // % occupation min pour soft opening
+  softOpeningOffsetJours: 30,  // jours entre soft et grand opening (Nov 15 → Dec 15)
+
+  // Coûts mensuels de report par axe (FCFA)
+  coutsReportMensuels: {
+    portage: 35_000_000,
+    revenuSoftOpening: 25_000_000,
+    rh: 15_000_000,
+    technique: 20_000_000,
+    construction: 40_000_000,
+    marketing: 8_000_000,
+    exploitation: 12_000_000,
+    divers: 5_000_000,
+  },
+
+  // Horizons de scénarios disponibles (mois)
+  horizonsReport: [1, 2, 3, 6] as const,
+
+  // Durée lien partage email (heures)
+  defaultLinkDuration: 72,
 } as const;
 
 // ============================================================================
@@ -313,4 +347,143 @@ export const THEME_COLORS = {
   danger: '#DC2626',     // Rouge erreur
   warning: '#F59E0B',    // Orange attention
   info: '#3B82F6',       // Bleu info
+} as const;
+
+// ============================================================================
+// SEUILS DE RISQUES — Niveaux par score
+// ============================================================================
+
+export const SEUILS_RISQUES = {
+  critique: 12,
+  majeur: 8,
+  modere: 4,
+} as const;
+
+// ============================================================================
+// SEUILS CHEMIN CRITIQUE
+// ============================================================================
+
+export const SEUILS_CHEMIN_CRITIQUE = {
+  margeCritique: 30,       // Jours: action critique si marge < 30
+  margeFaible: 7,          // Jours: marge faible si <= 7
+  seuilGoulot: 3,          // Nombre de successeurs pour être un goulot
+  topActions: 20,          // Nombre max d'actions critiques affichées
+} as const;
+
+// ============================================================================
+// SEUILS MÉTÉO RAPPORT V5 — pour deriveAxeMeteo & deriveGlobalMeteo
+// ============================================================================
+
+export const SEUILS_METEO_REPORT = {
+  // deriveAxeMeteo: seuils pour basculer en rouge/orange/bleu
+  axeRouge: { risquesCritiques: 2, ecart: -20 },
+  axeOrange: { risquesCritiques: 1, ecart: -10 },
+  axeBleu: { ecart: 5 },
+  // deriveGlobalMeteo: seuils de score de confiance
+  globalRouge: 40,
+  globalOrange: 65,
+  globalBleu: 85,
+  // Score confiance en zone critique
+  scoreAlerte: 60,
+} as const;
+
+// ============================================================================
+// SEUILS SANTÉ AXE — Calculs AxisExco
+// ============================================================================
+
+export const SEUILS_SANTE_AXE = {
+  poids: { avancement: 40, actions: 30, risques: 30 },
+  penalites: { actionEnRetard: 5, actionBloquee: 10, risqueCritique: 10 },
+  meteo: {
+    pluie: { score: 40, actionsEnRetard: 5, risquesCritiques: 3 },
+    nuage: { score: 60, actionsEnRetard: 3, risquesCritiques: 2 },
+    soleilNuage: { score: 80, actionsEnRetard: 1, risquesCritiques: 1 },
+  },
+  velocite: { up: 100, stable: 80 },           // % seuils vélocité
+  jalons: { enDanger: 7, enApproche: 30 },      // jours
+  recommandations: {
+    actionsEnRetardCritique: 5,
+    completionFaible: 0.8,
+    jalonsProches: 14,                           // jours
+    risquesSansPlanMax: 3,
+    ecartCritique: -20,
+    ecartAttention: -10,
+    activiteRecente: { jours: 7, actionsMin: 3 },
+  },
+} as const;
+
+// ============================================================================
+// SEUILS SYNCHRONISATION RAPPORT
+// ============================================================================
+
+export const SEUILS_SYNC_REPORT = {
+  synchronise: 5,          // ±5% = synchronisé
+  attention: 15,           // ±15% = attention
+  joursConversion: 1.5,    // multiplicateur pour conversion en jours
+  desyncAlerte: 5,         // pts min pour afficher les risques désync
+} as const;
+
+// ============================================================================
+// SEUILS KPI DASHBOARD REPORT
+// ============================================================================
+
+export const SEUILS_KPI_REPORT = {
+  // Seuils pour DashboardSlide V5
+  jalonsPct: 50,
+  actionsPct: 30,
+  goodRatio: 0.9,
+  medRatio: 0.5,
+  deviationGood: 5,
+  deviationBad: 15,
+  // Seuils pour useExcoMensuelData KPIs
+  occupationBon: 75,
+  occupationAttention: 50,
+  jalonsBonRatio: 0.8,
+  jalonsAttentionRatio: 0.5,
+  actionsBonRatio: 0.7,
+  actionsAttentionRatio: 0.4,
+  // Seuils météo globale (calculateGlobalMeteo)
+  globalExcellent: 4.5,
+  globalBon: 3.5,
+  globalAttention: 2.5,
+  globalAlerte: 1.5,
+} as const;
+
+// ============================================================================
+// SEUILS MÉTÉO DASHBOARD — useMeteoProjet (alertes-based)
+// ============================================================================
+
+export const SEUILS_METEO_DASHBOARD = {
+  rouge: { alertesCritiques: 3, actionsEnRetard: 5, risquesCritiques: 2, depassementsBudget: 2 },
+  jaune: { alertesCritiques: 1, alertesHautes: 3, actionsEnRetard: 2, risquesCritiques: 1, depassementsBudget: 1 },
+} as const;
+
+// ============================================================================
+// PÉNALITÉS SCORE DE CONFIANCE (risques)
+// ============================================================================
+
+export const SEUILS_CONFIDENCE = {
+  penaliteRisqueCritique: 20,
+  penaliteRisqueMajeur: 10,
+} as const;
+
+// ============================================================================
+// SEUILS MÉTÉO COPIL — COPILDashboard globalMeteo
+// ============================================================================
+
+export const SEUILS_METEO_COPIL = {
+  stormy: { risquesCritiques: 2, jalonsEnDanger: 3 },
+  rainy: { risquesCritiques: 0, jalonsEnDanger: 1 },
+  sunny: { avancement: 70 },
+  cloudy: { avancement: 40 },
+} as const;
+
+// ============================================================================
+// SEUILS MÉTÉO AXE DASHBOARD — MeteoParAxe calculerMeteo
+// ============================================================================
+
+export const SEUILS_METEO_AXE_DASHBOARD = {
+  soleil: -5,     // ecart >= -5 → SOLEIL
+  nuageux: -15,   // ecart >= -15 → NUAGEUX
+  // below → ORAGEUX
 } as const;

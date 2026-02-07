@@ -4,10 +4,11 @@
 
 export const SYNC_CONFIG = {
   // Seuils d'alerte (en % d'écart)
+  // P2 AUDIT: Seuil RED abaissé de 25 à 15 pour la phase pré-ouverture Cosmos Angré
   thresholds: {
     green: 5,      // Écart ≤ 5% = Synchronisé
-    orange: 15,    // Écart 5-15% = Attention
-    red: 25,       // Écart > 15% = Critique
+    orange: 10,    // Écart 5-10% = Attention
+    red: 15,       // Écart > 10% = Critique (abaissé pour pré-ouverture)
   },
 
   // Durée estimée du projet (en jours) pour calcul des jours d'écart

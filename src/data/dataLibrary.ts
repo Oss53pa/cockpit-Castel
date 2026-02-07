@@ -1032,7 +1032,7 @@ export const CHART_TEMPLATES: ChartTemplate[] = [
   {
     id: 'chart-deepdive-weather-history',
     name: 'Historique Météo Projet',
-    description: 'Évolution de la météo du projet au fil des DeepDives',
+    description: 'Évolution de la météo du projet au fil des Excos',
     category: 'projet',
     chartType: 'line',
     compatibleReportTypes: ['FLASH_PROJET', 'DASHBOARD_PROJET', 'BILAN_HANDOVER', 'REPORTING_PROJET'],
@@ -1041,7 +1041,7 @@ export const CHART_TEMPLATES: ChartTemplate[] = [
       refreshable: true,
     },
     data: {
-      labels: ['DeepDive 1', 'DeepDive 2', 'DeepDive 3', 'DeepDive 4', 'DeepDive 5', 'DeepDive 6'],
+      labels: ['Exco 1', 'Exco 2', 'Exco 3', 'Exco 4', 'Exco 5', 'Exco 6'],
       datasets: [
         {
           label: 'Score Santé (0-100)',
@@ -1054,7 +1054,7 @@ export const CHART_TEMPLATES: ChartTemplate[] = [
     },
     config: {
       title: 'Évolution Santé Projet',
-      subtitle: 'Score agrégé par DeepDive',
+      subtitle: 'Score agrégé par Exco',
       legend: { show: false, position: 'top' },
       xAxis: { label: 'Présentation' },
       yAxis: { label: 'Score (0-100)' },
@@ -2186,7 +2186,7 @@ export const TABLE_TEMPLATES: TableTemplate[] = [
   },
   {
     id: 'table-deepdive-kpis-summary',
-    name: 'Synthèse KPIs DeepDive',
+    name: 'Synthèse KPIs Exco',
     description: 'Résumé des indicateurs clés pour la présentation DG',
     category: 'projet',
     compatibleReportTypes: ['FLASH_PROJET', 'DASHBOARD_PROJET', 'BILAN_HANDOVER', 'RAPPORT_MENSUEL'],
@@ -2219,7 +2219,7 @@ export const TABLE_TEMPLATES: TableTemplate[] = [
   {
     id: 'table-deepdive-top-risques',
     name: 'Top 5 Risques à Surveiller',
-    description: 'Les risques les plus critiques à présenter en DeepDive',
+    description: 'Les risques les plus critiques à présenter en Exco',
     category: 'projet',
     compatibleReportTypes: ['FLASH_PROJET', 'ANALYSE_RISQUES', 'DASHBOARD_PROJET'],
     dataSource: {
@@ -2281,8 +2281,8 @@ export const TABLE_TEMPLATES: TableTemplate[] = [
   },
   {
     id: 'table-deepdive-historique',
-    name: 'Historique des DeepDives',
-    description: 'Récapitulatif des présentations DeepDive passées',
+    name: 'Historique des Excos',
+    description: 'Récapitulatif des présentations Exco passées',
     category: 'projet',
     compatibleReportTypes: ['BILAN_HANDOVER', 'REPORTING_PROJET'],
     dataSource: {

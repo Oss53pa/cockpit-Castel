@@ -10,6 +10,7 @@ import { getDatabaseStats, forceReseed } from '@/lib/initDatabase';
 import { db } from '@/db';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { cleanupAllBudgetDuplicates } from '@/hooks/useBudgetExploitation';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface DatabaseStats {
   users: number;
@@ -211,7 +212,7 @@ export function DataInitialization() {
               Initialisation des données v2.0
             </h3>
             <p className="text-sm text-primary-500 mt-1">
-              Gestion des données de production COSMOS ANGRÉ selon les spécifications v2.0
+              {`Gestion des données de production ${PROJET_CONFIG.nom} selon les spécifications v2.0`}
             </p>
           </div>
         </div>
@@ -298,7 +299,7 @@ export function DataInitialization() {
       {/* Métadonnées du projet */}
       <Card padding="md">
         <h4 className="font-semibold text-primary-900 mb-4">
-          Données v2.0 - Projet COSMOS ANGRÉ
+          {`Données v2.0 - Projet ${PROJET_CONFIG.nom}`}
         </h4>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
@@ -373,7 +374,7 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-purple-900">Charger budget d'exploitation</h5>
               <p className="text-sm text-purple-600">
-                Ajoute les budgets d'exploitation 2026 et 2027 depuis COSMOS ANGRÉ (sans effacer l'existant)
+                {`Ajoute les budgets d'exploitation 2026 et 2027 depuis ${PROJET_CONFIG.nom} (sans effacer l'existant)`}
               </p>
             </div>
             <Button
@@ -467,7 +468,7 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-warning-900">Réinitialiser avec données de production</h5>
               <p className="text-sm text-warning-600">
-                EFFACE TOUT et recharge les données COSMOS ANGRÉ (102 actions, 19 jalons, 75 risques, budget)
+                {`EFFACE TOUT et recharge les données ${PROJET_CONFIG.nom} (102 actions, 19 jalons, 75 risques, budget)`}
               </p>
             </div>
             <Button

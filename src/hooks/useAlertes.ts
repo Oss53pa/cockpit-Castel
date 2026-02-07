@@ -6,6 +6,7 @@ import {
   sendAlerteEmailSimple as sendAlerteEmail,
   getAlerteResponsableByEntity as getAlerteResponsable,
 } from '@/services/alerteEmailService';
+import { SEUILS_SYNC_REPORT, SEUILS_RISQUES } from '@/data/constants';
 
 export function useAlertes(filters?: AlerteFilters) {
   const alertes = useLiveQuery(async () => {
@@ -162,6 +163,9 @@ export async function cleanupDuplicateAlertes(): Promise<number> {
 // Auto-generate alerts based on data
 export async function generateAlertesAutomatiques(): Promise<void> {
 
+  // Nettoyer les doublons avant de générer de nouvelles alertes
+  await cleanupDuplicateAlertes();
+
   // Check actions for deadline alerts
   const actions = await db.actions.toArray();
   for (const action of actions) {
@@ -183,7 +187,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       if (!existing) {
         await createAlerte({
           type: 'action_bloquee',
-          titre: 'Action bloquée',
+          titre: `Action bloquée : ${action.titre || action.id_action || 'Sans titre'}`,
           message: `L'action "${action.titre}" est bloquée`,
           criticite: 'critical',
           entiteType: 'action',
@@ -224,12 +228,13 @@ export async function generateAlertesAutomatiques(): Promise<void> {
         .first();
 
       if (!existing) {
+        const actionName = action.titre || action.id_action || 'Sans titre';
         await createAlerte({
           type: alertType,
           titre:
             daysUntil < 0
-              ? 'Échéance dépassée'
-              : `Échéance dans ${daysUntil} jour(s)`,
+              ? `Échéance dépassée : ${actionName}`
+              : `J-${daysUntil} : ${actionName}`,
           message: `L'action "${action.titre}" ${
             daysUntil < 0
               ? `est en retard de ${Math.abs(daysUntil)} jour(s)`
@@ -245,19 +250,16 @@ export async function generateAlertesAutomatiques(): Promise<void> {
     }
   }
 
-  // Check jalons for approaching alerts
+  // Check jalons for approaching or overdue alerts
   const jalons = await db.jalons.toArray();
   for (const jalon of jalons) {
     if (jalon.statut === 'atteint') continue;
 
     const daysUntil = getDaysUntil(jalon.date_prevue);
+    const jalonName = jalon.titre || jalon.id_jalon || 'Sans titre';
 
-    if (daysUntil <= 30 && daysUntil > 0) {
-      let criticite: Criticite = 'medium';
-      if (daysUntil <= 7) criticite = 'critical';
-      else if (daysUntil <= 15) criticite = 'high';
-
-      // Verifier s'il existe deja une alerte non traitee pour ce jalon
+    // Jalon dépassé (daysUntil < 0)
+    if (daysUntil < 0) {
       const existing = await db.alertes
         .filter(
           (a) =>
@@ -270,7 +272,35 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       if (!existing) {
         await createAlerte({
           type: 'jalon_approche',
-          titre: `Jalon dans ${daysUntil} jours`,
+          titre: `Jalon dépassé : ${jalonName}`,
+          message: `Le jalon "${jalon.titre}" est en retard de ${Math.abs(daysUntil)} jour(s)`,
+          criticite: 'critical',
+          entiteType: 'jalon',
+          entiteId: jalon.id!,
+          lu: false,
+          traitee: false,
+        });
+      }
+    }
+    // Jalon en approche (0 < daysUntil <= 30)
+    else if (daysUntil <= 30 && daysUntil > 0) {
+      let criticite: Criticite = 'medium';
+      if (daysUntil <= 7) criticite = 'critical';
+      else if (daysUntil <= 15) criticite = 'high';
+
+      const existing = await db.alertes
+        .filter(
+          (a) =>
+            a.type === 'jalon_approche' &&
+            a.entiteId === jalon.id &&
+            !a.traitee
+        )
+        .first();
+
+      if (!existing) {
+        await createAlerte({
+          type: 'jalon_approche',
+          titre: `J-${daysUntil} : ${jalonName}`,
           message: `Le jalon "${jalon.titre}" arrive dans ${daysUntil} jours`,
           criticite,
           entiteType: 'jalon',
@@ -285,8 +315,8 @@ export async function generateAlertesAutomatiques(): Promise<void> {
   // Check risques for critical alerts
   const risques = await db.risques.toArray();
   for (const risque of risques) {
-    // Skip closed risks or those with score below critical threshold (12)
-    if (risque.status === 'closed' || risque.score < 12) continue;
+    // Skip closed/fermé risks or those with score below critical threshold
+    if (risque.status === 'closed' || risque.status === 'ferme' || (risque.score ?? 0) < SEUILS_RISQUES.critique) continue;
 
     const existing = await db.alertes
       .filter(
@@ -300,7 +330,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
     if (!existing) {
       await createAlerte({
         type: 'risque_critique',
-        titre: 'Risque critique',
+        titre: `Risque critique : ${risque.titre || 'Sans titre'}`,
         message: `Le risque "${risque.titre}" a un score critique de ${risque.score}`,
         criticite: 'critical',
         entiteType: 'risque',
@@ -332,7 +362,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       if (!existing) {
         await createAlerte({
           type: 'depassement_budget',
-          titre: 'Dépassement budgétaire',
+          titre: `Dépassement : ${item.libelle || 'Poste sans nom'}`,
           message: `Le poste "${item.libelle}" dépasse le budget de ${ecartPercent.toFixed(1)}%`,
           criticite: ecartPercent > 15 ? 'critical' : 'high',
           entiteType: 'budget',
@@ -370,7 +400,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
   const ecartSync = avancementMobilisation - avancementTechnique;
 
   // Alert if mobilisation is too far ahead (risk of wasted resources)
-  if (ecartSync > 20) {
+  if (ecartSync > SEUILS_SYNC_REPORT.attention) {
     const existing = await db.alertes
       .filter(
         (a) =>
@@ -385,7 +415,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
         type: 'desynchronisation_chantier_mobilisation',
         titre: 'Risque de gaspillage ressources',
         message: `La mobilisation (${Math.round(avancementMobilisation)}%) est en avance de ${Math.round(ecartSync)} points sur la construction (${Math.round(avancementTechnique)}%). Risque de gaspillage de ressources.`,
-        criticite: ecartSync > 30 ? 'critical' : 'high',
+        criticite: ecartSync > SEUILS_SYNC_REPORT.attention * 2 ? 'critical' : 'high',
         entiteType: 'action',
         entiteId: 0, // Global alert, not linked to specific action
         lu: false,
@@ -395,7 +425,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
   }
 
   // Alert if technical progress is too far behind (risk of delayed opening)
-  if (ecartSync < -20) {
+  if (ecartSync < -SEUILS_SYNC_REPORT.attention) {
     const existing = await db.alertes
       .filter(
         (a) =>
@@ -410,7 +440,7 @@ export async function generateAlertesAutomatiques(): Promise<void> {
         type: 'desynchronisation_chantier_mobilisation',
         titre: 'Risque de retard ouverture',
         message: `La construction (${Math.round(avancementTechnique)}%) est en retard de ${Math.round(Math.abs(ecartSync))} points sur la mobilisation (${Math.round(avancementMobilisation)}%). Risque de retard d'ouverture.`,
-        criticite: ecartSync < -30 ? 'critical' : 'high',
+        criticite: ecartSync < -(SEUILS_SYNC_REPORT.attention * 2) ? 'critical' : 'high',
         entiteType: 'action',
         entiteId: 0, // Global alert, not linked to specific action
         lu: false,
@@ -477,12 +507,12 @@ export async function autoResolveAlertes(): Promise<number> {
       }
 
       case 'risque_critique': {
-        // Résolu si le risque est fermé ou score < 12
+        // Résolu si le risque est fermé/closed ou score < seuil critique
         if (alerte.entiteId) {
           const risque = await db.risques.get(alerte.entiteId);
-          if (risque && (risque.status === 'closed' || risque.score < 12)) {
+          if (risque && (risque.status === 'closed' || risque.status === 'ferme' || (risque.score ?? 0) < SEUILS_RISQUES.critique)) {
             shouldResolve = true;
-            resolutionMessage = risque.status === 'closed'
+            resolutionMessage = (risque.status === 'closed' || risque.status === 'ferme')
               ? 'Risque fermé'
               : `Score réduit à ${risque.score}`;
           }
@@ -522,7 +552,7 @@ export async function autoResolveAlertes(): Promise<number> {
           : 0;
         const ecartSync = Math.abs(avancementMobilisation - avancementTechnique);
 
-        if (ecartSync <= 20) {
+        if (ecartSync <= SEUILS_SYNC_REPORT.attention) {
           shouldResolve = true;
           resolutionMessage = `Synchronisation rétablie (écart: ${Math.round(ecartSync)}%)`;
         }

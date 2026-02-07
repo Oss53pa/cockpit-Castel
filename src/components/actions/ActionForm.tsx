@@ -13,7 +13,7 @@ import {
   Badge,
   useToast,
 } from '@/components/ui';
-import { useUsers, useJalons } from '@/hooks';
+import { useUsers, useJalons, usePermissions } from '@/hooks';
 import { updateAction } from '@/hooks/useActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
@@ -33,6 +33,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
   const jalons = useJalons();
   const allActions = useLiveQuery(() => db.actions.toArray()) ?? [];
   const toast = useToast();
+  const { canEdit } = usePermissions();
 
   // Si pas d'action, on ne peut pas éditer (utiliser ActionWizard pour créer)
   if (!action) {
@@ -125,7 +126,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
             users={users}
             jalons={jalons}
             actionsDisponibles={allActions.filter(a => a.id !== action.id)}
-            isEditing={true}
+            isEditing={canEdit}
             isExternal={false}
             onSave={handleSave}
             onCancel={onClose}

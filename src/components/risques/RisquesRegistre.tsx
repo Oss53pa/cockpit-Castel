@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Edit, Trash2, MoreVertical, Eye, Shield, Send, ExternalLink } from 'lucide-react';
+import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -42,10 +43,16 @@ function RisqueRow({
   onShareExternal: () => void;
 }) {
   const user = useUser(risque.responsableId);
+  const { canEdit, canDelete } = usePermissions();
 
   const handleDelete = async () => {
     if (risque.id && confirm('Supprimer ce risque ?')) {
-      await deleteRisque(risque.id);
+      try {
+        await deleteRisque(risque.id);
+      } catch (error) {
+        console.error('Erreur suppression risque:', error);
+        alert('Erreur lors de la suppression du risque');
+      }
     }
   };
 
@@ -118,10 +125,12 @@ function RisqueRow({
                 <Eye className="h-4 w-4 mr-2" />
                 Voir
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onEdit}>
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={onEdit}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onSend}>
                 <Send className="h-4 w-4 mr-2" />
                 Envoyer
@@ -130,11 +139,15 @@ function RisqueRow({
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Partager en externe
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-error-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} className="text-error-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

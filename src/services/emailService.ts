@@ -85,9 +85,9 @@ const DEFAULT_CONFIG: EmailConfig = {
   emailjsServiceId: ENV_EMAILJS_SERVICE_ID,
   emailjsTemplateId: ENV_EMAILJS_TEMPLATE_ID,
   emailjsPublicKey: ENV_EMAILJS_PUBLIC_KEY,
-  fromEmail: 'patokouna@cosmos-angre.com',
-  fromName: 'Cockpit-Cosmos Angré',
-  defaultLinkDuration: 72, // 3 jours
+  fromEmail: PROJET_CONFIG.emailExpediteur.email,
+  fromName: PROJET_CONFIG.emailExpediteur.nom,
+  defaultLinkDuration: PROJET_CONFIG.defaultLinkDuration,
   baseUrl: window.location.origin,
 };
 
@@ -541,7 +541,7 @@ export async function getUnreadCount(): Promise<number> {
 const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
   {
     name: 'Partage Rapport HTML',
-    subject: '[COSMOS ANGRE] Rapport de projet - {{rapport_periode}}',
+    subject: `[${PROJET_CONFIG.nom}] Rapport de projet - {{rapport_periode}}`,
     entityType: 'rapport',
     isDefault: true,
     createdAt: new Date().toISOString(),
@@ -552,65 +552,66 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Grand+Hotel&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Exo 2', system-ui, sans-serif; line-height: 1.6; color: #27272a; background-color: #f0f9ff; }
+    body { font-family: 'Exo 2', system-ui, sans-serif; line-height: 1.6; color: #263238; background-color: #fafbfc; }
     .wrapper { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
     .container { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
-    .header { background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%); color: white; padding: 40px 30px; text-align: center; }
-    .header-logo { font-family: 'Grand Hotel', cursive; font-size: 42px; color: #ffffff; margin-bottom: 8px; letter-spacing: 1px; }
-    .header-subtitle { font-size: 14px; color: #7dd3fc; text-transform: uppercase; letter-spacing: 3px; font-weight: 500; }
-    .header-period { margin-top: 16px; padding: 8px 20px; background: rgba(255,255,255,0.15); border-radius: 20px; display: inline-block; font-size: 14px; font-weight: 500; }
+    .header { background: linear-gradient(135deg, #1a252b 0%, #263238 50%, #37474f 100%); color: white; padding: 40px 30px; text-align: center; border-bottom: 3px solid #B8953F; }
+    .header-logo { font-size: 36px; font-weight: 700; color: #B8953F; margin-bottom: 4px; letter-spacing: 2px; }
+    .header-logo span { color: #ffffff; }
+    .header-subtitle { font-size: 14px; color: #90a4ae; text-transform: uppercase; letter-spacing: 3px; font-weight: 500; }
+    .header-period { margin-top: 16px; padding: 8px 20px; background: rgba(184, 149, 63, 0.2); border: 1px solid rgba(184, 149, 63, 0.4); border-radius: 20px; display: inline-block; font-size: 14px; font-weight: 500; color: #D4B366; }
     .content { padding: 40px 30px; }
-    .greeting { font-size: 18px; color: #18181b; margin-bottom: 20px; }
-    .greeting strong { color: #18181b; font-weight: 600; }
-    .intro-text { color: #52525b; margin-bottom: 24px; font-size: 15px; }
-    .report-summary { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 24px; border-radius: 12px; margin: 24px 0; border-left: 4px solid #0284c7; }
-    .report-summary-title { font-size: 16px; font-weight: 600; color: #0c4a6e; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .report-summary-title::before { content: ""; font-size: 20px; }
+    .greeting { font-size: 18px; color: #263238; margin-bottom: 20px; }
+    .greeting strong { color: #263238; font-weight: 600; }
+    .intro-text { color: #546e7a; margin-bottom: 24px; font-size: 15px; }
+    .report-summary { background: linear-gradient(135deg, #fafbfc 0%, #f5f7f9 100%); padding: 24px; border-radius: 12px; margin: 24px 0; border-left: 4px solid #B8953F; }
+    .report-summary-title { font-size: 16px; font-weight: 600; color: #263238; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
     .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .summary-item { background: #ffffff; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .summary-value { font-size: 28px; font-weight: 700; color: #0369a1; }
-    .summary-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .summary-item { background: #ffffff; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e8edf2; }
+    .summary-value { font-size: 28px; font-weight: 700; color: #B8953F; }
+    .summary-label { font-size: 12px; color: #607d8b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
     .report-contents { margin-top: 20px; }
-    .report-contents-title { font-size: 14px; font-weight: 600; color: #0c4a6e; margin-bottom: 12px; }
+    .report-contents-title { font-size: 14px; font-weight: 600; color: #263238; margin-bottom: 12px; }
     .report-contents-list { list-style: none; }
-    .report-contents-list li { padding: 8px 0; border-bottom: 1px solid #e0f2fe; display: flex; align-items: center; gap: 8px; color: #334155; font-size: 14px; }
-    .report-contents-list li::before { content: ""; color: #0284c7; }
+    .report-contents-list li { padding: 8px 0; border-bottom: 1px solid #e8edf2; display: flex; align-items: center; gap: 8px; color: #455a64; font-size: 14px; }
+    .report-contents-list li::before { content: ""; color: #B8953F; }
     .report-contents-list li:last-child { border-bottom: none; }
     .cta-section { text-align: center; padding: 30px 0; }
-    .cta-text { color: #52525b; margin-bottom: 20px; font-size: 15px; }
-    .btn { display: inline-block; background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%); color: #ffffff !important; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.39); }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px 0 rgba(2, 132, 199, 0.5); }
+    .cta-text { color: #546e7a; margin-bottom: 20px; font-size: 15px; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #263238 0%, #37474f 100%); color: #D4B366 !important; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; transition: all 0.3s ease; box-shadow: 0 4px 14px 0 rgba(38, 50, 56, 0.3); border: 2px solid #B8953F; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px 0 rgba(38, 50, 56, 0.4); }
     .btn-icon { margin-right: 8px; }
-    .info-box { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #22c55e; display: flex; align-items: flex-start; gap: 12px; }
+    .info-box { background: linear-gradient(135deg, rgba(184, 149, 63, 0.06) 0%, rgba(184, 149, 63, 0.12) 100%); padding: 16px 20px; border-radius: 10px; margin: 24px 0; border-left: 4px solid #B8953F; display: flex; align-items: flex-start; gap: 12px; }
     .info-icon { font-size: 20px; flex-shrink: 0; }
-    .info-text { color: #166534; font-size: 14px; }
-    .signature { margin-top: 30px; padding-top: 24px; border-top: 1px solid #e0f2fe; }
-    .signature-text { color: #52525b; font-size: 15px; margin-bottom: 8px; }
-    .signature-name { font-weight: 600; color: #18181b; font-size: 15px; }
-    .contact-info { margin-top: 16px; padding: 16px; background: #f0f9ff; border-radius: 8px; }
-    .contact-label { font-size: 12px; color: #0369a1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .contact-name { font-weight: 600; color: #0c4a6e; font-size: 15px; }
-    .contact-role { color: #0369a1; font-size: 13px; }
-    .footer { background: #0c4a6e; padding: 30px; text-align: center; }
-    .footer-text { color: #7dd3fc; font-size: 12px; margin-bottom: 8px; }
-    .footer-note { color: #38bdf8; font-size: 11px; font-style: italic; }
+    .info-text { color: #455a64; font-size: 14px; }
+    .signature { margin-top: 30px; padding-top: 24px; border-top: 1px solid #e8edf2; }
+    .signature-text { color: #546e7a; font-size: 15px; margin-bottom: 8px; }
+    .signature-name { font-weight: 600; color: #263238; font-size: 15px; }
+    .contact-info { margin-top: 16px; padding: 16px; background: #fafbfc; border-radius: 8px; border-left: 3px solid #B8953F; }
+    .contact-label { font-size: 12px; color: #B8953F; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600; }
+    .contact-name { font-weight: 600; color: #263238; font-size: 15px; }
+    .contact-role { color: #607d8b; font-size: 13px; }
+    .footer { background: #263238; padding: 30px; text-align: center; border-top: 2px solid #B8953F; }
+    .footer-logo { font-size: 14px; font-weight: 700; color: #B8953F; letter-spacing: 2px; margin-bottom: 8px; }
+    .footer-text { color: #90a4ae; font-size: 12px; margin-bottom: 8px; }
+    .footer-note { color: #607d8b; font-size: 11px; font-style: italic; }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <div class="header-logo">Cockpit</div>
-        <div class="header-subtitle">COSMOS ANGRE</div>
+        <div class="header-logo">${PROJET_CONFIG.nom}</div>
+        <div class="header-subtitle">EXCO Mensuel</div>
         <div class="header-period">{{rapport_periode}}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
 
-        <p class="intro-text">{{sender_name}} vous partage le rapport de suivi du projet COSMOS ANGRE. Ce rapport couvre la periode <strong>{{rapport_periode}}</strong>.</p>
+        <p class="intro-text">{{sender_name}} vous partage le rapport EXCO de suivi du projet ${PROJET_CONFIG.nom}. Ce rapport couvre la periode <strong>{{rapport_periode}}</strong>.</p>
 
         <div class="report-summary">
           <div class="report-summary-title">Resume du rapport</div>
@@ -635,11 +636,11 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           <div class="report-contents">
             <div class="report-contents-title">Contenu du rapport :</div>
             <ul class="report-contents-list">
-              <li>Tableau de bord et indicateurs cles</li>
-              <li>Liste des actions avec statuts</li>
-              <li>Calendrier des jalons</li>
-              <li>Registre des risques</li>
-              <li>Graphiques d'avancement</li>
+              <li>Synthese executive et trajectoire</li>
+              <li>Tableau de bord et scorecard par axe</li>
+              <li>Chemin critique et jalons cles</li>
+              <li>Registre des risques et scenarios</li>
+              <li>Decisions attendues</li>
             </ul>
           </div>
         </div>
@@ -662,12 +663,13 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           <div class="contact-info">
             <div class="contact-label">Votre contact</div>
             <div class="contact-name">${PROJET_CONFIG.presentateur.nom}</div>
-            <div class="contact-role">Coordinatrice de projet</div>
+            <div class="contact-role">${PROJET_CONFIG.presentateur.titre}</div>
           </div>
         </div>
       </div>
       <div class="footer">
-        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <div class="footer-logo">${PROJET_CONFIG.nom}</div>
+        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit ${PROJET_CONFIG.nom}.</p>
         <p class="footer-note">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
@@ -678,7 +680,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
   },
   {
     name: 'Relance Action',
-    subject: '[COSMOS ANGRE] Mise à jour requise - Action: {{action_titre}}',
+    subject: `[${PROJET_CONFIG.nom}] Mise à jour requise - Action: {{action_titre}}`,
     entityType: 'action',
     isDefault: true,
     createdAt: new Date().toISOString(),
@@ -733,7 +735,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
     <div class="container">
       <div class="header">
         <div class="header-logo">Cockpit</div>
-        <div class="header-subtitle">COSMOS ANGRE</div>
+        <div class="header-subtitle">${PROJET_CONFIG.nom}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
@@ -775,7 +777,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         <div class="signature">
           <p class="signature-text">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
           <p class="signature-text">Cordialement,</p>
-          <p class="signature-name">L'equipe COSMOS ANGRE</p>
+          <p class="signature-name">L'equipe ${PROJET_CONFIG.nom}</p>
 
           <div class="contact-info">
             <div class="contact-label">Votre contact</div>
@@ -785,7 +787,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         </div>
       </div>
       <div class="footer">
-        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p class="footer-text">Ce message a ete envoye automatiquement par le Cockpit ${PROJET_CONFIG.nom}.</p>
         <p class="footer-note">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
@@ -796,7 +798,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
   },
   {
     name: 'Relance Jalon',
-    subject: '[COSMOS ANGRE] Mise à jour requise - Jalon: {{jalon_titre}}',
+    subject: `[${PROJET_CONFIG.nom}] Mise à jour requise - Jalon: {{jalon_titre}}`,
     entityType: 'jalon',
     isDefault: true,
     createdAt: new Date().toISOString(),
@@ -852,7 +854,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
     <div class="container">
       <div class="header">
         <div class="header-logo">Cockpit</div>
-        <div class="header-subtitle">COSMOS ANGRE</div>
+        <div class="header-subtitle">${PROJET_CONFIG.nom}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
@@ -898,7 +900,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #dcfce7;">
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
-          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe ${PROJET_CONFIG.nom}</p>
 
           <div style="margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px;">
             <div style="font-size: 12px; color: #166534; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
@@ -908,7 +910,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         </div>
       </div>
       <div class="footer" style="background: #14532d; padding: 30px; text-align: center;">
-        <p style="color: #86efac; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #86efac; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit ${PROJET_CONFIG.nom}.</p>
         <p style="color: #4ade80; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
@@ -919,7 +921,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
   },
   {
     name: 'Relance Risque',
-    subject: '[COSMOS ANGRE] Mise à jour requise - Risque: {{risque_titre}}',
+    subject: `[${PROJET_CONFIG.nom}] Mise à jour requise - Risque: {{risque_titre}}`,
     entityType: 'risque',
     isDefault: true,
     createdAt: new Date().toISOString(),
@@ -983,7 +985,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
     <div class="container">
       <div class="header">
         <div class="header-logo">Cockpit</div>
-        <div class="header-subtitle">COSMOS ANGRE</div>
+        <div class="header-subtitle">${PROJET_CONFIG.nom}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
@@ -1035,7 +1037,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #fee2e2;">
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
-          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe ${PROJET_CONFIG.nom}</p>
 
           <div style="margin-top: 16px; padding: 16px; background: #fef2f2; border-radius: 8px;">
             <div style="font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
@@ -1045,7 +1047,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         </div>
       </div>
       <div class="footer" style="background: #7f1d1d; padding: 30px; text-align: center;">
-        <p style="color: #fca5a5; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #fca5a5; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit ${PROJET_CONFIG.nom}.</p>
         <p style="color: #f87171; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
@@ -1056,7 +1058,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
   },
   {
     name: 'Relance Budget',
-    subject: '[COSMOS ANGRE] Mise à jour requise - Budget: {{budget_libelle}}',
+    subject: `[${PROJET_CONFIG.nom}] Mise à jour requise - Budget: {{budget_libelle}}`,
     entityType: 'budget',
     isDefault: true,
     createdAt: new Date().toISOString(),
@@ -1106,7 +1108,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
     <div class="container">
       <div class="header">
         <div class="header-logo">Cockpit</div>
-        <div class="header-subtitle">COSMOS ANGRE</div>
+        <div class="header-subtitle">${PROJET_CONFIG.nom}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
@@ -1155,7 +1157,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         <div class="signature" style="margin-top: 30px; padding-top: 24px; border-top: 1px solid #FDE68A;">
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Si vous avez des questions, n'hesitez pas a nous contacter.</p>
           <p style="color: #52525b; font-size: 15px; margin-bottom: 8px;">Cordialement,</p>
-          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe COSMOS ANGRE</p>
+          <p style="font-weight: 600; color: #18181b; font-size: 15px;">L'equipe ${PROJET_CONFIG.nom}</p>
 
           <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 8px;">
             <div style="font-size: 12px; color: #92400E; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Votre contact</div>
@@ -1165,7 +1167,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
         </div>
       </div>
       <div class="footer" style="background: #78350f; padding: 30px; text-align: center;">
-        <p style="color: #FDE68A; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit COSMOS ANGRE.</p>
+        <p style="color: #FDE68A; font-size: 12px; margin-bottom: 8px;">Ce message a ete envoye automatiquement par le Cockpit ${PROJET_CONFIG.nom}.</p>
         <p style="color: #FBBF24; font-size: 11px; font-style: italic;">Merci de ne pas repondre directement a cet email.</p>
       </div>
     </div>
@@ -1530,6 +1532,21 @@ export async function getReportShareTemplate(): Promise<EmailTemplate | undefine
       .first();
   }
 
+  // Auto-upgrade: si l'ancien template (sans la couleur gold #B8953F) est détecté,
+  // le remplacer par le nouveau design navy/gold COSMOS
+  if (template && !template.bodyHtml.includes('#B8953F')) {
+    const newTemplate = DEFAULT_TEMPLATES.find(t => t.entityType === 'rapport');
+    if (newTemplate) {
+      await db.emailTemplates.update(template.id!, {
+        bodyHtml: newTemplate.bodyHtml,
+        subject: newTemplate.subject,
+        name: newTemplate.name,
+        updatedAt: new Date().toISOString(),
+      });
+      template = await db.emailTemplates.get(template.id!);
+    }
+  }
+
   return template;
 }
 
@@ -1666,11 +1683,11 @@ async function simulateSendEmailForReport(params: {
  * Alternative simple qui utilise mailto avec un lien vers le rapport
  */
 export function openEmailClientForReport(params: ReportShareParams): void {
-  const subject = encodeURIComponent(`[COSMOS ANGRE] Rapport de projet - ${params.reportPeriod}`);
+  const subject = encodeURIComponent(`[${PROJET_CONFIG.nom}] Rapport de projet - ${params.reportPeriod}`);
 
   const body = encodeURIComponent(`Bonjour ${params.recipientName},
 
-${params.senderName} vous partage le rapport de suivi du projet COSMOS ANGRE.
+${params.senderName} vous partage le rapport de suivi du projet ${PROJET_CONFIG.nom}.
 
 Période couverte : ${params.reportPeriod}
 
@@ -1687,7 +1704,7 @@ Cordialement,
 ${params.senderName}
 
 ---
-Ce message a été généré par le Cockpit COSMOS ANGRE.`);
+Ce message a été généré par le Cockpit ${PROJET_CONFIG.nom}.`);
 
   window.open(`mailto:${params.recipientEmail}?subject=${subject}&body=${body}`, '_blank');
 }

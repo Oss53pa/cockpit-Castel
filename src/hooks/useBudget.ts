@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { BudgetItem, BudgetCategory, Axe, EVMIndicators } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 export function useBudget() {
   return useLiveQuery(async () => {
@@ -125,12 +126,18 @@ export async function updateBudgetItem(
 }
 
 export async function deleteBudgetItem(id: number): Promise<void> {
-  // Also delete all child items
-  const children = await db.budget.filter(item => item.parentId === id).toArray();
-  for (const child of children) {
-    await db.budget.delete(child.id!);
-  }
-  await db.budget.delete(id);
+  await db.transaction('rw', [db.budget, db.alertes], async () => {
+    // Supprimer tous les enfants
+    const children = await db.budget.filter(item => item.parentId === id).toArray();
+    for (const child of children) {
+      // Cascade: alertes des enfants
+      await db.alertes.filter(a => a.entiteType === 'budget' && a.entiteId === child.id!).delete();
+      await db.budget.delete(child.id!);
+    }
+    // Cascade: alertes du parent
+    await db.alertes.filter(a => a.entiteType === 'budget' && a.entiteId === id).delete();
+    await db.budget.delete(id);
+  });
 }
 
 // ============================================================================
@@ -243,34 +250,53 @@ export async function resetBudgetEngagements(): Promise<number> {
 // EVM (Earned Value Management) Calculations
 export function calculateEVM(
   budgetItems: BudgetItem[],
-  actions: { avancement: number; dateFin: string }[],
+  actions: { avancement: number; dateFin: string; montantPrevu?: number }[],
   asOfDate: Date = new Date()
 ): EVMIndicators {
-  const BAC = budgetItems.reduce((sum, item) => sum + item.montantPrevu, 0);
-  const AC = budgetItems.reduce((sum, item) => sum + item.montantRealise, 0);
+  // Exclure les parents qui ont des enfants pour éviter le double-comptage
+  const parentIdsWithChildren = new Set<number>();
+  budgetItems.forEach(item => {
+    if (item.parentId) parentIdsWithChildren.add(item.parentId);
+  });
+  const leafItems = budgetItems.filter(item => !(item.id && parentIdsWithChildren.has(item.id)));
 
-  // Calculate planned progress based on schedule
+  const BAC = leafItems.reduce((sum, item) => sum + item.montantPrevu, 0);
+  const AC = leafItems.reduce((sum, item) => sum + item.montantRealise, 0);
+
+  // Dates du projet depuis la configuration centralisée
   const today = asOfDate.getTime();
-  const projectStart = new Date('2024-01-01').getTime(); // Adjust based on project
-  const projectEnd = new Date('2026-11-30').getTime(); // Cosmos Angré opening
+  const projectStart = new Date(PROJET_CONFIG.dateDebut).getTime();
+  const projectEnd = new Date(PROJET_CONFIG.jalonsClés.inauguration).getTime();
 
   const totalDuration = projectEnd - projectStart;
-  const elapsed = Math.min(today - projectStart, totalDuration);
-  const scheduledProgress = elapsed / totalDuration;
+  const elapsed = Math.max(0, Math.min(today - projectStart, totalDuration));
+  const scheduledProgress = totalDuration > 0 ? elapsed / totalDuration : 0;
 
   // Planned Value (what should have been done by now)
   const PV = BAC * scheduledProgress;
 
-  // Earned Value (what has actually been done based on action progress)
-  const avgProgress =
-    actions.length > 0
+  // Earned Value pondéré par le budget de chaque action
+  // EV = Σ(budget_action_i × avancement_i%) au lieu d'une moyenne simple
+  const totalActionBudget = actions.reduce((sum, a) => sum + (a.montantPrevu ?? 0), 0);
+  let EV: number;
+  if (totalActionBudget > 0) {
+    // Weighted EV: chaque action contribue proportionnellement à son budget
+    const weightedProgress = actions.reduce((sum, a) => {
+      const weight = (a.montantPrevu ?? 0) / totalActionBudget;
+      return sum + weight * (a.avancement / 100);
+    }, 0);
+    EV = BAC * weightedProgress;
+  } else {
+    // Fallback: moyenne simple si pas de budgets par action
+    const avgProgress = actions.length > 0
       ? actions.reduce((sum, a) => sum + a.avancement, 0) / actions.length / 100
       : 0;
-  const EV = BAC * avgProgress;
+    EV = BAC * avgProgress;
+  }
 
   // Performance Indices
-  const SPI = PV > 0 ? EV / PV : 0; // Schedule Performance Index
-  const CPI = AC > 0 ? EV / AC : 0; // Cost Performance Index
+  const SPI = PV > 0 ? EV / PV : 1; // Schedule Performance Index (1.0 si pas de PV)
+  const CPI = AC > 0 ? EV / AC : 1; // Cost Performance Index (1.0 si pas de AC)
 
   // Variances
   const SV = EV - PV; // Schedule Variance
@@ -289,9 +315,22 @@ export function useEVMIndicators() {
     const budgetItems = await db.budget.toArray();
     const actions = await db.actions.toArray();
 
+    // Calculer le budget par axe pour pondérer les actions
+    const budgetParAxe: Record<string, number> = {};
+    const parentIds = new Set<number>();
+    budgetItems.forEach(item => { if (item.parentId) parentIds.add(item.parentId); });
+    const leafBudgets = budgetItems.filter(item => !(item.id && parentIds.has(item.id)));
+    leafBudgets.forEach(item => {
+      budgetParAxe[item.axe] = (budgetParAxe[item.axe] ?? 0) + item.montantPrevu;
+    });
+
     return calculateEVM(
       budgetItems,
-      actions.map((a) => ({ avancement: a.avancement, dateFin: a.date_fin_prevue }))
+      actions.map((a) => ({
+        avancement: a.avancement,
+        dateFin: a.date_fin_prevue,
+        montantPrevu: budgetParAxe[a.axe] ? budgetParAxe[a.axe] / actions.filter(act => act.axe === a.axe).length : 0,
+      }))
     );
   }) ?? {
     PV: 0,

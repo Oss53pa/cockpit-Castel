@@ -3,6 +3,7 @@
 // ============================================================================
 
 import type { GeneratedReport, ExportOptions } from '@/types/reports.types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // GENERATION HTML
@@ -423,7 +424,7 @@ export function generateReportHTML(
 
       <!-- Footer -->
       <div class="footer">
-        <p>Rapport genere automatiquement par COCKPIT - COSMOS ANGRE</p>
+        <p>Rapport genere automatiquement par COCKPIT - ${PROJET_CONFIG.nom}</p>
         <p>${new Date().toLocaleString('fr-FR')}</p>
       </div>
     </body>
@@ -467,17 +468,24 @@ export function downloadReportPDF(report: GeneratedReport, options: ExportOption
 
   // Ouvrir dans une nouvelle fenetre pour impression
   const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-
-    // Attendre le chargement puis lancer l'impression
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    };
+  if (!printWindow) {
+    alert('Impossible d\'ouvrir la fenêtre d\'impression. Vérifiez que les popups ne sont pas bloquées.');
+    return;
   }
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+
+  // Attendre le chargement puis lancer l'impression
+  printWindow.onload = () => {
+    setTimeout(() => {
+      try {
+        printWindow.print();
+      } catch (error) {
+        console.error('Erreur impression:', error);
+      }
+    }, 500);
+  };
 }
 
 // ============================================================================
@@ -493,7 +501,7 @@ export async function downloadReportPPTX(
 
   alert(
     'Export PowerPoint: Cette fonctionnalite necessite la librairie pptxgenjs.\n\n' +
-    'Utilisez le Deep Dive Mensuel pour generer des presentations PowerPoint.'
+    'Utilisez le EXCO Mensuel pour generer des presentations PowerPoint.'
   );
 
   console.log('Rapport a exporter en PPTX:', report);

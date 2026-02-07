@@ -501,6 +501,18 @@ export function ActionFormContent({
       }
     }
 
+    // Validation: échéance ne peut pas être avant la date de début
+    if (echeance && action?.date_debut_prevue && echeance < action.date_debut_prevue) {
+      alert('L\'échéance ne peut pas être antérieure à la date de début');
+      return;
+    }
+
+    // Validation: avancement entre 0 et 100
+    if (avancement < 0 || avancement > 100) {
+      alert('L\'avancement doit être entre 0% et 100%');
+      return;
+    }
+
     onSave?.({
       // Champs principaux (toujours envoyés en mode création, sinon si modifiés)
       titre: isCreate || titre !== action?.titre ? titre : undefined,
@@ -948,7 +960,7 @@ export function ActionFormContent({
                 )}
               </h3>
               <p className="text-xs text-amber-600 mb-3">
-                Ces points seront consolidés dans le rapport DeepDive sous l'axe de cette action.
+                Ces points seront consolidés dans le rapport Exco sous l'axe de cette action.
               </p>
             </div>
 
@@ -1073,7 +1085,7 @@ export function ActionFormContent({
                 )}
               </h3>
               <p className="text-xs text-purple-600 mb-3">
-                Ces décisions seront consolidées dans le rapport DeepDive sous l'axe de cette action.
+                Ces décisions seront consolidées dans le rapport Exco sous l'axe de cette action.
               </p>
             </div>
 

@@ -48,11 +48,11 @@ import {
   useCOPILTrends,
   useCurrentSiteId,
 } from '@/hooks';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_METEO_COPIL } from '@/data/constants';
 import type { TrendDirection } from '@/hooks/useDashboard';
 import { formatCurrency, cn } from '@/lib/utils';
 import { AXE_LABELS, RISQUE_CATEGORY_LABELS } from '@/types';
-import type { FaitMarquant } from '@/types/deepDive';
+import type { FaitMarquant } from '@/types/exco';
 import { exportCOPILToPDF, exportCOPILToPPTX } from './copilExport';
 
 // ============================================================================
@@ -195,10 +195,10 @@ function MeteoProjetSection() {
   };
 
   const globalMeteo = useMemo((): MeteoItem['status'] => {
-    if (criticalRisks > 2 || jalonsEnDanger > 3) return 'stormy';
-    if (criticalRisks > 0 || jalonsEnDanger > 1) return 'rainy';
-    if (avancementGlobal >= 70) return 'sunny';
-    if (avancementGlobal >= 40) return 'cloudy';
+    if (criticalRisks > SEUILS_METEO_COPIL.stormy.risquesCritiques || jalonsEnDanger > SEUILS_METEO_COPIL.stormy.jalonsEnDanger) return 'stormy';
+    if (criticalRisks > SEUILS_METEO_COPIL.rainy.risquesCritiques || jalonsEnDanger > SEUILS_METEO_COPIL.rainy.jalonsEnDanger) return 'rainy';
+    if (avancementGlobal >= SEUILS_METEO_COPIL.sunny.avancement) return 'sunny';
+    if (avancementGlobal >= SEUILS_METEO_COPIL.cloudy.avancement) return 'cloudy';
     return 'rainy';
   }, [avancementGlobal, criticalRisks, jalonsEnDanger]);
 

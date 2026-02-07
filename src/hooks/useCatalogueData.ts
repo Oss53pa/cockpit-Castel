@@ -333,10 +333,10 @@ export function useCatalogueData(): CatalogueData {
 
     // 8. Risques par niveau (Bar)
     const risquesByNiveau = {
-      'Critique (≥12)': risques.filter(r => r.score >= 12).length,
-      'Élevé (8-11)': risques.filter(r => r.score >= 8 && r.score < 12).length,
-      'Modéré (4-7)': risques.filter(r => r.score >= 4 && r.score < 8).length,
-      'Faible (<4)': risques.filter(r => r.score < 4).length,
+      'Critique (≥12)': risques.filter(r => (r.score ?? 0) >= 12).length,
+      'Élevé (8-11)': risques.filter(r => (r.score ?? 0) >= 8 && (r.score ?? 0) < 12).length,
+      'Modéré (4-7)': risques.filter(r => (r.score ?? 0) >= 4 && (r.score ?? 0) < 8).length,
+      'Faible (<4)': risques.filter(r => (r.score ?? 0) < 4).length,
     };
 
     result.push({
@@ -559,7 +559,7 @@ export function useCatalogueData(): CatalogueData {
 
     // 3. Top 10 Risques
     const top10Risques = [...risques]
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
       .slice(0, 10);
 
     result.push({
@@ -864,7 +864,7 @@ export function useCatalogueData(): CatalogueData {
       unit: '',
       format: 'number',
       target: 0,
-      currentValue: risques.filter(r => r.score >= 12).length,
+      currentValue: risques.filter(r => (r.score ?? 0) >= 12).length,
       axe: 'Transverse',
     });
 
@@ -877,7 +877,7 @@ export function useCatalogueData(): CatalogueData {
       unit: '',
       format: 'number',
       currentValue: risques.length > 0
-        ? Math.round(risques.reduce((sum, r) => sum + r.score, 0) / risques.length)
+        ? Math.round(risques.reduce((sum, r) => sum + (r.score ?? 0), 0) / risques.length)
         : 0,
       axe: 'Transverse',
     });

@@ -11,7 +11,7 @@ Application de pilotage de projet multi-sites. Tableau de bord complet pour le s
 - **Jalons** : Suivi des jalons projet avec timeline et livrables
 - **Risques** : Registre des risques avec matrice de criticite
 - **Budget** : Suivi budgetaire avec indicateurs EVM
-- **Rapports** : Deep Dive mensuel, Report Studio, exports PDF/PPTX
+- **Rapports** : EXCO mensuel, Report Studio, exports PDF/PPTX
 - **Alertes** : Notifications automatiques des echeances et retards
 - **IA Proph3t** : Assistant IA pour analyses et recommandations
 

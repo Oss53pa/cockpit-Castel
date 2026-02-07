@@ -2,20 +2,20 @@
 // ============================================================================
 
 // Main report components
-export { AxisDeepDive } from './AxisDeepDive';
+export { AxisExco } from './AxisExco';
 
 // Shared components
 export { ReportHeader, KPICard } from './shared';
 
 // ============================================================================
-// Deep Dive sub-components
+// EXCO sub-components
 // ============================================================================
-export { AxisHeader } from './AxisDeepDive/AxisHeader';
-export { AxisMilestones } from './AxisDeepDive/AxisMilestones';
-export { AxisActions } from './AxisDeepDive/AxisActions';
-export { AxisRisks } from './AxisDeepDive/AxisRisks';
-export { AxisRecommendations } from './AxisDeepDive/AxisRecommendations';
-export { AxisSync } from './AxisDeepDive/AxisSync';
+export { AxisHeader } from './AxisExco/AxisHeader';
+export { AxisMilestones } from './AxisExco/AxisMilestones';
+export { AxisActions } from './AxisExco/AxisActions';
+export { AxisRisks } from './AxisExco/AxisRisks';
+export { AxisRecommendations } from './AxisExco/AxisRecommendations';
+export { AxisSync } from './AxisExco/AxisSync';
 
 // ============================================================================
 // Weekly Report components

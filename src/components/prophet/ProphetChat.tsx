@@ -39,6 +39,7 @@ import {
   type AIProvider,
 } from '@/services/prophet';
 import ReactMarkdown from 'react-markdown';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Add Grand Hotel font
 const grandHotelStyle = `
@@ -561,7 +562,7 @@ export function ProphetChat() {
                   Bienvenue!
                 </h4>
                 <p className="text-sm text-gray-500 mb-4">
-                  Je suis Proph3t, votre assistant IA pour COSMOS ANGRE.
+                  {`Je suis Proph3t, votre assistant IA pour ${PROJET_CONFIG.nom}.`}
                 </p>
                 <div className="space-y-2">
                   {[

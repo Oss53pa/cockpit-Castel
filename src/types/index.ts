@@ -1691,14 +1691,14 @@ export const BUILDING_CODE_LABELS: Record<BuildingCode, string> = {
 };
 
 // Configuration complète des bâtiments selon spécifications v2.0
-// Total GLA: 45 000 m² (conforme à PROJET_CONFIG)
+// Total surface bâtiments (SHON): 45 000 m² — NE PAS confondre avec GLA (16 184 m²)
 export const BATIMENTS_CONFIG: Record<BuildingCode, {
   id: string;
   nom: string;
   description: string;
   estPilote: boolean;
   ordre: number;
-  surface: number; // m² GLA
+  surface: number; // m² (surface totale du bâtiment)
   niveaux: string;
   type: string;
 }> = {

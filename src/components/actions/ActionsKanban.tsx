@@ -149,7 +149,11 @@ export function ActionsKanban({ filters, onView, onAdd }: ActionsKanbanProps) {
     const actionId = parseInt(result.draggableId);
     const newStatus = result.destination.droppableId as ActionStatus;
 
-    await updateActionStatus(actionId, newStatus);
+    try {
+      await updateActionStatus(actionId, newStatus);
+    } catch (error) {
+      console.error('Erreur changement statut:', error);
+    }
   };
 
   const getColumnActions = (status: ActionStatus) =>

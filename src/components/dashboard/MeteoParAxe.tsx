@@ -10,7 +10,7 @@ import { AXE_SHORT_LABELS, AXE_CONFIG, type Axe } from '@/types';
 import { cn } from '@/lib/utils';
 import type { Trend } from '@/lib/calculations';
 import { useEffect, useState, useRef } from 'react';
-import { METEO_STYLES, type MeteoType } from '@/data/constants';
+import { METEO_STYLES, SEUILS_METEO_AXE_DASHBOARD, type MeteoType } from '@/data/constants';
 
 // SVG Weather Icons - Animated
 function SunIcon({ className }: { className?: string }) {
@@ -99,8 +99,8 @@ function getMeteoConfig(meteo: MeteoType) {
 // Calculer la météo en fonction de l'écart prévu/réalisé
 function calculerMeteo(avancement: number, prevu: number): 'SOLEIL' | 'NUAGEUX' | 'ORAGEUX' {
   const ecart = avancement - prevu;
-  if (ecart >= -5) return 'SOLEIL';
-  if (ecart >= -15) return 'NUAGEUX';
+  if (ecart >= SEUILS_METEO_AXE_DASHBOARD.soleil) return 'SOLEIL';
+  if (ecart >= SEUILS_METEO_AXE_DASHBOARD.nuageux) return 'NUAGEUX';
   return 'ORAGEUX';
 }
 

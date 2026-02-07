@@ -3,7 +3,8 @@ import { Plus, List, Grid3X3, X, AlertTriangle, Calendar, User, Tag, FileText, B
 import { useAppStore } from '@/stores';
 import { Button, Select, SelectOption, Card, Badge, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
-import { useRisques, createRisque, updateRisque } from '@/hooks';
+import { useRisques, useJalons, createRisque, updateRisque, usePermissions } from '@/hooks';
+import { PROJET_CONFIG } from '@/data/constants';
 import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
@@ -33,7 +34,9 @@ export function RisquesPage() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const risques = useRisques(risqueFilters);
+  const jalonsAll = useJalons();
   const toast = useToast();
+  const { canCreate, canEdit, canImport } = usePermissions();
 
   // État pour les risques de la cellule sélectionnée dans la matrice
   const [selectedCellRisques, setSelectedCellRisques] = useState<{
@@ -194,12 +197,14 @@ export function RisquesPage() {
             onChange={handleImportFile}
             className="hidden"
           />
-          <Tooltip content="Importer depuis Excel">
-            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
-              <Upload className="h-4 w-4 mr-2" />
-              {importing ? 'Import...' : 'Importer'}
-            </Button>
-          </Tooltip>
+          {canImport && (
+            <Tooltip content="Importer depuis Excel">
+              <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+                <Upload className="h-4 w-4 mr-2" />
+                {importing ? 'Import...' : 'Importer'}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip content="Exporter vers Excel">
             <Button variant="outline" onClick={handleExportExcel}>
               <Download className="h-4 w-4 mr-2" />
@@ -212,10 +217,12 @@ export function RisquesPage() {
               Template
             </Button>
           </Tooltip>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau risque
-          </Button>
+          {canCreate && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau risque
+            </Button>
+          )}
         </div>
       </div>
 
@@ -494,7 +501,7 @@ export function RisquesPage() {
             et une revue globale trimestrielle est réalisée avec le PDG.
           </p>
           <p>
-            <strong>Registre :</strong> 46 risques identifiés alignés sur les 19 jalons du Référentiel de Mobilisation Cosmos Angré.
+            <strong>Registre :</strong> {`${risques.length} risques identifiés alignés sur les ${jalonsAll.length} jalons du Référentiel de Mobilisation ${PROJET_CONFIG.nom}.`}
             Chaque risque dispose d'un plan de mitigation avec actions, responsables et échéances.
           </p>
         </div>

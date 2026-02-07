@@ -1,6 +1,6 @@
 /**
  * Journal des Rapports
- * Historique et archivage de TOUS les rapports générés (Studio + DeepDive)
+ * Historique et archivage de TOUS les rapports générés (Studio + Exco)
  */
 
 import { useState, useMemo } from 'react';
@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useUsers } from '@/hooks';
-import type { DeepDive } from '@/types/deepDive';
+import type { Exco } from '@/types/exco';
 import type { StudioReport } from '@/types/reportStudio';
 import { REPORT_TYPE_LABELS } from '@/types/reportStudio';
 
@@ -240,7 +240,7 @@ function SendReportDialog({ open, onClose, report, onSend }: SendReportDialogPro
 
 // Types pour les filtres
 type FilterStatus = 'all' | 'draft' | 'sent' | 'archived' | 'published';
-type FilterType = 'all' | 'deep_dive' | 'studio' | 'RAPPORT_FLASH' | 'RAPPORT_MENSUEL' | 'RAPPORT_BUDGET' | 'RAPPORT_RISQUES';
+type FilterType = 'all' | 'exco' | 'studio' | 'RAPPORT_FLASH' | 'RAPPORT_MENSUEL' | 'RAPPORT_BUDGET' | 'RAPPORT_RISQUES';
 
 // Type unifié pour tous les rapports
 interface UnifiedReport {
@@ -257,23 +257,23 @@ interface UnifiedReport {
   sharedWith?: string[];
   tags?: string[];
   // Référence originale
-  originalReport: StudioReport | DeepDive;
+  originalReport: StudioReport | Exco;
 }
 
 interface JournalProps {
-  onOpenDeepDive?: (id: number) => void;
+  onOpenExco?: (id: number) => void;
   onOpenReport?: (id: number) => void;
 }
 
-export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
+export function Journal({ onOpenExco, onOpenReport }: JournalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [selectedReport, setSelectedReport] = useState<UnifiedReport | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
 
-  // Charger les DeepDives depuis la DB
-  const deepDives = useLiveQuery(() => db.deepDives.orderBy('createdAt').reverse().toArray()) || [];
+  // Charger les Excos depuis la DB
+  const excos = useLiveQuery(() => db.excos.orderBy('createdAt').reverse().toArray()) || [];
 
   // Charger les rapports Studio depuis la DB
   const studioReports = useLiveQuery(() => db.reports.orderBy('createdAt').reverse().toArray()) || [];
@@ -301,15 +301,15 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
       });
     });
 
-    // Ajouter les DeepDives
-    deepDives.forEach(dd => {
+    // Ajouter les Excos
+    excos.forEach(dd => {
       if (!dd.id) return;
       unified.push({
         id: dd.id,
         source: 'deepdive',
         titre: dd.titre,
-        type: 'deep_dive',
-        typeLabel: 'Deep Dive',
+        type: 'exco',
+        typeLabel: 'EXCO',
         periode: dd.periode,
         status: dd.status,
         createdAt: dd.createdAt,
@@ -323,7 +323,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
 
     // Trier par date de création décroissante
     return unified.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [studioReports, deepDives]);
+  }, [studioReports, excos]);
 
   // Filtrer les rapports
   const filteredReports = useMemo(() => {
@@ -344,8 +344,8 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
       // Filtre par type
       if (filterType !== 'all') {
         if (filterType === 'studio' && report.source !== 'studio') return false;
-        if (filterType === 'deep_dive' && report.source !== 'deepdive') return false;
-        if (filterType !== 'studio' && filterType !== 'deep_dive' && report.type !== filterType) return false;
+        if (filterType === 'exco' && report.source !== 'deepdive') return false;
+        if (filterType !== 'studio' && filterType !== 'exco' && report.type !== filterType) return false;
       }
 
       return true;
@@ -355,7 +355,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
   // Archiver un rapport
   const handleArchive = async (report: UnifiedReport) => {
     if (report.source === 'deepdive') {
-      await db.deepDives.update(report.id, {
+      await db.excos.update(report.id, {
         status: 'archived',
         updatedAt: new Date().toISOString(),
       });
@@ -371,7 +371,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
   const handleDelete = async (report: UnifiedReport) => {
     if (confirm(`Supprimer définitivement "${report.titre}" ?`)) {
       if (report.source === 'deepdive') {
-        await db.deepDives.delete(report.id);
+        await db.excos.delete(report.id);
       } else {
         await db.reports.delete(report.id);
       }
@@ -391,8 +391,8 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
 
     // Mettre à jour le rapport avec les infos d'envoi
     if (selectedReport.source === 'deepdive') {
-      const dd = selectedReport.originalReport as DeepDive;
-      await db.deepDives.update(selectedReport.id, {
+      const dd = selectedReport.originalReport as Exco;
+      await db.excos.update(selectedReport.id, {
         sharedWith: [...(dd.sharedWith || []), ...recipients],
         lastSentAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -416,7 +416,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
   // Ouvrir un rapport
   const handleOpen = (report: UnifiedReport) => {
     if (report.source === 'deepdive') {
-      onOpenDeepDive?.(report.id);
+      onOpenExco?.(report.id);
     } else {
       onOpenReport?.(report.id);
     }
@@ -459,7 +459,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      deep_dive: 'Deep Dive',
+      exco: 'EXCO',
       flash: 'Flash Hebdo',
       mensuel: 'Mensuel',
       budget: 'Budget',
@@ -519,7 +519,7 @@ export function Journal({ onOpenDeepDive, onOpenReport }: JournalProps) {
           >
             <SelectOption value="all">Tous les types</SelectOption>
             <SelectOption value="studio">Rapports Studio</SelectOption>
-            <SelectOption value="deep_dive">Deep Dive</SelectOption>
+            <SelectOption value="exco">EXCO</SelectOption>
             <SelectOption value="RAPPORT_FLASH">Flash Hebdo</SelectOption>
             <SelectOption value="RAPPORT_MENSUEL">Mensuel</SelectOption>
             <SelectOption value="RAPPORT_BUDGET">Budget</SelectOption>

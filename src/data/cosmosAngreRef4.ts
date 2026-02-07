@@ -74,7 +74,7 @@ export const RACI_LANCEMENT: RACIEntry[] = [
 export const RACI_GOUVERNANCE: RACIEntry[] = [
   { livrable: 'Flash hebdo', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' },
   { livrable: 'Rapport mensuel investisseurs', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
-  { livrable: 'Deep Dive mensuel', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' },
+  { livrable: 'EXCO mensuel', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' },
   { livrable: 'COPIL projet', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
   { livrable: 'Arbitrages budget', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
 ];

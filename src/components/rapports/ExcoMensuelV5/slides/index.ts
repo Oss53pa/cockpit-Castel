@@ -1,0 +1,13 @@
+export { CoverSlide } from './CoverSlide';
+export { AgendaSlide } from './AgendaSlide';
+export { ExecSummarySlide } from './ExecSummarySlide';
+export { TrajectorySlide } from './TrajectorySlide';
+export { CriticalPathSlide } from './CriticalPathSlide';
+export { DashboardSlide } from './DashboardSlide';
+export { ScorecardSlide } from './ScorecardSlide';
+export { AxeSlide } from './AxeSlide';
+export { SyncSlide } from './SyncSlide';
+export { RisksSlide } from './RisksSlide';
+export { ScenariosSlide } from './ScenariosSlide';
+export { DecisionsSlide } from './DecisionsSlide';
+export { CloseSlide } from './CloseSlide';

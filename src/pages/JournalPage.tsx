@@ -48,18 +48,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  useDeepDives,
-  useDeepDiveStats,
-  deleteDeepDive,
-  duplicateDeepDive,
-  archiveDeepDive,
-  markDeepDiveAsPresented,
-} from '@/hooks/useDeepDives';
-import type { DeepDive, ProjectWeather } from '@/types/deepDive';
-import { WEATHER_CONFIG } from '@/types/deepDive';
+  useExcos,
+  useExcoStats,
+  deleteExco,
+  duplicateExco,
+  archiveExco,
+  markExcoAsPresented,
+} from '@/hooks/useExcos';
+import type { Exco, ProjectWeather } from '@/types/exco';
+import { WEATHER_CONFIG } from '@/types/exco';
 import { useNavigate } from 'react-router-dom';
 
-const statusConfig: Record<DeepDive['status'], { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+const statusConfig: Record<Exco['status'], { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   draft: { label: 'Brouillon', color: '#6B7280', bgColor: '#F3F4F6', icon: <FileText className="h-4 w-4" /> },
   finalized: { label: 'Finalisé', color: '#3B82F6', bgColor: '#DBEAFE', icon: <CheckCircle className="h-4 w-4" /> },
   presented: { label: 'Présenté', color: '#22C55E', bgColor: '#DCFCE7', icon: <Presentation className="h-4 w-4" /> },
@@ -94,8 +94,8 @@ function formatRelativeDate(dateString: string): string {
   return formatDate(dateString);
 }
 
-interface DeepDiveCardProps {
-  deepDive: DeepDive;
+interface ExcoCardProps {
+  exco: Exco;
   onView: () => void;
   onDuplicate: () => void;
   onArchive: () => void;
@@ -103,28 +103,28 @@ interface DeepDiveCardProps {
   onMarkPresented: () => void;
 }
 
-function DeepDiveCard({
-  deepDive,
+function ExcoCard({
+  exco,
   onView,
   onDuplicate,
   onArchive,
   onDelete,
   onMarkPresented,
-}: DeepDiveCardProps) {
-  const status = statusConfig[deepDive.status];
-  const weather = WEATHER_CONFIG[deepDive.weather];
+}: ExcoCardProps) {
+  const status = statusConfig[exco.status];
+  const weather = WEATHER_CONFIG[exco.weather];
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4" style={{ borderLeftColor: weather.color }}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            {weatherIcons[deepDive.weather]}
+            {weatherIcons[exco.weather]}
             <div>
               <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                {deepDive.titre}
+                {exco.titre}
               </h3>
-              <p className="text-sm text-gray-500">{deepDive.projectName}</p>
+              <p className="text-sm text-gray-500">{exco.projectName}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ function DeepDiveCard({
                   <Copy className="h-4 w-4 mr-2" />
                   Dupliquer
                 </DropdownMenuItem>
-                {deepDive.status === 'finalized' && (
+                {exco.status === 'finalized' && (
                   <DropdownMenuItem onClick={onMarkPresented}>
                     <Presentation className="h-4 w-4 mr-2" />
                     Marquer comme présenté
@@ -174,33 +174,33 @@ function DeepDiveCard({
         {/* KPIs Summary */}
         <div className="grid grid-cols-4 gap-3 mb-4">
           <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <div className="text-lg font-bold text-gray-900">{deepDive.kpis.avancementGlobal}%</div>
+            <div className="text-lg font-bold text-gray-900">{exco.kpis.avancementGlobal}%</div>
             <div className="text-xs text-gray-500">Avancement</div>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded-lg">
             <div className="text-lg font-bold text-gray-900">
-              {deepDive.kpis.jalonsAtteints}/{deepDive.kpis.jalonsTotal}
+              {exco.kpis.jalonsAtteints}/{exco.kpis.jalonsTotal}
             </div>
             <div className="text-xs text-gray-500">Jalons</div>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded-lg">
             <div className="text-lg font-bold text-gray-900">
-              {Math.round((deepDive.kpis.budgetConsomme / deepDive.kpis.budgetTotal) * 100)}%
+              {Math.round((exco.kpis.budgetConsomme / exco.kpis.budgetTotal) * 100)}%
             </div>
             <div className="text-xs text-gray-500">Budget</div>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <div className="text-lg font-bold text-gray-900">{deepDive.decisionPoints.length}</div>
+            <div className="text-lg font-bold text-gray-900">{exco.decisionPoints.length}</div>
             <div className="text-xs text-gray-500">Décisions</div>
           </div>
         </div>
 
         {/* Top risks indicator */}
-        {deepDive.topRisks.length > 0 && (
+        {exco.topRisks.length > 0 && (
           <div className="flex items-center gap-2 mb-3 p-2 bg-red-50 rounded-lg">
             <AlertTriangle className="h-4 w-4 text-primary-500" />
             <span className="text-sm text-red-700">
-              {deepDive.topRisks.filter(r => r.score >= 15).length} risque(s) critique(s)
+              {exco.topRisks.filter(r => r.score >= 15).length} risque(s) critique(s)
             </span>
           </div>
         )}
@@ -209,31 +209,31 @@ function DeepDiveCard({
         <div className="flex items-center justify-between text-sm text-gray-500 pt-3 border-t">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            {formatRelativeDate(deepDive.createdAt)}
+            {formatRelativeDate(exco.createdAt)}
           </div>
-          {deepDive.presentedAt && (
+          {exco.presentedAt && (
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Présenté à {deepDive.presentedTo}
+              Présenté à {exco.presentedTo}
             </div>
           )}
           <div className="flex items-center gap-1">
             <span className="text-xs text-gray-400">par</span>
-            <span className="font-medium">{deepDive.createdBy}</span>
+            <span className="font-medium">{exco.createdBy}</span>
           </div>
         </div>
 
         {/* Tags */}
-        {deepDive.tags && deepDive.tags.length > 0 && (
+        {exco.tags && exco.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3">
-            {deepDive.tags.slice(0, 3).map((tag, i) => (
+            {exco.tags.slice(0, 3).map((tag, i) => (
               <Badge key={i} variant="outline" className="text-xs">
                 <Tag className="h-3 w-3 mr-1" />
                 {tag}
               </Badge>
             ))}
-            {deepDive.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">+{deepDive.tags.length - 3}</Badge>
+            {exco.tags.length > 3 && (
+              <Badge variant="outline" className="text-xs">+{exco.tags.length - 3}</Badge>
             )}
           </div>
         )}
@@ -244,20 +244,20 @@ function DeepDiveCard({
 
 export function JournalPage() {
   const navigate = useNavigate();
-  const deepDives = useDeepDives();
-  const stats = useDeepDiveStats();
+  const excos = useExcos();
+  const stats = useExcoStats();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [weatherFilter, setWeatherFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'weather' | 'name'>('date');
-  const [deleteConfirm, setDeleteConfirm] = useState<DeepDive | null>(null);
-  const [presentedModal, setPresentedModal] = useState<DeepDive | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Exco | null>(null);
+  const [presentedModal, setPresentedModal] = useState<Exco | null>(null);
   const [presentedTo, setPresentedTo] = useState('');
 
-  // Filter and sort deep dives
-  const filteredDeepDives = useMemo(() => {
-    let result = [...deepDives];
+  // Filter and sort EXCOs
+  const filteredExcos = useMemo(() => {
+    let result = [...excos];
 
     // Search filter
     if (searchQuery) {
@@ -297,33 +297,33 @@ export function JournalPage() {
     }
 
     return result;
-  }, [deepDives, searchQuery, statusFilter, weatherFilter, sortBy]);
+  }, [excos, searchQuery, statusFilter, weatherFilter, sortBy]);
 
   const handleDelete = async () => {
     if (deleteConfirm?.id) {
-      await deleteDeepDive(deleteConfirm.id);
+      await deleteExco(deleteConfirm.id);
       setDeleteConfirm(null);
     }
   };
 
   const handleDuplicate = async (id: number) => {
-    await duplicateDeepDive(id);
+    await duplicateExco(id);
   };
 
   const handleArchive = async (id: number) => {
-    await archiveDeepDive(id);
+    await archiveExco(id);
   };
 
   const handleMarkPresented = async () => {
     if (presentedModal?.id && presentedTo) {
-      await markDeepDiveAsPresented(presentedModal.id, presentedTo);
+      await markExcoAsPresented(presentedModal.id, presentedTo);
       setPresentedModal(null);
       setPresentedTo('');
     }
   };
 
-  const handleNewDeepDive = () => {
-    navigate('/rapports?view=deep_dive');
+  const handleNewExco = () => {
+    navigate('/rapports?view=exco');
   };
 
   return (
@@ -336,13 +336,13 @@ export function JournalPage() {
               <Book className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Journal des DeepDives</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Journal des Excos</h1>
               <p className="text-sm text-gray-500">Historique complet des présentations DG</p>
             </div>
           </div>
-          <Button onClick={handleNewDeepDive} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+          <Button onClick={handleNewExco} className="bg-gradient-to-r from-blue-600 to-indigo-600">
             <Plus className="h-4 w-4 mr-2" />
-            Nouveau DeepDive
+            Nouveau Exco
           </Button>
         </div>
 
@@ -444,17 +444,17 @@ export function JournalPage() {
 
       {/* Content */}
       <ScrollArea className="flex-1 p-6">
-        {filteredDeepDives.length > 0 ? (
+        {filteredExcos.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredDeepDives.map((deepDive) => (
-              <DeepDiveCard
-                key={deepDive.id}
-                deepDive={deepDive}
-                onView={() => navigate(`/rapports?view=deep_dive&id=${deepDive.id}`)}
-                onDuplicate={() => deepDive.id && handleDuplicate(deepDive.id)}
-                onArchive={() => deepDive.id && handleArchive(deepDive.id)}
-                onDelete={() => setDeleteConfirm(deepDive)}
-                onMarkPresented={() => setPresentedModal(deepDive)}
+            {filteredExcos.map((exco) => (
+              <ExcoCard
+                key={exco.id}
+                exco={exco}
+                onView={() => navigate(`/rapports?view=exco&id=${exco.id}`)}
+                onDuplicate={() => exco.id && handleDuplicate(exco.id)}
+                onArchive={() => exco.id && handleArchive(exco.id)}
+                onDelete={() => setDeleteConfirm(exco)}
+                onMarkPresented={() => setPresentedModal(exco)}
               />
             ))}
           </div>
@@ -465,17 +465,17 @@ export function JournalPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
               {searchQuery || statusFilter !== 'all' || weatherFilter !== 'all'
-                ? 'Aucun DeepDive trouvé'
-                : 'Aucun DeepDive enregistré'}
+                ? 'Aucun Exco trouvé'
+                : 'Aucun Exco enregistré'}
             </h3>
             <p className="text-gray-500 mb-6 max-w-md">
               {searchQuery || statusFilter !== 'all' || weatherFilter !== 'all'
                 ? 'Essayez de modifier vos filtres de recherche'
-                : 'Créez votre premier DeepDive pour commencer à suivre vos présentations DG'}
+                : 'Créez votre premier Exco pour commencer à suivre vos présentations DG'}
             </p>
-            <Button onClick={handleNewDeepDive}>
+            <Button onClick={handleNewExco}>
               <Plus className="h-4 w-4 mr-2" />
-              Créer un DeepDive
+              Créer un Exco
             </Button>
           </div>
         )}
@@ -485,7 +485,7 @@ export function JournalPage() {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer le DeepDive</DialogTitle>
+            <DialogTitle>Supprimer le Exco</DialogTitle>
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer "{deleteConfirm?.titre}" ? Cette action est irréversible.
             </DialogDescription>
@@ -507,7 +507,7 @@ export function JournalPage() {
           <DialogHeader>
             <DialogTitle>Marquer comme présenté</DialogTitle>
             <DialogDescription>
-              À qui avez-vous présenté ce DeepDive ?
+              À qui avez-vous présenté ce Exco ?
             </DialogDescription>
           </DialogHeader>
           <Input

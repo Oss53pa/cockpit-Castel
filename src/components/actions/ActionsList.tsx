@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Edit, Trash2, Eye, MoreVertical, Plus, Send, ExternalLink } from 'lucide-react';
+import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -119,9 +120,16 @@ function ActionRow({
   onSend: (action: Action) => void;
   onShareExternal: (action: Action) => void;
 }) {
+  const { canEdit, canDelete } = usePermissions();
+
   const handleDelete = async () => {
     if (action.id && confirm('Supprimer cette action ?')) {
-      await deleteAction(action.id);
+      try {
+        await deleteAction(action.id);
+      } catch (error) {
+        console.error('Erreur suppression action:', error);
+        alert('Erreur lors de la suppression de l\'action');
+      }
     }
   };
 
@@ -236,10 +244,12 @@ function ActionRow({
                 <Eye className="h-4 w-4 mr-2" />
                 Voir
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(action)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={() => onEdit(action)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => onSend(action)}>
                 <Send className="h-4 w-4 mr-2" />
                 Envoyer
@@ -248,11 +258,15 @@ function ActionRow({
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Partager en externe
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-error-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} className="text-error-600">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -34,6 +34,7 @@ import {
   BATIMENTS_CONFIG,
   TOTAL_GLA,
 } from '@/types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // CALCUL AUTOMATIQUE - Avancement et Statut des bâtiments
@@ -893,7 +894,7 @@ export function BuildingsSettings() {
   };
 
   const handleResetToDefault = async () => {
-    if (confirm('Réinitialiser les bâtiments aux valeurs par défaut COSMOS ANGRÉ ?')) {
+    if (confirm(`Réinitialiser les bâtiments aux valeurs par défaut ${PROJET_CONFIG.nom} ?`)) {
       await saveBuildings(DEFAULT_BUILDINGS);
     }
   };
@@ -1008,7 +1009,7 @@ export function BuildingsSettings() {
               Bâtiments du Projet
             </h3>
             <p className="text-sm text-primary-500">
-              Gérez les {buildings.length} bâtiments du complexe COSMOS ANGRÉ (GLA: {buildings.reduce((sum, b) => sum + b.surface, 0).toLocaleString('fr-FR')} m²)
+              {`Gérez les ${buildings.length} bâtiments du complexe ${PROJET_CONFIG.nom} (GLA: ${buildings.reduce((sum, b) => sum + b.surface, 0).toLocaleString('fr-FR')} m²)`}
             </p>
           </div>
           <div className="flex items-center gap-2">

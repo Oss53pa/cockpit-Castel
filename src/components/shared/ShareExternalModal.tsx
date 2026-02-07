@@ -23,6 +23,7 @@ import { ExternalShareService, type ShareableItemType } from '@/services/externa
 import { useUser } from '@/hooks';
 import type { Action, Jalon, Risque } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface ShareExternalModalProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ export function ShareExternalModal({
   const typeConfig = typeLabels[entityType];
 
   const shareService = new ExternalShareService({
-    projectName: 'COSMOS ANGRE',
+    projectName: PROJET_CONFIG.nom,
     companyName: 'CRMC',
     primaryColor: '#1C3163',
     accentColor: '#D4AF37',

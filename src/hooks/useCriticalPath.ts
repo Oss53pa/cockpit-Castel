@@ -9,6 +9,7 @@ import { useJalons } from './useJalons';
 import { useUsers } from './useUsers';
 import { useCurrentSite } from './useSites';
 import type { Action, Jalon, User } from '@/types';
+import { PROJET_CONFIG, SEUILS_CHEMIN_CRITIQUE, AXES_CONFIG_FULL } from '@/data/constants';
 
 export interface CriticalAction {
   id: number;
@@ -23,6 +24,10 @@ export interface CriticalAction {
   avancement: number;
   jalonId: number | null;
   jalonTitre?: string;
+  axe: string;              // Code axe (axe1_rh, axe2_commercial, etc.)
+  axeLabel: string;         // Label court (Opérations, Technique, etc.)
+  phase: string | null;     // Phase jalon (SOFT OPENING, HANDOVER, etc.)
+  predecesseursTitres: string[];  // Titres des actions prédécesseurs
 }
 
 export interface CriticalPathData {
@@ -33,6 +38,35 @@ export interface CriticalPathData {
   totalCriticalActions: number;
   actionsNoMargin: number;
   actionsLowMargin: number;
+}
+
+// Dérivé de AXES_CONFIG_FULL pour éviter la duplication
+const AXE_LABEL_MAP: Record<string, string> = Object.fromEntries(
+  Object.values(AXES_CONFIG_FULL).map(a => [a.code, a.labelCourt])
+);
+
+const PHASE_REF_MAP: Record<string, string> = {
+  dateSoftOpening: 'SOFT OPENING',
+  dateDebutMobilisation: 'MOBILISATION',
+  dateDebutConstruction: 'CONSTRUCTION',
+  dateFinMobilisation: 'CLÔTURE',
+};
+
+function derivePhaseLabel(action: Action, jalon: Jalon | undefined): string | null {
+  if (action.jalon_reference && PHASE_REF_MAP[action.jalon_reference]) {
+    return PHASE_REF_MAP[action.jalon_reference];
+  }
+  if (jalon?.titre) {
+    const t = jalon.titre.toLowerCase();
+    if (t.includes('soft') || t.includes('pré-ouverture') || t.includes('ouverture')) return 'SOFT OPENING';
+    if (t.includes('commerc') || t.includes('leasing')) return 'COMMERCIALISATION';
+    if (t.includes('handover') || t.includes('réception') || t.includes('technique')) return 'HANDOVER';
+    if (t.includes('mobilis')) return 'MOBILISATION';
+    if (t.includes('budget') || t.includes('financ')) return 'BUDGET';
+    if (t.includes('construct')) return 'CONSTRUCTION';
+    return jalon.titre.length > 20 ? jalon.titre.substring(0, 20).toUpperCase() : jalon.titre.toUpperCase();
+  }
+  return null;
 }
 
 /**
@@ -89,11 +123,47 @@ function calculateMargin(
 
 /**
  * Détermine si une action est un goulot d'étranglement
- * Critères: 3+ successeurs ET non terminée
+ *
+ * DÉFINITION AMÉLIORÉE (P1-4 AUDIT):
+ * Un goulot est une action qui peut bloquer plusieurs autres actions.
+ *
+ * Critères pondérés:
+ * 1. Nombre de successeurs directs >= seuil (impact direct)
+ * 2. Est sur le chemin critique (marge faible)
+ * 3. A des prédécesseurs non terminés (cascade de retards)
+ *
+ * NOTE: Pour une analyse CPM complète, utiliser criticalPath.ts.
+ * Ce hook utilise une heuristique simplifiée pour la performance.
+ *
+ * TODO P1-4: Intégrer calculateCriticalPath() de lib/interdependency/criticalPath.ts
+ * pour calculer le vrai slack PMI (LS - ES) au lieu de l'approximation par dates.
  */
-function isBottleneck(action: Action): boolean {
+function isBottleneck(action: Action, margin: number, allActions: Action[]): boolean {
   const successors = action.successeurs || [];
-  return successors.length >= 3 && action.statut !== 'termine';
+  const predecessors = action.predecesseurs || [];
+
+  // Critère 1: Nombre de successeurs (impact direct)
+  const hasManySucessors = successors.length >= SEUILS_CHEMIN_CRITIQUE.seuilGoulot;
+
+  // Critère 2: Marge faible (sur chemin critique ou proche)
+  const isOnCriticalPath = margin <= SEUILS_CHEMIN_CRITIQUE.margeFaible;
+
+  // Critère 3: Prédécesseurs non terminés (risque de cascade)
+  const hasBlockingPredecessors = predecessors.some(p => {
+    const predAction = allActions.find(a => a.id_action === p.id);
+    return predAction && predAction.statut !== 'termine' && predAction.statut !== 'annule';
+  });
+
+  // Un goulot si:
+  // - Beaucoup de successeurs OU
+  // - Sur chemin critique avec au moins 1 successeur ET des prédécesseurs bloquants
+  const isBottleneckBySuccessors = hasManySucessors && action.statut !== 'termine';
+  const isBottleneckByCriticalChain = isOnCriticalPath &&
+                                       successors.length >= 1 &&
+                                       hasBlockingPredecessors &&
+                                       action.statut !== 'termine';
+
+  return isBottleneckBySuccessors || isBottleneckByCriticalChain;
 }
 
 /**
@@ -116,7 +186,7 @@ export function useCriticalPath(): CriticalPathData | null {
     if (!actions || actions.length === 0) return null;
 
     // Date d'ouverture
-    const openingDate = currentSite?.dateOuverture ?? '2026-11-15';
+    const openingDate = currentSite?.dateOuverture ?? PROJET_CONFIG.jalonsClés.softOpening;
     const today = new Date();
     const opening = new Date(openingDate);
     const daysToOpening = Math.ceil((opening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -130,12 +200,23 @@ export function useCriticalPath(): CriticalPathData | null {
     // Filtrer les actions non terminées
     const activeActions = actions.filter(a => a.statut !== 'termine' && a.statut !== 'annule');
 
+    // Map id_action → titre pour lookup prédécesseurs
+    const actionTitreMap = new Map<string, string>();
+    actions.forEach(a => actionTitreMap.set(a.id_action, a.titre));
+
     // Calculer les données pour chaque action
     const criticalActionsData: CriticalAction[] = activeActions.map(action => {
       const margin = calculateMargin(action, actions, openingDate);
       const successorsCount = countSuccessors(action);
-      const bottleneck = isBottleneck(action);
-      const jalonTitre = action.jalonId ? jalonMap.get(action.jalonId)?.titre : undefined;
+      // Passer margin et allActions pour une détection améliorée des goulots
+      const bottleneck = isBottleneck(action, margin, actions);
+      const jalon = action.jalonId ? jalonMap.get(action.jalonId) : undefined;
+      const jalonTitre = jalon?.titre;
+
+      // Prédécesseurs
+      const predecesseursTitres = (action.predecesseurs || [])
+        .map(p => actionTitreMap.get(p.id) ?? p.titre)
+        .filter(Boolean);
 
       return {
         id: action.id!,
@@ -150,6 +231,10 @@ export function useCriticalPath(): CriticalPathData | null {
         avancement: action.avancement,
         jalonId: action.jalonId,
         jalonTitre,
+        axe: action.axe,
+        axeLabel: AXE_LABEL_MAP[action.axe] ?? action.axe,
+        phase: derivePhaseLabel(action, jalon),
+        predecesseursTitres,
       };
     });
 
@@ -164,7 +249,7 @@ export function useCriticalPath(): CriticalPathData | null {
     // Filtrer pour garder uniquement les actions vraiment critiques
     // (marge < 30 jours OU est un bottleneck)
     const criticalActions = criticalActionsData.filter(a =>
-      a.margin < 30 || a.isBottleneck
+      a.margin < SEUILS_CHEMIN_CRITIQUE.margeCritique || a.isBottleneck
     );
 
     // Bottlenecks
@@ -172,10 +257,10 @@ export function useCriticalPath(): CriticalPathData | null {
 
     // Statistiques
     const actionsNoMargin = criticalActionsData.filter(a => a.margin === 0).length;
-    const actionsLowMargin = criticalActionsData.filter(a => a.margin > 0 && a.margin <= 7).length;
+    const actionsLowMargin = criticalActionsData.filter(a => a.margin > 0 && a.margin <= SEUILS_CHEMIN_CRITIQUE.margeFaible).length;
 
     return {
-      criticalActions: criticalActions.slice(0, 20), // Limiter à 20 pour l'affichage
+      criticalActions: criticalActions.slice(0, SEUILS_CHEMIN_CRITIQUE.topActions),
       bottlenecks,
       openingDate,
       daysToOpening,

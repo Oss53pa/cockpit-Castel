@@ -200,7 +200,7 @@ export const CONTRATS_EXPLOITATION = [
 // ============================================================================
 export const INSTANCES_PILOTAGE = [
   { instance: 'COPIL Projet', frequence: 'Mensuel', participants: ['DGA', 'PDG', 'Investisseurs'], objet: 'Décisions stratégiques' },
-  { instance: 'Deep Dive', frequence: 'Mensuel', participants: ['DGA', 'Managers'], objet: 'Revue détaillée par axe' },
+  { instance: 'EXCO', frequence: 'Mensuel', participants: ['DGA', 'Managers'], objet: 'Revue détaillée par axe' },
   { instance: 'Réunion projet', frequence: 'Hebdomadaire', participants: ['DGA', 'Managers'], objet: 'Suivi avancement' },
   { instance: 'Point chantier', frequence: 'Hebdomadaire', participants: ['DGA', 'FM', 'Constructeur'], objet: 'Travaux, réserves' },
   { instance: 'Point commercialisation', frequence: 'Hebdomadaire', participants: ['DGA', 'Commercial'], objet: 'Pipeline, négociations' },

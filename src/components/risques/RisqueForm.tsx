@@ -12,7 +12,7 @@ import {
   Badge,
   useToast,
 } from '@/components/ui';
-import { updateRisque } from '@/hooks';
+import { updateRisque, usePermissions } from '@/hooks';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
 import { type Risque } from '@/types';
 
@@ -26,6 +26,7 @@ interface RisqueFormProps {
 export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
+  const { canEdit } = usePermissions();
 
   // Si pas de risque, on ne peut pas éditer (utiliser RisqueFormCreate pour créer)
   if (!risque) {
@@ -92,7 +93,7 @@ export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps
         <div className="mt-4">
           <RisqueFormContent
             risque={risque}
-            isEditing={true}
+            isEditing={canEdit}
             isExternal={false}
             onSave={handleSave}
             onCancel={onClose}

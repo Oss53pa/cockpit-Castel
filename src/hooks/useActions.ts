@@ -157,7 +157,20 @@ export async function updateAction(
 }
 
 export async function deleteAction(id: number): Promise<void> {
-  await db.actions.delete(id);
+  const action = await db.actions.get(id);
+  await db.transaction('rw', [db.actions, db.alertes, db.liensSync, db.sousTaches, db.preuves, db.notesAction], async () => {
+    // Cascade: supprimer sous-tâches, preuves, notes liées
+    if (action?.id_action) {
+      await db.sousTaches.where('actionId').equals(action.id_action).delete();
+      await db.preuves.where('actionId').equals(action.id_action).delete();
+      await db.notesAction.where('actionId').equals(action.id_action).delete();
+      // Cascade: supprimer liens de synchronisation
+      await db.liensSync.filter(l => l.action_technique_id === action.id_action || l.action_mobilisation_id === action.id_action).delete();
+    }
+    // Cascade: supprimer alertes liées
+    await db.alertes.filter(a => a.entiteType === 'action' && a.entiteId === id).delete();
+    await db.actions.delete(id);
+  });
 }
 
 export async function updateActionStatus(

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // Types
 type RACIRole = 'R' | 'A' | 'C' | 'I' | '-';
@@ -76,7 +77,7 @@ const RACI_LANCEMENT: RACIEntry[] = [
 const RACI_GOUVERNANCE: RACIEntry[] = [
   { livrable: 'Flash hebdo', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' } },
   { livrable: 'Rapport mensuel investisseurs', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
-  { livrable: 'Deep Dive mensuel', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' } },
+  { livrable: 'EXCO mensuel', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' } },
   { livrable: 'COPIL projet', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
   { livrable: 'Arbitrages budget', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
 ];
@@ -142,7 +143,7 @@ export function RACISettings() {
           <div>
             <h3 className="text-lg font-semibold text-primary-900">Matrice RACI</h3>
             <p className="text-sm text-primary-500 mt-1">
-              Définition des responsabilités pour chaque livrable du projet COSMOS ANGRE
+              {`Définition des responsabilités pour chaque livrable du projet ${PROJET_CONFIG.nom}`}
             </p>
           </div>
           <Badge variant="info">Référentiel projet</Badge>

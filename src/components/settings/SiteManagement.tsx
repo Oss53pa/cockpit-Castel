@@ -5,6 +5,7 @@ import { useSites, createSite, updateSite, deleteSite, cleanupDuplicateSites } f
 import { useSiteStore } from '@/stores/siteStore';
 import type { Site } from '@/types/site';
 import { cn } from '@/lib/utils';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface SiteFormData {
   code: string;
@@ -195,7 +196,7 @@ export function SiteManagement() {
                     value={formData.nom}
                     onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                     className="w-full px-3 py-2 border border-primary-200 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    placeholder="COSMOS ANGRE"
+                    placeholder={PROJET_CONFIG.nom}
                     required
                   />
                 </div>

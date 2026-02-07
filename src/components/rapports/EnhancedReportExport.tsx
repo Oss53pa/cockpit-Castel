@@ -80,6 +80,7 @@ import {
   generateExecutiveSummary,
   generateSectionComment,
 } from '@/services/reportAnalysisService';
+import { PROJET_CONFIG } from '@/data/constants';
 // Données du site récupérées via useCurrentSite()
 
 interface ReportSection {
@@ -196,7 +197,7 @@ export function EnhancedReportExport() {
   const currentSite = useCurrentSite();
 
   // Nom du site depuis la DB
-  const siteName = currentSite?.nom || 'COSMOS ANGRÉ';
+  const siteName = currentSite?.nom || PROJET_CONFIG.nom;
 
   const [selectedSections, setSelectedSections] = useState<string[]>([
     'copil',

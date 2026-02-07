@@ -16,8 +16,9 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
   const risques = useRisques({ status: 'open' });
   const matrix = buildRiskMatrix(risques);
 
-  const getCellColor = (impact: number, probabilite: number) => {
-    const score = (impact + 1) * (probabilite + 1);
+  // impact et probabilite sont des index 0-3, on ajoute 1 pour obtenir l'échelle 1-4
+  const getCellColor = (impactIdx: number, probabiliteIdx: number) => {
+    const score = (impactIdx + 1) * (probabiliteIdx + 1);
     if (score >= 12) return 'bg-error-500 hover:bg-error-600';
     if (score >= 9) return 'bg-warning-500 hover:bg-warning-600';
     if (score >= 5) return 'bg-info-400 hover:bg-info-500';

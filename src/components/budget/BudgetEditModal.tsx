@@ -55,6 +55,12 @@ export function BudgetEditModal({ ligne, open, onClose, onSave }: BudgetEditModa
 
     try {
       // Validation
+      if (prevu < 0 || engage < 0 || consomme < 0) {
+        setError('Les montants ne peuvent pas être négatifs');
+        setIsSaving(false);
+        return;
+      }
+
       if (engage > prevu) {
         setError('Le montant engagé ne peut pas dépasser le montant prévu');
         setIsSaving(false);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
-import { generateAlertesAutomatiques, resetBudgetEngagements } from '@/hooks';
+import { generateAlertesAutomatiques, resetBudgetEngagements, usePermissions } from '@/hooks';
 import { resetAndSeedDatabase } from '@/data/cosmosAngre';
 import { TeamManagement } from '@/components/settings/TeamManagement';
 import { UserManagement } from '@/components/settings/UserManagement';
@@ -16,8 +16,9 @@ import { BackupManagement } from '@/components/settings/BackupManagement';
 import { DataInitialization } from '@/components/settings/DataInitialization';
 import { FirebaseSyncSettings } from '@/components/settings/FirebaseSyncSettings';
 import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
+import { PROJET_CONFIG } from '@/data/constants';
 
-const SETTINGS_PASSWORD = 'Atokp0879*';
+const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Atokp0879*';
 
 export function SettingsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -26,6 +27,7 @@ export function SettingsPage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const { canAdmin } = usePermissions();
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params for tab
     const params = new URLSearchParams(window.location.search);
@@ -80,7 +82,7 @@ export function SettingsPage() {
   const handleResetDatabase = async () => {
     if (
       confirm(
-        'Cette action va COMPLÉTER les données avec les éléments COSMOS ANGRÉ manquants.\n\n' +
+        `Cette action va COMPLÉTER les données avec les éléments ${PROJET_CONFIG.nom} manquants.\n\n` +
         '✅ Données existantes : CONSERVÉES\n' +
         '✅ Modifications des collaborateurs : CONSERVÉES\n' +
         '✅ Imports manuels : CONSERVÉS\n' +
@@ -311,50 +313,56 @@ export function SettingsPage() {
                   </Button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-warning-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-warning-900">
-                      Réinitialiser les données de démo
-                    </h4>
-                    <p className="text-sm text-warning-600">
-                      Recharger les données de démonstration (structures, jalons, actions, risques)
-                    </p>
+                {canAdmin && (
+                  <div className="flex items-center justify-between p-4 bg-warning-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-warning-900">
+                        Réinitialiser les données de démo
+                      </h4>
+                      <p className="text-sm text-warning-600">
+                        Recharger les données de démonstration (structures, jalons, actions, risques)
+                      </p>
+                    </div>
+                    <Button variant="secondary" onClick={handleResetDatabase} disabled={resetting}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      {resetting ? 'Réinitialisation...' : 'Réinitialiser'}
+                    </Button>
                   </div>
-                  <Button variant="secondary" onClick={handleResetDatabase} disabled={resetting}>
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    {resetting ? 'Réinitialisation...' : 'Réinitialiser'}
-                  </Button>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between p-4 bg-info-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-info-900">
-                      Réinitialiser engagements budget
-                    </h4>
-                    <p className="text-sm text-info-600">
-                      Mettre Engagé = 0 et Réalisé = 0 (budget non validé)
-                    </p>
+                {canAdmin && (
+                  <div className="flex items-center justify-between p-4 bg-info-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-info-900">
+                        Réinitialiser engagements budget
+                      </h4>
+                      <p className="text-sm text-info-600">
+                        Mettre Engagé = 0 et Réalisé = 0 (budget non validé)
+                      </p>
+                    </div>
+                    <Button variant="secondary" onClick={handleResetBudgetEngagements}>
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Réinitialiser
+                    </Button>
                   </div>
-                  <Button variant="secondary" onClick={handleResetBudgetEngagements}>
-                    <Wallet className="h-4 w-4 mr-2" />
-                    Réinitialiser
-                  </Button>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between p-4 bg-error-50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-error-900">
-                      Supprimer toutes les donnees
-                    </h4>
-                    <p className="text-sm text-error-600">
-                      Action irreversible
-                    </p>
+                {canAdmin && (
+                  <div className="flex items-center justify-between p-4 bg-error-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-error-900">
+                        Supprimer toutes les donnees
+                      </h4>
+                      <p className="text-sm text-error-600">
+                        Action irreversible
+                      </p>
+                    </div>
+                    <Button variant="danger" onClick={handleClearDatabase}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Supprimer
+                    </Button>
                   </div>
-                  <Button variant="danger" onClick={handleClearDatabase}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer
-                  </Button>
-                </div>
+                )}
               </div>
             </Card>
 

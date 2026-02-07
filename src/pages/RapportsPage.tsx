@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   FileText,
   Download,
@@ -35,6 +35,9 @@ import {
   Presentation,
   Bot,
   Zap,
+  Printer,
+  Save,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   Card,
@@ -69,9 +72,13 @@ import {
 import { useCatalogueData, searchDynamicCharts, searchDynamicTables, searchDynamicKPIs } from '@/hooks/useCatalogueData';
 import { ReportStudio } from '@/components/rapports/ReportStudio';
 import { EnhancedReportExport } from '@/components/rapports/EnhancedReportExport';
-import { DeepDive } from '@/components/rapports/DeepDive';
-import { DeepDiveLaunch } from '@/components/rapports/DeepDiveLaunch';
-import { DeepDiveLancement } from '@/components/rapports/DeepDiveLancement';
+import { Exco } from '@/components/rapports/Exco';
+import { ExcoLaunch } from '@/components/rapports/ExcoLaunch';
+import { ExcoLancement } from '@/components/rapports/ExcoLancement';
+import { ExcoMensuelV5 } from '@/components/rapports/ExcoMensuelV5';
+import type { ExcoV5Handle } from '@/components/rapports/ExcoMensuelV5';
+import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
+import { generateExcoPptx } from '@/components/rapports/ExcoMensuelV5/exportPptx';
 import { ImportIA } from '@/components/rapports/ImportIA';
 import { Journal } from '@/components/rapports/Journal';
 import { WeeklyReport } from '@/components/reports/WeeklyReport';
@@ -87,6 +94,8 @@ import {
 } from '@/services/reportExportService';
 import type { GeneratedReport } from '@/types/reports.types';
 import { DEFAULT_EXPORT_OPTIONS } from '@/types/reports.types';
+import { createExco } from '@/hooks/useExcos';
+import { mapV5DataToExco } from '@/lib/mapReportToExco';
 import { sendReportShareEmail, openEmailClientForReport } from '@/services/emailService';
 // Données du site récupérées via useCurrentSite()
 import type { ReportType, ReportStatus, ChartCategory, TableCategory } from '@/types/reportStudio';
@@ -115,6 +124,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { PROJET_CONFIG } from '@/data/constants';
 
 const rapportTypes = [
   {
@@ -158,7 +168,7 @@ const statusColors: Record<ReportStatus, string> = {
 
 const CHART_COLORS = ['#1C3163', '#D4AF37', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'deep_dive' | 'import_ia' | 'journal' | 'auto_generation' | 'weekly_report' | 'monthly_report' | 'rappel_actions';
+type ViewMode = 'list' | 'studio' | 'catalogue' | 'exports' | 'html_reports' | 'exco' | 'import_ia' | 'journal' | 'auto_generation' | 'weekly_report' | 'monthly_report' | 'rappel_actions';
 
 // Type pour les commentaires de section
 interface ReportComment {
@@ -291,8 +301,75 @@ export function RapportsPage() {
   const [chartCategory, setChartCategory] = useState<ChartCategory | 'all'>('all');
   const [tableCategory, setTableCategory] = useState<TableCategory | 'all'>('all');
 
-  // Deep Dive state
-  const [deepDiveTemplate, setDeepDiveTemplate] = useState<'launch' | 'monthly'>('launch');
+  // EXCO state
+  const [excoTemplate, setExcoTemplate] = useState<'launch' | 'monthly'>('launch');
+  const [presentationDate, setPresentationDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [selectedExcoId, setSelectedExcoId] = useState<number | null>(null);
+  const [savingExco, setSavingExco] = useState(false);
+  const v5Ref = useRef<ExcoV5Handle>(null);
+
+  // ---- V5 export helpers ----
+  const generateHtml = useCallback(() => {
+    const el = v5Ref.current?.getAllSlidesEl();
+    if (!el) return '';
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>EXCO Mensuel - ${PROJET_CONFIG.nom} - ${presentationDate}</title>
+<style>
+body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;background:#f8f9fa;}
+.html-toolbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:#1a2332;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.15);}
+.html-toolbar span{font-size:14px;font-weight:600;letter-spacing:0.5px;}
+.html-toolbar .btn-group{display:flex;gap:8px;}
+.html-toolbar button{padding:7px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;}
+.html-toolbar .btn-print{background:#c8a951;color:#1a2332;}
+.html-toolbar .btn-close{background:rgba(255,255,255,0.15);color:#fff;}
+.html-toolbar .btn-close:hover{background:rgba(255,255,255,0.25);}
+.html-content{padding:24px;}
+.slide-page{margin-bottom:40px;padding:24px;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+@media print{.html-toolbar{display:none!important;}.html-content{padding:0;}.slide-page{page-break-after:always;box-shadow:none;margin-bottom:0;}}
+</style>
+</head><body>
+<div class="html-toolbar">
+<span>${PROJET_CONFIG.nom} — EXCO Mensuel</span>
+<div class="btn-group">
+<button class="btn-print" onclick="window.print()">Imprimer / PDF</button>
+<button class="btn-close" onclick="window.close()">Fermer</button>
+</div>
+</div>
+<div class="html-content">${el.innerHTML}</div>
+</body></html>`;
+  }, [presentationDate]);
+
+  const handleDownloadHtml = useCallback(() => {
+    const html = generateHtml();
+    if (!html) return;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EXCO-Mensuel-${presentationDate}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [generateHtml, presentationDate]);
+
+  const handleOpenHtmlPreview = useCallback(() => {
+    const html = generateHtml();
+    if (!html) return;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }, [generateHtml]);
+
+  const handleExportPptx = useCallback(async () => {
+    const data = v5Ref.current?.getData();
+    if (!data) return;
+    try {
+      await generateExcoPptx(data, presentationDate);
+    } catch (error) {
+      console.error('Erreur export PPTX:', error);
+      alert('Erreur lors de l\'export PPTX');
+    }
+  }, [presentationDate]);
 
   // HTML Reports state - chargé depuis localStorage ou vide
   const [sharedReports, setSharedReports] = useState<SharedHtmlReport[]>(() => {
@@ -496,7 +573,7 @@ export function RapportsPage() {
 
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('COSMOS ANGRÉ', pageWidth / 2, 20, { align: 'center' });
+      doc.text(PROJET_CONFIG.nom, pageWidth / 2, 20, { align: 'center' });
       doc.setFontSize(14);
       doc.setFont('helvetica', 'normal');
       doc.text(`Rapport ${rapportTypes.find((r) => r.id === type)?.title}`, pageWidth / 2, 30, {
@@ -580,7 +657,7 @@ export function RapportsPage() {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.text(
-          `Page ${i} sur ${pageCount} - COSMOS ANGRÉ Cockpit`,
+          `Page ${i} sur ${pageCount} - ${PROJET_CONFIG.nom} Cockpit`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -590,6 +667,7 @@ export function RapportsPage() {
       doc.save(`rapport-${type}-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
+      alert('Erreur lors de la génération du PDF');
     } finally {
       setGenerating(null);
     }
@@ -620,6 +698,7 @@ export function RapportsPage() {
       XLSX.writeFile(wb, `export-${type}-${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
       console.error('Error exporting Excel:', error);
+      alert('Erreur lors de l\'export Excel');
     } finally {
       setGenerating(null);
     }
@@ -695,9 +774,9 @@ export function RapportsPage() {
             <Mail className="h-4 w-4" />
             Rappel Actions
           </TabsTrigger>
-          <TabsTrigger value="deep_dive" className="gap-2">
+          <TabsTrigger value="exco" className="gap-2">
             <Presentation className="h-4 w-4" />
-            Deep Dive
+            EXCO
           </TabsTrigger>
           <TabsTrigger value="import_ia" className="gap-2">
             <Bot className="h-4 w-4" />
@@ -1472,46 +1551,139 @@ export function RapportsPage() {
           <RappelActionsReport />
         </TabsContent>
 
-        {/* Deep Dive */}
-        <TabsContent value="deep_dive">
+        {/* EXCO */}
+        <TabsContent value="exco">
           <div className="space-y-6">
             {/* Template selector */}
             <div className="flex items-center gap-4 pb-4 border-b">
               <span className="text-sm font-medium text-primary-700">Type de présentation:</span>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setDeepDiveTemplate('launch')}
+                  onClick={() => setExcoTemplate('launch')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                    deepDiveTemplate === 'launch'
+                    excoTemplate === 'launch'
                       ? 'bg-primary-600 text-white shadow-md'
                       : 'bg-white border border-primary-200 text-primary-700 hover:border-primary-400'
                   }`}
                 >
                   <Presentation className="h-4 w-4" />
                   <div className="text-left">
-                    <div>Deep Dive Lancement</div>
+                    <div>EXCO Lancement</div>
                     <div className="text-xs opacity-75">Validation Stratégique | 9 slides</div>
                   </div>
                 </button>
                 <button
-                  onClick={() => setDeepDiveTemplate('monthly')}
+                  onClick={() => setExcoTemplate('monthly')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                    deepDiveTemplate === 'monthly'
+                    excoTemplate === 'monthly'
                       ? 'bg-primary-600 text-white shadow-md'
                       : 'bg-white border border-primary-200 text-primary-700 hover:border-primary-400'
                   }`}
                 >
                   <Calendar className="h-4 w-4" />
                   <div className="text-left">
-                    <div>Deep Dive Mensuel</div>
-                    <div className="text-xs opacity-75">~1h30 | 35 slides</div>
+                    <div>EXCO Mensuel</div>
+                    <div className="text-xs opacity-75">~1h35 | 20 slides</div>
                   </div>
                 </button>
               </div>
             </div>
 
+            {/* Toolbar EXCO Mensuel */}
+            {excoTemplate === 'monthly' && (
+              <div className="flex flex-wrap items-center gap-2 py-3 px-4 bg-white rounded-lg border border-primary-200 shadow-sm">
+                {/* Back to live / saved indicator */}
+                {selectedExcoId ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedExcoId(null)}
+                    className="gap-1.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> Retour aux données live
+                  </Button>
+                ) : (
+                  <>
+                    {/* Date picker */}
+                    <div className="flex items-center gap-1.5 mr-2">
+                      <Calendar className="h-4 w-4 text-primary-400" />
+                      <input
+                        type="date"
+                        value={presentationDate}
+                        onChange={(e) => setPresentationDate(e.target.value)}
+                        className="text-xs px-2 py-1.5 border border-primary-200 rounded-md bg-white text-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="h-6 w-px bg-primary-200 mx-1" />
+
+                {/* Action buttons */}
+                <Button variant="outline" size="sm" onClick={handleOpenHtmlPreview} className="gap-1.5 text-xs">
+                  <Eye className="h-3.5 w-3.5" /> Preview
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => { const html = generateHtml(); if (!html) return; const blob = new Blob([html], { type: 'text/html' }); window.open(URL.createObjectURL(blob), '_blank'); }} className="gap-1.5 text-xs">
+                  <Globe className="h-3.5 w-3.5" /> Voir HTML
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadHtml} className="gap-1.5 text-xs">
+                  <Download className="h-3.5 w-3.5" /> Télécharger HTML
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 text-xs">
+                  <Printer className="h-3.5 w-3.5" /> Imprimer
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExportPptx} className="gap-1.5 text-xs">
+                  <Download className="h-3.5 w-3.5" /> Exporter PPTX
+                </Button>
+
+                <div className="h-6 w-px bg-primary-200 mx-1" />
+
+                {/* Save to Journal button (live mode only) */}
+                {!selectedExcoId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={savingExco}
+                    onClick={async () => {
+                      const data = v5Ref.current?.getData();
+                      if (!data) return;
+                      setSavingExco(true);
+                      try {
+                        const siteName = currentSite?.nom || PROJET_CONFIG.nom;
+                        const titre = `EXCO Mensuel — ${data.moisCourant}`;
+                        const excoRecord = mapV5DataToExco(data, titre, siteName);
+                        await createExco(excoRecord);
+                        alert('EXCO sauvegardé dans le Journal !');
+                      } catch (err) {
+                        console.error('Erreur sauvegarde EXCO:', err);
+                        alert('Erreur lors de la sauvegarde');
+                      } finally {
+                        setSavingExco(false);
+                      }
+                    }}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Save className="h-3.5 w-3.5" /> {savingExco ? 'Sauvegarde...' : 'Sauvegarder'}
+                  </Button>
+                )}
+
+                <Button size="sm" onClick={() => setShowSendModal(true)} className="gap-1.5 text-xs bg-primary-600 text-white hover:bg-primary-700">
+                  <Share2 className="h-3.5 w-3.5" /> Envoyer
+                </Button>
+              </div>
+            )}
+
             {/* Selected template */}
-            {deepDiveTemplate === 'launch' ? <DeepDiveLancement /> : <DeepDive />}
+            {excoTemplate === 'launch' ? <ExcoLancement /> : <ExcoMensuelV5 ref={v5Ref} savedExcoId={selectedExcoId} />}
+
+            {/* Send Report Modal */}
+            <SendReportModal
+              isOpen={showSendModal}
+              onClose={() => setShowSendModal(false)}
+              presentationDate={presentationDate}
+              generateHtml={generateHtml}
+              getData={() => v5Ref.current?.getData()}
+            />
           </div>
         </TabsContent>
 
@@ -1523,9 +1695,10 @@ export function RapportsPage() {
         {/* Journal */}
         <TabsContent value="journal">
           <Journal
-            onOpenDeepDive={() => {
-              // Switch to deep_dive tab when opening a specific deep dive
-              setViewMode('deep_dive');
+            onOpenExco={(id) => {
+              setSelectedExcoId(id);
+              setExcoTemplate('monthly');
+              setViewMode('exco');
             }}
           />
         </TabsContent>

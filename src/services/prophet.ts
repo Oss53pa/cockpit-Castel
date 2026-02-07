@@ -15,6 +15,7 @@
 
 import type { Action, Jalon, Risque, Alerte, User, Team, EVMIndicators, DashboardKPIs } from '../types';
 import { API_ENDPOINTS } from '../lib/apiEndpoints';
+import { PROJET_CONFIG } from '@/data/constants';
 
 export type AIProvider = 'openrouter' | 'anthropic' | 'local' | 'hybrid';
 
@@ -969,7 +970,7 @@ function generateReportSummary(ctx: ProjectContext): string {
   const completedJalons = ctx.jalons.filter(j => j.statut === 'atteint').length;
   const jalonRate = ctx.jalons.length > 0 ? Math.round(completedJalons / ctx.jalons.length * 100) : 0;
 
-  let report = `# Rapport de Synthese - COSMOS ANGRE\n\n`;
+  let report = `# Rapport de Synthese - ${PROJET_CONFIG.nom}\n\n`;
   report += `**Date:** ${new Date().toLocaleDateString('fr-FR')} a ${new Date().toLocaleTimeString('fr-FR')}\n\n`;
 
   // Score de sante
@@ -1411,7 +1412,7 @@ function generateProjectOverview(ctx: ProjectContext): string {
   const healthScore = calculateHealthScore(ctx, evm);
 
   let report = `# Bienvenue dans Proph3t\n\n`;
-  report += `Je suis votre assistant IA pour le projet **COSMOS ANGRE**.\n\n`;
+  report += `Je suis votre assistant IA pour le projet **${PROJET_CONFIG.nom}**.\n\n`;
 
   report += `## Etat du Projet\n\n`;
   report += `**Score de Sante:** ${healthScore}/100 ${getHealthLabel(healthScore)}\n\n`;
@@ -1601,7 +1602,7 @@ function buildSystemPrompt(context: ProjectContext): string {
   const alertesActives = context.alertes.filter(a => !a.traitee).length;
   const jalonsEnDanger = context.jalons.filter(j => j.statut === 'en_danger').length;
 
-  return `Tu es Proph3t, l'assistant IA avancé du Cockpit COSMOS ANGRE. Tu aides l'équipe projet à:
+  return `Tu es Proph3t, l'assistant IA avancé du Cockpit ${PROJET_CONFIG.nom}. Tu aides l'équipe projet à:
 - Analyser les problèmes et risques du projet en profondeur
 - Rédiger des rapports et synthèses professionnels
 - Extraire et analyser les données avec des indicateurs EVM
@@ -1673,7 +1674,7 @@ async function callOpenRouter(
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${config.openrouterApiKey}`,
       'HTTP-Referer': window.location.origin,
-      'X-Title': 'COSMOS ANGRE Cockpit',
+      'X-Title': `${PROJET_CONFIG.nom} Cockpit`,
     },
     body: JSON.stringify({
       model: config.openrouterModel || 'anthropic/claude-3.5-sonnet',

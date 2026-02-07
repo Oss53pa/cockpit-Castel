@@ -14,7 +14,7 @@ import {
   Badge,
   useToast,
 } from '@/components/ui';
-import { useUsers, useJalons, createJalon, updateJalon } from '@/hooks';
+import { useUsers, useJalons, createJalon, updateJalon, usePermissions } from '@/hooks';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { JalonFormCreate } from './JalonFormCreate';
 import {
@@ -47,6 +47,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
   const users = useUsers();
   const jalons = useJalons();
   const toast = useToast();
+  const { canEdit } = usePermissions();
   const isEditing = !!jalon;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -120,7 +121,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         <div className="mt-4">
           <JalonFormContent
             jalon={jalon}
-            isEditing={true}
+            isEditing={canEdit}
             isExternal={false}
             onSave={handleSave}
             onCancel={onClose}

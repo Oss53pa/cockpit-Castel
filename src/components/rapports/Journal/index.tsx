@@ -47,23 +47,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  useDeepDives,
-  useDeepDiveStats,
-  deleteDeepDive,
-  duplicateDeepDive,
-  archiveDeepDive,
-  markDeepDiveAsPresented,
-  createDeepDive,
-} from '@/hooks/useDeepDives';
+  useExcos,
+  useExcoStats,
+  deleteExco,
+  duplicateExco,
+  archiveExco,
+  markExcoAsPresented,
+  createExco,
+} from '@/hooks/useExcos';
 import { useCurrentSite } from '@/hooks';
-import type { DeepDive, ProjectWeather } from '@/types/deepDive';
-import { WEATHER_CONFIG } from '@/types/deepDive';
+import type { Exco, ProjectWeather } from '@/types/exco';
+import { WEATHER_CONFIG } from '@/types/exco';
+import { PROJET_CONFIG } from '@/data/constants';
 
 interface JournalProps {
-  onOpenDeepDive: (id: number) => void;
+  onOpenExco: (id: number) => void;
 }
 
-const statusConfig: Record<DeepDive['status'], { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+const statusConfig: Record<Exco['status'], { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   draft: { label: 'Brouillon', color: '#6B7280', bgColor: '#F3F4F6', icon: <FileText className="h-4 w-4" /> },
   finalized: { label: 'Finalisé', color: '#3B82F6', bgColor: '#DBEAFE', icon: <CheckCircle className="h-4 w-4" /> },
   presented: { label: 'Présenté', color: '#22C55E', bgColor: '#DCFCE7', icon: <Presentation className="h-4 w-4" /> },
@@ -98,8 +99,8 @@ function formatRelativeDate(dateString: string): string {
   return formatDate(dateString);
 }
 
-interface DeepDiveCardProps {
-  deepDive: DeepDive;
+interface ExcoCardProps {
+  exco: Exco;
   onView: () => void;
   onDuplicate: () => void;
   onArchive: () => void;
@@ -107,9 +108,9 @@ interface DeepDiveCardProps {
   onMarkPresented: () => void;
 }
 
-function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMarkPresented }: DeepDiveCardProps) {
-  const status = statusConfig[deepDive.status];
-  const weather = WEATHER_CONFIG[deepDive.meteoGlobale];
+function ExcoCard({ exco, onView, onDuplicate, onArchive, onDelete, onMarkPresented }: ExcoCardProps) {
+  const status = statusConfig[exco.status];
+  const weather = WEATHER_CONFIG[exco.meteoGlobale];
 
   return (
     <Card className="group hover:shadow-lg transition-all cursor-pointer" onClick={onView}>
@@ -120,11 +121,11 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
               className="p-2 rounded-lg"
               style={{ backgroundColor: weather.bgColor }}
             >
-              {weatherIcons[deepDive.meteoGlobale]}
+              {weatherIcons[exco.meteoGlobale]}
             </div>
             <div>
-              <CardTitle className="text-base line-clamp-1">{deepDive.titre}</CardTitle>
-              <p className="text-sm text-gray-500 mt-0.5">{deepDive.projet}</p>
+              <CardTitle className="text-base line-clamp-1">{exco.titre}</CardTitle>
+              <p className="text-sm text-gray-500 mt-0.5">{exco.projet}</p>
             </div>
           </div>
           <DropdownMenu>
@@ -142,13 +143,13 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
                 <Copy className="h-4 w-4 mr-2" />
                 Dupliquer
               </DropdownMenuItem>
-              {deepDive.status === 'finalized' && (
+              {exco.status === 'finalized' && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMarkPresented(); }}>
                   <Presentation className="h-4 w-4 mr-2" />
                   Marquer comme présenté
                 </DropdownMenuItem>
               )}
-              {deepDive.status !== 'archived' && (
+              {exco.status !== 'archived' && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(); }}>
                   <Archive className="h-4 w-4 mr-2" />
                   Archiver
@@ -189,16 +190,16 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Target className="h-3.5 w-3.5" />
             <span>
-              {Object.entries(deepDive.axes)
+              {Object.entries(exco.axes)
                 .filter(([, data]) => data.actif)
                 .length} axes actifs
             </span>
           </div>
 
           {/* Tags */}
-          {deepDive.tags && deepDive.tags.length > 0 && (
+          {exco.tags && exco.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {deepDive.tags.slice(0, 3).map((tag) => (
+              {exco.tags.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
                   className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
@@ -207,8 +208,8 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
                   {tag}
                 </span>
               ))}
-              {deepDive.tags.length > 3 && (
-                <span className="text-xs text-gray-400">+{deepDive.tags.length - 3}</span>
+              {exco.tags.length > 3 && (
+                <span className="text-xs text-gray-400">+{exco.tags.length - 3}</span>
               )}
             </div>
           )}
@@ -217,19 +218,19 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
           <div className="flex items-center justify-between pt-2 border-t text-xs text-gray-400">
             <div className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              {formatRelativeDate(deepDive.updatedAt)}
+              {formatRelativeDate(exco.updatedAt)}
             </div>
             <div className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              Période {deepDive.periodeDebut} - {deepDive.periodeFin}
+              Période {exco.periodeDebut} - {exco.periodeFin}
             </div>
           </div>
 
           {/* Presented info */}
-          {deepDive.status === 'presented' && deepDive.presentedTo && (
+          {exco.status === 'presented' && exco.presentedTo && (
             <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 rounded-lg px-2 py-1">
               <Presentation className="h-3.5 w-3.5" />
-              Présenté à: {deepDive.presentedTo}
+              Présenté à: {exco.presentedTo}
             </div>
           )}
         </div>
@@ -238,21 +239,21 @@ function DeepDiveCard({ deepDive, onView, onDuplicate, onArchive, onDelete, onMa
   );
 }
 
-export function Journal({ onOpenDeepDive }: JournalProps) {
-  const deepDives = useDeepDives();
-  const stats = useDeepDiveStats();
+export function Journal({ onOpenExco }: JournalProps) {
+  const excos = useExcos();
+  const stats = useExcoStats();
   const currentSite = useCurrentSite();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [weatherFilter, setWeatherFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'weather' | 'name'>('date');
-  const [deleteConfirm, setDeleteConfirm] = useState<DeepDive | null>(null);
-  const [presentedModal, setPresentedModal] = useState<DeepDive | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Exco | null>(null);
+  const [presentedModal, setPresentedModal] = useState<Exco | null>(null);
   const [presentedTo, setPresentedTo] = useState('');
 
-  const filteredDeepDives = useMemo(() => {
-    let result = [...deepDives];
+  const filteredExcos = useMemo(() => {
+    let result = [...excos];
 
     // Search
     if (searchQuery) {
@@ -293,12 +294,12 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
     });
 
     return result;
-  }, [deepDives, searchQuery, statusFilter, weatherFilter, sortBy]);
+  }, [excos, searchQuery, statusFilter, weatherFilter, sortBy]);
 
-  const handleNewDeepDive = async () => {
-    const newId = await createDeepDive({
-      titre: 'Nouveau DeepDive',
-      projet: currentSite?.nom || 'COSMOS ANGRÉ',
+  const handleNewExco = async () => {
+    const newId = await createExco({
+      titre: 'Nouveau Exco',
+      projet: currentSite?.nom || PROJET_CONFIG.nom,
       periode: new Date().toISOString().slice(0, 7),
       periodeDebut: new Date().toISOString().slice(0, 7),
       periodeFin: new Date().toISOString().slice(0, 7),
@@ -322,31 +323,31 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
       updatedAt: new Date().toISOString(),
     });
     if (newId) {
-      onOpenDeepDive(newId);
+      onOpenExco(newId);
     }
   };
 
   const handleDuplicate = async (id: number) => {
-    const newId = await duplicateDeepDive(id);
+    const newId = await duplicateExco(id);
     if (newId) {
-      onOpenDeepDive(newId);
+      onOpenExco(newId);
     }
   };
 
   const handleArchive = async (id: number) => {
-    await archiveDeepDive(id);
+    await archiveExco(id);
   };
 
   const handleDelete = async () => {
     if (deleteConfirm?.id) {
-      await deleteDeepDive(deleteConfirm.id);
+      await deleteExco(deleteConfirm.id);
       setDeleteConfirm(null);
     }
   };
 
   const handleMarkPresented = async () => {
     if (presentedModal?.id && presentedTo) {
-      await markDeepDiveAsPresented(presentedModal.id, presentedTo);
+      await markExcoAsPresented(presentedModal.id, presentedTo);
       setPresentedModal(null);
       setPresentedTo('');
     }
@@ -357,14 +358,14 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
       {/* Header with Stats */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Journal DeepDive</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Journal Exco</h2>
           <p className="text-sm text-gray-500 mt-1">
             Gérez vos présentations DG et suivez l'historique du projet
           </p>
         </div>
-        <Button onClick={handleNewDeepDive}>
+        <Button onClick={handleNewExco}>
           <Plus className="h-4 w-4 mr-2" />
-          Nouveau DeepDive
+          Nouveau Exco
         </Button>
       </div>
 
@@ -374,7 +375,7 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
           <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
             <CardContent className="pt-4">
               <div className="text-3xl font-bold text-blue-700">{stats.total}</div>
-              <div className="text-sm text-blue-600">Total DeepDives</div>
+              <div className="text-sm text-blue-600">Total Excos</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
@@ -452,17 +453,17 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
       </div>
 
       {/* Content */}
-      {filteredDeepDives.length > 0 ? (
+      {filteredExcos.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredDeepDives.map((deepDive) => (
-            <DeepDiveCard
-              key={deepDive.id}
-              deepDive={deepDive}
-              onView={() => deepDive.id && onOpenDeepDive(deepDive.id)}
-              onDuplicate={() => deepDive.id && handleDuplicate(deepDive.id)}
-              onArchive={() => deepDive.id && handleArchive(deepDive.id)}
-              onDelete={() => setDeleteConfirm(deepDive)}
-              onMarkPresented={() => setPresentedModal(deepDive)}
+          {filteredExcos.map((exco) => (
+            <ExcoCard
+              key={exco.id}
+              exco={exco}
+              onView={() => exco.id && onOpenExco(exco.id)}
+              onDuplicate={() => exco.id && handleDuplicate(exco.id)}
+              onArchive={() => exco.id && handleArchive(exco.id)}
+              onDelete={() => setDeleteConfirm(exco)}
+              onMarkPresented={() => setPresentedModal(exco)}
             />
           ))}
         </div>
@@ -473,17 +474,17 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
           </div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
             {searchQuery || statusFilter !== 'all' || weatherFilter !== 'all'
-              ? 'Aucun DeepDive trouvé'
-              : 'Aucun DeepDive enregistré'}
+              ? 'Aucun Exco trouvé'
+              : 'Aucun Exco enregistré'}
           </h3>
           <p className="text-gray-500 mb-6 max-w-md">
             {searchQuery || statusFilter !== 'all' || weatherFilter !== 'all'
               ? 'Essayez de modifier vos filtres de recherche'
-              : 'Créez votre premier DeepDive pour commencer à suivre vos présentations DG'}
+              : 'Créez votre premier Exco pour commencer à suivre vos présentations DG'}
           </p>
-          <Button onClick={handleNewDeepDive}>
+          <Button onClick={handleNewExco}>
             <Plus className="h-4 w-4 mr-2" />
-            Créer un DeepDive
+            Créer un Exco
           </Button>
         </div>
       )}
@@ -492,7 +493,7 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer le DeepDive</DialogTitle>
+            <DialogTitle>Supprimer le Exco</DialogTitle>
             <DialogDescription>
               Êtes-vous sûr de vouloir supprimer "{deleteConfirm?.titre}" ? Cette action est irréversible.
             </DialogDescription>
@@ -514,7 +515,7 @@ export function Journal({ onOpenDeepDive }: JournalProps) {
           <DialogHeader>
             <DialogTitle>Marquer comme présenté</DialogTitle>
             <DialogDescription>
-              À qui avez-vous présenté ce DeepDive ?
+              À qui avez-vous présenté ce Exco ?
             </DialogDescription>
           </DialogHeader>
           <Input

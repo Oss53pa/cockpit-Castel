@@ -11,6 +11,7 @@
 import { db } from '@/db';
 import type { Action, Jalon, Risque, User } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { PROJET_CONFIG } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -84,7 +85,7 @@ const DEFAULT_CONFIG: ShareConfig = {
   apiUrl: undefined, // Mode offline par défaut
   companyLogo: '/logo-crmc.png',
   companyName: 'CRMC',
-  projectName: 'COSMOS ANGRE',
+  projectName: PROJET_CONFIG.nom,
   expiryDays: 30,
   primaryColor: '#1C3163',
   accentColor: '#D4AF37',
@@ -374,7 +375,7 @@ export class ExternalShareService {
   <title>Budget: ${title} | ${this.config.projectName}</title>
   <style>
     ${this.getStyles(config)}
-    ${this.getDeepDiveStyles()}
+    ${this.getExcoStyles()}
     ${this.getBudgetStyles()}
   </style>
 </head>
@@ -398,7 +399,7 @@ export class ExternalShareService {
         ${budgetSections}
       </section>
 
-      ${this.getDeepDiveSection()}
+      ${this.getExcoSection()}
 
       <section class="update-form">
         <h2>Soumettre les montants mis à jour</h2>
@@ -755,11 +756,11 @@ export class ExternalShareService {
   }
 
   /**
-   * Génère la section méthodologie Deep Dive (simplifiée et visuelle)
+   * Génère la section méthodologie EXCO (simplifiée et visuelle)
    */
-  private getDeepDiveSection(): string {
+  private getExcoSection(): string {
     return `
-      <section class="deep-dive-section">
+      <section class="exco-section">
         <h3>Comment mettre à jour ?</h3>
 
         <div class="steps-flow">
@@ -811,11 +812,11 @@ export class ExternalShareService {
   }
 
   /**
-   * Styles pour la section Deep Dive
+   * Styles pour la section EXCO
    */
-  private getDeepDiveStyles(): string {
+  private getExcoStyles(): string {
     return `
-    .deep-dive-section {
+    .exco-section {
       background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
       border: 2px solid #0EA5E9;
       border-radius: 16px;
@@ -823,7 +824,7 @@ export class ExternalShareService {
       margin: 24px 0;
     }
 
-    .deep-dive-section h3 {
+    .exco-section h3 {
       color: #0369A1;
       margin-bottom: 20px;
       text-align: center;
@@ -950,7 +951,7 @@ export class ExternalShareService {
   <title>${config.label}: ${item.title} | ${this.config.projectName}</title>
   <style>
     ${this.getStyles(config)}
-    ${this.getDeepDiveStyles()}
+    ${this.getExcoStyles()}
   </style>
 </head>
 <body>
@@ -1001,7 +1002,7 @@ export class ExternalShareService {
         ${extraFields}
       </section>
 
-      ${this.getDeepDiveSection()}
+      ${this.getExcoSection()}
 
       <section class="update-form">
         <h2>Mettre a jour</h2>

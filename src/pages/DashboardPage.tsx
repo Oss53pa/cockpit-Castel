@@ -37,6 +37,7 @@ import { useCurrentSite } from '@/hooks/useSites';
 import type { Axe } from '@/types';
 import { CircularProgress, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { Proph3tWidget } from '@/components/proph3t';
+import { PROJET_CONFIG } from '@/data/constants';
 
 type DashboardView = 'operationnel' | 'copil';
 type OperationnelTab = 'synthese' | 'avancement' | 'jalons-actions' | 'sante';
@@ -80,6 +81,7 @@ function GlassmorphismHeader({
   daysUntilOpening,
   isVisible,
   siteLocalisation,
+  siteDescription,
   dateOuvertureFormatee,
 }: {
   kpis: ReturnType<typeof useDashboardKPIs>;
@@ -88,6 +90,7 @@ function GlassmorphismHeader({
   daysUntilOpening: number;
   isVisible: boolean;
   siteLocalisation: string;
+  siteDescription: string;
   dateOuvertureFormatee: string;
 }) {
   const progressStatus = getProgressStatus(avancementGlobal);
@@ -123,7 +126,7 @@ function GlassmorphismHeader({
                   {kpis.projectName}
                 </h2>
                 <p className="text-neutral-400 text-xs">
-                  Centre commercial premium
+                  {siteDescription}
                 </p>
               </div>
             </div>
@@ -324,8 +327,8 @@ export function DashboardPage() {
 
   const kpis = useDashboardKPIs();
   const avancementGlobal = useAvancementGlobal();
-  const syncData = useSync(1, 'cosmos-angre');
   const currentSite = useCurrentSite();
+  const syncData = useSync(currentSite?.id ?? 1, PROJET_CONFIG.projectId);
 
   // Simulate loading and trigger visibility
   useEffect(() => {
@@ -343,7 +346,7 @@ export function DashboardPage() {
     kpis.jalonsTotal > 0 ? (kpis.jalonsAtteints / kpis.jalonsTotal) * 100 : 0;
 
   // Get opening date from site configuration (database)
-  const dateOuverture = currentSite?.dateOuverture || '2026-11-15';
+  const dateOuverture = currentSite?.dateOuverture || PROJET_CONFIG.jalonsClés.softOpening;
   const openingDate = new Date(dateOuverture);
   const today = new Date();
   const daysUntilOpening = Math.ceil(
@@ -357,7 +360,7 @@ export function DashboardPage() {
   });
 
   // Get site location from database
-  const siteLocalisation = currentSite?.localisation || 'Abidjan, Côte d\'Ivoire';
+  const siteLocalisation = currentSite?.localisation || 'Angré, Abidjan, Côte d\'Ivoire';
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -384,6 +387,7 @@ export function DashboardPage() {
               daysUntilOpening={daysUntilOpening}
               isVisible={isVisible}
               siteLocalisation={siteLocalisation}
+              siteDescription={currentSite?.description || PROJET_CONFIG.nom}
               dateOuvertureFormatee={dateOuvertureFormatee}
             />
 

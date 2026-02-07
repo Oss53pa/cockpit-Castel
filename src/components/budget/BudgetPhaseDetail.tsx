@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, TrendingUp, Wallet, Users, Building2, Megaphone, Package } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { PROJET_CONFIG } from '@/data/constants';
 import { BudgetImportExport } from './BudgetImportExport';
 import {
   BUDGET_PROJET_TOTAL,
@@ -228,7 +229,7 @@ function VueSynthese() {
         <CardContent className="py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Budget Projet COSMOS ANGRE</h2>
+              <h2 className="text-2xl font-bold">Budget Projet {PROJET_CONFIG.nom}</h2>
               <p className="text-primary-200">1,85 Mds FCFA</p>
             </div>
             <div className="text-right">

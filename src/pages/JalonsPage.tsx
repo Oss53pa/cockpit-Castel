@@ -3,7 +3,7 @@ import { List, LayoutGrid, Columns, GanttChart, Network, Plus, Download, Upload,
 import { useAppStore } from '@/stores';
 import { Button, Select, SelectOption, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
-import { useJalons, createJalon, updateJalon } from '@/hooks';
+import { useJalons, createJalon, updateJalon, usePermissions } from '@/hooks';
 import {
   JalonsList,
   JalonsCards,
@@ -33,6 +33,7 @@ export function JalonsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jalons = useJalons(jalonFilters);
   const toast = useToast();
+  const { canCreate, canEdit, canImport } = usePermissions();
 
   const handleEdit = (jalon: Jalon) => {
     setSelectedJalon(jalon);
@@ -174,12 +175,14 @@ export function JalonsPage() {
             onChange={handleImportFile}
             className="hidden"
           />
-          <Tooltip content="Importer depuis Excel">
-            <Button variant="outline" onClick={handleImportClick} disabled={importing}>
-              <Upload className="h-4 w-4 mr-2" />
-              {importing ? 'Import...' : 'Importer'}
-            </Button>
-          </Tooltip>
+          {canImport && (
+            <Tooltip content="Importer depuis Excel">
+              <Button variant="outline" onClick={handleImportClick} disabled={importing}>
+                <Upload className="h-4 w-4 mr-2" />
+                {importing ? 'Import...' : 'Importer'}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip content="Exporter vers Excel">
             <Button variant="outline" onClick={handleExportExcel}>
               <Download className="h-4 w-4 mr-2" />
@@ -192,10 +195,12 @@ export function JalonsPage() {
               Template
             </Button>
           </Tooltip>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau jalon
-          </Button>
+          {canCreate && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau jalon
+            </Button>
+          )}
         </div>
       </div>
 

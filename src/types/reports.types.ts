@@ -3,10 +3,10 @@
 // ============================================================================
 
 import type { ReportPeriod } from '@/components/rapports/ReportPeriodSelector';
-import type { MeteoNiveau, AxeType } from './deepDive';
+import type { MeteoNiveau, AxeType } from './exco';
 
 // Types de rapports disponibles
-export type ReportType = 'flash_hebdo' | 'rapport_mensuel' | 'deep_dive' | 'rapport_sync';
+export type ReportType = 'flash_hebdo' | 'rapport_mensuel' | 'exco' | 'rapport_sync';
 
 export const REPORT_TYPE_CONFIG: Record<ReportType, {
   label: string;
@@ -32,8 +32,8 @@ export const REPORT_TYPE_CONFIG: Record<ReportType, {
     dureeEstimee: '15 min',
     formats: ['pdf', 'html'],
   },
-  deep_dive: {
-    label: 'Deep Dive',
+  exco: {
+    label: 'EXCO',
     description: 'Revue complete par axe avec decisions DG (12-15 slides)',
     frequence: 'Mensuel',
     destinataires: ['PDG', 'Actionnaires'],

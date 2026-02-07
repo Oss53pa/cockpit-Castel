@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { Risque, RisqueFilters, RisqueCategory } from '@/types';
+import { SEUILS_RISQUES } from '@/data/constants';
 
 export function useRisques(filters?: RisqueFilters) {
   const risques = useLiveQuery(async () => {
@@ -28,8 +29,8 @@ export function useRisques(filters?: RisqueFilters) {
       results = results.filter((r) => r.projectPhase === filters.projectPhase);
     }
 
-    // Sort by score descending
-    results.sort((a, b) => b.score - a.score);
+    // Sort by score descending (null-safe)
+    results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
     return results;
   }, [filters]);
@@ -47,7 +48,7 @@ export function useRisque(id: number | undefined) {
 export function useRisquesCritiques() {
   return useLiveQuery(async () => {
     const risques = await db.risques.toArray();
-    return risques.filter((r) => r.score >= 12 && r.status === 'open');
+    return risques.filter((r) => (r.score ?? 0) >= 12 && r.status !== 'closed' && r.status !== 'ferme');
   }) ?? [];
 }
 
@@ -94,19 +95,23 @@ export async function updateRisque(
 }
 
 export async function deleteRisque(id: number): Promise<void> {
-  await db.risques.delete(id);
+  await db.transaction('rw', [db.risques, db.alertes], async () => {
+    // Cascade: supprimer alertes liées au risque
+    await db.alertes.filter(a => a.entiteType === 'risque' && a.entiteId === id).delete();
+    await db.risques.delete(id);
+  });
 }
 
 export function getRisqueCriticiteLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
-  if (score >= 12) return 'critical';
-  if (score >= 9) return 'high';
-  if (score >= 5) return 'medium';
+  if (score >= SEUILS_RISQUES.critique) return 'critical';
+  if (score >= SEUILS_RISQUES.majeur) return 'high';
+  if (score >= SEUILS_RISQUES.modere) return 'medium';
   return 'low';
 }
 
 export function getRisqueCriticiteColor(score: number): string {
-  if (score >= 12) return 'bg-error-500';
-  if (score >= 9) return 'bg-warning-500';
-  if (score >= 5) return 'bg-info-500';
+  if (score >= SEUILS_RISQUES.critique) return 'bg-error-500';
+  if (score >= SEUILS_RISQUES.majeur) return 'bg-warning-500';
+  if (score >= SEUILS_RISQUES.modere) return 'bg-info-500';
   return 'bg-success-500';
 }
