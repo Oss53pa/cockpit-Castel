@@ -39,9 +39,22 @@ export const SyncTimeline: React.FC<SyncTimelineProps> = ({
     return data.filter((s) => new Date(s.snapshotDate) >= cutoff);
   };
 
-  const filteredData = filterByRange(snapshots)
-    .sort((a, b) => new Date(a.snapshotDate).getTime() - new Date(b.snapshotDate).getTime())
-    .map((s) => ({
+  const sorted = filterByRange(snapshots)
+    .sort((a, b) => new Date(a.snapshotDate).getTime() - new Date(b.snapshotDate).getTime());
+
+  // Si un seul point, ajouter un point de départ synthétique (6 mois avant) pour tracer une ligne
+  const withFallback = sorted.length === 1
+    ? [
+        (() => {
+          const d = new Date(sorted[0].snapshotDate);
+          d.setMonth(d.getMonth() - 6);
+          return { ...sorted[0], snapshotDate: d.toISOString(), projectProgress: 0, mobilizationProgress: 0, syncGap: 0 };
+        })(),
+        ...sorted,
+      ]
+    : sorted;
+
+  const filteredData = withFallback.map((s) => ({
       date: new Date(s.snapshotDate).toLocaleDateString('fr-FR', {
         day: '2-digit',
         month: 'short',
