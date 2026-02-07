@@ -7,6 +7,7 @@ interface KPICardProps {
   title: string;
   value: string | number;
   subtitle?: string;
+  annotation?: string;
   icon: LucideIcon;
   trend?: {
     value: number;
@@ -53,6 +54,7 @@ export function KPICard({
   title,
   value,
   subtitle,
+  annotation,
   icon: Icon,
   trend,
   progress,
@@ -139,7 +141,7 @@ export function KPICard({
       >
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
-            <p className="text-sm font-medium text-primary-500">{title}</p>
+            <p className="text-xs font-semibold text-primary-500 uppercase tracking-wider">{title}</p>
             <div
               className={cn(
                 'rounded-lg p-2 transition-transform duration-300',
@@ -182,6 +184,16 @@ export function KPICard({
 
           {subtitle && (
             <p className="mt-1 text-xs text-primary-400">{subtitle}</p>
+          )}
+
+          {annotation && (
+            <p className={cn(
+              'mt-0.5 text-[11px] font-medium',
+              variant === 'success' ? 'text-success-600' :
+              variant === 'warning' ? 'text-warning-600' :
+              variant === 'error' ? 'text-error-600' :
+              'text-primary-500'
+            )}>{annotation}</p>
           )}
         </div>
 

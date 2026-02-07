@@ -3,7 +3,7 @@
  * Widget avec jauge circulaire animée et décomposition des facteurs
  */
 
-import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useRef } from 'react';
@@ -233,7 +233,10 @@ export function ScoreSante() {
     return () => observer.disconnect();
   }, []);
 
-  // Facteurs depuis le hook unifié
+  // Facteurs depuis le hook unifié — 6 facteurs
+  // Sync score: moyenne de (planningScore + riskScore) / 2 comme proxy de cohérence
+  const syncScore = health ? Math.round((health.planningScore + health.riskScore) / 2) : 0;
+
   const factors: ScoreFactor[] = health ? [
     {
       label: 'Avancement',
@@ -245,14 +248,14 @@ export function ScoreSante() {
     {
       label: 'Jalons',
       score: health.riskScore,
-      weight: 25,
+      weight: 20,
       trend: health.riskScore >= 50 ? 'up' : health.riskScore < 30 ? 'down' : 'stable',
       icon: health.riskScore >= 50 ? CheckCircle : AlertTriangle,
     },
     {
       label: 'Budget',
       score: health.budgetScore,
-      weight: 20,
+      weight: 10,
       trend: health.cpi >= 1 ? 'up' : 'down',
       icon: health.budgetScore > health.planningScore + 20 ? AlertTriangle : CheckCircle,
     },
@@ -266,9 +269,16 @@ export function ScoreSante() {
     {
       label: 'Vélocité',
       score: Math.round((health.spi || 0) * 100),
-      weight: 10,
+      weight: 15,
       trend: health.spi >= 1 ? 'up' : health.spi < 0.8 ? 'down' : 'stable',
       icon: TrendingUp,
+    },
+    {
+      label: 'Sync',
+      score: syncScore,
+      weight: 10,
+      trend: syncScore >= 60 ? 'up' : syncScore < 40 ? 'down' : 'stable',
+      icon: RefreshCw,
     },
   ] : [];
 
@@ -289,7 +299,7 @@ export function ScoreSante() {
             <Activity className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-neutral-900">
+            <h3 className="text-xs font-semibold text-primary-500 uppercase tracking-wider">
               Score de Santé
             </h3>
             <p className="text-xs text-neutral-500">Indicateur global du projet</p>
@@ -303,35 +313,28 @@ export function ScoreSante() {
           </div>
 
           {/* Factor breakdown */}
-          <div className="flex-1 w-full space-y-3">
-            {factors.map((factor, index) => (
-              <FactorBar
-                key={factor.label}
-                factor={factor}
-                delay={200 + index * 100}
-                isVisible={isVisible}
-              />
-            ))}
+          <div className="flex-1 w-full">
+            <p className="text-[10px] font-semibold text-primary-400 uppercase tracking-wider mb-2">
+              Décomposition
+            </p>
+            <div className="space-y-2.5">
+              {factors.map((factor, index) => (
+                <FactorBar
+                  key={factor.label}
+                  factor={factor}
+                  delay={200 + index * 100}
+                  isVisible={isVisible}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Bottom summary */}
-        <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
-          <span>Mis à jour automatiquement</span>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              Excellent (80+)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              Bon (60-79)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              Critique (-60)
-            </span>
-          </div>
+        {/* Bottom summary — poids */}
+        <div className="mt-4 pt-3 border-t border-neutral-100">
+          <p className="text-[10px] text-neutral-400 text-center leading-relaxed">
+            Vélocité (30%) · Jalons (20%) · Occupation (15%) · Risques (15%) · Budget (10%) · Sync (10%)
+          </p>
         </div>
       </Card>
     </div>

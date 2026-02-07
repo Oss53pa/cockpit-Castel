@@ -5,8 +5,6 @@ import {
   Flag,
   Users,
   LayoutDashboard,
-  Calendar,
-  MapPin,
   TrendingUp,
   Target,
   CheckCircle,
@@ -109,7 +107,7 @@ function GlassmorphismHeader({
       {/* Content */}
       <div className="relative z-10 px-5 py-4 text-white">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {/* Left: Project Info */}
+          {/* Left: Project Info — compact one-line */}
           <div
             className={cn(
               'flex-1 opacity-0',
@@ -117,34 +115,17 @@ function GlassmorphismHeader({
             )}
             style={{ animationDelay: '100ms' }}
           >
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-white/10 rounded-lg">
                 <Building2 className="h-5 w-5 text-secondary-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold tracking-tight">
+                <h2 className="text-lg font-bold tracking-tight">
                   {kpis.projectName}
                 </h2>
                 <p className="text-neutral-400 text-xs">
-                  {siteDescription}
+                  {siteLocalisation} · {dateOuvertureFormatee} · <span className="text-secondary-400 font-semibold">J-{daysUntilOpening}</span>
                 </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5 text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>{siteLocalisation}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Ouverture {dateOuvertureFormatee}</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-secondary-500/20 px-2.5 py-1 rounded-full">
-                <Clock className="h-3.5 w-3.5 text-secondary-400" />
-                <span className="text-secondary-400 font-semibold">
-                  J-{daysUntilOpening}
-                </span>
               </div>
             </div>
           </div>
@@ -424,6 +405,7 @@ export function DashboardPage() {
                     title="Taux d'occupation"
                     value={`${Math.round(kpis.tauxOccupation)}%`}
                     subtitle="Surface commerciale"
+                    annotation={kpis.tauxOccupation >= 70 ? 'En phase' : 'En dessous de la cible'}
                     icon={Building2}
                     progress={kpis.tauxOccupation}
                     variant={kpis.tauxOccupation >= 70 ? 'success' : 'warning'}
@@ -434,6 +416,7 @@ export function DashboardPage() {
                     title="Budget consommé"
                     value={formatCurrency(kpis.budgetConsomme)}
                     subtitle={`sur ${formatCurrency(kpis.budgetTotal)}`}
+                    annotation={`${Math.round(budgetPercent)}% utilisé`}
                     icon={Wallet}
                     progress={budgetPercent}
                     variant={
@@ -450,6 +433,7 @@ export function DashboardPage() {
                     title="Jalons atteints"
                     value={`${kpis.jalonsAtteints}/${kpis.jalonsTotal}`}
                     subtitle={formatPercent(jalonsPercent)}
+                    annotation={kpis.jalonsAtteints === 0 ? 'Aucun atteint' : `+${kpis.jalonsAtteints} atteints`}
                     icon={Flag}
                     progress={jalonsPercent}
                     variant={jalonsPercent >= 80 ? 'success' : 'default'}
@@ -460,6 +444,7 @@ export function DashboardPage() {
                     title="Équipe projet"
                     value={kpis.equipeTaille}
                     subtitle="membres actifs"
+                    annotation="Effectif complet"
                     icon={Users}
                     variant="default"
                     animationDelay={150}
@@ -469,7 +454,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Compte à rebours */}
-                <CompteARebours dateOuverture={dateOuverture} />
+                <CompteARebours dateOuverture={dateOuverture} avancementGlobal={avancementGlobal} />
 
                 {/* Météo Projet + Score Santé */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

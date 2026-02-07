@@ -12,6 +12,7 @@ import { PROJET_CONFIG, SEUILS_UI } from '@/data/constants';
 
 interface CompteAReboursProps {
   dateOuverture?: string; // Format YYYY-MM-DD
+  avancementGlobal?: number;
 }
 
 // Animated digit component for countdown
@@ -104,7 +105,7 @@ function CircularCountdown({
   );
 }
 
-export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softOpening }: CompteAReboursProps) {
+export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softOpening, avancementGlobal }: CompteAReboursProps) {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -148,7 +149,7 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
         semainesRestants: diffWeeks,
         dateFormatee: opening.toLocaleDateString('fr-FR', {
           day: 'numeric',
-          month: 'long',
+          month: 'short',
           year: 'numeric',
         }),
         isUrgent: diffDays <= SEUILS_UI.compteARebours.attention,
@@ -234,7 +235,7 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
               </div>
               <div className="h-2 bg-white/20 rounded-full overflow-hidden relative">
                 <div
-                  className="h-full bg-white rounded-full transition-all duration-1000 ease-out"
+                  className="h-full bg-orange-500 rounded-full transition-all duration-1000 ease-out"
                   style={{
                     width: isVisible ? `${progress}%` : '0%',
                     transitionDelay: '300ms',
@@ -248,6 +249,11 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
                   />
                 ))}
               </div>
+              {avancementGlobal !== undefined && (
+                <p className="mt-1.5 text-xs text-orange-400 font-medium">
+                  {progress.toFixed(0)}% du temps écoulé — {Math.round(avancementGlobal)}% d'avancement
+                </p>
+              )}
             </div>
           )}
         </div>
