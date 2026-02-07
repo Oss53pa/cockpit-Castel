@@ -154,6 +154,16 @@ export function ExternalUpdateFirebasePage() {
           commentaires: snapshot.commentaires || [],
           points_attention: snapshot.points_attention || [],
           decisions_attendues: snapshot.decisions_attendues || [],
+          livrables: snapshot.livrables?.map(l => ({
+            id: l.id,
+            nom: l.nom,
+            description: null,
+            statut: l.statut || 'en_attente',
+            obligatoire: false,
+            date_prevue: null,
+            date_livraison: l.statut === 'valide' ? new Date().toISOString().split('T')[0] : null,
+            validateur: null,
+          })) || [],
         } as Action);
       } else if (type === 'jalon') {
         setEntity({
@@ -229,6 +239,12 @@ export function ExternalUpdateFirebasePage() {
         response.changes.preuves = actionData.preuves || [];
         response.changes.pointsAttention = actionData.pointsAttention || [];
         response.changes.decisionsAttendues = actionData.decisionsAttendues || [];
+        // Mapper les livrables vers le format Firebase (id, nom, statut)
+        response.changes.livrables = (actionData.livrables || []).map(l => ({
+          id: l.id,
+          nom: l.nom,
+          statut: l.fait ? 'valide' : 'en_attente',
+        }));
 
         console.log('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
         console.log('[ExternalUpdate] Action - pointsAttention:', actionData.pointsAttention);

@@ -67,6 +67,16 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         statut: data.statut,
         avancement: data.avancement,
         sous_taches: data.sousTaches,
+        livrables: data.livrables?.map(l => ({
+          id: l.id,
+          nom: l.nom,
+          description: null,
+          statut: l.fait ? 'valide' as const : 'en_attente' as const,
+          obligatoire: false,
+          date_prevue: null,
+          date_livraison: l.fait ? new Date().toISOString().split('T')[0] : null,
+          validateur: null,
+        })),
         points_attention: data.pointsAttention,
         decisions_attendues: data.decisionsAttendues,
         documents: data.preuves?.map(p => ({

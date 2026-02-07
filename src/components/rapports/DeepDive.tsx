@@ -321,6 +321,9 @@ const defaultSlides: SlideItem[] = [
   // === AXE 6 - EXPLOITATION & SYSTÈMES ===
   ...generateAxeSlides('exploitation', axesConfig.exploitation),
 
+  // === AXE 7 - CONSTRUCTION ===
+  ...generateAxeSlides('construction', axesConfig.construction),
+
   // === SECTION TRANSVERSE ===
   { id: '10', title: 'Synchronisation Construction / Mobilisation', icon: GitCompareArrows, description: 'Construction (AXE 3) vs 5 axes de mobilisation - écarts et alertes', included: true, comment: '' },
   { id: '11', title: 'Budget Global & EVM', icon: DollarSign, description: 'Indicateurs de performance budgétaire consolidés', included: true, comment: '' },
@@ -914,6 +917,7 @@ export function DeepDive() {
       budget: [],
       marketing: [],
       exploitation: [],
+      construction: [],
       general: [],
     };
 
@@ -943,6 +947,7 @@ export function DeepDive() {
       budget: [],
       marketing: [],
       exploitation: [],
+      construction: [],
       general: [],
     };
 
@@ -973,6 +978,7 @@ export function DeepDive() {
       budget: [],
       marketing: [],
       exploitation: [],
+      construction: [],
       general: [],
     };
 
@@ -3962,7 +3968,7 @@ export function DeepDive() {
               </div>
 
               {/* Axes avec barres */}
-              {(['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'] as AxeType[]).map((axe) => {
+              {(['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation', 'construction'] as AxeType[]).map((axe) => {
                 const config = axesConfig[axe];
                 const data = axeDetailData[axe];
                 return (

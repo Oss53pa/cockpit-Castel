@@ -87,6 +87,11 @@ export interface ExternalUpdateData {
       sujet: string;
       dateCreation: string;
     }>;
+    livrables?: Array<{
+      id: string;
+      nom: string;
+      statut: string;
+    }>;
 
     // Jalon
     date_prevue?: string;
@@ -158,6 +163,11 @@ export interface ExternalUpdateData {
         id: string;
         sujet: string;
         dateCreation: string;
+      }>;
+      livrables?: Array<{
+        id: string;
+        nom: string;
+        statut: string;
       }>;
 
       // Jalon
@@ -350,6 +360,12 @@ export async function createUpdateLinkInFirebase(
       // Inclure les décisions attendues
       if ((action as any).decisions_attendues) {
         entitySnapshot.decisions_attendues = (action as any).decisions_attendues;
+      }
+      // Inclure les livrables
+      if (action.livrables) {
+        entitySnapshot.livrables = action.livrables.map(l => ({
+          id: l.id, nom: l.nom, statut: l.statut,
+        }));
       }
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
@@ -667,6 +683,19 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
       if (changes.decisionsAttendues !== undefined) {
         updateData.decisions_attendues = changes.decisionsAttendues;
         console.log('[SyncToLocal] Décisions attendues à sauvegarder:', changes.decisionsAttendues?.length || 0);
+      }
+      if (changes.livrables !== undefined) {
+        updateData.livrables = changes.livrables.map(l => ({
+          id: l.id,
+          nom: l.nom,
+          description: null,
+          statut: l.statut || 'en_attente',
+          obligatoire: false,
+          date_prevue: null,
+          date_livraison: l.statut === 'valide' ? new Date().toISOString().split('T')[0] : null,
+          validateur: null,
+        }));
+        console.log('[SyncToLocal] Livrables à sauvegarder:', changes.livrables?.length || 0);
       }
 
       console.log('[SyncToLocal] UpdateData pour action:', JSON.stringify(updateData, null, 2));

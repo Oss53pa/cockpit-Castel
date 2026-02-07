@@ -27,6 +27,7 @@ import {
   X,
   AlertTriangle,
   HelpCircle,
+  Package,
 } from 'lucide-react';
 import {
   Button,
@@ -89,6 +90,12 @@ interface DecisionAttendue {
   dateTransmission?: string;
 }
 
+interface LivrableItem {
+  id: string;
+  nom: string;
+  fait: boolean;
+}
+
 interface UserOption {
   id: number;
   nom: string;
@@ -123,6 +130,7 @@ const getStatutConfig = (statut: string) => {
 const FORM_TABS = [
   { id: 'general', label: 'Général', icon: Target },
   { id: 'sousTaches', label: 'Sous-tâches', icon: ListChecks },
+  { id: 'livrables', label: 'Livrables', icon: Package },
   { id: 'pointsAttention', label: "Points d'Attention", icon: AlertTriangle },
   { id: 'decisionsAttendues', label: 'Décisions attendues', icon: HelpCircle },
   { id: 'complements', label: 'Compléments', icon: MessageSquare },
@@ -174,6 +182,7 @@ export interface ActionFormSaveData {
   liens_documents?: string;
   commentaires_externes?: string;
   sousTaches?: SousTache[];
+  livrables?: LivrableItem[];
   preuves?: Preuve[];
   pointsAttention?: PointAttention[];
   decisionsAttendues?: DecisionAttendue[];
@@ -254,6 +263,9 @@ export function ActionFormContent({
   );
   const [decisionsAttendues, setDecisionsAttendues] = useState<DecisionAttendue[]>(
     (action as any)?.decisions_attendues || []
+  );
+  const [livrables, setLivrables] = useState<LivrableItem[]>(
+    action?.livrables?.map(l => ({ id: l.id, nom: l.nom, fait: l.statut === 'valide' })) || []
   );
   const [notesMiseAJour, setNotesMiseAJour] = useState((action as any)?.notes_mise_a_jour || '');
 
@@ -446,6 +458,27 @@ export function ActionFormContent({
     setDecisionsAttendues(decisionsAttendues.filter((_, i) => i !== index));
   };
 
+  // Handlers livrables
+  const handleAddLivrable = () => {
+    setLivrables([...livrables, { id: crypto.randomUUID(), nom: '', fait: false }]);
+  };
+
+  const handleToggleLivrable = (index: number) => {
+    const updated = [...livrables];
+    updated[index] = { ...updated[index], fait: !updated[index].fait };
+    setLivrables(updated);
+  };
+
+  const handleUpdateLivrableNom = (index: number, nom: string) => {
+    const updated = [...livrables];
+    updated[index] = { ...updated[index], nom };
+    setLivrables(updated);
+  };
+
+  const handleRemoveLivrable = (index: number) => {
+    setLivrables(livrables.filter((_, i) => i !== index));
+  };
+
   // Sauvegarde
   const handleSave = () => {
     // Validation basique pour le mode création
@@ -482,6 +515,7 @@ export function ActionFormContent({
       liens_documents: JSON.stringify(preuves),
       commentaires_externes: JSON.stringify(notes),
       sousTaches,
+      livrables,
       preuves,
       pointsAttention,
       decisionsAttendues,
@@ -580,6 +614,9 @@ export function ActionFormContent({
                   <Badge variant="info" className="ml-1 text-xs">
                     {Math.round(sousTaches.reduce((sum, st) => sum + (st.avancement || 0), 0) / sousTaches.length)}%
                   </Badge>
+                )}
+                {tab.id === 'livrables' && livrables.length > 0 && (
+                  <Badge variant="info" className="ml-1 text-xs">{livrables.filter(l => l.fait).length}/{livrables.length}</Badge>
                 )}
                 {tab.id === 'preuves' && preuves.length > 0 && (
                   <Badge variant="info" className="ml-1 text-xs">{preuves.length}</Badge>
@@ -840,6 +877,62 @@ export function ActionFormContent({
               <Button type="button" variant="outline" onClick={handleAddSousTache} className="w-full">
                 <Plus className="w-4 h-4 mr-1" />
                 Ajouter une sous-tâche
+              </Button>
+            )}
+          </TabsContent>
+
+          {/* ONGLET LIVRABLES */}
+          <TabsContent value="livrables" className="space-y-3 m-0">
+            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-indigo-800 mb-1 flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Livrables
+              </h3>
+              <p className="text-xs text-indigo-600">Cochez les livrables une fois livrés</p>
+            </div>
+
+            {livrables.length === 0 ? (
+              <div className="p-8 text-center text-neutral-500 border-2 border-dashed rounded-lg">
+                <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                <p>Aucun livrable</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {livrables.map((livrable, index) => (
+                  <div key={livrable.id} className={`p-3 rounded-lg border ${livrable.fait ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-neutral-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={livrable.fait}
+                        onChange={() => handleToggleLivrable(index)}
+                        disabled={!isEditing}
+                        className="w-4 h-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      {isEditing ? (
+                        <Input
+                          value={livrable.nom}
+                          onChange={(e) => handleUpdateLivrableNom(index, e.target.value)}
+                          placeholder="Nom du livrable"
+                          className={`flex-1 ${livrable.fait ? 'line-through text-neutral-400' : ''}`}
+                        />
+                      ) : (
+                        <span className={`flex-1 text-sm ${livrable.fait ? 'line-through text-neutral-400' : ''}`}>{livrable.nom || 'Sans nom'}</span>
+                      )}
+                      {isEditing && (
+                        <button type="button" onClick={() => handleRemoveLivrable(index)} className="text-red-500 hover:text-red-700 p-1">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isEditing && (
+              <Button type="button" variant="outline" onClick={handleAddLivrable} className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+                <Plus className="w-4 h-4 mr-1" />
+                Ajouter un livrable
               </Button>
             )}
           </TabsContent>

@@ -154,7 +154,16 @@ export function ActionWizard({
         ligne_budgetaire: null,
 
         // Livrables
-        livrables: [],
+        livrables: data.livrables?.map(l => ({
+          id: l.id,
+          nom: l.nom,
+          description: null,
+          statut: l.fait ? 'valide' as const : 'en_attente' as const,
+          obligatoire: false,
+          date_prevue: null,
+          date_livraison: l.fait ? new Date().toISOString().split('T')[0] : null,
+          validateur: null,
+        })) || [],
         criteres_acceptation: [],
         documents: data.preuves?.map(p => ({
           id: p.id,

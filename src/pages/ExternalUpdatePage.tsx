@@ -145,6 +145,7 @@ export function ExternalUpdatePage() {
             impact: updateLink.entityData.impact,
             // Inclure les sous-tâches si présentes
             sous_taches: updateLink.entityData.sous_taches || [],
+            livrables: (updateLink.entityData as any).livrables || [],
           } as ExtendedEntity;
         }
       }
@@ -200,6 +201,16 @@ export function ExternalUpdatePage() {
             commentaires_externes: actionData.commentaires_externes,
             liens_documents: actionData.liens_documents,
             sous_taches: actionData.sousTaches,
+            livrables: actionData.livrables?.map(l => ({
+              id: l.id,
+              nom: l.nom,
+              description: null,
+              statut: l.fait ? 'valide' as const : 'en_attente' as const,
+              obligatoire: false,
+              date_prevue: null,
+              date_livraison: l.fait ? new Date().toISOString().split('T')[0] : null,
+              validateur: null,
+            })),
             points_attention: actionData.pointsAttention,
             decisions_attendues: actionData.decisionsAttendues,
             derniere_mise_a_jour_externe: new Date().toISOString(),
