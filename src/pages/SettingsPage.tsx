@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet, SlidersHorizontal, Shield } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet, SlidersHorizontal, Shield, Cpu } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
 import { generateAlertesAutomatiques, resetBudgetEngagements, usePermissions } from '@/hooks';
@@ -18,6 +18,7 @@ import { FirebaseSyncSettings } from '@/components/settings/FirebaseSyncSettings
 import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
 import { ParametresMetierSettings } from '@/components/settings/ParametresMetierSettings';
 import { GovernanceRules } from '@/components/settings/GovernanceRules';
+import { AlgorithmsSettings } from '@/components/settings/AlgorithmsSettings';
 import { PROJET_CONFIG } from '@/data/constants';
 
 const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Atokp0879*';
@@ -232,6 +233,10 @@ export function SettingsPage() {
             <Shield className="h-4 w-4" />
             Gouvernance
           </TabsTrigger>
+          <TabsTrigger value="algorithms" className="flex items-center gap-2">
+            <Cpu className="h-4 w-4" />
+            Algorithmes
+          </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
             Systeme
@@ -306,6 +311,11 @@ export function SettingsPage() {
         {/* Gouvernance Tab */}
         <TabsContent value="gouvernance">
           <GovernanceRules />
+        </TabsContent>
+
+        {/* Algorithms Tab */}
+        <TabsContent value="algorithms">
+          <AlgorithmsSettings />
         </TabsContent>
 
         {/* System Tab */}
