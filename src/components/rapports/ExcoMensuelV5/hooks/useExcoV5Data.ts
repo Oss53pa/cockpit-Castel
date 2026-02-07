@@ -360,8 +360,8 @@ export interface ScenariosOutput {
  *   Rationale: marge d'amélioration réaliste avec actions commerciales.
  * - rampup_q1_factor (0.5): Q1 à 50% du CA cible (ramp-up).
  * - rampup_q234_months (9): 9 mois restants à taux projeté.
- * - pertePctAn1_perMonth (3): +3% de perte revenus An1 par mois de retard.
- *   Rationale: chaque mois de retard = revenus perdus + ramp-up dégradé.
+ * - Pertes An1: calculées proportionnellement aux mois perdus après report
+ *   (chaque mois de report = 1 mois de revenus An1 en moins)
  */
 const SCENARIO_CONFIG = {
   // Facteur d'escalade par mois de retard (30% par mois supplémentaire)
@@ -382,9 +382,8 @@ const SCENARIO_CONFIG = {
   tauxOccup_bonus: 5, // % d'optimisation possible
   // Ramp-up revenus An1
   rampup_q1_factor: 0.5, // Q1 à 50% du CA cible
-  rampup_q234_months: 9, // Mois Q2-Q4
-  // Perte revenus par mois de retard (+3% par mois)
-  pertePctAn1_perMonth: 3,
+  // Note: rampup_q234_months n'est plus utilisé, le calcul est maintenant proportionnel
+  // aux mois effectifs en An1 (12 - moisReport)
 } as const;
 
 // ============================================================================
@@ -754,13 +753,21 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
   const revenuMensuelCible = REVENU_MENSUEL_SOFT_OPENING * (CIBLE_GRAND_OPENING / 100);
   const revenuAn1Cible = revenuMensuelCible * 12;
   const tauxOccupProj = Math.min(occupation + SCENARIO_CONFIG.tauxOccup_bonus, CIBLE_GRAND_OPENING - 10);
-  // Revenus An1 réels = Q1 à 50% + Q2-Q4 au taux projeté
-  const revenuAn1Reel = (revenuMensuelCible * SCENARIO_CONFIG.rampup_q1_factor * 3) +
-                        (revenuMensuelCible * (tauxOccupProj / 100) * SCENARIO_CONFIG.rampup_q234_months);
-  // PERTE DYNAMIQUE: base + pénalité par mois de retard
-  // Chaque mois de retard = +3% de perte revenus An1 (ramp-up dégradé + mois perdus)
-  const perteBase = revenuAn1Cible > 0 ? Math.round((1 - revenuAn1Reel / revenuAn1Cible) * 100) : 0;
-  const pertePctAn1 = Math.min(100, perteBase + (moisReport * SCENARIO_CONFIG.pertePctAn1_perMonth));
+
+  // PERTE DYNAMIQUE PROPORTIONNELLE AU REPORT
+  // Chaque mois de report = 1 mois de revenus An1 perdus (en plus du ramp-up dégradé)
+  const moisAn1Effectifs = Math.max(0, 12 - moisReport);
+  // Q1 ramp-up (3 mois max, réduit si report important)
+  const moisQ1Effectifs = Math.min(3, moisAn1Effectifs);
+  // Mois restants au taux projeté nominal
+  const moisQ234Effectifs = Math.max(0, moisAn1Effectifs - moisQ1Effectifs);
+
+  // Revenus An1 réels = Q1 à 50% + Q2-Q4 au taux projeté (proportionnel aux mois effectifs)
+  const revenuAn1Reel = (revenuMensuelCible * SCENARIO_CONFIG.rampup_q1_factor * moisQ1Effectifs) +
+                        (revenuMensuelCible * (tauxOccupProj / 100) * moisQ234Effectifs);
+
+  // Perte = revenus cible - revenus réels après report
+  const pertePctAn1 = revenuAn1Cible > 0 ? Math.min(100, Math.round((1 - revenuAn1Reel / revenuAn1Cible) * 100)) : 0;
   const syntheseGOCommercial: ScenarioSynthese = {
     titre: `GO Commercial — Report ${moisReport} mois`,
     siMaintenant: [
