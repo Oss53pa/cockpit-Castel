@@ -34,7 +34,12 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState(() => {
     // Check URL params for tab
     const params = new URLSearchParams(window.location.search);
-    return params.get('tab') || 'sites';
+    const tab = params.get('tab') || 'project_sites';
+    // Redirect old tab values to new grouped tabs
+    if (tab === 'sites' || tab === 'project' || tab === 'buildings') return 'project_sites';
+    if (tab === 'users' || tab === 'teams') return 'personnel';
+    if (tab === 'parametres' || tab === 'gouvernance') return 'regles';
+    return tab;
   });
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -177,25 +182,13 @@ export function SettingsPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex flex-wrap gap-1 mb-6">
-          <TabsTrigger value="sites" className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            Sites
-          </TabsTrigger>
-          <TabsTrigger value="project" className="flex items-center gap-2">
+          <TabsTrigger value="project_sites" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
-            Projet
+            Projet & Sites
           </TabsTrigger>
-          <TabsTrigger value="buildings" className="flex items-center gap-2">
-            <Warehouse className="h-4 w-4" />
-            Bâtiments
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
+          <TabsTrigger value="personnel" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Utilisateurs
-          </TabsTrigger>
-          <TabsTrigger value="teams" className="flex items-center gap-2">
-            <UsersRound className="h-4 w-4" />
-            Equipes
+            Personnel
           </TabsTrigger>
           <TabsTrigger value="ai" className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
@@ -225,13 +218,9 @@ export function SettingsPage() {
             <HardDrive className="h-4 w-4" />
             Données v2
           </TabsTrigger>
-          <TabsTrigger value="parametres" className="flex items-center gap-2">
+          <TabsTrigger value="regles" className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4" />
-            Paramètres métier
-          </TabsTrigger>
-          <TabsTrigger value="gouvernance" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Gouvernance
+            Règles & Paramètres
           </TabsTrigger>
           <TabsTrigger value="algorithms" className="flex items-center gap-2">
             <Cpu className="h-4 w-4" />
@@ -243,29 +232,55 @@ export function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Sites Tab */}
-        <TabsContent value="sites">
-          <SiteManagement />
+        {/* Projet & Sites Tab */}
+        <TabsContent value="project_sites">
+          <Tabs defaultValue="sites">
+            <TabsList className="mb-4 bg-primary-50">
+              <TabsTrigger value="sites" className="flex items-center gap-2 text-xs">
+                <Globe className="h-3.5 w-3.5" />
+                Sites
+              </TabsTrigger>
+              <TabsTrigger value="project" className="flex items-center gap-2 text-xs">
+                <Building2 className="h-3.5 w-3.5" />
+                Projet
+              </TabsTrigger>
+              <TabsTrigger value="buildings" className="flex items-center gap-2 text-xs">
+                <Warehouse className="h-3.5 w-3.5" />
+                Bâtiments
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="sites">
+              <SiteManagement />
+            </TabsContent>
+            <TabsContent value="project">
+              <ProjectSettings />
+            </TabsContent>
+            <TabsContent value="buildings">
+              <BuildingsSettings />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
-        {/* Project Tab */}
-        <TabsContent value="project">
-          <ProjectSettings />
-        </TabsContent>
-
-        {/* Buildings Tab */}
-        <TabsContent value="buildings">
-          <BuildingsSettings />
-        </TabsContent>
-
-        {/* Users Tab */}
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
-
-        {/* Teams Tab */}
-        <TabsContent value="teams">
-          <TeamManagement />
+        {/* Personnel Tab */}
+        <TabsContent value="personnel">
+          <Tabs defaultValue="users">
+            <TabsList className="mb-4 bg-primary-50">
+              <TabsTrigger value="users" className="flex items-center gap-2 text-xs">
+                <Users className="h-3.5 w-3.5" />
+                Utilisateurs
+              </TabsTrigger>
+              <TabsTrigger value="teams" className="flex items-center gap-2 text-xs">
+                <UsersRound className="h-3.5 w-3.5" />
+                Equipes
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="users">
+              <UserManagement />
+            </TabsContent>
+            <TabsContent value="teams">
+              <TeamManagement />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* AI Tab */}
@@ -303,14 +318,26 @@ export function SettingsPage() {
           <DataInitialization />
         </TabsContent>
 
-        {/* Paramètres métier Tab */}
-        <TabsContent value="parametres">
-          <ParametresMetierSettings />
-        </TabsContent>
-
-        {/* Gouvernance Tab */}
-        <TabsContent value="gouvernance">
-          <GovernanceRules />
+        {/* Règles & Paramètres Tab */}
+        <TabsContent value="regles">
+          <Tabs defaultValue="parametres">
+            <TabsList className="mb-4 bg-primary-50">
+              <TabsTrigger value="parametres" className="flex items-center gap-2 text-xs">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Paramètres métier
+              </TabsTrigger>
+              <TabsTrigger value="gouvernance" className="flex items-center gap-2 text-xs">
+                <Shield className="h-3.5 w-3.5" />
+                Gouvernance
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="parametres">
+              <ParametresMetierSettings />
+            </TabsContent>
+            <TabsContent value="gouvernance">
+              <GovernanceRules />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Algorithms Tab */}
