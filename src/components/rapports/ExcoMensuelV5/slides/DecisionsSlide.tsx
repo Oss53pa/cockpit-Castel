@@ -17,6 +17,17 @@ interface DecisionFull {
   responsable: string;
 }
 
+interface PointAttentionFull {
+  id: string;
+  sujet: string;
+  dateCreation: string;
+  transmis: boolean;
+  responsableNom: string;
+  actionTitre: string;
+  actionId: string;
+  axe: string;
+}
+
 function getUrgency(dateCreation: string): { label: string; color: string; bg: string } {
   const days = Math.floor((Date.now() - new Date(dateCreation).getTime()) / (1000 * 60 * 60 * 24));
   if (days > 30) return { label: 'Critique', color: C.red, bg: C.redBg };
@@ -33,8 +44,10 @@ function formatDateShort(dateStr: string): string {
   }
 }
 
+type TabKey = 'attention' | 'pending' | 'recent';
+
 export function DecisionsSlide({ data, printMode }: Props) {
-  const [activeTab, setActiveTab] = useState<'pending' | 'recent'>('pending');
+  const [activeTab, setActiveTab] = useState<TabKey>('attention');
 
   // Extract ALL decisions from actions (pending + transmitted)
   const { pending, recent, transmisCount } = useMemo(() => {
@@ -74,6 +87,32 @@ export function DecisionsSlide({ data, printMode }: Props) {
     };
   }, [data.allActions]);
 
+  // Extract ALL unchecked points d'attention from actions
+  const pointsAttention = useMemo(() => {
+    const all: PointAttentionFull[] = [];
+
+    for (const action of data.allActions) {
+      const pa = (action as Record<string, unknown>).points_attention as
+        Array<{ id: string; sujet: string; dateCreation: string; transmis?: boolean; responsableNom?: string }> | undefined;
+      if (!pa) continue;
+      for (const p of pa) {
+        if (p.transmis) continue; // Only show unchecked/non-transmitted
+        all.push({
+          id: p.id,
+          sujet: p.sujet,
+          dateCreation: p.dateCreation,
+          transmis: false,
+          responsableNom: p.responsableNom || '',
+          actionTitre: action.titre,
+          actionId: action.id_action,
+          axe: action.axe,
+        });
+      }
+    }
+
+    return all.sort((a, b) => a.dateCreation.localeCompare(b.dateCreation));
+  }, [data.allActions]);
+
   const totalDecisions = transmisCount + pending.length;
   const tauxApprobation = totalDecisions > 0 ? Math.round((transmisCount / totalDecisions) * 100) : 100;
   const hasNoPending = pending.length === 0;
@@ -86,8 +125,6 @@ export function DecisionsSlide({ data, printMode }: Props) {
     }, 0);
     return (totalDays / pending.length).toFixed(1);
   }, [pending]);
-
-  const displayDecisions = activeTab === 'pending' ? pending : recent;
 
   const renderDecisionList = (decisions: DecisionFull[], emptyMessage: string) => {
     if (decisions.length === 0) {
@@ -171,16 +208,115 @@ export function DecisionsSlide({ data, printMode }: Props) {
     );
   };
 
+  const renderPointsAttentionList = (points: PointAttentionFull[]) => {
+    if (points.length === 0) {
+      return (
+        <div style={{
+          textAlign: 'center', padding: 30, color: C.gray400,
+          fontSize: 13, fontStyle: 'italic',
+        }}>
+          Aucun point d'attention en attente
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {points.map(pa => {
+          const urgency = getUrgency(pa.dateCreation);
+          const axeCfg = AXES_V5.find(a => a.dbCode === pa.axe);
+          const axeLabel = axeCfg?.label.split(' & ')[0] ?? pa.axe;
+
+          return (
+            <div
+              key={pa.id}
+              style={{
+                padding: '16px 20px',
+                backgroundColor: C.white,
+                borderRadius: 10,
+                border: `1px solid ${C.gray200}`,
+                borderLeft: `4px solid ${C.orange}`,
+              }}
+            >
+              {/* Header: badges + ancienneté */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', marginBottom: 8,
+              }}>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 4,
+                    backgroundColor: C.blueBg, color: C.blue,
+                    fontSize: 10, fontWeight: 600,
+                  }}>
+                    {axeLabel}
+                  </span>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 4,
+                    backgroundColor: urgency.bg, color: urgency.color,
+                    fontSize: 10, fontWeight: 600,
+                  }}>
+                    {urgency.label}
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: C.gray500 }}>
+                  Depuis {formatDateShort(pa.dateCreation)}
+                </span>
+              </div>
+
+              {/* Sujet */}
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
+                {pa.sujet}
+              </div>
+
+              {/* Action + responsable */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 12, color: C.gray500, lineHeight: 1.4 }}>
+                  {pa.actionTitre}
+                </div>
+                {pa.responsableNom && (
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 4,
+                    backgroundColor: C.gray100, color: C.gray600,
+                    fontSize: 10, fontWeight: 500,
+                  }}>
+                    {pa.responsableNom}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div>
       <SectionHeader
         title="Décisions EXCO Requises"
-        subtitle={`${pending.length} décision${pending.length !== 1 ? 's' : ''} en attente de transmission`}
+        subtitle={`${pointsAttention.length} point${pointsAttention.length !== 1 ? 's' : ''} d'attention · ${pending.length} décision${pending.length !== 1 ? 's' : ''} en attente`}
       />
 
       {/* ============ 4 KPI CARDS ============ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-        {/* Status */}
+        {/* Points d'attention */}
+        <SlideCard style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%', margin: '0 auto 8px',
+            backgroundColor: pointsAttention.length === 0 ? C.greenBg : C.orangeBg,
+            border: `2px solid ${pointsAttention.length === 0 ? C.green : C.orange}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, color: pointsAttention.length === 0 ? C.green : C.orange, fontWeight: 600,
+          }}>
+            {pointsAttention.length === 0 ? '✓' : pointsAttention.length}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: pointsAttention.length === 0 ? C.green : C.orange }}>
+            {pointsAttention.length === 0 ? 'RAS' : `${pointsAttention.length} point${pointsAttention.length !== 1 ? 's' : ''}`}
+          </div>
+          <div style={{ fontSize: 11, color: C.gray500 }}>Points d'attention</div>
+        </SlideCard>
+
+        {/* Status décisions */}
         <SlideCard style={{ padding: '16px', textAlign: 'center' }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%', margin: '0 auto 8px',
@@ -197,12 +333,6 @@ export function DecisionsSlide({ data, printMode }: Props) {
           <div style={{ fontSize: 11, color: C.gray500 }}>
             {hasNoPending ? 'Aucune décision bloquante' : 'Décision(s) requise(s)'}
           </div>
-        </SlideCard>
-
-        {/* Décisions prises */}
-        <SlideCard style={{ padding: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: C.navy }}>{transmisCount}</div>
-          <div style={{ fontSize: 12, color: C.gray500 }}>Décisions prises</div>
         </SlideCard>
 
         {/* Délai moyen */}
@@ -223,10 +353,18 @@ export function DecisionsSlide({ data, printMode }: Props) {
       </div>
 
       {printMode ? (
-        /* Print mode: show both sections stacked */
+        /* Print mode: show all sections stacked */
         <>
           <div style={{
             fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 10,
+            borderBottom: `2px solid ${C.gray200}`, paddingBottom: 8,
+          }}>
+            Points d'attention ({pointsAttention.length})
+          </div>
+          {renderPointsAttentionList(pointsAttention)}
+
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: C.navy, marginTop: 20, marginBottom: 10,
             borderBottom: `2px solid ${C.gray200}`, paddingBottom: 8,
           }}>
             Prochaines décisions ({pending.length})
@@ -243,8 +381,14 @@ export function DecisionsSlide({ data, printMode }: Props) {
         </>
       ) : (
         <>
-          {/* ============ TABS ============ */}
+          {/* ============ 3 TABS ============ */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <TabPill
+              label={`Points d'attention (${pointsAttention.length})`}
+              active={activeTab === 'attention'}
+              onClick={() => setActiveTab('attention')}
+              accentColor={pointsAttention.length > 0 ? C.orange : undefined}
+            />
             <TabPill
               label={`Prochaines décisions (${pending.length})`}
               active={activeTab === 'pending'}
@@ -257,8 +401,10 @@ export function DecisionsSlide({ data, printMode }: Props) {
             />
           </div>
 
-          {/* ============ DECISION CARDS ============ */}
-          {renderDecisionList(displayDecisions, activeTab === 'pending' ? 'Aucune décision en attente' : 'Aucune décision récente')}
+          {/* ============ TAB CONTENT ============ */}
+          {activeTab === 'attention' && renderPointsAttentionList(pointsAttention)}
+          {activeTab === 'pending' && renderDecisionList(pending, 'Aucune décision en attente')}
+          {activeTab === 'recent' && renderDecisionList(recent, 'Aucune décision récente')}
         </>
       )}
     </div>
@@ -269,18 +415,21 @@ export function DecisionsSlide({ data, printMode }: Props) {
 // SUB-COMPONENTS
 // ============================================================================
 
-function TabPill({ label, active, onClick }: {
+function TabPill({ label, active, onClick, accentColor }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  accentColor?: string;
 }) {
+  const activeBg = accentColor || C.navy;
+  const activeBorder = accentColor || C.navy;
   return (
     <button
       onClick={onClick}
       style={{
         padding: '6px 16px', borderRadius: 99,
-        border: `1px solid ${active ? C.navy : C.gray300}`,
-        backgroundColor: active ? C.navy : C.white,
+        border: `1px solid ${active ? activeBorder : C.gray300}`,
+        backgroundColor: active ? activeBg : C.white,
         color: active ? C.white : C.gray600,
         fontSize: 12, fontWeight: active ? 600 : 400,
         cursor: 'pointer',
