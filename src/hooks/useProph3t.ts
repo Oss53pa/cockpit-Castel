@@ -165,6 +165,8 @@ interface HealthData {
   budgetScore: number;
   riskScore: number;
   alertScore: number;
+  velocityScore: number;
+  syncScore: number;
   spi: number;
   cpi: number;
   issues: string[];
@@ -219,15 +221,20 @@ export function useProph3tHealth(): HealthData | null {
       ? Math.round((actionsTerminees / actions.length) * 100)
       : 0;
 
-    // Score global pondéré avec valeurs réelles
-    const weights = { avancement: 30, jalons: 25, budget: 20, occupation: 15, velocite: 10 };
+    // 6. Sync - proxy : écart entre avancement et jalons (0 = parfait, 100 = désynchronisé → inversé)
+    const syncScore = Math.round(Math.max(0, 100 - Math.abs(avancementReel - jalonsScore) * 2));
+
+    // Score global pondéré avec 6 facteurs
+    // Avancement (25%) · Jalons (20%) · Budget (15%) · Occupation (15%) · Vélocité (15%) · Sync (10%)
+    const weights = { avancement: 25, jalons: 20, budget: 15, occupation: 15, velocite: 15, sync: 10 };
     const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
     const score = Math.round(
       (avancementReel * weights.avancement +
        jalonsScore * weights.jalons +
        budgetScore * weights.budget +
        occupationScore * weights.occupation +
-       velocityScore * weights.velocite) / totalWeight
+       velocityScore * weights.velocite +
+       syncScore * weights.sync) / totalWeight
     );
 
     const status = score >= 80 ? 'vert' : score >= 60 ? 'jaune' : 'rouge';
@@ -262,6 +269,8 @@ export function useProph3tHealth(): HealthData | null {
       budgetScore,
       riskScore: jalonsScore,
       alertScore: occupationScore,
+      velocityScore,
+      syncScore,
       spi,
       cpi,
       issues,

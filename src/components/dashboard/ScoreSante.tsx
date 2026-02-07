@@ -233,16 +233,13 @@ export function ScoreSante() {
     return () => observer.disconnect();
   }, []);
 
-  // Facteurs depuis le hook unifié — 6 facteurs
-  // Sync score: moyenne de (planningScore + riskScore) / 2 comme proxy de cohérence
-  const syncScore = health ? Math.round((health.planningScore + health.riskScore) / 2) : 0;
-
+  // Facteurs depuis le hook unifié — 6 facteurs, mêmes poids que le calcul du score global
   const factors: ScoreFactor[] = health ? [
     {
       label: 'Avancement',
       score: health.planningScore,
-      weight: 30,
-      trend: health.spi >= 1 ? 'up' : health.spi < 0.9 ? 'down' : 'stable',
+      weight: 25,
+      trend: health.planningScore >= 50 ? 'up' : health.planningScore < 20 ? 'down' : 'stable',
       icon: Activity,
     },
     {
@@ -255,7 +252,7 @@ export function ScoreSante() {
     {
       label: 'Budget',
       score: health.budgetScore,
-      weight: 10,
+      weight: 15,
       trend: health.cpi >= 1 ? 'up' : 'down',
       icon: health.budgetScore > health.planningScore + 20 ? AlertTriangle : CheckCircle,
     },
@@ -268,16 +265,16 @@ export function ScoreSante() {
     },
     {
       label: 'Vélocité',
-      score: Math.round((health.spi || 0) * 100),
+      score: health.velocityScore,
       weight: 15,
-      trend: health.spi >= 1 ? 'up' : health.spi < 0.8 ? 'down' : 'stable',
+      trend: health.velocityScore >= 50 ? 'up' : health.velocityScore < 20 ? 'down' : 'stable',
       icon: TrendingUp,
     },
     {
       label: 'Sync',
-      score: syncScore,
+      score: health.syncScore,
       weight: 10,
-      trend: syncScore >= 60 ? 'up' : syncScore < 40 ? 'down' : 'stable',
+      trend: health.syncScore >= 60 ? 'up' : health.syncScore < 40 ? 'down' : 'stable',
       icon: RefreshCw,
     },
   ] : [];
@@ -333,7 +330,7 @@ export function ScoreSante() {
         {/* Bottom summary — poids */}
         <div className="mt-4 pt-3 border-t border-neutral-100">
           <p className="text-[10px] text-neutral-400 text-center leading-relaxed">
-            Vélocité (30%) · Jalons (20%) · Occupation (15%) · Risques (15%) · Budget (10%) · Sync (10%)
+            Avancement (25%) · Jalons (20%) · Budget (15%) · Occupation (15%) · Vélocité (15%) · Sync (10%)
           </p>
         </div>
       </Card>
