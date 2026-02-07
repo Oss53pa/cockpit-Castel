@@ -35,13 +35,13 @@ function AnimatedDigit({ value, label }: { value: number; label: string }) {
     <div className="text-center">
       <div
         className={cn(
-          'text-2xl font-bold transition-all duration-300',
+          'text-2xl font-bold text-primary-900 transition-all duration-300',
           isAnimating && 'scale-90 opacity-50'
         )}
       >
         {displayValue}
       </div>
-      <p className="text-[10px] text-white/70 uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] text-primary-400 uppercase tracking-wider">{label}</p>
     </div>
   );
 }
@@ -75,7 +75,7 @@ function CircularCountdown({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.2)"
+          stroke="#fed7aa"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -83,7 +83,7 @@ function CircularCountdown({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="white"
+          stroke="#f97316"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -94,11 +94,11 @@ function CircularCountdown({
       <div className="absolute inset-0 flex items-center justify-center">
         <div
           className={cn(
-            'p-2 bg-white/20 rounded-full',
+            'p-2 bg-orange-100 rounded-full',
             isUrgent && 'animate-alert-pulse'
           )}
         >
-          <Rocket className="w-5 h-5 text-white" />
+          <Rocket className="w-5 h-5 text-orange-600" />
         </div>
       </div>
     </div>
@@ -168,9 +168,9 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
     >
       <Card
         padding="none"
-        className="overflow-hidden bg-neutral-700 shadow-lg rounded-xl"
+        className="overflow-hidden shadow-lg rounded-xl"
       >
-        <div className="px-5 py-3 text-white">
+        <div className="px-5 py-3">
           <div className="flex items-center justify-between">
             {/* Left: Circular countdown */}
             <div className="flex items-center gap-4">
@@ -179,24 +179,24 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
                 isUrgent={isUrgent}
               />
               <div>
-                <p className="text-neutral-400 text-xs font-medium uppercase tracking-wider mb-0.5">
+                <p className="text-primary-400 text-xs font-medium uppercase tracking-wider mb-0.5">
                   {isPasse ? 'Ouverture effectuée' : 'Soft Opening dans'}
                 </p>
                 <div className="flex items-baseline gap-2">
                   <span
                     className={cn(
-                      'text-3xl font-bold tracking-tight transition-all duration-500',
+                      'text-3xl font-bold text-primary-900 tracking-tight transition-all duration-500',
                       isVisible && 'animate-count-up'
                     )}
                   >
                     {isPasse ? '0' : Math.abs(joursRestants)}
                   </span>
-                  <span className="text-base font-medium text-white/90">
+                  <span className="text-base font-medium text-primary-700">
                     jour{Math.abs(joursRestants) > 1 ? 's' : ''}
                   </span>
                 </div>
                 {isUrgent && !isPasse && (
-                  <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium">
+                  <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-warning-100 text-warning-700 rounded-full text-xs font-medium">
                     <Clock className="w-3 h-3" />
                     Phase critique
                   </div>
@@ -205,19 +205,19 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
             </div>
 
             {/* Center: Additional metrics */}
-            <div className="hidden md:flex items-center gap-6 px-6 border-l border-r border-white/20">
+            <div className="hidden md:flex items-center gap-6 px-6 border-l border-r border-primary-100">
               <AnimatedDigit value={Math.abs(semainesRestants)} label="Semaines" />
               <AnimatedDigit value={Math.abs(moisRestants)} label="Mois" />
             </div>
 
             {/* Right: Date */}
             <div className="text-right">
-              <div className="flex items-center justify-end gap-1.5 text-neutral-400 mb-0.5">
+              <div className="flex items-center justify-end gap-1.5 text-primary-400 mb-0.5">
                 <Calendar className="w-3.5 h-3.5" />
                 <span className="text-xs font-medium">Date prévue</span>
               </div>
-              <p className="text-base font-semibold">{dateFormatee}</p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-base font-semibold text-primary-900">{dateFormatee}</p>
+              <p className="text-xs text-primary-400">
                 {progress.toFixed(0)}% du temps écoulé
               </p>
             </div>
@@ -225,15 +225,15 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
 
           {/* Progress bar - compact */}
           {!isPasse && (
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
+            <div className="mt-3 pt-3 border-t border-primary-100">
+              <div className="flex items-center justify-between text-[10px] text-primary-400 mb-1">
                 <span>Lancement</span>
                 <span className="flex items-center gap-1">
                   <Rocket className="w-3 h-3" />
                   Soft Opening
                 </span>
               </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden relative">
+              <div className="h-2 bg-orange-100 rounded-full overflow-hidden relative">
                 <div
                   className="h-full bg-orange-500 rounded-full transition-all duration-1000 ease-out"
                   style={{
@@ -244,13 +244,13 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
                 {[25, 50, 75].map((milestone) => (
                   <div
                     key={milestone}
-                    className="absolute top-1/2 -translate-y-1/2 w-0.5 h-full bg-white/30"
+                    className="absolute top-1/2 -translate-y-1/2 w-0.5 h-full bg-orange-200"
                     style={{ left: `${milestone}%` }}
                   />
                 ))}
               </div>
               {avancementGlobal !== undefined && (
-                <p className="mt-1.5 text-xs text-orange-400 font-medium">
+                <p className="mt-1.5 text-xs text-orange-600 font-medium">
                   {progress.toFixed(0)}% du temps écoulé — {Math.round(avancementGlobal)}% d'avancement
                 </p>
               )}
