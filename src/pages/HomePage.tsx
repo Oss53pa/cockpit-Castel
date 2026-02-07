@@ -144,7 +144,7 @@ export function HomePage() {
         </div>
 
         <p className="text-center text-primary-300 text-xs mt-6">
-          Developed by Pamela Atokouna
+          Developed by Pamela Atokouna — Tous droits réservés © {new Date().getFullYear()}
         </p>
       </footer>
     </div>
