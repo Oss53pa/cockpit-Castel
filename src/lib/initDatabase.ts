@@ -96,9 +96,10 @@ export async function initializeDatabase(): Promise<{
         // Migration vers les références de phase (dates relatives au Soft Opening)
         await migrateToPhaseReferencesIfNeeded();
 
-        // Recalculer l'avancement basé sur la date actuelle
-        const avancementRecalc = await recalculateAllAvancement();
-        console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
+        // NOTE: Recalcul automatique désactivé pour préserver les modifications manuelles
+        // Pour recalculer manuellement, utiliser: recalculateAllAvancement()
+        // const avancementRecalc = await recalculateAllAvancement();
+        // console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
 
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
@@ -119,11 +120,11 @@ export async function initializeDatabase(): Promise<{
           console.log('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
         }
 
-        // Recalculer l'avancement basé sur la date actuelle (pour TOUTES les actions)
-        const avancementRecalc = await recalculateAllAvancement();
-        if (avancementRecalc.updated > 0) {
-          console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
-        }
+        // NOTE: Recalcul automatique désactivé pour préserver les modifications manuelles
+        // const avancementRecalc = await recalculateAllAvancement();
+        // if (avancementRecalc.updated > 0) {
+        //   console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
+        // }
 
         isInitialized = true;
         return { wasEmpty: false, seeded: false };
