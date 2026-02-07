@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet } from 'lucide-react';
+import { Trash2, RefreshCw, Users, UsersRound, Database, Settings, Info, Sparkles, Mail, Building2, RotateCcw, Cloud, Warehouse, Globe, HardDrive, Flame, Lock, Wallet, SlidersHorizontal, Shield } from 'lucide-react';
 import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 import { clearDatabase } from '@/db';
 import { generateAlertesAutomatiques, resetBudgetEngagements, usePermissions } from '@/hooks';
@@ -16,6 +16,8 @@ import { BackupManagement } from '@/components/settings/BackupManagement';
 import { DataInitialization } from '@/components/settings/DataInitialization';
 import { FirebaseSyncSettings } from '@/components/settings/FirebaseSyncSettings';
 import { GoogleDriveSync } from '@/components/settings/GoogleDriveSync';
+import { ParametresMetierSettings } from '@/components/settings/ParametresMetierSettings';
+import { GovernanceRules } from '@/components/settings/GovernanceRules';
 import { PROJET_CONFIG } from '@/data/constants';
 
 const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Atokp0879*';
@@ -222,6 +224,14 @@ export function SettingsPage() {
             <HardDrive className="h-4 w-4" />
             Données v2
           </TabsTrigger>
+          <TabsTrigger value="parametres" className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Paramètres métier
+          </TabsTrigger>
+          <TabsTrigger value="gouvernance" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Gouvernance
+          </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Info className="h-4 w-4" />
             Systeme
@@ -286,6 +296,16 @@ export function SettingsPage() {
         {/* Data Initialization Tab */}
         <TabsContent value="init">
           <DataInitialization />
+        </TabsContent>
+
+        {/* Paramètres métier Tab */}
+        <TabsContent value="parametres">
+          <ParametresMetierSettings />
+        </TabsContent>
+
+        {/* Gouvernance Tab */}
+        <TabsContent value="gouvernance">
+          <GovernanceRules />
         </TabsContent>
 
         {/* System Tab */}

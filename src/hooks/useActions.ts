@@ -8,6 +8,7 @@ import {
 } from '@/services/autoCalculationService';
 import { trackChange } from './useHistorique';
 import { useAppStore } from '@/stores/appStore';
+import { withWriteContext } from '@/db/writeContext';
 
 // Champs à tracker pour l'historique des modifications
 const TRACKED_ACTION_FIELDS: (keyof Action)[] = [
@@ -111,11 +112,13 @@ export async function createAction(
   action: Omit<Action, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<number> {
   const now = new Date().toISOString();
-  return db.actions.add({
-    ...action,
-    createdAt: now,
-    updatedAt: now,
-  } as Action);
+  return withWriteContext({ source: 'user', auteurId: useAppStore.getState().currentUserId || 1 }, () =>
+    db.actions.add({
+      ...action,
+      createdAt: now,
+      updatedAt: now,
+    } as Action)
+  );
 }
 
 export async function updateAction(
@@ -123,54 +126,57 @@ export async function updateAction(
   updates: Partial<Action>,
   options?: { skipTracking?: boolean; isExternal?: boolean }
 ): Promise<void> {
-  // Récupérer l'action actuelle pour comparaison
-  const currentAction = await db.actions.get(id);
+  const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
 
-  // 1. Appliquer les updates
-  await db.actions.update(id, {
-    ...updates,
-    updatedAt: new Date().toISOString(),
+  await withWriteContext({ source: options?.isExternal ? 'sync-firebase' : 'user', auteurId }, async () => {
+    // Récupérer l'action actuelle pour comparaison
+    const currentAction = await db.actions.get(id);
+
+    // 1. Appliquer les updates
+    await db.actions.update(id, {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // 2. Le middleware d'audit gère automatiquement le tracking (Directive CRMC Règle 3)
+    // trackChange() conservé en fallback pour compatibilité
+    if (!options?.skipTracking && currentAction) {
+      const newData = { ...currentAction, ...updates };
+      await trackChange('action', id, auteurId, currentAction, newData, TRACKED_ACTION_FIELDS);
+    }
+
+    // 3. Si avancement change → vérifier transition statut automatique
+    if (updates.avancement !== undefined && updates.avancement !== currentAction?.avancement) {
+      await autoUpdateActionStatus(id);
+    }
+
+    // 4. Si date_fin_prevue change → propager aux successeurs
+    if (updates.date_fin_prevue && updates.date_fin_prevue !== currentAction?.date_fin_prevue) {
+      await propagateDateChangeToSuccessors(id, updates.date_fin_prevue, updates.date_debut_prevue);
+    }
+
+    // 5. Mettre à jour le jalon parent si lié
+    const action = await db.actions.get(id);
+    if (action?.jalonId) {
+      await autoUpdateJalonStatus(action.jalonId);
+    }
   });
-
-  // 2. Tracker les modifications dans l'historique
-  if (!options?.skipTracking && currentAction) {
-    const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
-    const newData = { ...currentAction, ...updates };
-    await trackChange('action', id, auteurId, currentAction, newData, TRACKED_ACTION_FIELDS);
-  }
-
-  // 3. Si avancement change → vérifier transition statut automatique
-  if (updates.avancement !== undefined && updates.avancement !== currentAction?.avancement) {
-    await autoUpdateActionStatus(id);
-  }
-
-  // 4. Si date_fin_prevue change → propager aux successeurs
-  if (updates.date_fin_prevue && updates.date_fin_prevue !== currentAction?.date_fin_prevue) {
-    await propagateDateChangeToSuccessors(id, updates.date_fin_prevue, updates.date_debut_prevue);
-  }
-
-  // 5. Mettre à jour le jalon parent si lié
-  const action = await db.actions.get(id);
-  if (action?.jalonId) {
-    await autoUpdateJalonStatus(action.jalonId);
-  }
 }
 
 export async function deleteAction(id: number): Promise<void> {
   const action = await db.actions.get(id);
-  await db.transaction('rw', [db.actions, db.alertes, db.liensSync, db.sousTaches, db.preuves, db.notesAction], async () => {
-    // Cascade: supprimer sous-tâches, preuves, notes liées
-    if (action?.id_action) {
-      await db.sousTaches.where('actionId').equals(action.id_action).delete();
-      await db.preuves.where('actionId').equals(action.id_action).delete();
-      await db.notesAction.where('actionId').equals(action.id_action).delete();
-      // Cascade: supprimer liens de synchronisation
-      await db.liensSync.filter(l => l.action_technique_id === action.id_action || l.action_mobilisation_id === action.id_action).delete();
-    }
-    // Cascade: supprimer alertes liées
-    await db.alertes.filter(a => a.entiteType === 'action' && a.entiteId === id).delete();
-    await db.actions.delete(id);
-  });
+  await withWriteContext({ source: 'user', auteurId: useAppStore.getState().currentUserId || 1 }, () =>
+    db.transaction('rw', [db.actions, db.alertes, db.liensSync, db.sousTaches, db.preuves, db.notesAction], async () => {
+      if (action?.id_action) {
+        await db.sousTaches.where('actionId').equals(action.id_action).delete();
+        await db.preuves.where('actionId').equals(action.id_action).delete();
+        await db.notesAction.where('actionId').equals(action.id_action).delete();
+        await db.liensSync.filter(l => l.action_technique_id === action.id_action || l.action_mobilisation_id === action.id_action).delete();
+      }
+      await db.alertes.filter(a => a.entiteType === 'action' && a.entiteId === id).delete();
+      await db.actions.delete(id);
+    })
+  );
 }
 
 export async function updateActionStatus(

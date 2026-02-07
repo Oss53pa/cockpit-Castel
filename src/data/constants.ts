@@ -1,5 +1,8 @@
 // ============================================================================
 // CONSTANTES PARTAGÉES - COSMOS ANGRÉ
+// Directive CRMC Règle 1 : Les valeurs DEFAULT_* servent de fallback.
+// Les valeurs effectives viennent de la DB via useParametreMetier / getParametreMetier.
+// Les re-exports sans préfixe assurent la rétro-compatibilité.
 // ============================================================================
 
 import type { Priorite } from '@/types';
@@ -120,51 +123,37 @@ export const METEOS = ['SOLEIL', 'NUAGEUX', 'ORAGEUX'] as const;
 export const PRIORITES_V2 = ['HAUTE', 'MOYENNE', 'BASSE'] as const;
 
 // ============================================================================
-// CONFIGURATION PROJET - COSMOS ANGRÉ
-// Ces valeurs doivent être les seules sources de vérité pour tout le projet
+// CONFIGURATION PROJET - COSMOS ANGRÉ (DEFAULT)
 // ============================================================================
 
-export const PROJET_CONFIG = {
-  // Identifiant unique du projet
+export const DEFAULT_PROJET_CONFIG = {
   projectId: 'cosmos-angre',
-
-  // Informations générales
   nom: 'COSMOS ANGRÉ',
   societe: 'CRMC / New Heaven SA',
   surface: {
-    gla: 16_184,        // m² — Surface locative brute (Gross Leasable Area)
-    shon: 45_000,       // m² — Surface hors œuvre nette totale (tous bâtiments)
+    gla: 16_184,
+    shon: 45_000,
   },
-  nombreBatiments: 6, // 6 bâtiments configurés
-  occupationCible: 85, // %
-
-  // Timeline du projet
+  nombreBatiments: 6,
+  occupationCible: 85,
   dateDebut: '2026-01-01',
   dateFin: '2027-02-28',
-
-  // Jalons clés (dates cibles)
   jalonsClés: {
     softOpening: '2026-11-15',
     inauguration: '2026-12-15',
     finStabilisation: '2027-02-28',
   },
-
-  // Phases du projet avec dates
   phases: [
     { code: 'PREPARATION', label: 'Phase 1: Préparation', dateDebut: '2026-01-01', dateFin: '2026-03-31' },
     { code: 'MOBILISATION', label: 'Phase 2: Mobilisation', dateDebut: '2026-04-01', dateFin: '2026-09-30' },
     { code: 'LANCEMENT', label: 'Phase 3: Lancement', dateDebut: '2026-10-01', dateFin: '2026-11-30' },
     { code: 'STABILISATION', label: 'Phase 4: Stabilisation', dateDebut: '2026-12-01', dateFin: '2027-02-28' },
   ],
-
-  // Équipe
   presentateur: {
     nom: 'Pamela Atokouna',
     titre: 'DGA',
   },
   destinataires: ['PDG', 'Actionnaires'],
-
-  // Communication
   devise: 'FCFA',
   baseUrl: 'https://cockpit.cosmos-angre.com',
   confidentialite: 'Confidentiel — Exco',
@@ -172,12 +161,8 @@ export const PROJET_CONFIG = {
     email: 'patokouna@cosmos-angre.com',
     nom: 'Cockpit-Cosmos Angré',
   },
-
-  // Seuils commerciaux
-  seuilSoftOpening: 45,       // % occupation min pour soft opening
-  softOpeningOffsetJours: 30,  // jours entre soft et grand opening (Nov 15 → Dec 15)
-
-  // Coûts mensuels de report par axe (FCFA)
+  seuilSoftOpening: 45,
+  softOpeningOffsetJours: 30,
   coutsReportMensuels: {
     portage: 35_000_000,
     revenuSoftOpening: 25_000_000,
@@ -188,53 +173,47 @@ export const PROJET_CONFIG = {
     exploitation: 12_000_000,
     divers: 5_000_000,
   },
-
-  // Horizons de scénarios disponibles (mois)
   horizonsReport: [1, 2, 3, 6] as const,
-
-  // Durée lien partage email (heures)
   defaultLinkDuration: 72,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('projet_config') ou getParametreMetier('projet_config') */
+export const PROJET_CONFIG = DEFAULT_PROJET_CONFIG;
+
 // ============================================================================
-// SEUILS DE PERFORMANCE - CALCUL MÉTÉO AUTOMATIQUE
+// SEUILS DE PERFORMANCE - CALCUL MÉTÉO AUTOMATIQUE (DEFAULT)
 // ============================================================================
 
 export const SEUILS_METEO = {
-  // Seuils de completion pour déterminer la météo d'un axe
   excellent: { completion: 0.95, actionsEnRetardMax: 0 },
   bon: { completion: 0.85, actionsEnRetardMax: 1 },
   attention: { completion: 0.70, actionsEnRetardMax: 3 },
   alerte: { completion: 0.50, actionsEnRetardMax: 5 },
-  // En dessous de alerte = critique
 } as const;
 
 // ============================================================================
-// SEUILS D'AFFICHAGE - UI
+// SEUILS D'AFFICHAGE - UI (DEFAULT)
 // ============================================================================
 
-export const SEUILS_UI = {
-  // Compte à rebours: jours restants pour changer la couleur
+export const DEFAULT_SEUILS_UI = {
   compteARebours: {
-    critique: 30,   // Rouge si < 30 jours
-    attention: 90,  // Orange si < 90 jours
-    // Vert sinon
+    critique: 30,
+    attention: 90,
   },
-
-  // Nombre de jours pour "jalons à venir"
   jalonsAVenir: 30,
-
-  // Nombre max d'éléments dans les listes (top N)
   topRisques: 5,
   topActions: 10,
   topJalons: 5,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_ui') */
+export const SEUILS_UI = DEFAULT_SEUILS_UI;
+
 // ============================================================================
-// CONFIGURATION AXES - POIDS ET COULEURS
+// CONFIGURATION AXES - POIDS ET COULEURS (DEFAULT)
 // ============================================================================
 
-export const AXES_CONFIG_FULL = {
+export const DEFAULT_AXES_CONFIG_FULL = {
   rh: {
     code: 'axe1_rh',
     label: 'RH & Organisation',
@@ -293,12 +272,14 @@ export const AXES_CONFIG_FULL = {
   },
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('axes_config') */
+export const AXES_CONFIG_FULL = DEFAULT_AXES_CONFIG_FULL;
+
 // ============================================================================
-// CONFIGURATION MÉTÉO - STYLES PARTAGÉS
-// Les icônes sont définies localement dans chaque composant (lucide, SVG, etc.)
+// CONFIGURATION MÉTÉO - STYLES PARTAGÉS (DEFAULT)
 // ============================================================================
 
-export const METEO_STYLES = {
+export const DEFAULT_METEO_STYLES = {
   SOLEIL: {
     label: 'Soleil',
     emoji: '☀️',
@@ -334,6 +315,9 @@ export const METEO_STYLES = {
   },
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('meteo_styles') */
+export const METEO_STYLES = DEFAULT_METEO_STYLES;
+
 export type MeteoType = keyof typeof METEO_STYLES;
 
 // ============================================================================
@@ -350,48 +334,54 @@ export const THEME_COLORS = {
 } as const;
 
 // ============================================================================
-// SEUILS DE RISQUES — Niveaux par score
+// SEUILS DE RISQUES (DEFAULT)
 // ============================================================================
 
-export const SEUILS_RISQUES = {
+export const DEFAULT_SEUILS_RISQUES = {
   critique: 12,
   majeur: 8,
   modere: 4,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_risques') */
+export const SEUILS_RISQUES = DEFAULT_SEUILS_RISQUES;
+
 // ============================================================================
-// SEUILS CHEMIN CRITIQUE
+// SEUILS CHEMIN CRITIQUE (DEFAULT)
 // ============================================================================
 
-export const SEUILS_CHEMIN_CRITIQUE = {
-  margeCritique: 30,       // Jours: action critique si marge < 30
-  margeFaible: 7,          // Jours: marge faible si <= 7
-  seuilGoulot: 3,          // Nombre de successeurs pour être un goulot
-  topActions: 20,          // Nombre max d'actions critiques affichées
+export const DEFAULT_SEUILS_CHEMIN_CRITIQUE = {
+  margeCritique: 30,
+  margeFaible: 7,
+  seuilGoulot: 3,
+  topActions: 20,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_chemin_critique') */
+export const SEUILS_CHEMIN_CRITIQUE = DEFAULT_SEUILS_CHEMIN_CRITIQUE;
+
 // ============================================================================
-// SEUILS MÉTÉO RAPPORT V5 — pour deriveAxeMeteo & deriveGlobalMeteo
+// SEUILS MÉTÉO RAPPORT V5 (DEFAULT)
 // ============================================================================
 
-export const SEUILS_METEO_REPORT = {
-  // deriveAxeMeteo: seuils pour basculer en rouge/orange/bleu
+export const DEFAULT_SEUILS_METEO_REPORT = {
   axeRouge: { risquesCritiques: 2, ecart: -20 },
   axeOrange: { risquesCritiques: 1, ecart: -10 },
   axeBleu: { ecart: 5 },
-  // deriveGlobalMeteo: seuils de score de confiance
   globalRouge: 40,
   globalOrange: 65,
   globalBleu: 85,
-  // Score confiance en zone critique
   scoreAlerte: 60,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_meteo_report') */
+export const SEUILS_METEO_REPORT = DEFAULT_SEUILS_METEO_REPORT;
+
 // ============================================================================
-// SEUILS SANTÉ AXE — Calculs AxisExco
+// SEUILS SANTÉ AXE (DEFAULT)
 // ============================================================================
 
-export const SEUILS_SANTE_AXE = {
+export const DEFAULT_SEUILS_SANTE_AXE = {
   poids: { avancement: 40, actions: 30, risques: 30 },
   penalites: { actionEnRetard: 5, actionBloquee: 10, risqueCritique: 10 },
   meteo: {
@@ -399,12 +389,12 @@ export const SEUILS_SANTE_AXE = {
     nuage: { score: 60, actionsEnRetard: 3, risquesCritiques: 2 },
     soleilNuage: { score: 80, actionsEnRetard: 1, risquesCritiques: 1 },
   },
-  velocite: { up: 100, stable: 80 },           // % seuils vélocité
-  jalons: { enDanger: 7, enApproche: 30 },      // jours
+  velocite: { up: 100, stable: 80 },
+  jalons: { enDanger: 7, enApproche: 30 },
   recommandations: {
     actionsEnRetardCritique: 5,
     completionFaible: 0.8,
-    jalonsProches: 14,                           // jours
+    jalonsProches: 14,
     risquesSansPlanMax: 3,
     ecartCritique: -20,
     ecartAttention: -10,
@@ -412,78 +402,95 @@ export const SEUILS_SANTE_AXE = {
   },
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_sante_axe') */
+export const SEUILS_SANTE_AXE = DEFAULT_SEUILS_SANTE_AXE;
+
 // ============================================================================
-// SEUILS SYNCHRONISATION RAPPORT
+// SEUILS SYNCHRONISATION RAPPORT (DEFAULT)
 // ============================================================================
 
-export const SEUILS_SYNC_REPORT = {
-  synchronise: 5,          // ±5% = synchronisé
-  attention: 15,           // ±15% = attention
-  joursConversion: 1.5,    // multiplicateur pour conversion en jours
-  desyncAlerte: 5,         // pts min pour afficher les risques désync
+export const DEFAULT_SEUILS_SYNC_REPORT = {
+  synchronise: 5,
+  attention: 15,
+  joursConversion: 1.5,
+  desyncAlerte: 5,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_sync_report') */
+export const SEUILS_SYNC_REPORT = DEFAULT_SEUILS_SYNC_REPORT;
+
 // ============================================================================
-// SEUILS KPI DASHBOARD REPORT
+// SEUILS KPI DASHBOARD REPORT (DEFAULT)
 // ============================================================================
 
-export const SEUILS_KPI_REPORT = {
-  // Seuils pour DashboardSlide V5
+export const DEFAULT_SEUILS_KPI_REPORT = {
   jalonsPct: 50,
   actionsPct: 30,
   goodRatio: 0.9,
   medRatio: 0.5,
   deviationGood: 5,
   deviationBad: 15,
-  // Seuils pour useExcoMensuelData KPIs
   occupationBon: 75,
   occupationAttention: 50,
   jalonsBonRatio: 0.8,
   jalonsAttentionRatio: 0.5,
   actionsBonRatio: 0.7,
   actionsAttentionRatio: 0.4,
-  // Seuils météo globale (calculateGlobalMeteo)
   globalExcellent: 4.5,
   globalBon: 3.5,
   globalAttention: 2.5,
   globalAlerte: 1.5,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_kpi_report') */
+export const SEUILS_KPI_REPORT = DEFAULT_SEUILS_KPI_REPORT;
+
 // ============================================================================
-// SEUILS MÉTÉO DASHBOARD — useMeteoProjet (alertes-based)
+// SEUILS MÉTÉO DASHBOARD (DEFAULT)
 // ============================================================================
 
-export const SEUILS_METEO_DASHBOARD = {
+export const DEFAULT_SEUILS_METEO_DASHBOARD = {
   rouge: { alertesCritiques: 3, actionsEnRetard: 5, risquesCritiques: 2, depassementsBudget: 2 },
   jaune: { alertesCritiques: 1, alertesHautes: 3, actionsEnRetard: 2, risquesCritiques: 1, depassementsBudget: 1 },
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_meteo_dashboard') */
+export const SEUILS_METEO_DASHBOARD = DEFAULT_SEUILS_METEO_DASHBOARD;
+
 // ============================================================================
-// PÉNALITÉS SCORE DE CONFIANCE (risques)
+// PÉNALITÉS SCORE DE CONFIANCE (DEFAULT)
 // ============================================================================
 
-export const SEUILS_CONFIDENCE = {
+export const DEFAULT_SEUILS_CONFIDENCE = {
   penaliteRisqueCritique: 20,
   penaliteRisqueMajeur: 10,
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_confidence') */
+export const SEUILS_CONFIDENCE = DEFAULT_SEUILS_CONFIDENCE;
+
 // ============================================================================
-// SEUILS MÉTÉO COPIL — COPILDashboard globalMeteo
+// SEUILS MÉTÉO COPIL (DEFAULT)
 // ============================================================================
 
-export const SEUILS_METEO_COPIL = {
+export const DEFAULT_SEUILS_METEO_COPIL = {
   stormy: { risquesCritiques: 2, jalonsEnDanger: 3 },
   rainy: { risquesCritiques: 0, jalonsEnDanger: 1 },
   sunny: { avancement: 70 },
   cloudy: { avancement: 40 },
 } as const;
 
+/** @deprecated Utiliser useParametreMetier('seuils_meteo_copil') */
+export const SEUILS_METEO_COPIL = DEFAULT_SEUILS_METEO_COPIL;
+
 // ============================================================================
-// SEUILS MÉTÉO AXE DASHBOARD — MeteoParAxe calculerMeteo
+// SEUILS MÉTÉO AXE DASHBOARD (DEFAULT)
 // ============================================================================
 
-export const SEUILS_METEO_AXE_DASHBOARD = {
-  soleil: -5,     // ecart >= -5 → SOLEIL
-  nuageux: -15,   // ecart >= -15 → NUAGEUX
-  // below → ORAGEUX
+export const DEFAULT_SEUILS_METEO_AXE_DASHBOARD = {
+  soleil: -5,
+  nuageux: -15,
 } as const;
+
+/** @deprecated Utiliser useParametreMetier('seuils_meteo_axe_dashboard') */
+export const SEUILS_METEO_AXE_DASHBOARD = DEFAULT_SEUILS_METEO_AXE_DASHBOARD;

@@ -28,3 +28,4 @@ export * from './useCriticalPath';
 export * from './useWorkloadAnalysis';
 export * from './useOccupancyProjection';
 export * from './usePermissions';
+export * from './useParametresMetier';

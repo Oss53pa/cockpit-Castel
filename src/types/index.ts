@@ -1645,6 +1645,8 @@ export interface Historique {
   ancienneValeur: string;
   nouvelleValeur: string;
   auteurId: number;
+  /** Source de la modification — Directive CRMC Règle 3 */
+  source?: 'user' | 'auto-calc' | 'sync-firebase' | 'import' | 'migration' | 'seed' | 'system';
 }
 
 // ============================================================================

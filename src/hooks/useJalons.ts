@@ -14,6 +14,7 @@ import { autoUpdateJalonStatus } from '@/services/autoCalculationService';
 import { trackChange } from './useHistorique';
 import { useAppStore } from '@/stores/appStore';
 import { SEUILS_SANTE_AXE } from '@/data/constants';
+import { withWriteContext } from '@/db/writeContext';
 
 // Champs à tracker pour l'historique des modifications
 const TRACKED_JALON_FIELDS: (keyof Jalon)[] = [
@@ -99,11 +100,13 @@ export async function createJalon(
   jalon: Omit<Jalon, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<number> {
   const now = new Date().toISOString();
-  return db.jalons.add({
-    ...jalon,
-    createdAt: now,
-    updatedAt: now,
-  } as Jalon);
+  return withWriteContext({ source: 'user', auteurId: useAppStore.getState().currentUserId || 1 }, () =>
+    db.jalons.add({
+      ...jalon,
+      createdAt: now,
+      updatedAt: now,
+    } as Jalon)
+  );
 }
 
 export async function updateJalon(
@@ -111,21 +114,22 @@ export async function updateJalon(
   updates: Partial<Jalon>,
   options?: { skipTracking?: boolean; isExternal?: boolean }
 ): Promise<void> {
-  // Récupérer le jalon actuel pour comparaison
-  const currentJalon = await db.jalons.get(id);
+  const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
 
-  // Appliquer les updates
-  await db.jalons.update(id, {
-    ...updates,
-    updatedAt: new Date().toISOString(),
+  await withWriteContext({ source: options?.isExternal ? 'sync-firebase' : 'user', auteurId }, async () => {
+    const currentJalon = await db.jalons.get(id);
+
+    await db.jalons.update(id, {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Le middleware d'audit gère le tracking (Directive CRMC Règle 3)
+    if (!options?.skipTracking && currentJalon) {
+      const newData = { ...currentJalon, ...updates };
+      await trackChange('jalon', id, auteurId, currentJalon, newData, TRACKED_JALON_FIELDS);
+    }
   });
-
-  // Tracker les modifications dans l'historique
-  if (!options?.skipTracking && currentJalon) {
-    const auteurId = options?.isExternal ? 0 : (useAppStore.getState().currentUserId || 1);
-    const newData = { ...currentJalon, ...updates };
-    await trackChange('jalon', id, auteurId, currentJalon, newData, TRACKED_JALON_FIELDS);
-  }
 }
 
 /**

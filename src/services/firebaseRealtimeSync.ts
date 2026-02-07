@@ -643,135 +643,171 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
     return false;
   }
 
-  try {
-    const { entityType, entityId, response } = update;
-    const changes = response.changes;
+  // Directive CRMC Règle 2 & 3 : Protection des verrous + traçabilité
+  const { withWriteContext } = await import('@/db/writeContext');
 
-    // DEBUG: Log des changements reçus
-    console.log('[SyncToLocal] Synchronisation pour:', entityType, entityId);
-    console.log('[SyncToLocal] Changes reçus:', JSON.stringify(changes, null, 2));
+  return withWriteContext({ source: 'sync-firebase', auteurId: 0, description: `Sync Firebase ${update.token}` }, async () => {
+    try {
+      const { entityType, entityId, response } = update;
+      const changes = response.changes;
 
-    // Préparer les données de mise à jour
-    const updateData: Record<string, any> = {
-      updated_at: new Date().toISOString(),
-      derniere_mise_a_jour_externe: response.submittedAt,
-    };
+      console.log('[SyncToLocal] Synchronisation pour:', entityType, entityId);
 
-    // Appliquer les changements communs
-    if (changes.statut) updateData.statut = changes.statut;
-    if (changes.notes) updateData.notes_mise_a_jour = changes.notes;
-    if (changes.commentaires) updateData.commentaires_externes = changes.commentaires;
-
-    if (entityType === 'action') {
-      // Champs Action - TOUJOURS appliquer si présent (même tableau vide)
-      if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
-      if (changes.date_debut_prevue !== undefined) updateData.date_debut_prevue = changes.date_debut_prevue;
-      if (changes.date_fin_prevue !== undefined) updateData.date_fin_prevue = changes.date_fin_prevue;
-      if (changes.sousTaches !== undefined) {
-        updateData.sous_taches = changes.sousTaches;
-        console.log('[SyncToLocal] Sous-tâches à sauvegarder:', changes.sousTaches?.length || 0);
-      }
-      if (changes.preuves !== undefined) {
-        updateData.documents = changes.preuves.map(p => ({
-          id: p.id,
-          nom: p.nom,
-          type: p.type,
-          url: p.url || '',
-          dateAjout: p.dateAjout,
-        }));
-        console.log('[SyncToLocal] Documents à sauvegarder:', changes.preuves?.length || 0);
-      }
-      if (changes.liens_documents) updateData.liens_documents = changes.liens_documents;
-      if (changes.pointsAttention !== undefined) {
-        updateData.points_attention = changes.pointsAttention;
-        console.log('[SyncToLocal] Points d\'attention à sauvegarder:', changes.pointsAttention?.length || 0);
-      }
-      if (changes.decisionsAttendues !== undefined) {
-        updateData.decisions_attendues = changes.decisionsAttendues;
-        console.log('[SyncToLocal] Décisions attendues à sauvegarder:', changes.decisionsAttendues?.length || 0);
-      }
-      if (changes.livrables !== undefined) {
-        updateData.livrables = changes.livrables.map(l => ({
-          id: l.id,
-          nom: l.nom,
-          description: null,
-          statut: l.statut || 'en_attente',
-          obligatoire: false,
-          date_prevue: null,
-          date_livraison: l.statut === 'valide' ? new Date().toISOString().split('T')[0] : null,
-          validateur: null,
-        }));
-        console.log('[SyncToLocal] Livrables à sauvegarder:', changes.livrables?.length || 0);
-      }
-
-      console.log('[SyncToLocal] UpdateData pour action:', JSON.stringify(updateData, null, 2));
-      await db.actions.update(entityId, updateData);
-    } else if (entityType === 'jalon') {
-      // Champs Jalon
-      if (changes.preuve_url !== undefined) updateData.preuve_url = changes.preuve_url;
-      if (changes.date_validation !== undefined) updateData.date_validation = changes.date_validation;
-
-      console.log('[SyncToLocal] UpdateData pour jalon:', JSON.stringify(updateData, null, 2));
-      await db.jalons.update(entityId, updateData);
-    } else if (entityType === 'risque') {
-      // Champs Risque
-      if (changes.probabilite !== undefined) updateData.probabilite = changes.probabilite;
-      if (changes.impact !== undefined) updateData.impact = changes.impact;
-      if (changes.score !== undefined) updateData.score = changes.score;
-      if (changes.plan_mitigation !== undefined) updateData.plan_mitigation = changes.plan_mitigation;
-
-      console.log('[SyncToLocal] UpdateData pour risque:', JSON.stringify(updateData, null, 2));
-      await db.risques.update(entityId, updateData);
-    } else if (entityType === 'budget') {
-      // Champs Budget
-      const budgetUpdate: Record<string, any> = {
-        updatedAt: new Date().toISOString(),
+      const updateData: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+        derniere_mise_a_jour_externe: response.submittedAt,
       };
-      if (changes.montantEngage !== undefined) budgetUpdate.montantEngage = changes.montantEngage;
-      if (changes.montantConsomme !== undefined) budgetUpdate.montantConsomme = changes.montantConsomme;
-      if (changes.note !== undefined) budgetUpdate.note = changes.note;
-      if (changes.commentaires) budgetUpdate.commentaires_externes = changes.commentaires;
 
-      console.log('[SyncToLocal] UpdateData pour budget:', JSON.stringify(budgetUpdate, null, 2));
-      await db.budgetExploitation.update(entityId, budgetUpdate);
+      // Appliquer les changements communs
+      if (changes.statut) updateData.statut = changes.statut;
+      if (changes.notes) updateData.notes_mise_a_jour = changes.notes;
+      if (changes.commentaires) updateData.commentaires_externes = changes.commentaires;
+
+      if (entityType === 'action') {
+        // Directive CRMC Règle 2 : Vérifier le verrouillage manuel avant de modifier les dates
+        const currentAction = await db.actions.get(entityId);
+        const isLocked = currentAction?.date_verrouillage_manuel;
+
+        if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
+
+        // Ne pas écraser les dates si l'entité est verrouillée
+        if (!isLocked) {
+          if (changes.date_debut_prevue !== undefined) updateData.date_debut_prevue = changes.date_debut_prevue;
+          if (changes.date_fin_prevue !== undefined) updateData.date_fin_prevue = changes.date_fin_prevue;
+        } else {
+          console.log('[SyncToLocal] Action verrouillée — dates ignorées');
+        }
+
+        // Merger les sous-tâches par ID au lieu de remplacer
+        if (changes.sousTaches !== undefined && currentAction?.sous_taches) {
+          const existingMap = new Map(
+            (currentAction.sous_taches as Array<{ id: string; [k: string]: unknown }>)
+              .filter(st => st.id)
+              .map(st => [st.id, st])
+          );
+          for (const incoming of changes.sousTaches) {
+            if (incoming.id) existingMap.set(incoming.id, incoming);
+            else existingMap.set(crypto.randomUUID(), incoming);
+          }
+          updateData.sous_taches = Array.from(existingMap.values());
+        } else if (changes.sousTaches !== undefined) {
+          updateData.sous_taches = changes.sousTaches;
+        }
+
+        // Merger les documents/preuves par ID
+        if (changes.preuves !== undefined && currentAction?.documents) {
+          const existingDocs = new Map(
+            (currentAction.documents as Array<{ id: string; [k: string]: unknown }>)
+              .filter(d => d.id)
+              .map(d => [d.id, d])
+          );
+          for (const p of changes.preuves) {
+            existingDocs.set(p.id, {
+              id: p.id,
+              nom: p.nom,
+              type: p.type,
+              url: p.url || '',
+              dateAjout: p.dateAjout,
+            });
+          }
+          updateData.documents = Array.from(existingDocs.values());
+        } else if (changes.preuves !== undefined) {
+          updateData.documents = changes.preuves.map(p => ({
+            id: p.id,
+            nom: p.nom,
+            type: p.type,
+            url: p.url || '',
+            dateAjout: p.dateAjout,
+          }));
+        }
+
+        if (changes.liens_documents) updateData.liens_documents = changes.liens_documents;
+        if (changes.pointsAttention !== undefined) updateData.points_attention = changes.pointsAttention;
+        if (changes.decisionsAttendues !== undefined) updateData.decisions_attendues = changes.decisionsAttendues;
+        if (changes.livrables !== undefined) {
+          updateData.livrables = changes.livrables.map(l => ({
+            id: l.id,
+            nom: l.nom,
+            description: null,
+            statut: l.statut || 'en_attente',
+            obligatoire: false,
+            date_prevue: null,
+            date_livraison: l.statut === 'valide' ? new Date().toISOString().split('T')[0] : null,
+            validateur: null,
+          }));
+        }
+
+        await db.actions.update(entityId, updateData);
+      } else if (entityType === 'jalon') {
+        // Directive CRMC Règle 2 : Vérifier le verrouillage avant dates
+        const currentJalon = await db.jalons.get(entityId);
+        const isLocked = currentJalon?.date_verrouillage_manuel;
+
+        if (changes.preuve_url !== undefined) updateData.preuve_url = changes.preuve_url;
+        if (changes.date_validation !== undefined && !isLocked) {
+          updateData.date_validation = changes.date_validation;
+        } else if (isLocked) {
+          console.log('[SyncToLocal] Jalon verrouillé — date_validation ignorée');
+        }
+
+        await db.jalons.update(entityId, updateData);
+      } else if (entityType === 'risque') {
+        if (changes.probabilite !== undefined) updateData.probabilite = changes.probabilite;
+        if (changes.impact !== undefined) updateData.impact = changes.impact;
+        if (changes.score !== undefined) updateData.score = changes.score;
+        if (changes.plan_mitigation !== undefined) updateData.plan_mitigation = changes.plan_mitigation;
+
+        await db.risques.update(entityId, updateData);
+      } else if (entityType === 'budget') {
+        const budgetUpdate: Record<string, any> = {
+          updatedAt: new Date().toISOString(),
+        };
+        if (changes.montantEngage !== undefined) budgetUpdate.montantEngage = changes.montantEngage;
+        if (changes.montantConsomme !== undefined) budgetUpdate.montantConsomme = changes.montantConsomme;
+        if (changes.note !== undefined) budgetUpdate.note = changes.note;
+        if (changes.commentaires) budgetUpdate.commentaires_externes = changes.commentaires;
+
+        await db.budgetExploitation.update(entityId, budgetUpdate);
+      }
+
+      // L'historique est maintenant géré automatiquement par le middleware d'audit (Directive CRMC Règle 3)
+      // On ajoute quand même un résumé lisible pour la notification
+      await db.historique.add({
+        timestamp: new Date().toISOString(),
+        entiteType: entityType,
+        entiteId: entityId,
+        champModifie: 'update_externe_firebase',
+        ancienneValeur: '',
+        nouvelleValeur: `Mise à jour reçue de ${response.submittedBy?.name || update.recipientName} via Firebase`,
+        auteurId: 0,
+        source: 'sync-firebase',
+      });
+
+      // Créer une alerte
+      const entityTypeLabel = entityType === 'action' ? 'Action' : entityType === 'jalon' ? 'Jalon' : entityType === 'budget' ? 'Budget' : 'Risque';
+      await db.alertes.add({
+        type: 'info',
+        titre: `Mise à jour reçue de ${response.submittedBy?.name || update.recipientName}`,
+        message: `${entityTypeLabel} "${update.entitySnapshot.titre}" a été mis(e) à jour. ${
+          changes.statut ? `Nouveau statut: ${changes.statut}` : ''
+        } ${changes.avancement !== undefined ? `Avancement: ${changes.avancement}%` : ''}`.trim(),
+        criticite: 'medium',
+        entiteType: entityType,
+        entiteId: entityId,
+        lu: false,
+        traitee: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      await markUpdateAsSynced(update.token);
+
+      console.log('Update synced to local IndexedDB:', update.token);
+      return true;
+    } catch (e) {
+      console.error('Error syncing update to local:', e);
+      return false;
     }
-
-    // Ajouter à l'historique
-    await db.historique.add({
-      timestamp: new Date().toISOString(),
-      entiteType: entityType,
-      entiteId: entityId,
-      champModifie: 'update_externe_firebase',
-      ancienneValeur: '',
-      nouvelleValeur: `Mise à jour reçue de ${response.submittedBy?.name || update.recipientName} via Firebase`,
-      auteurId: 0,
-    });
-
-    // Créer une alerte
-    const entityTypeLabel = entityType === 'action' ? 'Action' : entityType === 'jalon' ? 'Jalon' : entityType === 'budget' ? 'Budget' : 'Risque';
-    await db.alertes.add({
-      type: 'info',
-      titre: `Mise à jour reçue de ${response.submittedBy?.name || update.recipientName}`,
-      message: `${entityTypeLabel} "${update.entitySnapshot.titre}" a été mis(e) à jour. ${
-        changes.statut ? `Nouveau statut: ${changes.statut}` : ''
-      } ${changes.avancement !== undefined ? `Avancement: ${changes.avancement}%` : ''}`.trim(),
-      criticite: 'medium',
-      entiteType: entityType,
-      entiteId: entityId,
-      lu: false,
-      traitee: false,
-      createdAt: new Date().toISOString(),
-    });
-
-    // Marquer comme synchronisé dans Firebase
-    await markUpdateAsSynced(update.token);
-
-    console.log('Update synced to local IndexedDB:', update.token);
-    return true;
-  } catch (e) {
-    console.error('Error syncing update to local:', e);
-    return false;
-  }
+  });
 }
 
 /**
