@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, syncAvancementFromProductionData, recalculateAllAvancement } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 
@@ -18,7 +18,7 @@ let initPromise: Promise<void> | null = null;
 async function needsPhaseReferenceMigration(): Promise<boolean> {
   // Vérifier si au moins un jalon a une référence de phase définie
   const jalonsWithRef = await db.jalons
-    .filter(j => !!(j as any).jalon_reference)
+    .filter(j => !!(j as Record<string, unknown>).jalon_reference)
     .count();
 
   // Si aucun jalon n'a de référence, la migration est nécessaire
