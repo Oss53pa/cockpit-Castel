@@ -101,8 +101,8 @@ import { BATIMENTS_CONFIG, TOTAL_GLA } from '@/types';
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
 type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low';
 type ViewTab = 'config' | 'preview' | 'design';
-// 6 axes de mobilisation alignés avec le modèle projet
-type AxeType = 'rh' | 'commercialisation' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'general';
+// 7 axes de mobilisation alignés avec le modèle projet (incluant Construction)
+type AxeType = 'rh' | 'commercialisation' | 'technique' | 'budget' | 'marketing' | 'exploitation' | 'construction' | 'general';
 
 interface DGDecisionPoint {
   id: string;
@@ -160,6 +160,7 @@ const axesConfig: Record<AxeType, { label: string; color: string; icon: React.El
   budget: { label: 'Budget & Pilotage', color: '#4F46E5', icon: DollarSign, shortLabel: 'BUD' },
   marketing: { label: 'Marketing & Comm.', color: '#4F46E5', icon: Megaphone, shortLabel: 'MKT' },
   exploitation: { label: 'Exploitation & Systèmes', color: '#4F46E5', icon: Briefcase, shortLabel: 'EXP' },
+  construction: { label: 'Construction', color: '#DC2626', icon: Building2, shortLabel: 'CONST' },
   general: { label: 'Général / Transverse', color: '#64748B', icon: Target, shortLabel: 'GEN' },
 };
 
@@ -171,6 +172,7 @@ const axeToDbCode: Record<AxeType, string> = {
   budget: 'axe4_budget',
   marketing: 'axe5_marketing',
   exploitation: 'axe6_exploitation',
+  construction: 'axe7_construction',
   general: 'general',
 };
 
@@ -182,6 +184,7 @@ const dbCodeToAxe: Record<string, AxeType> = {
   axe4_budget: 'budget',
   axe5_marketing: 'marketing',
   axe6_exploitation: 'exploitation',
+  axe7_construction: 'construction',
   general: 'general',
 };
 
@@ -753,6 +756,9 @@ export function DeepDive() {
     occupation: Math.round(kpis.tauxOccupation) || 0,
     budgetConsumed: Math.min(budgetConsumedCalc, 200), // Plafonner à 200% max pour éviter les valeurs aberrantes
     milestonesAchieved: kpis.jalonsAtteints || 0,
+    totalMilestones: kpis.totalJalons || 0,
+    actionsCompleted: kpis.actionsTerminees || 0,
+    totalActions: kpis.totalActions || 0,
     teamRecruited: kpis.equipeTaille || 0,
   });
 
@@ -833,7 +839,7 @@ export function DeepDive() {
 
   // Calculate detailed data per axe - DONNÉES RÉELLES depuis les hooks
   const axeDetailData = useMemo(() => {
-    const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
+    const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation', 'construction'];
     const data: Record<AxeType, AxeDetailData> = {} as Record<AxeType, AxeDetailData>;
 
     axeTypes.forEach((axe) => {
@@ -2162,8 +2168,8 @@ export function DeepDive() {
                   {[
                     { label: 'Occupation', value: `${kpiValues.occupation}%`, color: '#10B981' },
                     { label: 'Budget consommé', value: `${kpiValues.budgetConsumed}%`, color: '#F59E0B' },
-                    { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}`, color: primaryColor },
-                    { label: 'Équipe', value: `${kpiValues.teamRecruited}`, color: accentColor },
+                    { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}/${kpiValues.totalMilestones}`, color: primaryColor },
+                    { label: 'Actions réalisées', value: `${kpiValues.actionsCompleted}/${kpiValues.totalActions}`, color: accentColor },
                   ].map((kpi) => (
                     <div key={kpi.label} className="p-3 rounded-lg bg-gray-50 border">
                       <div className="text-xl font-bold" style={{ color: kpi.color }}>{kpi.value}</div>
@@ -2301,7 +2307,7 @@ export function DeepDive() {
 
       case '4': {
         // Vue d'ensemble par axe - avec détails DG
-        const axeTypes4: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
+        const axeTypes4: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation', 'construction'];
 
         // Collect all DG decisions for the summary
         const allDGDecisions = decisionPoints.filter(d => d.urgency === 'critical' || d.urgency === 'high');
@@ -4448,12 +4454,12 @@ export function DeepDive() {
         <div class="kpi-label">Budget Consommé</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">${kpiValues.milestonesAchieved}</div>
+        <div class="kpi-value">${kpiValues.milestonesAchieved}/${kpiValues.totalMilestones}</div>
         <div class="kpi-label">Jalons Atteints</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-value">${kpiValues.teamRecruited}</div>
-        <div class="kpi-label">Équipe Recrutée</div>
+        <div class="kpi-value">${kpiValues.actionsCompleted}/${kpiValues.totalActions}</div>
+        <div class="kpi-label">Actions Réalisées</div>
       </div>
     </div>
     <div class="section">
@@ -4858,8 +4864,8 @@ export function DeepDive() {
             const kpiData = [
               { label: 'Occupation', value: `${kpiValues.occupation}%`, color: '10B981' },
               { label: 'Budget consommé', value: `${kpiValues.budgetConsumed}%`, color: 'F59E0B' },
-              { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}`, color: primaryHex },
-              { label: 'Équipe', value: `${kpiValues.teamRecruited}`, color: accentHex },
+              { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}/${kpiValues.totalMilestones}`, color: primaryHex },
+              { label: 'Actions réalisées', value: `${kpiValues.actionsCompleted}/${kpiValues.totalActions}`, color: accentHex },
             ];
             kpiData.forEach((kpi, i) => {
               const x = 4 + (i % 2) * 2.8;
@@ -4933,7 +4939,7 @@ export function DeepDive() {
 
           case '4': {
             addSlideHeader(slide, 'Vue d\'Ensemble par Axe Stratégique');
-            const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation'];
+            const axeTypes: AxeType[] = ['rh', 'commercialisation', 'technique', 'budget', 'marketing', 'exploitation', 'construction'];
             axeTypes.forEach((axe, i) => {
               const config = axesConfig[axe];
               const data = axeDetailData[axe];
@@ -5502,8 +5508,16 @@ export function DeepDive() {
                 <Input type="number" min="0" value={kpiValues.milestonesAchieved} onChange={(e) => setKpiValues((prev) => ({ ...prev, milestonesAchieved: parseInt(e.target.value) || 0 }))} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-primary-700 mb-1">Équipe recrutée</label>
-                <Input type="number" min="0" value={kpiValues.teamRecruited} onChange={(e) => setKpiValues((prev) => ({ ...prev, teamRecruited: parseInt(e.target.value) || 0 }))} />
+                <label className="block text-sm font-medium text-primary-700 mb-1">Total jalons</label>
+                <Input type="number" min="0" value={kpiValues.totalMilestones} onChange={(e) => setKpiValues((prev) => ({ ...prev, totalMilestones: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Actions réalisées</label>
+                <Input type="number" min="0" value={kpiValues.actionsCompleted} onChange={(e) => setKpiValues((prev) => ({ ...prev, actionsCompleted: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-primary-700 mb-1">Total actions</label>
+                <Input type="number" min="0" value={kpiValues.totalActions} onChange={(e) => setKpiValues((prev) => ({ ...prev, totalActions: parseInt(e.target.value) || 0 }))} />
               </div>
             </div>
           </div>
@@ -5661,8 +5675,16 @@ export function DeepDive() {
                     <Input type="number" min="0" value={kpiValues.milestonesAchieved} onChange={(e) => setKpiValues((prev) => ({ ...prev, milestonesAchieved: parseInt(e.target.value) || 0 }))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-primary-700 mb-1">Équipe recrutée</label>
-                    <Input type="number" min="0" value={kpiValues.teamRecruited} onChange={(e) => setKpiValues((prev) => ({ ...prev, teamRecruited: parseInt(e.target.value) || 0 }))} />
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Total jalons</label>
+                    <Input type="number" min="0" value={kpiValues.totalMilestones} onChange={(e) => setKpiValues((prev) => ({ ...prev, totalMilestones: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Actions réalisées</label>
+                    <Input type="number" min="0" value={kpiValues.actionsCompleted} onChange={(e) => setKpiValues((prev) => ({ ...prev, actionsCompleted: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Total actions</label>
+                    <Input type="number" min="0" value={kpiValues.totalActions} onChange={(e) => setKpiValues((prev) => ({ ...prev, totalActions: parseInt(e.target.value) || 0 }))} />
                   </div>
                 </div>
               )}

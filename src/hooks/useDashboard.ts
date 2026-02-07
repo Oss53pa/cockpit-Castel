@@ -51,6 +51,7 @@ export function useDashboardKPIs() {
     const tauxOccupation = actionOccupation?.avancement ?? 0;
 
     const jalonsAtteints = jalons.filter((j) => j.statut === 'atteint').length;
+    const actionsTerminees = actions.filter((a) => a.statut === 'termine').length;
 
     // Get project name from site first, then fallback to project table
     const projectName = siteData?.nom ?? projectData?.name ?? '';
@@ -61,6 +62,7 @@ export function useDashboardKPIs() {
       budgetTotal,
       jalonsAtteints,
       jalonsTotal: jalons.length,
+      actionsTerminees,
       equipeTaille: users.length,
       projectName,
       totalActions: actions.length,
@@ -73,6 +75,7 @@ export function useDashboardKPIs() {
     budgetTotal: 0,
     jalonsAtteints: 0,
     jalonsTotal: 0,
+    actionsTerminees: 0,
     equipeTaille: 0,
     projectName: '',
     totalActions: 0,
