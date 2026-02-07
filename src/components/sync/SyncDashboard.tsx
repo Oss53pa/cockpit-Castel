@@ -27,7 +27,6 @@ import {
 import { useSync } from '@/hooks/useSync';
 import { cn } from '@/lib/utils';
 import {
-  CircularProgress,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -211,9 +210,6 @@ function SyncGlassmorphismHeader({
   const statusConfig = getStatusConfig();
   const StatusIcon = statusConfig.icon;
 
-  // Calculate sync percentage (100 = perfectly synced)
-  const syncPercentage = Math.max(0, 100 - Math.abs(gap));
-
   return (
     <div
       className={cn(
@@ -289,41 +285,25 @@ function SyncGlassmorphismHeader({
             </div>
           </div>
 
-          {/* Center: Sync Gauge */}
+          {/* Center: Écart Sync (sans le CircularProgress confus) */}
           <div
-            className={cn('flex items-center gap-6', isVisible ? 'animate-scale-in' : 'opacity-0')}
+            className={cn('flex items-center gap-4', isVisible ? 'animate-scale-in' : 'opacity-0')}
             style={{ animationDelay: '200ms', animationFillMode: 'both' }}
           >
-            <div className="relative">
-              <div
-                className="absolute inset-0 rounded-full blur-xl opacity-30"
-                style={{
-                  background: `radial-gradient(circle, ${statusConfig.glowColor} 0%, transparent 70%)`,
-                }}
-              />
-              <CircularProgress
-                value={syncPercentage}
-                size={110}
-                strokeWidth={10}
-                variant={syncPercentage >= 85 ? 'success' : syncPercentage >= 70 ? 'warning' : 'error'}
-                className="[&_text]:text-white [&_span]:text-white"
-              />
-            </div>
-            <div>
-              <p className="text-indigo-300 text-xs uppercase tracking-wider mb-1">Écart Sync</p>
-              <p className="text-4xl font-bold">
-                {gap > 0 ? '+' : ''}
-                {gap.toFixed(0)}%
+            <div className="text-center px-5 py-3 bg-white/5 rounded-xl backdrop-blur-sm border border-white/10">
+              <p className="text-indigo-300 text-xs uppercase tracking-wider mb-1">Écart</p>
+              <p className={cn('text-3xl font-bold', statusConfig.color)}>
+                {gap > 0 ? '+' : ''}{gap.toFixed(0)}%
               </p>
               <div
                 className={cn(
-                  'inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-full text-xs font-medium',
+                  'inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-medium',
                   'bg-white/10 backdrop-blur-sm',
                   statusConfig.color
                 )}
               >
                 <Activity className="h-3 w-3" />
-                {Math.abs(gap) <= 5 ? 'Optimal' : Math.abs(gap) <= 15 ? 'À surveiller' : 'Critique'}
+                {Math.abs(gap) <= 5 ? 'Synchronisé' : Math.abs(gap) <= 15 ? 'À surveiller' : 'Critique'}
               </div>
             </div>
           </div>
