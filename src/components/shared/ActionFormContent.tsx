@@ -173,6 +173,7 @@ export interface ActionFormSaveData {
   titre?: string;
   jalonId?: number | null;
   responsableId?: number | null;
+  date_debut_prevue?: string;
   date_fin_prevue?: string;
   projectPhase?: ProjectPhase;
   // Statut et avancement
@@ -216,8 +217,11 @@ export function ActionFormContent({
   const [titre, setTitre] = useState(action?.titre || '');
   const [jalonId, setJalonId] = useState<number | null>(action?.jalonId ?? defaultJalonId ?? null);
   const [responsableId, setResponsableId] = useState<number | null>(action?.responsableId ?? null);
+  const [dateDebut, setDateDebut] = useState(action?.date_debut_prevue || '');
   const [echeance, setEcheance] = useState(action?.date_fin_prevue || '');
   const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(action?.projectPhase);
+  // Indicateur si les dates ont été modifiées manuellement
+  const [datesModifiedManually, setDatesModifiedManually] = useState(false);
 
   // État du formulaire
   const [avancement, setAvancement] = useState(action?.avancement ?? 0);
@@ -315,6 +319,44 @@ export function ActionFormContent({
       onStatutChange(statut);
     }
   }, [statut, onStatutChange]);
+
+  // Auto-calcul des dates basé sur le jalon sélectionné (si pas modifié manuellement)
+  useEffect(() => {
+    if (!datesModifiedManually && selectedJalon?.date_prevue && isCreate) {
+      // Date de début = 30 jours avant le jalon (par défaut)
+      // Date d'échéance = 7 jours avant le jalon (par défaut)
+      const jalonDate = new Date(selectedJalon.date_prevue);
+
+      // Date de début: 30 jours avant le jalon
+      const debutDate = new Date(jalonDate);
+      debutDate.setDate(debutDate.getDate() - 30);
+
+      // Date d'échéance: 7 jours avant le jalon
+      const finDate = new Date(jalonDate);
+      finDate.setDate(finDate.getDate() - 7);
+
+      // Formater en YYYY-MM-DD pour les inputs date
+      const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+      if (!dateDebut) {
+        setDateDebut(formatDate(debutDate));
+      }
+      if (!echeance) {
+        setEcheance(formatDate(finDate));
+      }
+    }
+  }, [selectedJalon, isCreate, datesModifiedManually, dateDebut, echeance]);
+
+  // Handler pour les modifications manuelles de dates
+  const handleDateDebutChange = (value: string) => {
+    setDateDebut(value);
+    setDatesModifiedManually(true);
+  };
+
+  const handleEcheanceChange = (value: string) => {
+    setEcheance(value);
+    setDatesModifiedManually(true);
+  };
 
   // Handler avancement manuel
   const handleAvancementChange = (newAvancement: number) => {
@@ -491,6 +533,10 @@ export function ActionFormContent({
         alert('Le jalon est obligatoire');
         return;
       }
+      if (!dateDebut) {
+        alert('La date de début est obligatoire');
+        return;
+      }
       if (!echeance) {
         alert('L\'échéance est obligatoire');
         return;
@@ -502,7 +548,7 @@ export function ActionFormContent({
     }
 
     // Validation: échéance ne peut pas être avant la date de début
-    if (echeance && action?.date_debut_prevue && echeance < action.date_debut_prevue) {
+    if (echeance && dateDebut && echeance < dateDebut) {
       alert('L\'échéance ne peut pas être antérieure à la date de début');
       return;
     }
@@ -518,6 +564,7 @@ export function ActionFormContent({
       titre: isCreate || titre !== action?.titre ? titre : undefined,
       jalonId: isCreate || jalonId !== action?.jalonId ? jalonId : undefined,
       responsableId: isCreate || responsableId !== action?.responsableId ? responsableId : undefined,
+      date_debut_prevue: isCreate || dateDebut !== action?.date_debut_prevue ? dateDebut : undefined,
       date_fin_prevue: isCreate || echeance !== action?.date_fin_prevue ? echeance : undefined,
       projectPhase: isCreate || projectPhase !== action?.projectPhase ? projectPhase : undefined,
       // Statut et avancement
@@ -715,6 +762,33 @@ export function ActionFormContent({
                   )}
                 </div>
 
+                {/* Date de début */}
+                <div>
+                  <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+                    <Calendar className="w-4 h-4 text-green-600" />
+                    Date de début {isCreate && '*'}
+                  </Label>
+                  {canEditInternal ? (
+                    <div className="relative">
+                      <Input
+                        type="date"
+                        value={dateDebut}
+                        onChange={(e) => handleDateDebutChange(e.target.value)}
+                        className={selectedJalon && !datesModifiedManually ? 'pr-8' : ''}
+                      />
+                      {selectedJalon && !datesModifiedManually && dateDebut && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-green-600" title="Calculé automatiquement">
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-white rounded border text-sm">
+                      {action?.date_debut_prevue ? new Date(action.date_debut_prevue).toLocaleDateString('fr-FR') : '-'}
+                    </div>
+                  )}
+                </div>
+
                 {/* Échéance */}
                 <div>
                   <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
@@ -722,11 +796,20 @@ export function ActionFormContent({
                     Échéance {isCreate && '*'}
                   </Label>
                   {canEditInternal ? (
-                    <Input
-                      type="date"
-                      value={echeance}
-                      onChange={(e) => setEcheance(e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="date"
+                        value={echeance}
+                        onChange={(e) => handleEcheanceChange(e.target.value)}
+                        min={dateDebut || undefined}
+                        className={selectedJalon && !datesModifiedManually ? 'pr-8' : ''}
+                      />
+                      {selectedJalon && !datesModifiedManually && echeance && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-orange-600" title="Calculé automatiquement">
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="p-2 bg-white rounded border text-sm">
                       {action?.date_fin_prevue ? new Date(action.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}

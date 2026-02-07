@@ -33,6 +33,7 @@ function NavItem({ to, icon, label, collapsed }: NavItemProps) {
   return (
     <NavLink
       to={to}
+      title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -127,6 +128,7 @@ export function Sidebar() {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
+          title={sidebarCollapsed ? 'Déconnexion' : undefined}
           className={cn(
             'mt-2 w-full text-red-600 hover:text-red-700 hover:bg-red-50',
             sidebarCollapsed && 'justify-center'

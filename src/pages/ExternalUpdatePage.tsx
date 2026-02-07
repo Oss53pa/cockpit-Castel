@@ -137,6 +137,7 @@ export function ExternalUpdatePage() {
             titre: updateLink.entityData.titre || 'Sans titre',
             statut: updateLink.entityData.statut || '',
             date_prevue: updateLink.entityData.date_prevue,
+            date_debut_prevue: updateLink.entityData.date_debut_prevue,
             date_fin_prevue: updateLink.entityData.date_fin_prevue,
             avancement: updateLink.entityData.avancement,
             categorie: updateLink.entityData.categorie,
@@ -200,6 +201,8 @@ export function ExternalUpdatePage() {
             notes_mise_a_jour: actionData.notes_mise_a_jour,
             commentaires_externes: actionData.commentaires_externes,
             liens_documents: actionData.liens_documents,
+            ...(actionData.date_debut_prevue && { date_debut_prevue: actionData.date_debut_prevue }),
+            ...(actionData.date_fin_prevue && { date_fin_prevue: actionData.date_fin_prevue }),
             sous_taches: actionData.sousTaches,
             livrables: actionData.livrables?.map(l => ({
               id: l.id,

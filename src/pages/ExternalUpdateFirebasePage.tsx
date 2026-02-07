@@ -148,6 +148,7 @@ export function ExternalUpdateFirebasePage() {
         setEntity({
           ...baseEntity,
           avancement: snapshot.avancement || 0,
+          date_debut_prevue: snapshot.date_debut_prevue || '',
           date_fin_prevue: snapshot.date_fin_prevue || '',
           sous_taches: snapshot.sous_taches || [],
           documents: snapshot.documents || [],
@@ -233,6 +234,8 @@ export function ExternalUpdateFirebasePage() {
       if (type === 'action') {
         const actionData = formData as ActionFormSaveData;
         response.changes.avancement = actionData.avancement;
+        if (actionData.date_debut_prevue) response.changes.date_debut_prevue = actionData.date_debut_prevue;
+        if (actionData.date_fin_prevue) response.changes.date_fin_prevue = actionData.date_fin_prevue;
         response.changes.liens_documents = actionData.liens_documents;
         // Toujours inclure sousTaches même si vide (pour permettre suppression)
         response.changes.sousTaches = actionData.sousTaches || [];

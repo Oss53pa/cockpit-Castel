@@ -64,7 +64,7 @@ export function ActionWizard({
   };
 
   const handleSave = async (data: ActionFormSaveData) => {
-    if (!data.jalonId || !data.titre || !data.date_fin_prevue || !data.responsableId) {
+    if (!data.jalonId || !data.titre || !data.date_debut_prevue || !data.date_fin_prevue || !data.responsableId) {
       toast.error('Erreur', 'Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -85,9 +85,9 @@ export function ActionWizard({
       const responsableName = responsable ? `${responsable.prenom} ${responsable.nom}` : '';
       const today = new Date().toISOString().split('T')[0];
 
-      // Calculer la date de début (7 jours avant l'échéance par défaut)
+      // Utiliser la date de début fournie par le formulaire
       const echeanceDate = new Date(data.date_fin_prevue);
-      const dateDebut = new Date(echeanceDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const dateDebutDate = new Date(data.date_debut_prevue);
 
       // Calculer priorité
       const joursRestants = Math.ceil((echeanceDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -110,11 +110,11 @@ export function ActionWizard({
 
         // Planning
         date_creation: today,
-        date_debut_prevue: dateDebut.toISOString().split('T')[0],
+        date_debut_prevue: data.date_debut_prevue,
         date_fin_prevue: data.date_fin_prevue,
         date_debut_reelle: null,
         date_fin_reelle: null,
-        duree_prevue_jours: 7,
+        duree_prevue_jours: Math.max(1, Math.ceil((echeanceDate.getTime() - dateDebutDate.getTime()) / (1000 * 60 * 60 * 24))),
         duree_reelle_jours: null,
         date_butoir: null,
         flexibilite: 'standard',

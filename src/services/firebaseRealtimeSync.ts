@@ -54,6 +54,7 @@ export interface ExternalUpdateData {
 
     // Action
     avancement?: number;
+    date_debut_prevue?: string;
     date_fin_prevue?: string;
     sous_taches?: Array<{
       id: string;
@@ -137,6 +138,8 @@ export interface ExternalUpdateData {
 
       // Action
       avancement?: number;
+      date_debut_prevue?: string;
+      date_fin_prevue?: string;
       sousTaches?: Array<{
         id: string;
         libelle: string;
@@ -340,6 +343,7 @@ export async function createUpdateLinkInFirebase(
     if (entityType === 'action') {
       const action = entity as Action;
       entitySnapshot.avancement = action.avancement;
+      entitySnapshot.date_debut_prevue = action.date_debut_prevue;
       entitySnapshot.date_fin_prevue = action.date_fin_prevue;
       // Inclure les sous-tâches si présentes
       if ((action as any).sous_taches) {
@@ -661,6 +665,8 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
     if (entityType === 'action') {
       // Champs Action - TOUJOURS appliquer si présent (même tableau vide)
       if (changes.avancement !== undefined) updateData.avancement = changes.avancement;
+      if (changes.date_debut_prevue !== undefined) updateData.date_debut_prevue = changes.date_debut_prevue;
+      if (changes.date_fin_prevue !== undefined) updateData.date_fin_prevue = changes.date_fin_prevue;
       if (changes.sousTaches !== undefined) {
         updateData.sous_taches = changes.sousTaches;
         console.log('[SyncToLocal] Sous-tâches à sauvegarder:', changes.sousTaches?.length || 0);
