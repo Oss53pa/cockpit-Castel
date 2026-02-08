@@ -434,6 +434,41 @@ function AxeImpactCard({ axe, moisReport }: { axe: ImpactAxe; moisReport: number
           ))}
         </div>
       )}
+
+      {/* ---- Résumé explicatif algorithmique ---- */}
+      {axe.resumeExplicatif && (
+        <div style={{
+          padding: '10px 14px',
+          borderTop: `1px solid ${C.gray100}`,
+          backgroundColor: riskCfg.bg,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 8,
+          }}>
+            <span style={{
+              fontSize: 14,
+              marginTop: 1,
+              flexShrink: 0,
+            }}>
+              💡
+            </span>
+            <div>
+              <div style={{
+                fontSize: 9, fontWeight: 600, color: riskCfg.color,
+                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
+              }}>
+                Analyse Proph3t
+              </div>
+              <div style={{
+                fontSize: 11, color: C.gray700, lineHeight: 1.5,
+                fontStyle: 'italic',
+              }}>
+                {axe.resumeExplicatif}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,20 +43,20 @@ interface Proph3tDashboardProps {
 const getHealthColor = (health: 'healthy' | 'warning' | 'critical') => {
   switch (health) {
     case 'healthy':
-      return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' };
+      return { bg: 'bg-green-400', text: 'text-green-500', light: 'bg-green-50' };
     case 'warning':
-      return { bg: 'bg-yellow-500', text: 'text-yellow-600', light: 'bg-yellow-50' };
+      return { bg: 'bg-amber-400', text: 'text-amber-500', light: 'bg-amber-50' };
     case 'critical':
-      return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' };
+      return { bg: 'bg-red-400', text: 'text-red-500', light: 'bg-red-50' };
   }
 };
 
 const getPriorityConfig = (priority: string) => {
   const configs: Record<string, { bg: string; text: string; label: string }> = {
-    P0: { bg: 'bg-red-100', text: 'text-red-700', label: 'Priorité absolue' },
-    P1: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Haute priorité' },
-    P2: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'À planifier' },
-    P3: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Faible priorité' },
+    P0: { bg: 'bg-red-50', text: 'text-red-500', label: 'Priorité absolue' },
+    P1: { bg: 'bg-orange-50', text: 'text-orange-500', label: 'Haute priorité' },
+    P2: { bg: 'bg-amber-50', text: 'text-amber-500', label: 'À planifier' },
+    P3: { bg: 'bg-gray-50', text: 'text-gray-400', label: 'Faible priorité' },
   };
   return configs[priority] || configs.P3;
 };
@@ -64,13 +64,13 @@ const getPriorityConfig = (priority: string) => {
 const getImpactIcon = (impact: string) => {
   switch (impact) {
     case 'critical':
-      return <XCircle className="w-4 h-4 text-red-500" />;
+      return <XCircle className="w-3.5 h-3.5 text-red-400" />;
     case 'high':
-      return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+      return <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />;
     case 'medium':
-      return <Activity className="w-4 h-4 text-yellow-500" />;
+      return <Activity className="w-3.5 h-3.5 text-amber-400" />;
     default:
-      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      return <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />;
   }
 };
 
@@ -89,55 +89,55 @@ export const Proph3tDashboard: React.FC<Proph3tDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'predictions' | 'actions'>('overview');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white">
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Brain className="w-8 h-8" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <Brain className="w-5 h-5 text-gray-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Proph3t Engine V2</h1>
-              <p className="text-white/80">Intelligence Prescriptive</p>
+              <h1 className="text-sm font-medium text-gray-700">Proph3t Engine</h1>
+              <p className="text-xs text-gray-400">Intelligence Prescriptive</p>
             </div>
           </div>
 
           <button
             onClick={onRunAnalysis}
             disabled={isAnalyzing}
-            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
             {isAnalyzing ? 'Analyse...' : 'Analyser'}
           </button>
         </div>
 
         {/* Quick Stats */}
         {diagnostic && (
-          <div className="mt-6 grid grid-cols-4 gap-4">
+          <div className="mt-4 grid grid-cols-4 gap-3">
             <QuickStatCard
               label="Santé projet"
               value={`${diagnostic.score}/100`}
-              icon={<Activity className="w-5 h-5" />}
+              icon={<Activity className="w-3.5 h-3.5" />}
               trend={diagnostic.overallHealth}
             />
             <QuickStatCard
               label="Budget"
               value={diagnostic.keyMetrics.budgetStatus}
-              icon={<BarChart3 className="w-5 h-5" />}
+              icon={<BarChart3 className="w-3.5 h-3.5" />}
               trend={diagnostic.keyMetrics.budgetStatus === 'OK' ? 'healthy' : diagnostic.keyMetrics.budgetStatus === 'Attention' ? 'warning' : 'critical'}
             />
             <QuickStatCard
               label="Planning"
               value={diagnostic.keyMetrics.scheduleStatus}
-              icon={<Clock className="w-5 h-5" />}
+              icon={<Clock className="w-3.5 h-3.5" />}
               trend={diagnostic.keyMetrics.scheduleStatus === 'OK' ? 'healthy' : diagnostic.keyMetrics.scheduleStatus === 'Attention' ? 'warning' : 'critical'}
             />
             <QuickStatCard
               label="Commercial"
               value={diagnostic.keyMetrics.commercialStatus}
-              icon={<Target className="w-5 h-5" />}
+              icon={<Target className="w-3.5 h-3.5" />}
               trend={diagnostic.keyMetrics.commercialStatus === 'OK' ? 'healthy' : diagnostic.keyMetrics.commercialStatus === 'Attention' ? 'warning' : 'critical'}
             />
           </div>
@@ -146,27 +146,27 @@ export const Proph3tDashboard: React.FC<Proph3tDashboardProps> = ({
 
       {/* Issues rapides */}
       {diagnostic && diagnostic.topIssues.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <h3 className="text-xs font-medium text-gray-500 mb-2.5 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
             Points d'attention ({diagnostic.topIssues.length})
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {diagnostic.topIssues.map((issue, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg ${
+                className={`px-3 py-2 rounded-lg ${
                   issue.severity === 'critical'
-                    ? 'bg-red-50 border border-red-200'
+                    ? 'bg-red-50/50 border border-red-100'
                     : issue.severity === 'high'
-                    ? 'bg-orange-50 border border-orange-200'
-                    : 'bg-yellow-50 border border-yellow-200'
+                    ? 'bg-orange-50/50 border border-orange-100'
+                    : 'bg-amber-50/50 border border-amber-100'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {getImpactIcon(issue.severity)}
-                  <span className="font-medium text-gray-900">{issue.title}</span>
-                  <span className="text-xs text-gray-500 ml-auto">{issue.module}</span>
+                  <span className="text-sm text-gray-600">{issue.title}</span>
+                  <span className="text-[10px] text-gray-400 ml-auto">{issue.module}</span>
                 </div>
               </div>
             ))}
@@ -175,17 +175,17 @@ export const Proph3tDashboard: React.FC<Proph3tDashboardProps> = ({
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="border-b border-gray-100">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="border-b border-gray-50">
           <nav className="flex">
             {(['overview', 'predictions', 'actions'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 px-4 py-2.5 text-xs font-medium transition-colors ${
                   activeTab === tab
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/50'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    ? 'text-gray-700 border-b-2 border-gray-400'
+                    : 'text-gray-400 hover:text-gray-500 hover:bg-gray-50/50'
                 }`}
               >
                 {tab === 'overview' && 'Vue d\'ensemble'}
@@ -196,7 +196,7 @@ export const Proph3tDashboard: React.FC<Proph3tDashboardProps> = ({
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-5">
           {activeTab === 'overview' && analysisResult && (
             <OverviewTab analysisResult={analysisResult} />
           )}
@@ -215,16 +215,16 @@ export const Proph3tDashboard: React.FC<Proph3tDashboardProps> = ({
           )}
 
           {!analysisResult && (
-            <div className="text-center py-12">
-              <Brain className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-              <h3 className="font-medium text-gray-900">Aucune analyse disponible</h3>
-              <p className="text-sm text-gray-500 mt-1 mb-4">
+            <div className="text-center py-10">
+              <Brain className="w-8 h-8 mx-auto text-gray-200 mb-3" />
+              <h3 className="text-sm text-gray-500">Aucune analyse disponible</h3>
+              <p className="text-xs text-gray-400 mt-1 mb-3">
                 Lancez une analyse pour voir les résultats
               </p>
               <button
                 onClick={onRunAnalysis}
                 disabled={isAnalyzing}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3 py-1.5 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50"
               >
                 Lancer l'analyse
               </button>
@@ -251,14 +251,14 @@ const QuickStatCard: React.FC<QuickStatCardProps> = ({ label, value, icon, trend
   const colors = getHealthColor(trend);
 
   return (
-    <div className="bg-white/10 rounded-lg p-3">
-      <div className="flex items-center gap-2 text-white/70 text-sm">
+    <div className="bg-gray-50/50 rounded-lg px-3 py-2.5 border border-gray-100">
+      <div className="flex items-center gap-1.5 text-gray-400 text-[10px]">
         {icon}
         {label}
       </div>
-      <div className="mt-1 flex items-center gap-2">
-        <span className="text-xl font-bold">{value}</span>
-        <span className={`w-2 h-2 rounded-full ${colors.bg}`} />
+      <div className="mt-1 flex items-center gap-1.5">
+        <span className="text-sm font-medium text-gray-600">{value}</span>
+        <span className={`w-1.5 h-1.5 rounded-full ${colors.bg}`} />
       </div>
     </div>
   );
@@ -272,79 +272,79 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ analysisResult }) => {
   const { evm, prescription, anomalies, cascades, patternMatches } = analysisResult;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* EVM */}
       <div>
-        <h4 className="font-medium text-gray-900 mb-3">Indicateurs EVM</h4>
-        <div className="grid grid-cols-4 gap-4">
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500">CPI</div>
-            <div className={`text-xl font-bold ${evm.cpi < 0.9 ? 'text-red-600' : evm.cpi < 1 ? 'text-yellow-600' : 'text-green-600'}`}>
+        <h4 className="text-xs font-medium text-gray-400 mb-2.5">Indicateurs EVM</h4>
+        <div className="grid grid-cols-4 gap-3">
+          <div className="px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100">
+            <div className="text-[10px] text-gray-400">CPI</div>
+            <div className={`text-sm font-medium ${evm.cpi < 0.9 ? 'text-red-400' : evm.cpi < 1 ? 'text-amber-500' : 'text-green-500'}`}>
               {evm.cpi.toFixed(2)}
             </div>
           </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500">SPI</div>
-            <div className={`text-xl font-bold ${evm.spi < 0.9 ? 'text-red-600' : evm.spi < 1 ? 'text-yellow-600' : 'text-green-600'}`}>
+          <div className="px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100">
+            <div className="text-[10px] text-gray-400">SPI</div>
+            <div className={`text-sm font-medium ${evm.spi < 0.9 ? 'text-red-400' : evm.spi < 1 ? 'text-amber-500' : 'text-green-500'}`}>
               {evm.spi.toFixed(2)}
             </div>
           </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500">EAC</div>
-            <div className="text-xl font-bold text-gray-900">
+          <div className="px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100">
+            <div className="text-[10px] text-gray-400">EAC</div>
+            <div className="text-sm font-medium text-gray-600">
               {(evm.eac / 1_000_000).toFixed(0)}M
             </div>
           </div>
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500">VAC</div>
-            <div className={`text-xl font-bold ${evm.vac < 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <div className="px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100">
+            <div className="text-[10px] text-gray-400">VAC</div>
+            <div className={`text-sm font-medium ${evm.vac < 0 ? 'text-red-400' : 'text-green-500'}`}>
               {evm.vac >= 0 ? '+' : ''}{(evm.vac / 1_000_000).toFixed(0)}M
             </div>
           </div>
         </div>
-        <p className="mt-2 text-sm text-gray-600">{evm.interpretation}</p>
+        <p className="mt-2 text-xs text-gray-400">{evm.interpretation}</p>
       </div>
 
       {/* Résumé prescription */}
       <div>
-        <h4 className="font-medium text-gray-900 mb-3">Résumé des Actions</h4>
-        <div className="grid grid-cols-4 gap-4">
+        <h4 className="text-xs font-medium text-gray-400 mb-2.5">Résumé des Actions</h4>
+        <div className="grid grid-cols-4 gap-3">
           {(['P0', 'P1', 'P2', 'P3'] as const).map(priority => {
             const config = getPriorityConfig(priority);
             return (
-              <div key={priority} className={`p-3 rounded-lg ${config.bg}`}>
-                <div className="text-xs text-gray-500">{config.label}</div>
-                <div className={`text-2xl font-bold ${config.text}`}>
+              <div key={priority} className={`px-3 py-2 rounded-lg border border-gray-100 ${config.bg}`}>
+                <div className="text-[10px] text-gray-400">{config.label}</div>
+                <div className={`text-sm font-medium ${config.text}`}>
                   {prescription.summary.byPriority[priority]}
                 </div>
               </div>
             );
           })}
         </div>
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-xs text-gray-400">
           {prescription.summary.recommendedFocus}
         </p>
       </div>
 
       {/* Anomalies et patterns */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">
+          <h4 className="text-xs font-medium text-gray-400 mb-2">
             Anomalies ({anomalies.length})
           </h4>
           {anomalies.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucune anomalie détectée</p>
+            <p className="text-xs text-gray-400">Aucune anomalie détectée</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {anomalies.slice(0, 3).map(anomaly => (
                 <div
                   key={anomaly.id}
-                  className={`p-2 rounded-lg text-sm ${
-                    anomaly.severity === 'critical' ? 'bg-red-50' : 'bg-yellow-50'
+                  className={`px-2.5 py-1.5 rounded-lg text-xs ${
+                    anomaly.severity === 'critical' ? 'bg-red-50/50' : 'bg-amber-50/50'
                   }`}
                 >
-                  <span className="font-medium">{anomaly.metric}</span>
-                  <span className="text-gray-600 ml-2">{anomaly.description}</span>
+                  <span className="text-gray-600">{anomaly.metric}</span>
+                  <span className="text-gray-400 ml-1.5">{anomaly.description}</span>
                 </div>
               ))}
             </div>
@@ -352,17 +352,17 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ analysisResult }) => {
         </div>
 
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">
+          <h4 className="text-xs font-medium text-gray-400 mb-2">
             Patterns ({patternMatches.length})
           </h4>
           {patternMatches.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun pattern reconnu</p>
+            <p className="text-xs text-gray-400">Aucun pattern reconnu</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {patternMatches.slice(0, 3).map(match => (
-                <div key={match.pattern.id} className="p-2 bg-purple-50 rounded-lg text-sm">
-                  <span className="font-medium">{match.pattern.name}</span>
-                  <span className="text-gray-600 ml-2">({match.matchScore}% match)</span>
+                <div key={match.pattern.id} className="px-2.5 py-1.5 bg-gray-50 rounded-lg text-xs">
+                  <span className="text-gray-600">{match.pattern.name}</span>
+                  <span className="text-gray-400 ml-1.5">({match.matchScore}%)</span>
                 </div>
               ))}
             </div>
@@ -371,8 +371,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ analysisResult }) => {
       </div>
 
       {/* Meta */}
-      <div className="text-xs text-gray-400 text-right">
-        Analyse effectuée en {analysisResult.executionTimeMs}ms •{' '}
+      <div className="text-[10px] text-gray-300 text-right">
+        Analyse effectuée en {analysisResult.executionTimeMs}ms ·{' '}
         {new Date(analysisResult.timestamp).toLocaleString('fr-FR')}
       </div>
     </div>
@@ -386,38 +386,40 @@ interface PredictionsTabProps {
 
 const PredictionsTab: React.FC<PredictionsTabProps> = ({ predictions, onPredictionClick }) => {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {predictions.length === 0 ? (
-        <p className="text-center text-gray-500 py-8">Aucune prédiction active</p>
+        <p className="text-center text-xs text-gray-400 py-8">Aucune prédiction active</p>
       ) : (
         predictions.map(prediction => (
           <div
             key={prediction.id}
             onClick={() => onPredictionClick?.(prediction)}
-            className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/30 cursor-pointer transition-colors"
+            className="px-3.5 py-3 border border-gray-100 rounded-lg hover:bg-gray-50/50 cursor-pointer transition-colors"
           >
             <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2.5">
                 {getImpactIcon(prediction.impact)}
                 <div>
-                  <h5 className="font-medium text-gray-900">{prediction.title}</h5>
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  <h5 className="text-sm text-gray-600">{prediction.title}</h5>
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
                     {prediction.description}
                   </p>
                 </div>
               </div>
               <div className="text-right flex-shrink-0 ml-4">
-                <div className="text-lg font-bold text-gray-900">
+                <div className="text-sm font-medium text-gray-500">
                   {prediction.probability}%
                 </div>
-                <div className="text-xs text-gray-500">probabilité</div>
+                <div className="text-[10px] text-gray-300">probabilité</div>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-4 text-xs text-gray-400">
-              <span>Type: {prediction.type}</span>
-              <span>Horizon: {prediction.timeHorizon}</span>
-              <span>Confiance: {prediction.confidence.value}%</span>
-              <ArrowRight className="w-3 h-3 ml-auto" />
+            <div className="mt-2 flex items-center gap-3 text-[10px] text-gray-300">
+              <span>{prediction.type}</span>
+              <span>·</span>
+              <span>{prediction.timeHorizon}</span>
+              <span>·</span>
+              <span>Conf. {prediction.confidence.value}%</span>
+              <ArrowRight className="w-3 h-3 ml-auto text-gray-200" />
             </div>
           </div>
         ))
@@ -434,21 +436,21 @@ interface ActionsTabProps {
 
 const ActionsTab: React.FC<ActionsTabProps> = ({ actions, summary, onActionClick }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Focus recommandé */}
-      <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-indigo-600" />
-          <span className="text-sm font-medium text-indigo-900">
+      <div className="px-3 py-2 bg-gray-50/50 rounded-lg border border-gray-100">
+        <div className="flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-xs text-gray-500">
             {summary.recommendedFocus}
           </span>
         </div>
       </div>
 
       {/* Liste des actions */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {actions.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">Aucune action recommandée</p>
+          <p className="text-center text-xs text-gray-400 py-8">Aucune action recommandée</p>
         ) : (
           actions.slice(0, 10).map(action => {
             const priorityConfig = getPriorityConfig(action.priority);
@@ -456,24 +458,26 @@ const ActionsTab: React.FC<ActionsTabProps> = ({ actions, summary, onActionClick
               <div
                 key={action.id}
                 onClick={() => onActionClick?.(action)}
-                className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50/30 cursor-pointer transition-colors"
+                className="px-3.5 py-3 border border-gray-100 rounded-lg hover:bg-gray-50/50 cursor-pointer transition-colors"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2.5">
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded ${priorityConfig.bg} ${priorityConfig.text}`}
+                    className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${priorityConfig.bg} ${priorityConfig.text}`}
                   >
                     {action.priority}
                   </span>
                   <div className="flex-1">
-                    <h5 className="font-medium text-gray-900">{action.action}</h5>
-                    <p className="text-sm text-gray-600 mt-1">{action.rationale}</p>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-gray-400">
-                      <span>Module: {action.targetModule}</span>
+                    <h5 className="text-sm text-gray-600">{action.action}</h5>
+                    <p className="text-xs text-gray-400 mt-0.5">{action.rationale}</p>
+                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-300">
+                      <span>{action.targetModule}</span>
+                      <span>·</span>
                       <span>Effort: {action.effort}</span>
-                      <span>Confiance: {action.confidence?.value || 0}%</span>
+                      <span>·</span>
+                      <span>Conf. {action.confidence?.value || 0}%</span>
                     </div>
                   </div>
-                  <span className="text-sm text-gray-400">#{action.rank}</span>
+                  <span className="text-[10px] text-gray-300">#{action.rank}</span>
                 </div>
               </div>
             );

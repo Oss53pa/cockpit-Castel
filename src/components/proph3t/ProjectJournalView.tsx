@@ -22,14 +22,15 @@ import {
 } from 'lucide-react';
 import type {
   JournalEntry,
-  JournalEntryType,
-  JournalEntryImportance,
   JournalSummary,
-} from '../../engines/proph3t/journal/projectJournal';
+} from '../../hooks/useProph3tDashboard';
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+type JournalEntryType = 'milestone_completed' | 'milestone_delayed' | 'action_completed' | 'action_blocked' | 'risk_identified' | 'risk_mitigated' | 'decision_made' | 'issue_raised' | 'issue_resolved' | 'budget_alert' | 'schedule_alert' | 'team_update' | 'external_event' | 'lesson_learned' | 'manual_note';
+type JournalEntryImportance = 'critical' | 'high' | 'medium' | 'low';
 
 interface ProjectJournalViewProps {
   entries: JournalEntry[];
@@ -45,31 +46,31 @@ interface ProjectJournalViewProps {
 
 const getTypeConfig = (type: JournalEntryType) => {
   const configs: Record<JournalEntryType, { icon: React.ReactNode; color: string; label: string }> = {
-    milestone_completed: { icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-green-600 bg-green-100', label: 'Jalon atteint' },
-    milestone_delayed: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-600 bg-red-100', label: 'Jalon en retard' },
-    action_completed: { icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600 bg-blue-100', label: 'Action terminée' },
-    action_blocked: { icon: <XCircle className="w-4 h-4" />, color: 'text-orange-600 bg-orange-100', label: 'Action bloquée' },
-    risk_identified: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-600 bg-yellow-100', label: 'Risque identifié' },
-    risk_mitigated: { icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-green-600 bg-green-100', label: 'Risque mitigé' },
-    decision_made: { icon: <Lightbulb className="w-4 h-4" />, color: 'text-purple-600 bg-purple-100', label: 'Décision prise' },
-    issue_raised: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-600 bg-red-100', label: 'Problème soulevé' },
-    issue_resolved: { icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-green-600 bg-green-100', label: 'Problème résolu' },
-    budget_alert: { icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-600 bg-red-100', label: 'Alerte budget' },
-    schedule_alert: { icon: <Clock className="w-4 h-4" />, color: 'text-orange-600 bg-orange-100', label: 'Alerte planning' },
-    team_update: { icon: <MessageSquare className="w-4 h-4" />, color: 'text-blue-600 bg-blue-100', label: 'Mise à jour équipe' },
-    external_event: { icon: <Calendar className="w-4 h-4" />, color: 'text-gray-600 bg-gray-100', label: 'Événement externe' },
-    lesson_learned: { icon: <Lightbulb className="w-4 h-4" />, color: 'text-yellow-600 bg-yellow-100', label: 'Leçon apprise' },
-    manual_note: { icon: <MessageSquare className="w-4 h-4" />, color: 'text-gray-600 bg-gray-100', label: 'Note manuelle' },
+    milestone_completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: 'text-green-500 bg-green-50/50', label: 'Jalon atteint' },
+    milestone_delayed: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'text-red-400 bg-red-50/50', label: 'Jalon en retard' },
+    action_completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: 'text-blue-400 bg-blue-50/50', label: 'Action terminée' },
+    action_blocked: { icon: <XCircle className="w-3.5 h-3.5" />, color: 'text-orange-400 bg-orange-50/50', label: 'Action bloquée' },
+    risk_identified: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'text-amber-500 bg-amber-50/50', label: 'Risque identifié' },
+    risk_mitigated: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: 'text-green-500 bg-green-50/50', label: 'Risque mitigé' },
+    decision_made: { icon: <Lightbulb className="w-3.5 h-3.5" />, color: 'text-purple-400 bg-purple-50/50', label: 'Décision prise' },
+    issue_raised: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'text-red-400 bg-red-50/50', label: 'Problème soulevé' },
+    issue_resolved: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: 'text-green-500 bg-green-50/50', label: 'Problème résolu' },
+    budget_alert: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: 'text-red-400 bg-red-50/50', label: 'Alerte budget' },
+    schedule_alert: { icon: <Clock className="w-3.5 h-3.5" />, color: 'text-orange-400 bg-orange-50/50', label: 'Alerte planning' },
+    team_update: { icon: <MessageSquare className="w-3.5 h-3.5" />, color: 'text-blue-400 bg-blue-50/50', label: 'Mise à jour équipe' },
+    external_event: { icon: <Calendar className="w-3.5 h-3.5" />, color: 'text-gray-400 bg-gray-50', label: 'Événement externe' },
+    lesson_learned: { icon: <Lightbulb className="w-3.5 h-3.5" />, color: 'text-amber-500 bg-amber-50/50', label: 'Leçon apprise' },
+    manual_note: { icon: <MessageSquare className="w-3.5 h-3.5" />, color: 'text-gray-400 bg-gray-50', label: 'Note manuelle' },
   };
   return configs[type] || configs.manual_note;
 };
 
 const getImportanceBadge = (importance: JournalEntryImportance) => {
   const badges = {
-    critical: 'bg-red-100 text-red-800 border-red-200',
-    high: 'bg-orange-100 text-orange-800 border-orange-200',
-    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    low: 'bg-gray-100 text-gray-600 border-gray-200',
+    critical: 'bg-red-50 text-red-400 border-red-100',
+    high: 'bg-orange-50 text-orange-400 border-orange-100',
+    medium: 'bg-amber-50 text-amber-400 border-amber-100',
+    low: 'bg-gray-50 text-gray-400 border-gray-100',
   };
   const labels = {
     critical: 'Critique',
@@ -156,17 +157,17 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
   }, []);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+      <div className="px-5 py-3 border-b border-gray-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-6 h-6 text-gray-600" />
+          <div className="flex items-center gap-2.5">
+            <BookOpen className="w-4 h-4 text-gray-400" />
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-sm font-medium text-gray-700">
                 Journal de Projet
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-400">
                 {summary.totalEntries} événements enregistrés
               </p>
             </div>
@@ -176,18 +177,18 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
             {onExport && (
               <button
                 onClick={onExport}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="p-1.5 text-gray-400 hover:text-gray-500 hover:bg-gray-50 rounded-lg"
                 title="Exporter"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-4 h-4" />
               </button>
             )}
             {onAddEntry && (
               <button
                 onClick={onAddEntry}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-xs"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 Ajouter
               </button>
             )}
@@ -196,7 +197,7 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 p-4 border-b border-gray-100">
+      <div className="grid grid-cols-4 gap-3 px-5 py-2.5 border-b border-gray-50">
         <StatBadge
           label="Critiques"
           value={summary.byImportance.critical}
@@ -220,24 +221,24 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="px-6 py-3 border-b border-gray-100 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2 flex-1">
-          <Search className="w-4 h-4 text-gray-400" />
+      <div className="px-5 py-2.5 border-b border-gray-50 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5 flex-1">
+          <Search className="w-3.5 h-3.5 text-gray-300" />
           <input
             type="text"
             placeholder="Rechercher..."
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
-            className="flex-1 text-sm border-0 bg-transparent focus:ring-0 placeholder-gray-400"
+            className="flex-1 text-xs border-0 bg-transparent focus:ring-0 placeholder-gray-300 text-gray-500"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Filter className="w-3.5 h-3.5 text-gray-300" />
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value as JournalEntryType | 'all')}
-            className="text-sm border-0 bg-transparent focus:ring-0"
+            className="text-xs border-0 bg-transparent focus:ring-0 text-gray-500"
           >
             <option value="all">Tous les types</option>
             <option value="milestone_completed">Jalons atteints</option>
@@ -251,7 +252,7 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
           <select
             value={filterImportance}
             onChange={e => setFilterImportance(e.target.value as JournalEntryImportance | 'all')}
-            className="text-sm border-0 bg-transparent focus:ring-0"
+            className="text-xs border-0 bg-transparent focus:ring-0 text-gray-500"
           >
             <option value="all">Toutes importances</option>
             <option value="critical">Critique</option>
@@ -265,9 +266,9 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
       {/* Journal Entries */}
       <div className="max-h-[500px] overflow-y-auto">
         {filteredEntries.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>Aucune entrée trouvée</p>
+          <div className="px-5 py-8 text-center text-gray-400">
+            <BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />
+            <p className="text-xs">Aucune entrée trouvée</p>
           </div>
         ) : (
           Array.from(groupedByDate.entries()).map(([dateKey, dateEntries]) => {
@@ -275,17 +276,17 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
             const date = new Date(dateKey);
 
             return (
-              <div key={dateKey} className="border-b border-gray-100 last:border-0">
+              <div key={dateKey} className="border-b border-gray-50 last:border-0">
                 <button
                   onClick={() => toggleDate(dateKey)}
-                  className="w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50"
+                  className="w-full px-5 py-2.5 flex items-center justify-between hover:bg-gray-50/50"
                 >
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-gray-300" />
+                    <span className="text-xs font-medium text-gray-600">
                       {formatDate(date)}
                     </span>
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+                    <span className="px-1.5 py-0.5 text-[10px] bg-gray-50 text-gray-400 rounded-full">
                       {dateEntries.length}
                     </span>
                   </div>
@@ -297,7 +298,7 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
                 </button>
 
                 {isExpanded && (
-                  <div className="px-6 pb-4 space-y-2">
+                  <div className="px-5 pb-3 space-y-1.5">
                     {dateEntries.map(entry => (
                       <JournalEntryCard
                         key={entry.id}
@@ -315,13 +316,13 @@ export const ProjectJournalView: React.FC<ProjectJournalViewProps> = ({
 
       {/* Highlights */}
       {summary.highlights.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Événements marquants</h4>
-          <div className="flex flex-wrap gap-2">
+        <div className="px-5 py-3 border-t border-gray-50 bg-gray-50/50">
+          <h4 className="text-xs font-medium text-gray-400 mb-1.5">Événements marquants</h4>
+          <div className="flex flex-wrap gap-1.5">
             {summary.highlights.slice(0, 5).map(entry => (
               <span
                 key={entry.id}
-                className="px-3 py-1 text-xs bg-white border border-gray-200 rounded-full cursor-pointer hover:bg-gray-50"
+                className="px-2.5 py-1 text-[10px] bg-white border border-gray-100 rounded-full cursor-pointer hover:bg-gray-50 text-gray-500"
                 onClick={() => onSelectEntry?.(entry)}
               >
                 {entry.title}
@@ -346,16 +347,16 @@ interface StatBadgeProps {
 
 const StatBadge: React.FC<StatBadgeProps> = ({ label, value, color }) => {
   const colors = {
-    red: 'bg-red-50 text-red-700',
-    orange: 'bg-orange-50 text-orange-700',
-    yellow: 'bg-yellow-50 text-yellow-700',
-    gray: 'bg-gray-50 text-gray-700',
+    red: 'bg-red-50/50 text-red-400',
+    orange: 'bg-orange-50/50 text-orange-400',
+    yellow: 'bg-amber-50/50 text-amber-400',
+    gray: 'bg-gray-50 text-gray-400',
   };
 
   return (
-    <div className={`p-3 rounded-lg text-center ${colors[color]}`}>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs">{label}</div>
+    <div className={`px-2.5 py-2 rounded-lg text-center ${colors[color]}`}>
+      <div className="text-sm font-medium">{value}</div>
+      <div className="text-[10px]">{label}</div>
     </div>
   );
 };
@@ -366,45 +367,45 @@ interface JournalEntryCardProps {
 }
 
 const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onSelect }) => {
-  const typeConfig = getTypeConfig(entry.type);
-  const importanceBadge = getImportanceBadge(entry.importance);
+  const typeConfig = getTypeConfig(entry.type as JournalEntryType);
+  const importanceBadge = getImportanceBadge(entry.importance as JournalEntryImportance);
 
   return (
     <div
-      className="p-3 bg-white border border-gray-100 rounded-lg hover:border-gray-200 cursor-pointer"
+      className="px-2.5 py-2 bg-white border border-gray-50 rounded-lg hover:border-gray-100 cursor-pointer"
       onClick={() => onSelect?.(entry)}
     >
-      <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-lg ${typeConfig.color}`}>
+      <div className="flex items-start gap-2.5">
+        <div className={`p-1.5 rounded-lg ${typeConfig.color}`}>
           {typeConfig.icon}
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-medium text-gray-900 truncate">{entry.title}</h4>
-            <span className={`px-2 py-0.5 text-xs rounded border ${importanceBadge.className}`}>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <h4 className="text-xs font-medium text-gray-600 truncate">{entry.title}</h4>
+            <span className={`px-1.5 py-0.5 text-[10px] rounded border ${importanceBadge.className}`}>
               {importanceBadge.label}
             </span>
             {entry.isAutoGenerated && (
-              <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+              <span className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-400 rounded">
                 Auto
               </span>
             )}
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-2">{entry.content}</p>
+          <p className="text-[11px] text-gray-400 line-clamp-2">{entry.content}</p>
 
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs text-gray-400">
+          <div className="flex items-center gap-2.5 mt-1">
+            <span className="text-[10px] text-gray-300">
               {formatTime(entry.timestamp)}
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="text-[10px] text-gray-300">
               {entry.category}
             </span>
             {entry.tags.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-gray-400" />
-                <span className="text-xs text-gray-400">
+              <div className="flex items-center gap-0.5">
+                <Tag className="w-2.5 h-2.5 text-gray-300" />
+                <span className="text-[10px] text-gray-300">
                   {entry.tags.slice(0, 2).join(', ')}
                 </span>
               </div>

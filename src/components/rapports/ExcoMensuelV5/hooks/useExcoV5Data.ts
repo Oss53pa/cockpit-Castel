@@ -328,6 +328,8 @@ export interface ImpactAxe {
   recommandation?: {
     actions_prioritaires: Array<{ titre: string; gain_jours: number }>;
   };
+  /** Résumé explicatif généré par l'algorithme pour expliquer l'impact de cet axe */
+  resumeExplicatif?: string;
 }
 
 export interface ScenarioSynthese {
@@ -408,6 +410,99 @@ function riskLevelFromScore(score: number): ImpactRiskLevel {
   if (score >= 50) return 'élevé';
   if (score >= 25) return 'moyen';
   return 'faible';
+}
+
+// ============================================================================
+// GÉNÉRATION DU RÉSUMÉ EXPLICATIF PAR AXE
+// ============================================================================
+
+/**
+ * Génère un résumé explicatif en langage naturel pour un axe d'impact.
+ * Explique ce que les données signifient concrètement pour le décideur.
+ * Focus sur les impacts opérationnels (pas les coûts financiers).
+ */
+function genererResumeAxe(
+  code: string,
+  label: string,
+  siReport: ImpactSiReport,
+  operationnel?: { actions: ImpactActions; jalons: ImpactJalons },
+  moisReport: number = 1,
+  moisAvantSoftOpening: number = 12,
+): string {
+  const { risqueLevel, semainesPerdues } = siReport;
+  const actionsRetard = operationnel?.actions.actions_nouvellement_en_retard ?? 0;
+  const jalonsKO = operationnel?.jalons.jalons_inatteignables ?? 0;
+  const velociteRequise = operationnel?.actions.ratio_acceleration ?? 1;
+  const tauxCompletion = operationnel?.actions.taux_completion_projete ?? 100;
+
+  // Évaluation de la criticité
+  const estCritique = risqueLevel === 'critique' || risqueLevel === 'élevé';
+
+  // Construction du résumé selon le contexte
+  const phrases: string[] = [];
+
+  // Phrase d'accroche selon le niveau de risque
+  if (risqueLevel === 'critique') {
+    phrases.push(`L'axe ${label} présente un risque critique qui nécessite une intervention immédiate.`);
+  } else if (risqueLevel === 'élevé') {
+    phrases.push(`L'axe ${label} est sous tension et requiert une vigilance accrue.`);
+  } else if (risqueLevel === 'moyen') {
+    phrases.push(`L'axe ${label} est globalement maîtrisé mais présente des points d'attention.`);
+  } else {
+    phrases.push(`L'axe ${label} est en bonne voie avec un risque faible.`);
+  }
+
+  // Semaines perdues sur chemin critique
+  if (semainesPerdues > 4) {
+    phrases.push(`Un report de ${moisReport} mois entraînerait une perte de ${semainesPerdues} semaines sur le chemin critique.`);
+  } else if (semainesPerdues > 0) {
+    phrases.push(`Impact de ${semainesPerdues} semaine(s) sur le planning global.`);
+  }
+
+  // Actions en retard
+  if (actionsRetard > 3) {
+    phrases.push(`${actionsRetard} actions passeraient en retard, créant un effet domino sur les axes dépendants.`);
+  } else if (actionsRetard > 0) {
+    phrases.push(`${actionsRetard} action(s) supplémentaire(s) passeraient en retard.`);
+  }
+
+  // Jalons inatteignables
+  if (jalonsKO > 1) {
+    phrases.push(`${jalonsKO} jalons deviendraient inatteignables avant le soft opening, compromettant le calendrier global.`);
+  } else if (jalonsKO === 1) {
+    phrases.push(`1 jalon deviendrait inatteignable, nécessitant une replanification.`);
+  }
+
+  // Vélocité requise
+  if (velociteRequise > 3) {
+    phrases.push(`Pour rattraper le retard, il faudrait multiplier par ${velociteRequise} la cadence actuelle — ce qui est difficilement réalisable.`);
+  } else if (velociteRequise > 1.5) {
+    phrases.push(`Une accélération de x${velociteRequise} serait nécessaire pour tenir les délais.`);
+  }
+
+  // Taux de complétion
+  if (tauxCompletion < 50 && estCritique) {
+    phrases.push(`Avec seulement ${tauxCompletion}% de complétion projetée, cet axe risque d'être le maillon faible à l'ouverture.`);
+  } else if (tauxCompletion < 70 && estCritique) {
+    phrases.push(`La complétion projetée de ${tauxCompletion}% laisse peu de marge pour les imprévus.`);
+  }
+
+  // Fenêtre temporelle
+  const moisRestantsApresReport = moisAvantSoftOpening - moisReport;
+  if (moisRestantsApresReport < 3 && estCritique) {
+    phrases.push(`Moins de 3 mois restants après report : marge de manœuvre quasi nulle pour les corrections.`);
+  } else if (moisRestantsApresReport < 6 && estCritique) {
+    phrases.push(`Fenêtre de ${moisRestantsApresReport} mois restants : tout retard supplémentaire serait critique.`);
+  }
+
+  // Conclusion actionnable
+  if (risqueLevel === 'critique') {
+    phrases.push(`Recommandation : arbitrage urgent en EXCO pour débloquer les actions prioritaires.`);
+  } else if (risqueLevel === 'élevé') {
+    phrases.push(`Recommandation : renforcer le suivi hebdomadaire et identifier les leviers d'accélération.`);
+  }
+
+  return phrases.join(' ');
 }
 
 // ============================================================================
@@ -929,6 +1024,18 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
     if (impactJalons.jalons_inatteignables > 0 || impactActions.ratio_acceleration > 3) {
       axesCritiquesOps.push(impact.label);
     }
+
+    // Générer le résumé explicatif pour les axes critiques ou élevés
+    if (impact.siReport.risqueLevel === 'critique' || impact.siReport.risqueLevel === 'élevé') {
+      impact.resumeExplicatif = genererResumeAxe(
+        impact.code,
+        impact.label,
+        impact.siReport,
+        impact.operationnel,
+        moisReport,
+        moisAvantSoftOpening,
+      );
+    }
   }
 
   const totaux_operationnels = {
@@ -937,6 +1044,20 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
     taux_completion_global: completionDenominator > 0 ? Math.round(completionNumerator / completionDenominator) : 100,
     axes_critiques: axesCritiquesOps,
   };
+
+  // Générer les résumés pour les axes critiques/élevés qui n'ont pas encore de résumé
+  for (const impact of impactsParAxe) {
+    if (!impact.resumeExplicatif && (impact.siReport.risqueLevel === 'critique' || impact.siReport.risqueLevel === 'élevé')) {
+      impact.resumeExplicatif = genererResumeAxe(
+        impact.code,
+        impact.label,
+        impact.siReport,
+        impact.operationnel,
+        moisReport,
+        moisAvantSoftOpening,
+      );
+    }
+  }
 
   return {
     moisReport,
