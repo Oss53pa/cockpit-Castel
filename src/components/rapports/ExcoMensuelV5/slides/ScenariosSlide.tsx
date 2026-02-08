@@ -28,10 +28,10 @@ const SCORE_COLORS: Record<ScenarioRiskLevel, { color: string; bg: string }> = {
 };
 
 function fmtFCFA(v: number): string {
-  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}Md`;
+  if (v >= 1e9) return `${Math.round(v / 1e9)}Md`;
   if (v >= 1e6) return `${Math.round(v / 1e6)}M`;
   if (v >= 1e3) return `${Math.round(v / 1e3)}k`;
-  return `${v}`;
+  return `${Math.round(v)}`;
 }
 
 type TabId = 'axes' | 'synthese';

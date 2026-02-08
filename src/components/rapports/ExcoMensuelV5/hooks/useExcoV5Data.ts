@@ -488,7 +488,7 @@ function genererResumeAxe(
   }
 
   // Fenêtre temporelle
-  const moisRestantsApresReport = moisAvantSoftOpening - moisReport;
+  const moisRestantsApresReport = Math.round(moisAvantSoftOpening - moisReport);
   if (moisRestantsApresReport < 3 && estCritique) {
     phrases.push(`Moins de 3 mois restants après report : marge de manœuvre quasi nulle pour les corrections.`);
   } else if (moisRestantsApresReport < 6 && estCritique) {
@@ -528,8 +528,8 @@ export function generateScenariosV2(inputs: ScenarioInputs, moisReport: number):
   const { budgetSynthese: bs, comparaisonAxes: ca, criticalPath: cp, joursRestants, kpis, axesData } = inputs;
 
   const joursAvantSoftOpening = joursRestants - SOFT_OPENING_OFFSET_JOURS;
-  const moisAvantSoftOpening = Math.max(0, joursAvantSoftOpening / 30);
-  const moisAvantGrandOpening = Math.max(1, joursRestants / 30);
+  const moisAvantSoftOpening = Math.max(0, Math.round(joursAvantSoftOpening / 30));
+  const moisAvantGrandOpening = Math.max(1, Math.round(joursRestants / 30));
   const fa = facteurAcceleration(moisReport, moisAvantGrandOpening);
   const nbCritiques = cp?.actionsNoMargin ?? 0;
 

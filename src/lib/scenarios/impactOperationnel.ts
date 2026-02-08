@@ -108,9 +108,9 @@ export function calculerImpactActions(
   return {
     actions_nouvellement_en_retard: nouvellementEnRetard,
     taux_completion_projete: tauxCompletionProjete,
-    velocite_actuelle: Math.round(velociteActuelle * 10) / 10,
-    velocite_requise: Math.round(velociteRequise * 10) / 10,
-    ratio_acceleration: Math.round(ratioAcceleration * 10) / 10,
+    velocite_actuelle: Math.round(velociteActuelle),
+    velocite_requise: Math.round(velociteRequise),
+    ratio_acceleration: Math.round(ratioAcceleration),
     actions_critiques_impactees: actionsCritiques,
   };
 }
