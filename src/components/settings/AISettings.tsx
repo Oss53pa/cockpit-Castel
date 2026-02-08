@@ -125,25 +125,25 @@ export function AISettings() {
     {
       id: 'hybrid',
       label: 'Hybride (Recommande)',
-      description: 'Local + OpenRouter en parallele pour des analyses completes',
+      description: 'Local et OpenRouter',
       icon: Zap,
     },
     {
       id: 'local',
-      label: 'Algorithme Local',
-      description: 'Analyse basee sur des regles, fonctionne hors-ligne',
+      label: 'Local',
+      description: 'Algorithme integre',
       icon: Cpu,
     },
     {
       id: 'openrouter',
       label: 'OpenRouter',
-      description: 'Acces a Claude, GPT-4, Gemini et autres modeles',
+      description: 'Multi-modeles',
       icon: Zap,
     },
     {
       id: 'anthropic',
       label: 'Anthropic',
-      description: 'Acces direct a Claude (API officielle)',
+      description: 'Claude direct',
       icon: Cloud,
     },
   ];

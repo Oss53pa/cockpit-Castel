@@ -395,6 +395,7 @@ export function useProph3tConfig(): UseProph3tConfigReturn {
 
   const isConfigured = useMemo(() => {
     if (config.provider === 'local') return true;
+    if (config.provider === 'hybrid') return !!config.openrouterApiKey;
     if (config.provider === 'openrouter') return !!config.openrouterApiKey;
     if (config.provider === 'anthropic') return !!config.anthropicApiKey;
     return false;

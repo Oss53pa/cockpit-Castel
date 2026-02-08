@@ -13,6 +13,7 @@ export * from './useImportIA';
 export * from './useSync';
 export * from './useProph3t';
 export * from './useProph3tProactive';
+export * from './useProph3tDashboard';
 export * from './useSites';
 export * from './useProjectConfig';
 export * from './useCatalogueData';

@@ -61,7 +61,7 @@ export function Proph3tConfigModal({ isOpen, onClose }: Proph3tConfigModalProps)
     setTestError(null);
 
     try {
-      if (provider === 'openrouter' && openrouterKey) {
+      if ((provider === 'openrouter' || provider === 'hybrid') && openrouterKey) {
         const response = await fetch('https://openrouter.ai/api/v1/models', {
           headers: {
             'Authorization': `Bearer ${openrouterKey}`,
@@ -136,10 +136,11 @@ export function Proph3tConfigModal({ isOpen, onClose }: Proph3tConfigModalProps)
           {/* Provider Selection */}
           <div>
             <label className="block text-sm font-medium text-primary-700 mb-2">Provider IA</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {[
-                { value: 'local', label: 'Local', desc: 'Algorithme intégré' },
-                { value: 'openrouter', label: 'OpenRouter', desc: 'Multi-modèles' },
+                { value: 'hybrid', label: 'Hybride (Recommande)', desc: 'Local et OpenRouter' },
+                { value: 'local', label: 'Local', desc: 'Algorithme integre' },
+                { value: 'openrouter', label: 'OpenRouter', desc: 'Multi-modeles' },
                 { value: 'anthropic', label: 'Anthropic', desc: 'Claude direct' },
               ].map(p => (
                 <button
@@ -159,8 +160,8 @@ export function Proph3tConfigModal({ isOpen, onClose }: Proph3tConfigModalProps)
             </div>
           </div>
 
-          {/* OpenRouter Config */}
-          {provider === 'openrouter' && (
+          {/* OpenRouter Config (also shown for hybrid) */}
+          {(provider === 'openrouter' || provider === 'hybrid') && (
             <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-purple-800">OpenRouter</h3>
@@ -279,7 +280,7 @@ export function Proph3tConfigModal({ isOpen, onClose }: Proph3tConfigModalProps)
                 variant="outline"
                 size="sm"
                 onClick={testConnection}
-                disabled={testStatus === 'testing' || (provider === 'openrouter' ? !openrouterKey : !anthropicKey)}
+                disabled={testStatus === 'testing' || ((provider === 'openrouter' || provider === 'hybrid') ? !openrouterKey : !anthropicKey)}
               >
                 {testStatus === 'testing' ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />

@@ -15,6 +15,7 @@ import {
   Building2,
   Layers,
   Home,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores';
@@ -27,9 +28,10 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
+  labelClassName?: string;
 }
 
-function NavItem({ to, icon, label, collapsed }: NavItemProps) {
+function NavItem({ to, icon, label, collapsed, labelClassName }: NavItemProps) {
   return (
     <NavLink
       to={to}
@@ -46,7 +48,7 @@ function NavItem({ to, icon, label, collapsed }: NavItemProps) {
       }
     >
       {icon}
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && <span className={labelClassName}>{label}</span>}
     </NavLink>
   );
 }
@@ -62,6 +64,7 @@ const navItems = [
   { to: '/risques', icon: <AlertTriangle className="h-5 w-5" />, label: 'Risques' },
   { to: '/alertes', icon: <Bell className="h-5 w-5" />, label: 'Alertes' },
   { to: '/rapports', icon: <FileText className="h-5 w-5" />, label: 'Rapports' },
+  { to: '/proph3t', icon: <Brain className="h-5 w-5" />, label: 'Proph3t', labelClassName: 'font-display' },
 ];
 
 export function Sidebar() {
@@ -103,6 +106,7 @@ export function Sidebar() {
             icon={item.icon}
             label={item.label}
             collapsed={sidebarCollapsed}
+            labelClassName={item.labelClassName}
           />
         ))}
       </nav>

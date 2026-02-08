@@ -18,6 +18,7 @@ import {
   SharedReportPage,
   ExternalUpdateRouter,
   SynchronisationPage,
+  Proph3tPage,
 } from '@/pages';
 import { MonthlyReportPage } from '@/components/rapports/ManagerEmail';
 import { useAuthStore } from '@/stores/authStore';
@@ -148,6 +149,7 @@ function AppContent() {
           <Route path="/risques" element={<RisquesPage />} />
           <Route path="/alertes" element={<AlertesPage />} />
           <Route path="/rapports" element={<RapportsPage />} />
+          <Route path="/proph3t" element={<Proph3tPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

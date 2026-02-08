@@ -3,7 +3,8 @@
  * Affiche les analyses IA et permet les interactions
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Brain,
   Send,
@@ -284,13 +285,15 @@ export function Proph3tWidget({
 function Proph3tProviderBadge() {
   const { config, isConfigured } = useProph3tConfig();
 
-  const providerLabels = {
+  const providerLabels: Record<string, string> = {
+    hybrid: 'Hybride',
     local: 'Local',
     openrouter: 'OpenRouter',
     anthropic: 'Claude',
   };
 
-  const providerColors = {
+  const providerColors: Record<string, string> = {
+    hybrid: 'bg-blue-500',
     local: 'bg-gray-500',
     openrouter: 'bg-purple-500',
     anthropic: 'bg-orange-500',
@@ -522,8 +525,17 @@ function ScoreBar({ label, value, icon }: { label: string; value: number; icon: 
 // ============================================================================
 
 function Proph3tRecommendationsPanel() {
+  const navigate = useNavigate();
   const recommendations = useProph3tRecommendations();
   const { analysis, isLoading, runAnalysis } = useProph3tQuickAnalysis();
+
+  const categoryRoutes: Record<string, string> = {
+    'Actions': '/actions',
+    'Risques': '/risques',
+    'Budget': '/budget',
+    'Planning': '/jalons',
+    'Jalons': '/jalons',
+  };
 
   const priorityColors = {
     1: 'bg-error-100 text-error-700 border-error-200',
@@ -556,7 +568,8 @@ function Proph3tRecommendationsPanel() {
       {recommendations.slice(0, 5).map((rec, i) => (
         <div
           key={i}
-          className={cn('p-3 rounded-lg border', priorityColors[rec.priority as keyof typeof priorityColors])}
+          onClick={() => { const route = categoryRoutes[rec.category]; if (route) navigate(route); }}
+          className={cn('p-3 rounded-lg border cursor-pointer hover:shadow-md transition-shadow', priorityColors[rec.priority as keyof typeof priorityColors])}
         >
           <div className="flex items-start justify-between mb-1">
             <span className="font-medium text-sm">{rec.title}</span>
@@ -709,6 +722,7 @@ function Proph3tChatPanel() {
 // ============================================================================
 
 function Proph3tProactivePanel() {
+  const navigate = useNavigate();
   const {
     insights,
     criticalCount,
@@ -720,6 +734,19 @@ function Proph3tProactivePanel() {
     config,
     updateConfig,
   } = useProph3tProactive();
+
+  const handleInsightClick = useCallback((insight: { entityType?: string; category?: string }) => {
+    // Navigation basée sur entityType ou category
+    const route = insight.entityType === 'action' ? '/actions'
+      : insight.entityType === 'jalon' ? '/jalons'
+      : insight.entityType === 'risque' ? '/risques'
+      : insight.entityType === 'budget' ? '/budget'
+      : insight.category === 'risk' ? '/risques'
+      : insight.category === 'budget' ? '/budget'
+      : insight.category === 'deadline' || insight.category === 'blocker' ? '/actions'
+      : null;
+    if (route) navigate(route);
+  }, [navigate]);
 
   const severityConfig = {
     critical: {
@@ -839,8 +866,9 @@ function Proph3tProactivePanel() {
             return (
               <div
                 key={insight.id}
+                onClick={() => handleInsightClick(insight)}
                 className={cn(
-                  'p-3 rounded-lg border transition-all',
+                  'p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md',
                   config.bg,
                   config.border
                 )}
@@ -899,7 +927,7 @@ function Proph3tProactivePanel() {
                     </div>
                   </div>
                   <button
-                    onClick={() => dismissInsight(insight.id)}
+                    onClick={(e) => { e.stopPropagation(); dismissInsight(insight.id); }}
                     className="p-1 hover:bg-white/50 rounded text-primary-400 hover:text-primary-600"
                     title="Ignorer"
                   >
