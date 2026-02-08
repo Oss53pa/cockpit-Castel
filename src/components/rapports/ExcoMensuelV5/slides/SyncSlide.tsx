@@ -56,55 +56,55 @@ export function SyncSlide({ data }: Props) {
       {/* ============ Alert Banner ============ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 18px', borderRadius: 8, marginBottom: 14,
+        padding: '14px 20px', borderRadius: 8, marginBottom: 16,
         backgroundColor: `${alertColor}12`, border: `1px solid ${alertColor}30`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: alertColor }}>!</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+          <span style={{ fontSize: 18, fontWeight: 600, color: alertColor }}>!</span>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: alertColor }}>{alertMsg.title}</div>
-            <div style={{ fontSize: 11, color: C.gray600, marginTop: 2 }}>{alertMsg.sub}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: alertColor }}>{alertMsg.title}</div>
+            <div style={{ fontSize: 13, color: C.gray600, marginTop: 2 }}>{alertMsg.sub}</div>
           </div>
         </div>
         <div style={{
-          padding: '8px 14px', borderRadius: 6,
+          padding: '10px 16px', borderRadius: 6,
           backgroundColor: C.navy, textAlign: 'center', flexShrink: 0,
-          marginLeft: 12, color: C.white,
+          marginLeft: 14, color: C.white,
         }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
             {ecartPts >= 0 ? '+' : ''}{ecartPts}
           </div>
-          <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.7 }}>
+          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.7 }}>
             Pts Écart
           </div>
         </div>
       </div>
 
       {/* ============ Main Grid: 3 colonnes ============ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
         {/* Col 1: Gauges + sync index */}
         <div style={{
-          padding: 14, backgroundColor: C.white, borderRadius: 8,
+          padding: 16, backgroundColor: C.white, borderRadius: 8,
           border: `1px solid ${C.gray200}`,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 12 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: C.gray500, textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.gray500, textTransform: 'uppercase', marginBottom: 6 }}>
                 Construction
               </div>
-              <Gauge value={ccPct} size={76} color="#6366F1" />
-              <div style={{ fontSize: 10, color: C.gray400, marginTop: 4 }}>
+              <Gauge value={ccPct} size={90} color="#6366F1" />
+              <div style={{ fontSize: 12, color: C.gray400, marginTop: 5 }}>
                 Δ {data.syncSnapshots.length >= 2
                   ? `${ccPct - data.syncSnapshots[data.syncSnapshots.length - 2].cc >= 0 ? '+' : ''}${ccPct - data.syncSnapshots[data.syncSnapshots.length - 2].cc} pts`
                   : '—'}
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: C.gray500, textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.gray500, textTransform: 'uppercase', marginBottom: 6 }}>
                 Mobilisation
               </div>
-              <Gauge value={mobPct} size={76} color={C.green} />
-              <div style={{ fontSize: 10, color: C.gray400, marginTop: 4 }}>
+              <Gauge value={mobPct} size={90} color={C.green} />
+              <div style={{ fontSize: 12, color: C.gray400, marginTop: 5 }}>
                 Δ {data.syncSnapshots.length >= 2
                   ? `${mobPct - data.syncSnapshots[data.syncSnapshots.length - 2].mob >= 0 ? '+' : ''}${mobPct - data.syncSnapshots[data.syncSnapshots.length - 2].mob} pts`
                   : '—'}
@@ -113,88 +113,88 @@ export function SyncSlide({ data }: Props) {
           </div>
           {/* Sync index bar */}
           <div>
-            <div style={{ fontSize: 10, color: C.gray500, marginBottom: 4 }}>Indice de synchronisation</div>
-            <div style={{ position: 'relative', height: 6, backgroundColor: C.gray200, borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(mobPct, 100)}%`, backgroundColor: C.green, borderRadius: 3, zIndex: 2 }} />
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(ccPct, 100)}%`, backgroundColor: '#6366F1', borderRadius: 3, zIndex: 3 }} />
+            <div style={{ fontSize: 12, color: C.gray500, marginBottom: 5 }}>Indice de synchronisation</div>
+            <div style={{ position: 'relative', height: 8, backgroundColor: C.gray200, borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(mobPct, 100)}%`, backgroundColor: C.green, borderRadius: 4, zIndex: 2 }} />
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(ccPct, 100)}%`, backgroundColor: '#6366F1', borderRadius: 4, zIndex: 3 }} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-              <div style={{ display: 'flex', gap: 8, fontSize: 9, color: C.gray400 }}>
-                <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 1, backgroundColor: '#6366F1', marginRight: 3, verticalAlign: 'middle' }} />CC</span>
-                <span><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 1, backgroundColor: C.green, marginRight: 3, verticalAlign: 'middle' }} />MOB</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <div style={{ display: 'flex', gap: 10, fontSize: 11, color: C.gray400 }}>
+                <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, backgroundColor: '#6366F1', marginRight: 4, verticalAlign: 'middle' }} />CC</span>
+                <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, backgroundColor: C.green, marginRight: 4, verticalAlign: 'middle' }} />MOB</span>
               </div>
-              <span style={{ fontSize: 9, color: C.gray400 }}>Cible {cible}%</span>
+              <span style={{ fontSize: 11, color: C.gray400 }}>Cible {cible}%</span>
             </div>
           </div>
           {/* Détail mobilisation par axe */}
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, textTransform: 'uppercase', marginBottom: 8 }}>Mobilisation par axe</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.gray100}` }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.gray400, textTransform: 'uppercase', marginBottom: 10 }}>Mobilisation par axe</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {mobAxesData.map(axe => (
                 <div key={axe.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <span style={{ fontSize: 11, color: C.gray600 }}>{axe.labelCourt}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: C.navy }}>{Math.round(axe.avancement)}%</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, color: C.gray600 }}>{axe.labelCourt}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>{Math.round(axe.avancement)}%</span>
                   </div>
-                  <div style={{ height: 4, backgroundColor: C.gray200, borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(axe.avancement, 100)}%`, backgroundColor: axe.color, borderRadius: 2 }} />
+                  <div style={{ height: 6, backgroundColor: C.gray200, borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(axe.avancement, 100)}%`, backgroundColor: axe.color, borderRadius: 3 }} />
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 8, paddingTop: 6, borderTop: `1px solid ${C.gray100}`, display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: C.gray500, fontStyle: 'italic' }}>Moyenne</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>{mobPct}%</span>
+            <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.gray100}`, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, color: C.gray500, fontStyle: 'italic' }}>Moyenne</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.navy }}>{mobPct}%</span>
             </div>
           </div>
         </div>
 
         {/* Col 2: Évolution chart */}
         <div style={{
-          padding: 14, backgroundColor: C.white, borderRadius: 8,
+          padding: 16, backgroundColor: C.white, borderRadius: 8,
           border: `1px solid ${C.gray200}`,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.navy }}>Évolution de l'écart</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.navy }}>Évolution de l'écart</div>
           </div>
-          <div style={{ display: 'flex', gap: 10, fontSize: 10, color: C.gray400, marginBottom: 8 }}>
-            <span><span style={{ display: 'inline-block', width: 12, height: 2, backgroundColor: C.green, marginRight: 3, verticalAlign: 'middle' }} />MOB</span>
-            <span><span style={{ display: 'inline-block', width: 12, height: 2, backgroundColor: C.gray400, marginRight: 3, verticalAlign: 'middle', borderTop: '1px dashed ' + C.gray400 }} />CC</span>
-            <span><span style={{ display: 'inline-block', width: 12, height: 2, backgroundColor: C.orange, marginRight: 3, verticalAlign: 'middle' }} />Écart</span>
+          <div style={{ display: 'flex', gap: 12, fontSize: 12, color: C.gray400, marginBottom: 10 }}>
+            <span><span style={{ display: 'inline-block', width: 14, height: 3, backgroundColor: C.green, marginRight: 4, verticalAlign: 'middle' }} />MOB</span>
+            <span><span style={{ display: 'inline-block', width: 14, height: 3, backgroundColor: C.gray400, marginRight: 4, verticalAlign: 'middle', borderTop: '2px dashed ' + C.gray400 }} />CC</span>
+            <span><span style={{ display: 'inline-block', width: 14, height: 3, backgroundColor: C.orange, marginRight: 4, verticalAlign: 'middle' }} />Écart</span>
           </div>
           <EvolutionChart snapshots={data.syncSnapshots} ccPct={ccPct} mobPct={mobPct} />
         </div>
 
         {/* Col 3: Scénarios de rattrapage */}
         <div style={{
-          padding: 14, backgroundColor: C.white, borderRadius: 8,
+          padding: 16, backgroundColor: C.white, borderRadius: 8,
           border: `1px solid ${C.gray200}`,
         }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.navy, marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 12 }}>
             Scénarios de rattrapage
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {scenarios.map((s, i) => (
-              <div key={i} style={{ padding: '8px 10px', borderRadius: 6, backgroundColor: C.gray50 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: s.isOptimal ? C.green : C.orange }}>{s.label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: C.gray500 }}>CC {s.projCC}% / MOB {s.projMOB}%</span>
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 6, backgroundColor: C.gray50 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: s.isOptimal ? C.green : C.orange }}>{s.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.gray500 }}>CC {s.projCC}% / MOB {s.projMOB}%</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 9, color: C.gray400, width: 22 }}>CC</span>
-                    <div style={{ flex: 1, height: 3, backgroundColor: C.gray200, borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(Math.abs(s.projCC), 100)}%`, backgroundColor: '#6366F1', borderRadius: 2 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.gray400, width: 28 }}>CC</span>
+                    <div style={{ flex: 1, height: 5, backgroundColor: C.gray200, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(Math.abs(s.projCC), 100)}%`, backgroundColor: '#6366F1', borderRadius: 3 }} />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 9, color: C.gray400, width: 22 }}>MOB</span>
-                    <div style={{ flex: 1, height: 3, backgroundColor: C.gray200, borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(Math.abs(s.projMOB), 100)}%`, backgroundColor: C.green, borderRadius: 2 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: C.gray400, width: 28 }}>MOB</span>
+                    <div style={{ flex: 1, height: 5, backgroundColor: C.gray200, borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(Math.abs(s.projMOB), 100)}%`, backgroundColor: C.green, borderRadius: 3 }} />
                     </div>
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: C.gray500, fontStyle: 'italic' }}>{s.comment}</div>
+                <div style={{ fontSize: 12, color: C.gray500, fontStyle: 'italic' }}>{s.comment}</div>
               </div>
             ))}
           </div>
@@ -204,28 +204,28 @@ export function SyncSlide({ data }: Props) {
       {/* ============ Risques liés à la désynchronisation ============ */}
       {desyncRisks.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: C.navy, marginBottom: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 12 }}>
             Risques liés à la désynchronisation
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${desyncRisks.length}, 1fr)`, gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${desyncRisks.length}, 1fr)`, gap: 14 }}>
             {desyncRisks.map((r, i) => (
               <div key={i} style={{
-                padding: '12px 14px', backgroundColor: C.white, borderRadius: 8,
+                padding: '14px 16px', backgroundColor: C.white, borderRadius: 8,
                 border: `1px solid ${C.gray200}`,
               }}>
                 <span style={{
-                  display: 'inline-block', fontSize: 9, fontWeight: 600,
-                  padding: '2px 8px', borderRadius: 3, marginBottom: 6,
+                  display: 'inline-block', fontSize: 11, fontWeight: 600,
+                  padding: '3px 10px', borderRadius: 4, marginBottom: 8,
                   backgroundColor: r.severity === 'haute' ? C.redBg : C.orangeBg,
                   color: r.severity === 'haute' ? C.red : C.orange,
                   textTransform: 'uppercase',
                 }}>
                   {r.severity}
                 </span>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.navy, marginBottom: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.navy, marginBottom: 5 }}>
                   {r.titre}
                 </div>
-                <div style={{ fontSize: 11, color: C.gray500 }}>{r.description}</div>
+                <div style={{ fontSize: 13, color: C.gray500 }}>{r.description}</div>
               </div>
             ))}
           </div>
@@ -260,11 +260,11 @@ function EvolutionChart({ snapshots, ccPct, mobPct }: { snapshots: ExcoV5Data['s
   const count = points.length;
 
   const W = 400;
-  const H = 150;
-  const padL = 30;
-  const padR = 38;
-  const padT = 10;
-  const padB = 22;
+  const H = 170;
+  const padL = 32;
+  const padR = 40;
+  const padT = 12;
+  const padB = 24;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
@@ -284,34 +284,34 @@ function EvolutionChart({ snapshots, ccPct, mobPct }: { snapshots: ExcoV5Data['s
       {yTicks.map(v => (
         <g key={v}>
           <line x1={padL} y1={toY(v)} x2={W - padR} y2={toY(v)} stroke={C.gray200} strokeWidth={0.5} />
-          <text x={padL - 4} y={toY(v) + 3} textAnchor="end" style={{ fontSize: 9, fill: C.gray400 }}>{v}%</text>
+          <text x={padL - 4} y={toY(v) + 3} textAnchor="end" style={{ fontSize: 11, fill: C.gray400 }}>{v}%</text>
         </g>
       ))}
 
       {/* X axis labels */}
       {labels.map((label, i) => (
-        <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" style={{ fontSize: 9, fill: C.gray400 }}>
+        <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" style={{ fontSize: 11, fill: C.gray400 }}>
           {label}
         </text>
       ))}
 
       {/* Construction line (dashed gray) */}
-      <path d={ccPath} fill="none" stroke={C.gray400} strokeWidth={1} strokeDasharray="4 3" />
+      <path d={ccPath} fill="none" stroke={C.gray400} strokeWidth={1.5} strokeDasharray="5 3" />
       {points.map((p, i) => (
-        <circle key={`cc-${i}`} cx={toX(i)} cy={toY(p.cc)} r={2} fill={C.gray400} />
+        <circle key={`cc-${i}`} cx={toX(i)} cy={toY(p.cc)} r={3} fill={C.gray400} />
       ))}
 
       {/* Mobilisation line (solid green) */}
-      <path d={mobPath} fill="none" stroke={C.green} strokeWidth={1.5} />
+      <path d={mobPath} fill="none" stroke={C.green} strokeWidth={2} />
       {points.map((p, i) => (
-        <circle key={`mob-${i}`} cx={toX(i)} cy={toY(p.mob)} r={2.5} fill={C.green} />
+        <circle key={`mob-${i}`} cx={toX(i)} cy={toY(p.mob)} r={3.5} fill={C.green} />
       ))}
 
       {/* End labels */}
-      <text x={toX(count - 1) + 5} y={toY(points[count - 1].mob) + 3}
-        style={{ fontSize: 9, fontWeight: 500, fill: C.green }}>{points[count - 1].mob}%</text>
-      <text x={toX(count - 1) + 5} y={toY(points[count - 1].cc) + 3}
-        style={{ fontSize: 9, fontWeight: 500, fill: C.gray400 }}>{points[count - 1].cc}%</text>
+      <text x={toX(count - 1) + 6} y={toY(points[count - 1].mob) + 4}
+        style={{ fontSize: 12, fontWeight: 600, fill: C.green }}>{points[count - 1].mob}%</text>
+      <text x={toX(count - 1) + 6} y={toY(points[count - 1].cc) + 4}
+        style={{ fontSize: 12, fontWeight: 600, fill: C.gray400 }}>{points[count - 1].cc}%</text>
     </svg>
   );
 }
