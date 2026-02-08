@@ -11,10 +11,10 @@ import {
   BookOpen,
   Scale,
   Clock,
+  Calendar,
   AlertTriangle,
   Zap,
   Loader2,
-  Info,
 } from 'lucide-react';
 
 import { VelocityDashboard } from '@/components/proph3t/VelocityDashboard';
@@ -22,6 +22,11 @@ import { ProjectJournalView } from '@/components/proph3t/ProjectJournalView';
 import { ReliabilityRadar } from '@/components/proph3t/ReliabilityRadar';
 import { CoherenceScanView } from '@/components/proph3t/CoherenceScanView';
 import { AlertPanel } from '@/components/proph3t/AlertPanel';
+import { CommitmentDashboard } from '@/components/proph3t/CommitmentDashboard';
+import { MeetingPrepView } from '@/components/proph3t/MeetingPrepView';
+import { DecisionAnalyzerUI } from '@/components/proph3t/DecisionAnalyzerUI';
+import { RetroPlanningView } from '@/components/proph3t/RetroPlanningView';
+import { NotificationCenter } from '@/components/proph3t/NotificationCenter';
 
 import { useProph3tDashboard } from '@/hooks/useProph3tDashboard';
 
@@ -52,7 +57,11 @@ type Proph3tTab =
   | 'health'
   | 'alerts'
   | 'journal'
-  | 'coherence';
+  | 'coherence'
+  | 'commitments'
+  | 'meetings'
+  | 'decisions'
+  | 'retroplanning';
 
 interface TabConfig {
   id: Proph3tTab;
@@ -64,6 +73,10 @@ const TABS: TabConfig[] = [
   { id: 'overview', label: 'Vue d\'ensemble', icon: <Brain className="w-4 h-4" /> },
   { id: 'velocity', label: 'Vélocité & Budget', icon: <TrendingUp className="w-4 h-4" /> },
   { id: 'health', label: 'Santé Projet', icon: <Gauge className="w-4 h-4" /> },
+  { id: 'commitments', label: 'Engagements', icon: <Target className="w-4 h-4" /> },
+  { id: 'meetings', label: 'Réunions', icon: <Clock className="w-4 h-4" /> },
+  { id: 'decisions', label: 'Décisions', icon: <Scale className="w-4 h-4" /> },
+  { id: 'retroplanning', label: 'Rétro-planning', icon: <Calendar className="w-4 h-4" /> },
   { id: 'alerts', label: 'Alertes', icon: <AlertTriangle className="w-4 h-4" /> },
   { id: 'journal', label: 'Journal', icon: <BookOpen className="w-4 h-4" /> },
   { id: 'coherence', label: 'Cohérence', icon: <Scale className="w-4 h-4" /> },
@@ -74,6 +87,10 @@ const TAB_DESCRIPTIONS: Record<Proph3tTab, string> = {
   overview: 'Synthèse des indicateurs clés du projet : avancement des actions, jalons, momentum et budget. Les points d\'attention signalent les blocages et risques à traiter en priorité.',
   velocity: 'Analyse de la vélocité de l\'équipe (rythme de complétion) et du taux de consommation budgétaire. Permet d\'anticiper les dérapages et d\'ajuster les ressources.',
   health: 'Évaluation de la charge de travail et du momentum projet. Détecte les signes de fatigue d\'équipe et les ralentissements pour agir avant qu\'ils n\'impactent les livrables.',
+  commitments: 'Suivi des engagements pris en réunion et leur taux de réalisation. Identifie les retards et la fiabilité par responsable.',
+  meetings: 'Préparation automatique des réunions projet. Points à aborder, décisions à prendre, risques à discuter et ordre du jour suggéré.',
+  decisions: 'Analyse structurée des décisions à prendre. Options, compromis, recommandations et prochaines étapes pour chaque point d\'arbitrage.',
+  retroplanning: 'Rétro-planning dynamique depuis la date de soft opening. Chemin critique, éléments en retard, marge et scénarios alternatifs.',
   alerts: 'Centre de gestion des alertes générées par l\'analyse prédictive. Priorisez, acquittez ou résolvez les alertes pour maintenir la visibilité sur les risques.',
   journal: 'Historique chronologique des événements significatifs du projet. Permet de retracer les décisions, les changements et les jalons marquants.',
   coherence: 'Vérification de la cohérence des données saisies : dates manquantes, jalons sans actions, incohérences entre entités. Aide à maintenir la qualité des données.',
@@ -112,9 +129,17 @@ export function Proph3tPage() {
               <p className="text-xs text-gray-400">Intelligence prédictive · Données temps réel</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-500 rounded-full text-[10px]">
-            <Zap className="w-3 h-3" />
-            <span>Connecté</span>
+          <div className="flex items-center gap-3">
+            <NotificationCenter
+              notifications={data.notifications}
+              onMarkAsRead={(id) => console.log('Mark read:', id)}
+              onMarkAllAsRead={() => console.log('Mark all read')}
+              onDismiss={(id) => console.log('Dismiss:', id)}
+            />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-500 rounded-full text-[10px]">
+              <Zap className="w-3 h-3" />
+              <span>Connecté</span>
+            </div>
           </div>
         </div>
       </div>
@@ -139,11 +164,20 @@ export function Proph3tPage() {
         </div>
       </div>
 
+      {/* Tab Description */}
+      <div className="px-6 py-2 bg-gray-50/50">
+        <p className="text-[10px] text-gray-400">{TAB_DESCRIPTIONS[activeTab]}</p>
+      </div>
+
       {/* Content */}
       <div className="p-6">
         {activeTab === 'overview' && <OverviewTab data={data} />}
         {activeTab === 'velocity' && <VelocityTab data={data} />}
         {activeTab === 'health' && <HealthTab data={data} />}
+        {activeTab === 'commitments' && <CommitmentsTab data={data} />}
+        {activeTab === 'meetings' && <MeetingsTab data={data} />}
+        {activeTab === 'decisions' && <DecisionsTab data={data} />}
+        {activeTab === 'retroplanning' && <RetroPlanningTab data={data} />}
         {activeTab === 'alerts' && <AlertsTab data={data} />}
         {activeTab === 'journal' && <JournalTab data={data} />}
         {activeTab === 'coherence' && <CoherenceTab />}
@@ -503,6 +537,53 @@ function JournalTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) 
     <ProjectJournalView
       entries={data.journalEntries}
       summary={data.journalSummary}
+    />
+  );
+}
+
+function CommitmentsTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) {
+  return (
+    <CommitmentDashboard
+      commitments={data.commitments}
+      stats={data.commitmentStats}
+      byOwner={data.commitmentsByOwner}
+      reliabilityScores={data.reliabilityScores}
+    />
+  );
+}
+
+function MeetingsTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) {
+  return (
+    <MeetingPrepView
+      prep={data.meetingPrep}
+    />
+  );
+}
+
+function DecisionsTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) {
+  if (!data.decisionAnalysis) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+        <Scale className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+        <h3 className="text-sm font-medium text-gray-500 mb-1">Aucune décision en attente</h3>
+        <p className="text-xs text-gray-400">Les analyses de décision apparaissent automatiquement lorsque des actions sont bloquées ou des risques critiques identifiés.</p>
+      </div>
+    );
+  }
+
+  return (
+    <DecisionAnalyzerUI
+      analysis={data.decisionAnalysis}
+    />
+  );
+}
+
+function RetroPlanningTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) {
+  return (
+    <RetroPlanningView
+      plan={data.retroPlan}
+      criticalPathAnalysis={data.criticalPathAnalysis}
+      scenarios={data.planningScenarios}
     />
   );
 }

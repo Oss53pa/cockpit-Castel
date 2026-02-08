@@ -16,13 +16,54 @@ import {
   Calendar,
   Bell,
 } from 'lucide-react';
-import type {
-  Commitment,
-  CommitmentStatus,
-  CommitmentStats,
-  CommitmentByOwner,
-} from '../../engines/proph3t/commitments/commitmentTracker';
-import type { ReliabilityScore } from '../../engines/proph3t/commitments/reliabilityScorer';
+// Types locaux (alignés sur les données construites par le hook)
+type CommitmentStatus = 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
+type CommitmentPriority = 'critical' | 'high' | 'medium' | 'low';
+
+interface CommitmentReminder {
+  id: string;
+  scheduledFor: Date;
+  sent: boolean;
+  sentAt?: Date;
+  channel: 'in_app' | 'email';
+}
+
+export interface Commitment {
+  id: string;
+  title: string;
+  description: string;
+  owner: string;
+  dueDate: Date;
+  completedAt?: Date;
+  status: CommitmentStatus;
+  priority: CommitmentPriority;
+  reminders: CommitmentReminder[];
+}
+
+export interface CommitmentStats {
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  overdue: number;
+  completionRate: number;
+  avgCompletionTime: number;
+}
+
+export interface CommitmentByOwner {
+  owner: string;
+  stats: {
+    total: number;
+    completed: number;
+    overdue: number;
+    reliabilityScore: number;
+  };
+}
+
+interface ReliabilityScore {
+  overallScore: number;
+  trend: 'improving' | 'stable' | 'declining';
+}
 
 // ============================================================================
 // TYPES
@@ -32,7 +73,7 @@ interface CommitmentDashboardProps {
   commitments: Commitment[];
   stats: CommitmentStats;
   byOwner: CommitmentByOwner[];
-  reliabilityScores?: Map<string, ReliabilityScore>;
+  reliabilityScores?: Record<string, ReliabilityScore>;
   onCreateCommitment?: () => void;
   onSelectCommitment?: (commitment: Commitment) => void;
   onStatusChange?: (id: string, status: CommitmentStatus) => void;
@@ -251,7 +292,7 @@ export const CommitmentDashboard: React.FC<CommitmentDashboardProps> = ({
               <OwnerReliabilityCard
                 key={owner.owner}
                 owner={owner}
-                score={reliabilityScores instanceof Map ? reliabilityScores.get(owner.owner) : (reliabilityScores as Record<string, ReliabilityScore> | undefined)?.[owner.owner]}
+                score={reliabilityScores?.[owner.owner]}
               />
             ))}
           </div>

@@ -4,7 +4,6 @@
 
 import React, { useState } from 'react';
 import {
-  Lightbulb,
   Scale,
   CheckCircle2,
   XCircle,
@@ -17,12 +16,49 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from 'lucide-react';
-import type {
-  DecisionAnalysis,
-  DecisionOption,
-  DecisionContext,
-} from '../../engines/proph3t/decisions/decisionAnalyzer';
-import type { AlternativeOption } from '../../engines/proph3t/decisions/alternativeGenerator';
+// Types locaux (alignés sur les données construites par le hook)
+type DecisionUrgency = 'immediate' | 'this_week' | 'this_month' | 'when_possible';
+
+interface DecisionContext {
+  category: string;
+  question: string;
+  background: string;
+  urgency: DecisionUrgency;
+  stakeholders: string[];
+  constraints: string[];
+  objectives: string[];
+}
+
+interface DecisionOption {
+  id: string;
+  name: string;
+  description: string;
+  pros: string[];
+  cons: string[];
+  risks: string[];
+  estimatedCost: number;
+  estimatedDuration: number;
+  feasibility: 'high' | 'medium' | 'low';
+  alignment: number;
+}
+
+export interface DecisionAnalysis {
+  context: DecisionContext;
+  options: DecisionOption[];
+  recommendation: {
+    optionId: string;
+    confidence: number;
+    rationale: string;
+  };
+  tradeoffs: Array<{ factor: string; optionA: string; optionB: string; winner: string }>;
+  nextSteps: string[];
+  deadline?: Date;
+}
+
+interface AlternativeOption extends DecisionOption {
+  creativity: 'conventional' | 'innovative' | 'radical';
+  implementation: string[];
+}
 
 // ============================================================================
 // TYPES
@@ -58,14 +94,8 @@ const getFeasibilityConfig = (feasibility: 'high' | 'medium' | 'low') => {
   return configs[feasibility];
 };
 
-const getImpactColor = (impact: 'high' | 'medium' | 'low') => {
-  const colors = {
-    high: 'border-red-200 bg-red-50',
-    medium: 'border-yellow-200 bg-yellow-50',
-    low: 'border-gray-200 bg-gray-50',
-  };
-  return colors[impact];
-};
+// getImpactColor used by OptionCard sub-component implicitly via config
+// keeping for reference but not as standalone function
 
 // ============================================================================
 // COMPOSANT PRINCIPAL

@@ -9,20 +9,62 @@ import {
   CheckCircle2,
   Clock,
   ChevronRight,
-  Play,
-  Pause,
   RefreshCw,
   Target,
   Layers,
   GitBranch,
 } from 'lucide-react';
-import type {
-  RetroPlan,
-  RetroplanItem,
-  PlanAdjustment,
-  CriticalPathAnalysis,
-  PlanningScenario,
-} from '../../engines/proph3t/planning/dynamicRetroPlanner';
+// Types locaux (alignés sur les données construites par le hook)
+interface RetroplanItem {
+  id: string;
+  type: 'jalon' | 'action';
+  name: string;
+  originalDate: Date;
+  currentDate: Date;
+  variance: number;
+  dependencies: string[];
+  dependents: string[];
+  isCriticalPath: boolean;
+  status: 'on_track' | 'at_risk' | 'delayed' | 'completed';
+  floatDays: number;
+}
+
+export interface RetroPlan {
+  id: string;
+  name: string;
+  targetDate: Date;
+  items: RetroplanItem[];
+  criticalPath: string[];
+  totalFloat: number;
+  healthScore: number;
+  lastUpdated: Date;
+  version: number;
+}
+
+interface PlanAdjustment {
+  itemId: string;
+  oldDate: Date;
+  newDate: Date;
+  reason: string;
+  cascadeEffect: string[];
+  approved: boolean;
+}
+
+export interface CriticalPathAnalysis {
+  path: RetroplanItem[];
+  totalDuration: number;
+  bottlenecks: Array<{ item: RetroplanItem; reason: string; impact: number }>;
+  recommendations: string[];
+}
+
+export interface PlanningScenario {
+  name: string;
+  description: string;
+  adjustments: PlanAdjustment[];
+  resultingEndDate: Date;
+  healthScore: number;
+  feasibility: 'high' | 'medium' | 'low';
+}
 
 // ============================================================================
 // TYPES
@@ -333,7 +375,7 @@ interface ListViewProps {
   onAdjust?: (itemId: string, newDate: Date) => void;
 }
 
-const ListView: React.FC<ListViewProps> = ({ items, onAdjust }) => (
+const ListView: React.FC<ListViewProps> = ({ items, onAdjust: _onAdjust }) => (
   <div className="divide-y divide-gray-100">
     {items.map(item => {
       const config = getStatusConfig(item.status);

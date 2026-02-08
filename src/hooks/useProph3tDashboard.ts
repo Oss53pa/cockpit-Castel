@@ -175,6 +175,166 @@ export interface JournalSummary {
 }
 
 // ============================================================================
+// TYPES — ENGAGEMENTS
+// ============================================================================
+
+export interface Commitment {
+  id: string;
+  title: string;
+  description: string;
+  owner: string;
+  dueDate: Date;
+  completedAt?: Date;
+  status: 'pending' | 'in_progress' | 'completed' | 'overdue' | 'cancelled';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  reminders: Array<{ id: string; scheduledFor: Date; sent: boolean; channel: 'in_app' | 'email' }>;
+}
+
+export interface CommitmentStats {
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  overdue: number;
+  completionRate: number;
+  avgCompletionTime: number;
+}
+
+export interface CommitmentByOwner {
+  owner: string;
+  stats: { total: number; completed: number; overdue: number; reliabilityScore: number };
+}
+
+// ============================================================================
+// TYPES — RÉUNIONS
+// ============================================================================
+
+export type MeetingType = 'exco' | 'comite_pilotage' | 'point_hebdo' | 'revue_technique' | 'crise' | 'custom';
+
+export interface MeetingPrep {
+  meetingType: MeetingType;
+  preparedAt: Date;
+  summary: {
+    headline: string;
+    projectHealth: 'green' | 'yellow' | 'red';
+    keyMetrics: Array<{ label: string; value: string; trend: 'up' | 'down' | 'stable' }>;
+    periodHighlights: string[];
+    concerns: string[];
+  };
+  talkingPoints: Array<{
+    id: string;
+    topic: string;
+    context: string;
+    suggestedPosition: string;
+    priority: 'must_mention' | 'should_mention' | 'nice_to_have';
+    relatedEntities: string[];
+  }>;
+  decisions: Array<{
+    id: string;
+    question: string;
+    context: string;
+    options: Array<{ label: string; pros: string[]; cons: string[] }>;
+    recommendation?: string;
+    impact: 'high' | 'medium' | 'low';
+  }>;
+  risksToDiscuss: Array<{ risk: { description: string }; reason: string; suggestedAction: string }>;
+  alertsOverview: { critical: number; high: number; medium: number };
+  suggestedAgenda: Array<{ order: number; title: string; duration: number }>;
+}
+
+// ============================================================================
+// TYPES — DÉCISIONS
+// ============================================================================
+
+export interface DecisionAnalysis {
+  context: {
+    category: string;
+    question: string;
+    background: string;
+    urgency: 'immediate' | 'this_week' | 'this_month' | 'when_possible';
+    stakeholders: string[];
+    constraints: string[];
+    objectives: string[];
+  };
+  options: Array<{
+    id: string;
+    name: string;
+    description: string;
+    pros: string[];
+    cons: string[];
+    risks: string[];
+    estimatedCost: number;
+    estimatedDuration: number;
+    feasibility: 'high' | 'medium' | 'low';
+    alignment: number;
+  }>;
+  recommendation: { optionId: string; confidence: number; rationale: string };
+  tradeoffs: Array<{ factor: string; optionA: string; optionB: string; winner: string }>;
+  nextSteps: string[];
+  deadline?: Date;
+}
+
+// ============================================================================
+// TYPES — RÉTRO-PLANNING
+// ============================================================================
+
+export interface RetroplanItem {
+  id: string;
+  type: 'jalon' | 'action';
+  name: string;
+  originalDate: Date;
+  currentDate: Date;
+  variance: number;
+  dependencies: string[];
+  dependents: string[];
+  isCriticalPath: boolean;
+  status: 'on_track' | 'at_risk' | 'delayed' | 'completed';
+  floatDays: number;
+}
+
+export interface RetroPlan {
+  id: string;
+  name: string;
+  targetDate: Date;
+  items: RetroplanItem[];
+  criticalPath: string[];
+  totalFloat: number;
+  healthScore: number;
+  lastUpdated: Date;
+  version: number;
+}
+
+export interface CriticalPathAnalysis {
+  path: RetroplanItem[];
+  totalDuration: number;
+  bottlenecks: Array<{ item: RetroplanItem; reason: string; impact: number }>;
+  recommendations: string[];
+}
+
+export interface PlanningScenario {
+  name: string;
+  description: string;
+  adjustments: Array<{ itemId: string; oldDate: Date; newDate: Date; reason: string; cascadeEffect: string[]; approved: boolean }>;
+  resultingEndDate: Date;
+  healthScore: number;
+  feasibility: 'high' | 'medium' | 'low';
+}
+
+// ============================================================================
+// TYPES — NOTIFICATIONS
+// ============================================================================
+
+export interface ProNotification {
+  id: string;
+  title: string;
+  message: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+  createdAt: Date;
+  actions?: Array<{ id: string; label: string; action: string; primary?: boolean }>;
+}
+
+// ============================================================================
 // INTERFACE PRINCIPALE
 // ============================================================================
 
@@ -206,6 +366,16 @@ export interface Proph3tDashboardData {
     risquesActifs: number;
     risquesCritiques: number;
   };
+  // Nouveaux modules
+  commitments: Commitment[];
+  commitmentStats: CommitmentStats;
+  commitmentsByOwner: CommitmentByOwner[];
+  meetingPrep: MeetingPrep;
+  decisionAnalysis: DecisionAnalysis | null;
+  retroPlan: RetroPlan;
+  criticalPathAnalysis: CriticalPathAnalysis;
+  planningScenarios: PlanningScenario[];
+  notifications: ProNotification[];
 }
 
 // ============================================================================
@@ -619,6 +789,406 @@ export function useProph3tDashboard(): Proph3tDashboardData {
       trends: [],
     };
 
+    // ========================================================================
+    // ENGAGEMENTS (dérivés des actions)
+    // ========================================================================
+    const commitments: Commitment[] = actions
+      .filter(a => a.statut !== 'termine' && a.date_fin_prevue)
+      .slice(0, 30)
+      .map(a => {
+        const dueDate = new Date(a.date_fin_prevue!);
+        const isOverdue = dueDate < today && a.statut !== 'termine';
+        return {
+          id: `cmt-${a.id}`,
+          title: a.titre || `Action #${a.id}`,
+          description: a.description || '',
+          owner: a.responsable || 'Non assigné',
+          dueDate,
+          status: a.statut === 'termine' ? 'completed' as const
+               : a.statut === 'bloque' ? 'overdue' as const
+               : isOverdue ? 'overdue' as const
+               : a.statut === 'en_cours' ? 'in_progress' as const
+               : 'pending' as const,
+          priority: a.priorite === 'critique' ? 'critical' as const
+                  : a.priorite === 'haute' ? 'high' as const
+                  : a.priorite === 'moyenne' ? 'medium' as const
+                  : 'low' as const,
+          reminders: [],
+        };
+      });
+
+    const commitmentStats: CommitmentStats = {
+      total: commitments.length,
+      pending: commitments.filter(c => c.status === 'pending').length,
+      inProgress: commitments.filter(c => c.status === 'in_progress').length,
+      completed: commitments.filter(c => c.status === 'completed').length,
+      overdue: commitments.filter(c => c.status === 'overdue').length,
+      completionRate: commitments.length > 0
+        ? (commitments.filter(c => c.status === 'completed').length / commitments.length) * 100
+        : 0,
+      avgCompletionTime: 14,
+    };
+
+    const commitmentsByOwner: CommitmentByOwner[] = owners.map(owner => {
+      const ownerCommitments = commitments.filter(c => c.owner === owner);
+      const completed = ownerCommitments.filter(c => c.status === 'completed').length;
+      const overdue = ownerCommitments.filter(c => c.status === 'overdue').length;
+      return {
+        owner,
+        stats: {
+          total: ownerCommitments.length,
+          completed,
+          overdue,
+          reliabilityScore: ownerCommitments.length > 0
+            ? Math.round(((completed / ownerCommitments.length) * 100) - (overdue * 5))
+            : 100,
+        },
+      };
+    });
+
+    // ========================================================================
+    // PRÉPARATION RÉUNION (synthèse automatique)
+    // ========================================================================
+    const overdueCount = globalStats.actionsEnRetard;
+    const blockedCount = globalStats.actionsBloquees;
+    const projectHealth = overdueCount > actions.length * 0.2 ? 'red' as const
+                        : overdueCount > actions.length * 0.1 ? 'yellow' as const
+                        : 'green' as const;
+
+    const talkingPoints: MeetingPrep['talkingPoints'] = [];
+    if (blockedCount > 0) {
+      talkingPoints.push({
+        id: 'tp-blocages',
+        topic: 'Points de blocage',
+        context: `${blockedCount} action(s) bloquée(s) nécessitant une décision`,
+        suggestedPosition: 'Demander arbitrage ou ressources pour débloquer',
+        priority: 'must_mention',
+        relatedEntities: [],
+      });
+    }
+    const imminentJalons = jalons.filter(j =>
+      j.statut !== 'atteint' && j.date_prevue &&
+      new Date(j.date_prevue) < new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000)
+    );
+    if (imminentJalons.length > 0) {
+      talkingPoints.push({
+        id: 'tp-jalons',
+        topic: 'Jalons imminents',
+        context: `${imminentJalons.length} jalon(s) prévu(s) dans les 2 prochaines semaines`,
+        suggestedPosition: 'Confirmer la tenue des dates ou alerter sur les risques',
+        priority: 'must_mention',
+        relatedEntities: [],
+      });
+    }
+    if (overdueCount > 0) {
+      talkingPoints.push({
+        id: 'tp-retards',
+        topic: 'Actions en retard',
+        context: `${overdueCount} action(s) en retard de livraison`,
+        suggestedPosition: 'Présenter les causes et le plan de rattrapage',
+        priority: 'should_mention',
+        relatedEntities: [],
+      });
+    }
+    if (globalStats.risquesCritiques > 0) {
+      talkingPoints.push({
+        id: 'tp-risques',
+        topic: 'Risques critiques',
+        context: `${globalStats.risquesCritiques} risque(s) de niveau critique`,
+        suggestedPosition: 'Présenter les plans de mitigation',
+        priority: 'must_mention',
+        relatedEntities: [],
+      });
+    }
+
+    const meetingDecisions: MeetingPrep['decisions'] = actions
+      .filter(a => a.statut === 'bloque')
+      .slice(0, 3)
+      .map(a => ({
+        id: `dec-${a.id}`,
+        question: `Comment débloquer "${a.titre}" ?`,
+        context: a.description || 'Action bloquée nécessitant une décision',
+        options: [
+          { label: 'Allouer ressources', pros: ['Résolution rapide'], cons: ['Coût additionnel'] },
+          { label: 'Réduire le scope', pros: ['Maintien délai'], cons: ['Fonctionnalité réduite'] },
+          { label: 'Reporter', pros: ['Pas de surcoût'], cons: ['Impact planning'] },
+        ],
+        impact: 'high' as const,
+      }));
+
+    const risksToDiscuss: MeetingPrep['risksToDiscuss'] = risques
+      .filter(r => r.status !== 'ferme' && (r.score ?? 0) >= 9)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 5)
+      .map(r => ({
+        risk: { description: r.description || r.titre || 'Risque sans description' },
+        reason: (r.score ?? 0) >= 15
+          ? 'Criticité maximale — attention immédiate'
+          : 'Risque élevé nécessitant un suivi rapproché',
+        suggestedAction: r.plan_mitigation || 'Définir un plan de mitigation',
+      }));
+
+    const pctActions = globalStats.actionsTotal > 0
+      ? Math.round((globalStats.actionsTerminees / globalStats.actionsTotal) * 100)
+      : 0;
+
+    const meetingPrep: MeetingPrep = {
+      meetingType: 'comite_pilotage',
+      preparedAt: new Date(),
+      summary: {
+        headline: projectHealth === 'green' ? 'Projet sous contrôle — Trajectoire nominale'
+                : projectHealth === 'yellow' ? 'Vigilance requise — Points d\'attention identifiés'
+                : 'Alerte projet — Actions correctives nécessaires',
+        projectHealth,
+        keyMetrics: [
+          { label: 'Avancement actions', value: `${pctActions}%`, trend: 'stable' },
+          { label: 'Actions en retard', value: `${overdueCount}`, trend: overdueCount > 0 ? 'down' : 'stable' },
+          { label: 'Jalons atteints', value: `${globalStats.jalonsAtteints}/${globalStats.jalonsTotal}`, trend: 'stable' },
+          { label: 'Budget consommé', value: `${percentUsed}%`, trend: 'stable' },
+        ],
+        periodHighlights: actionsTermineesRecemment.length > 0
+          ? [`${actionsTermineesRecemment.length} action(s) terminée(s) ce mois`]
+          : [],
+        concerns: [
+          ...(overdueCount > 0 ? [`${overdueCount} action(s) en retard`] : []),
+          ...(globalStats.risquesCritiques > 0 ? [`${globalStats.risquesCritiques} risque(s) critique(s)`] : []),
+        ],
+      },
+      talkingPoints,
+      decisions: meetingDecisions,
+      risksToDiscuss,
+      alertsOverview: {
+        critical: alertSummary.byLevel.critical,
+        high: alertSummary.byLevel.warning,
+        medium: alertSummary.byLevel.info,
+      },
+      suggestedAgenda: [
+        { order: 1, title: 'Avancement global', duration: 20 },
+        { order: 2, title: 'Budget et planning', duration: 20 },
+        { order: 3, title: 'Risques et alertes', duration: 15 },
+        { order: 4, title: 'Points d\'arbitrage', duration: 25 },
+        { order: 5, title: 'Plan d\'action', duration: 10 },
+      ],
+    };
+
+    // ========================================================================
+    // ANALYSE DE DÉCISION (basée sur les blocages)
+    // ========================================================================
+    const blockedActions = actions.filter(a => a.statut === 'bloque');
+    let decisionAnalysis: DecisionAnalysis | null = null;
+
+    if (blockedActions.length > 0) {
+      decisionAnalysis = {
+        context: {
+          category: 'schedule',
+          question: `Comment débloquer les ${blockedActions.length} action(s) bloquée(s) ?`,
+          background: `Le projet compte ${blockedActions.length} action(s) bloquée(s), impactant la vélocité globale et les jalons associés.`,
+          urgency: blockedActions.length > 3 ? 'immediate' : 'this_week',
+          stakeholders: [...new Set(blockedActions.map(a => a.responsable).filter(Boolean) as string[])],
+          constraints: ['Budget limité', 'Échéances contractuelles'],
+          objectives: ['Maintenir le planning', 'Préserver la qualité'],
+        },
+        options: [
+          {
+            id: 'opt-1',
+            name: 'Allouer ressources supplémentaires',
+            description: 'Mobiliser des ressources additionnelles pour débloquer les actions',
+            pros: ['Résolution rapide', 'Maintien du planning'],
+            cons: ['Coût additionnel', 'Disponibilité incertaine'],
+            risks: ['Surcharge d\'autres équipes'],
+            estimatedCost: 0,
+            estimatedDuration: 7,
+            feasibility: 'medium',
+            alignment: 70,
+          },
+          {
+            id: 'opt-2',
+            name: 'Réorganiser les priorités',
+            description: 'Redéfinir l\'ordre des tâches pour contourner les blocages',
+            pros: ['Pas de surcoût', 'Adaptabilité'],
+            cons: ['Décalage possible', 'Complexité de coordination'],
+            risks: ['Effets domino'],
+            estimatedCost: 0,
+            estimatedDuration: 3,
+            feasibility: 'high',
+            alignment: 80,
+          },
+          {
+            id: 'opt-3',
+            name: 'Escalader aux décideurs',
+            description: 'Remonter les blocages au comité pour arbitrage',
+            pros: ['Décisions autorisées', 'Visibilité managériale'],
+            cons: ['Délai d\'arbitrage', 'Dépendance hiérarchique'],
+            risks: ['Lenteur du processus'],
+            estimatedCost: 0,
+            estimatedDuration: 14,
+            feasibility: 'high',
+            alignment: 60,
+          },
+        ],
+        recommendation: {
+          optionId: 'opt-2',
+          confidence: 75,
+          rationale: '"Réorganiser les priorités" est recommandée car elle est hautement faisable, sans coût supplémentaire, et offre le meilleur alignement avec les objectifs.',
+        },
+        tradeoffs: [
+          { factor: 'Coût', optionA: 'Allouer ressources', optionB: 'Réorganiser priorités', winner: 'Réorganiser priorités' },
+          { factor: 'Délai', optionA: 'Allouer ressources', optionB: 'Réorganiser priorités', winner: 'Réorganiser priorités' },
+          { factor: 'Faisabilité', optionA: 'Allouer ressources', optionB: 'Réorganiser priorités', winner: 'Réorganiser priorités' },
+          { factor: 'Risques', optionA: 'Allouer ressources', optionB: 'Réorganiser priorités', winner: 'Allouer ressources' },
+        ],
+        nextSteps: [
+          'Identifier les dépendances des actions bloquées',
+          'Proposer un reséquencement au prochain point hebdo',
+          'Documenter la décision et le rationale',
+        ],
+        deadline: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000),
+      };
+    }
+
+    // ========================================================================
+    // RÉTRO-PLANNING (basé sur jalons + actions)
+    // ========================================================================
+    const softOpeningDate = new Date('2026-12-01');
+    const retroItems: RetroplanItem[] = [];
+
+    // Ajouter les jalons
+    jalons.forEach(j => {
+      const prevue = j.date_prevue ? new Date(j.date_prevue) : softOpeningDate;
+      const variance = j.statut === 'atteint' ? 0
+        : prevue < today ? Math.ceil((today.getTime() - prevue.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      retroItems.push({
+        id: `j-${j.id}`,
+        type: 'jalon',
+        name: j.titre || `Jalon #${j.id}`,
+        originalDate: prevue,
+        currentDate: prevue,
+        variance,
+        dependencies: [],
+        dependents: [],
+        isCriticalPath: variance > 0 || (j.projectPhase === 'phase1_preparation'),
+        status: j.statut === 'atteint' ? 'completed'
+             : variance > 7 ? 'delayed'
+             : variance > 0 ? 'at_risk'
+             : 'on_track',
+        floatDays: Math.max(0, 30 - variance),
+      });
+    });
+
+    // Ajouter les actions principales
+    actions.filter(a => a.date_fin_prevue).slice(0, 30).forEach(a => {
+      const prevue = new Date(a.date_fin_prevue!);
+      const variance = a.statut === 'termine' ? 0
+        : prevue < today ? Math.ceil((today.getTime() - prevue.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      retroItems.push({
+        id: `a-${a.id}`,
+        type: 'action',
+        name: a.titre || `Action #${a.id}`,
+        originalDate: prevue,
+        currentDate: prevue,
+        variance,
+        dependencies: [],
+        dependents: [],
+        isCriticalPath: false,
+        status: a.statut === 'termine' ? 'completed'
+             : a.statut === 'bloque' ? 'delayed'
+             : variance > 3 ? 'delayed'
+             : variance > 0 ? 'at_risk'
+             : 'on_track',
+        floatDays: Math.max(0, 14 - variance),
+      });
+    });
+
+    retroItems.sort((a, b) => a.currentDate.getTime() - b.currentDate.getTime());
+
+    const criticalItems = retroItems.filter(i => i.isCriticalPath);
+    const delayedItems = retroItems.filter(i => i.status === 'delayed');
+    const atRiskItems = retroItems.filter(i => i.status === 'at_risk');
+    const totalFloat = retroItems.reduce((s, i) => s + i.floatDays, 0);
+    const healthScore = retroItems.length > 0
+      ? Math.round(100 - (delayedItems.length / retroItems.length) * 60 - (atRiskItems.length / retroItems.length) * 20)
+      : 100;
+
+    const retroPlan: RetroPlan = {
+      id: 'retro-main',
+      name: 'Rétro-planning Soft Opening',
+      targetDate: softOpeningDate,
+      items: retroItems,
+      criticalPath: criticalItems.map(i => i.id),
+      totalFloat,
+      healthScore: Math.max(0, healthScore),
+      lastUpdated: new Date(),
+      version: 1,
+    };
+
+    const criticalPathAnalysis: CriticalPathAnalysis = {
+      path: criticalItems.slice(0, 10),
+      totalDuration: Math.ceil((softOpeningDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+      bottlenecks: delayedItems
+        .filter(i => i.isCriticalPath)
+        .slice(0, 3)
+        .map(i => ({
+          item: i,
+          reason: i.variance > 14 ? 'Retard critique' : 'En retard',
+          impact: i.variance,
+        })),
+      recommendations: [
+        ...(delayedItems.length > 0 ? [`Traiter en priorité les ${delayedItems.length} éléments en retard`] : []),
+        ...(atRiskItems.length > 0 ? [`Surveiller les ${atRiskItems.length} éléments à risque`] : []),
+        'Maintenir les réunions de suivi hebdomadaires',
+      ],
+    };
+
+    const planningScenarios: PlanningScenario[] = [
+      {
+        name: 'Optimiste',
+        description: 'Rattrapage de tous les retards en 2 semaines',
+        adjustments: [],
+        resultingEndDate: softOpeningDate,
+        healthScore: 90,
+        feasibility: 'low',
+      },
+      {
+        name: 'Réaliste',
+        description: 'Rattrapage partiel, décalage modéré',
+        adjustments: [],
+        resultingEndDate: new Date(softOpeningDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+        healthScore: 70,
+        feasibility: 'high',
+      },
+      {
+        name: 'Pessimiste',
+        description: 'Accumulation des retards, décalage significatif',
+        adjustments: [],
+        resultingEndDate: new Date(softOpeningDate.getTime() + 90 * 24 * 60 * 60 * 1000),
+        healthScore: 40,
+        feasibility: 'high',
+      },
+    ];
+
+    // ========================================================================
+    // NOTIFICATIONS (dérivées des alertes)
+    // ========================================================================
+    const notifications: ProNotification[] = alerts
+      .filter(a => a.status !== 'resolved')
+      .slice(0, 20)
+      .map(a => ({
+        id: `notif-${a.id}`,
+        title: a.title,
+        message: a.message,
+        priority: a.level === 'emergency' ? 'urgent' as const
+               : a.level === 'critical' ? 'high' as const
+               : a.level === 'warning' ? 'normal' as const
+               : 'low' as const,
+        status: a.status === 'acknowledged' ? 'read' as const : 'delivered' as const,
+        createdAt: a.timestamp,
+        actions: a.suggestedActions.length > 0
+          ? [{ id: 'act-1', label: 'Voir détails', action: 'view', primary: true }]
+          : undefined,
+      }));
+
     return {
       isLoading,
       alerts,
@@ -635,6 +1205,16 @@ export function useProph3tDashboard(): Proph3tDashboardData {
       journalEntries,
       journalSummary,
       globalStats,
+      // Nouveaux modules
+      commitments,
+      commitmentStats,
+      commitmentsByOwner,
+      meetingPrep,
+      decisionAnalysis,
+      retroPlan,
+      criticalPathAnalysis,
+      planningScenarios,
+      notifications,
     };
   }, [actionsData, jalonsData, alertesData, budgetData, risquesData]);
 }

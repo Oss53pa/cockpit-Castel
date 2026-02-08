@@ -261,7 +261,7 @@ const AlertCard: React.FC<AlertCardProps> = ({
   alert,
   onAcknowledge,
   onResolve,
-  onEscalate,
+  onEscalate: _onEscalate,
   onClick,
 }) => {
   const levelConfig = getLevelConfig(alert.level);

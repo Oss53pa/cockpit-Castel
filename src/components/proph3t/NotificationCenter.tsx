@@ -12,14 +12,28 @@ import {
   Info,
   AlertCircle,
   Clock,
-  Filter,
   Trash2,
 } from 'lucide-react';
-import type {
-  Notification,
-  NotificationPriority,
-  NotificationStatus,
-} from '../../engines/proph3t/autonomous/notificationManager';
+// Types locaux (alignés sur les données construites par le hook)
+type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
+type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+
+interface NotificationAction {
+  id: string;
+  label: string;
+  action: string;
+  primary?: boolean;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  createdAt: Date;
+  actions?: NotificationAction[];
+}
 
 // ============================================================================
 // TYPES

@@ -5,7 +5,6 @@
 import React, { useState } from 'react';
 import {
   Calendar,
-  Users,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -13,16 +12,65 @@ import {
   FileText,
   ChevronDown,
   ChevronRight,
-  Download,
   Copy,
   Presentation,
 } from 'lucide-react';
-import type {
-  MeetingType,
-  MeetingPrep,
-  TalkingPoint,
-  DecisionPoint,
-} from '../../engines/proph3t/meetings/meetingPrepEngine';
+// Types locaux (alignés sur les données construites par le hook)
+type MeetingType = 'exco' | 'comite_pilotage' | 'point_hebdo' | 'revue_technique' | 'crise' | 'custom';
+
+interface TalkingPoint {
+  id: string;
+  topic: string;
+  context: string;
+  suggestedPosition: string;
+  priority: 'must_mention' | 'should_mention' | 'nice_to_have';
+  relatedEntities: string[];
+}
+
+interface DecisionPoint {
+  id: string;
+  question: string;
+  context: string;
+  options: Array<{ label: string; pros: string[]; cons: string[] }>;
+  recommendation?: string;
+  deadline?: Date;
+  impact: 'high' | 'medium' | 'low';
+}
+
+interface RiskHighlight {
+  risk: { description: string };
+  reason: string;
+  suggestedAction: string;
+}
+
+interface AlertOverview {
+  critical: number;
+  high: number;
+  medium: number;
+}
+
+interface AgendaItem {
+  order: number;
+  title: string;
+  duration: number;
+}
+
+export interface MeetingPrep {
+  meetingType: MeetingType;
+  preparedAt: Date;
+  summary: {
+    headline: string;
+    projectHealth: 'green' | 'yellow' | 'red';
+    keyMetrics: Array<{ label: string; value: string; trend: 'up' | 'down' | 'stable' }>;
+    periodHighlights: string[];
+    concerns: string[];
+  };
+  talkingPoints: TalkingPoint[];
+  decisions: DecisionPoint[];
+  risksToDiscuss: RiskHighlight[];
+  alertsOverview: AlertOverview;
+  suggestedAgenda: AgendaItem[];
+}
 
 // ============================================================================
 // TYPES
