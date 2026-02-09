@@ -2,7 +2,7 @@
 // SLIDE 2 - Agenda
 // ============================================================================
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Clock } from 'lucide-react';
 import { AGENDA_CONFIG } from '@/data/excoMensuelTemplate';
 
@@ -14,8 +14,43 @@ interface AgendaSlideProps {
   };
 }
 
+/**
+ * Parse duration string like "10 min", "1h30", "15 min" to minutes
+ */
+function parseDurationToMinutes(duree: string): number {
+  const hourMatch = duree.match(/(\d+)\s*h/i);
+  const minMatch = duree.match(/(\d+)\s*min/i);
+
+  let minutes = 0;
+  if (hourMatch) minutes += parseInt(hourMatch[1], 10) * 60;
+  if (minMatch) minutes += parseInt(minMatch[1], 10);
+
+  return minutes;
+}
+
+/**
+ * Format minutes to "Xh YYmin" string
+ */
+function formatMinutesToDuration(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+
+  if (hours === 0) return `${mins} min`;
+  if (mins === 0) return `${hours}h00`;
+  return `${hours}h${mins.toString().padStart(2, '0')}`;
+}
+
 export function AgendaSlide({ designSettings }: AgendaSlideProps) {
   const { primaryColor, fontFamily } = designSettings;
+
+  // Calculate total duration from agenda items
+  const totalDuration = useMemo(() => {
+    const totalMinutes = AGENDA_CONFIG.reduce(
+      (sum, item) => sum + parseDurationToMinutes(item.duree),
+      0
+    );
+    return formatMinutesToDuration(totalMinutes);
+  }, []);
 
   return (
     <div style={{ fontFamily }} className="h-full flex flex-col bg-white">
@@ -27,8 +62,7 @@ export function AgendaSlide({ designSettings }: AgendaSlideProps) {
         <h2 className="text-xl font-bold text-white">AGENDA</h2>
         <p className="text-white/80 text-sm flex items-center gap-2">
           <Clock className="h-4 w-4" />
-          {/* TODO: Calculate total duration from AGENDA_CONFIG.reduce((sum, item) => sum + parseDuration(item.duree), 0) */}
-          Durée totale : 2h00
+          Durée totale : {totalDuration}
         </p>
       </div>
 
