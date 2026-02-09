@@ -12,6 +12,12 @@ import {
   Database,
   CheckCircle,
   XCircle,
+  Megaphone,
+  CalendarClock,
+  Globe,
+  Shield,
+  FileSignature,
+  Boxes,
 } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -37,6 +43,13 @@ const RISQUE_CATEGORIES = [
   { id: 'financier', label: 'Budget / Finance', icon: Wallet, color: 'text-amber-600', bgColor: 'bg-amber-50' },
   { id: 'reglementaire', label: 'Réglementaire', icon: FileCheck, color: 'text-red-600', bgColor: 'bg-red-50' },
   { id: 'operationnel', label: 'Exploitation / Systèmes', icon: Settings, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+  { id: 'marketing', label: 'Marketing / Communication', icon: Megaphone, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+  { id: 'planning', label: 'Planning / Délais', icon: CalendarClock, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+  { id: 'organisationnel', label: 'Organisationnel', icon: Boxes, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+  { id: 'exploitation', label: 'Exploitation', icon: Settings, color: 'text-teal-600', bgColor: 'bg-teal-50' },
+  { id: 'externe', label: 'Externe / Contexte', icon: Globe, color: 'text-gray-600', bgColor: 'bg-gray-50' },
+  { id: 'securite', label: 'Sécurité', icon: Shield, color: 'text-rose-600', bgColor: 'bg-rose-50' },
+  { id: 'contractuel', label: 'Contractuel', icon: FileSignature, color: 'text-slate-600', bgColor: 'bg-slate-50' },
 ];
 
 const getNiveauConfig = (niveau: RisqueNiveau) => {

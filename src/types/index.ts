@@ -589,6 +589,12 @@ export const RISQUE_CATEGORIES = [
   'reputation',
   'reglementaire',
   'strategique',
+  'commercial',
+  'operationnel',
+  'marketing',
+  'organisationnel',
+  'exploitation',
+  'externe',
 ] as const;
 export type RisqueCategory = (typeof RISQUE_CATEGORIES)[number];
 
@@ -604,6 +610,12 @@ export const RISQUE_CATEGORY_LABELS: Record<RisqueCategory, string> = {
   reputation: 'Réputation',
   reglementaire: 'Réglementaire',
   strategique: 'Stratégique',
+  commercial: 'Commercial',
+  operationnel: 'Opérationnel',
+  marketing: 'Marketing',
+  organisationnel: 'Organisationnel',
+  exploitation: 'Exploitation',
+  externe: 'Externe',
 };
 
 export const RISQUE_STATUSES = [
@@ -1024,8 +1036,8 @@ export interface ActionContingence {
 
 export interface EvaluationHistorique {
   date: string;
-  probabilite: 1 | 2 | 3 | 4;
-  impact: 1 | 2 | 3 | 4;
+  probabilite: 1 | 2 | 3 | 4 | 5;
+  impact: 1 | 2 | 3 | 4 | 5;
   score: number;
   commentaire: string;
   auteur: string;
@@ -1470,8 +1482,8 @@ export interface Risque {
   // ═══════════════════════════════════════════════════════════════════════════
   // CHAMPS SIMPLIFIÉS (utilisés par le formulaire et les données)
   // ═══════════════════════════════════════════════════════════════════════════
-  probabilite?: 1 | 2 | 3 | 4;     // Champ simplifié
-  impact?: 1 | 2 | 3 | 4;          // Champ simplifié
+  probabilite?: 1 | 2 | 3 | 4 | 5;     // Champ simplifié
+  impact?: 1 | 2 | 3 | 4 | 5;          // Champ simplifié
   score?: number;                   // Champ simplifié (P × I)
   status?: RisqueStatus;            // Champ simplifié pour le statut
   responsable?: string;             // Champ simplifié pour le responsable
@@ -1507,13 +1519,13 @@ export interface Risque {
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Évaluation initiale (lecture seule après création)
-  probabilite_initiale: 1 | 2 | 3 | 4;
-  impact_initial: 1 | 2 | 3 | 4;
+  probabilite_initiale: 1 | 2 | 3 | 4 | 5;
+  impact_initial: 1 | 2 | 3 | 4 | 5;
   score_initial: number;          // Calculé: P × I
 
   // Évaluation actuelle (modifiable)
-  probabilite_actuelle: 1 | 2 | 3 | 4;
-  impact_actuel: 1 | 2 | 3 | 4;
+  probabilite_actuelle: 1 | 2 | 3 | 4 | 5;
+  impact_actuel: 1 | 2 | 3 | 4 | 5;
   score_actuel: number;           // Calculé: P × I
 
   // Indicateurs complémentaires

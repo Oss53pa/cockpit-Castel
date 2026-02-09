@@ -8,6 +8,7 @@ import { db } from '@/db';
 import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40, MIGRATION_V40_KEY } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
+import { migrateRisquesV2 } from '@/data/seedRisques';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -102,6 +103,12 @@ export async function initializeDatabase(): Promise<{
           console.log('[initDatabase] Migration v4.0:', v40Result);
         }
 
+        // Migration risques v2.0 (68 risques corrigés)
+        const risquesV2Result = await migrateRisquesV2();
+        if (!risquesV2Result.skipped) {
+          console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
+        }
+
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
       } else {
@@ -125,6 +132,12 @@ export async function initializeDatabase(): Promise<{
         const v40Result = await migrateV31toV40();
         if (v40Result.jalonsCreated > 0 || v40Result.actionsCreated > 0 || v40Result.jalonsUpdated > 0) {
           console.log('[initDatabase] Migration v4.0:', v40Result);
+        }
+
+        // Migration risques v2.0 (68 risques corrigés)
+        const risquesV2Result = await migrateRisquesV2();
+        if (!risquesV2Result.skipped) {
+          console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
         }
 
         isInitialized = true;
@@ -163,6 +176,7 @@ export async function forceReseed(): Promise<{
 
   // Reset migration flags pour forcer leur ré-exécution
   localStorage.removeItem(MIGRATION_V40_KEY);
+  localStorage.removeItem('migration_risques_v2_done');
 
   // Effacer TOUTES les données existantes
   await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams, db.project, db.sites, db.projectSettings], async () => {
@@ -205,15 +219,11 @@ export async function forceReseed(): Promise<{
   const result = await seedDatabaseV2();
   console.log('[initDatabase] Seed V2 terminé:', result);
 
-  // Charger les risques depuis PRODUCTION_DATA (non inclus dans seedDatabaseV2)
-  const { PRODUCTION_DATA } = await import('@/data/cosmosAngreProductionData');
-  if (PRODUCTION_DATA.risques?.length > 0) {
-    const defaultSite = await db.sites.toCollection().first();
-    const siteId = defaultSite?.id || 1;
-    const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId }));
-    await db.risques.bulkAdd(risquesWithSiteId);
-    console.log('[initDatabase] Risques ajoutés:', PRODUCTION_DATA.risques.length);
-  }
+  // Charger les 68 risques corrigés v2.0
+  const { seedRisquesCosmosAngre } = await import('@/data/seedRisques');
+  const risquesResult = await seedRisquesCosmosAngre(1, false);
+  console.log('[initDatabase] Risques v2.0 ajoutés:', risquesResult.count);
+  localStorage.setItem('migration_risques_v2_done', new Date().toISOString());
 
   // Migration v3.1 → v4.0 (mises à jour des jalons/actions restructurés)
   const v40Result = await migrateV31toV40();

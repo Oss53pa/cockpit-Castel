@@ -1,11 +1,11 @@
 // ============================================================================
-// COSMOS ANGRÉ - SEED RISQUES
-// Fonction pour charger les 46 risques réels dans la base de données IndexedDB
+// COSMOS ANGRÉ - SEED RISQUES v2.0
+// Charge les 68 risques corrigés dans la base de données IndexedDB
 // ============================================================================
 
 import { db } from '@/db';
-import { REGISTRE_RISQUES_COSMOS_ANGRE, type RisqueCosmosAngre } from './risquesCosmosAngre';
-import type { Risque, RisqueCategory, ProjectPhase, Axe } from '@/types';
+import { REGISTRE_RISQUES_COSMOS_ANGRE, RESPONSABLES_RISQUES, type RisqueCosmosAngre } from './risquesCosmosAngre';
+import type { Risque, RisqueCategory, Axe } from '@/types';
 
 // ============================================================================
 // HELPERS
@@ -22,20 +22,18 @@ const mapCategorie = (categorie: string): RisqueCategory => {
     case 'financier': return 'financier';
     case 'reglementaire': return 'reglementaire';
     case 'operationnel': return 'operationnel';
+    case 'planning': return 'planning';
+    case 'contractuel': return 'contractuel';
+    case 'securite': return 'securite';
+    case 'marketing': return 'marketing';
+    case 'organisationnel': return 'organisationnel';
+    case 'exploitation': return 'exploitation';
+    case 'externe': return 'externe';
+    case 'environnemental': return 'environnemental';
+    case 'juridique': return 'juridique';
+    case 'reputation': return 'reputation';
+    case 'strategique': return 'strategique';
     default: return 'operationnel';
-  }
-};
-
-/**
- * Convertit une phase du registre en ProjectPhase
- */
-const mapPhase = (phase: string): ProjectPhase => {
-  switch (phase) {
-    case 'phase1_preparation': return 'phase1_preparation';
-    case 'phase2_mobilisation': return 'phase2_mobilisation';
-    case 'phase3_lancement': return 'phase3_lancement';
-    case 'phase4_stabilisation': return 'phase4_stabilisation';
-    default: return 'phase2_mobilisation';
   }
 };
 
@@ -47,11 +45,25 @@ const mapAxe = (categorie: string): Axe => {
     case 'rh': return 'axe1_rh';
     case 'commercial': return 'axe2_commercial';
     case 'technique': return 'axe3_technique';
+    case 'planning': return 'axe3_technique';
     case 'financier': return 'axe4_budget';
+    case 'contractuel': return 'axe4_budget';
+    case 'marketing': return 'axe5_marketing';
     case 'operationnel': return 'axe6_exploitation';
+    case 'exploitation': return 'axe6_exploitation';
+    case 'securite': return 'axe6_exploitation';
     case 'reglementaire': return 'axe6_exploitation';
+    case 'organisationnel': return 'axe8_divers';
+    case 'externe': return 'axe8_divers';
     default: return 'axe6_exploitation';
   }
+};
+
+/**
+ * Résout le nom complet du responsable à partir des initiales
+ */
+const resolveResponsable = (initiales: string): string => {
+  return RESPONSABLES_RISQUES[initiales] || initiales;
 };
 
 /**
@@ -63,6 +75,8 @@ export const convertToDbRisque = (
 ): Omit<Risque, 'id'> => {
   const now = new Date().toISOString();
   const year = new Date().getFullYear();
+  const proprietaire = resolveResponsable(risque.responsable);
+  const statut = risque.statut === 'Atténué' ? 'attenue' : 'ouvert';
 
   return {
     // Identification
@@ -77,7 +91,7 @@ export const convertToDbRisque = (
     categorie: mapCategorie(risque.categorie),
     sous_categorie: null,
     axe_impacte: mapAxe(risque.categorie),
-    projectPhase: mapPhase(risque.phase),
+    projectPhase: 'phase2_mobilisation',
 
     // Identification
     date_identification: now,
@@ -92,28 +106,27 @@ export const convertToDbRisque = (
     score_actuel: risque.score,
 
     // Indicateurs complémentaires
-    tendance_risque: risque.tendance || 'stable',
+    tendance_risque: 'stable',
     detectabilite: 2,
     velocite: 'normale',
-    proximite: risque.phase === 'phase1_preparation' ? 'imminent' :
-               risque.phase === 'phase2_mobilisation' ? 'court_terme' : 'moyen_terme',
+    proximite: risque.score >= 12 ? 'imminent' : risque.score >= 8 ? 'court_terme' : 'moyen_terme',
 
     // Impact détaillé
     impact_cout: null,
     impact_delai_jours: null,
     impact_qualite: risque.impact >= 4 ? 'majeur' : risque.impact >= 3 ? 'modere' : 'faible',
     impact_reputation: risque.impact >= 4 ? 'majeur' : 'modere',
-    impact_securite: risque.categorie === 'reglementaire' ? 'majeur' : 'faible',
+    impact_securite: risque.categorie === 'securite' ? 'majeur' : 'faible',
     description_impact: null,
 
     // Statut
-    statut: 'open',
-    phase_traitement: 'identification',
+    statut,
+    phase_traitement: statut === 'attenue' ? 'traitement' : 'identification',
     date_derniere_evaluation: now,
     prochaine_revue: null,
 
     // Responsabilités
-    proprietaire: risque.proprietaire,
+    proprietaire,
     gestionnaire: null,
     validateur: 'DGA',
     equipe_response: [],
@@ -123,26 +136,19 @@ export const convertToDbRisque = (
 
     // Mitigation
     strategie_reponse: 'attenuer',
-    plan_mitigation: risque.mitigations.map(m => `- ${m.action} (${m.responsable}, ${m.deadline})`).join('\n'),
-    actions_mitigation: risque.mitigations.map((m, index) => ({
-      id: `${risque.code}-MIT-${String(index + 1).padStart(3, '0')}`,
-      action: m.action,
-      responsable: m.responsable,
-      deadline: m.deadline,
-      statut: m.statut === 'fait' ? 'termine' : m.statut === 'en_cours' ? 'en_cours' : 'planifie',
-      efficacite: null,
-    })),
+    plan_mitigation: null,
+    actions_mitigation: [],
     cout_mitigation: null,
     efficacite_prevue: null,
 
     // Contingence
-    plan_contingence: risque.actionImmediate || null,
-    declencheur_contingence: risque.indicateursDeclenchement?.join(', ') || null,
+    plan_contingence: null,
+    declencheur_contingence: null,
     cout_contingence: null,
     actions_contingence: [],
 
     // Liens
-    jalons_impactes: risque.jalonsImpactes,
+    jalons_impactes: [],
     actions_liees: [],
     risques_lies: [],
     opportunites_liees: [],
@@ -157,15 +163,15 @@ export const convertToDbRisque = (
       probabilite: risque.probabilite,
       impact: risque.impact,
       score: risque.score,
-      commentaire: 'Risque identifié lors du cadrage projet',
+      commentaire: 'Risque identifié lors du cadrage projet v2.0',
       auteur: 'Équipe Projet',
     }],
 
     // Alertes
-    alertes_actives: risque.niveau === 'critique',
-    seuil_alerte_score: risque.niveau === 'critique' ? 12 : 8,
+    alertes_actives: risque.score >= 12,
+    seuil_alerte_score: risque.score >= 12 ? 12 : 8,
     canal_alerte: ['email'],
-    notifier: [risque.proprietaire],
+    notifier: [proprietaire],
 
     // Audit
     version: 1,
@@ -181,8 +187,8 @@ export const convertToDbRisque = (
     probabilite: risque.probabilite,
     impact: risque.impact,
     score: risque.score,
-    status: 'open',
-    responsable: risque.proprietaire,
+    status: statut === 'attenue' ? 'attenue' : 'open',
+    responsable: proprietaire,
     createdAt: now,
     updatedAt: now,
   } as unknown as Omit<Risque, 'id'>;
@@ -194,8 +200,6 @@ export const convertToDbRisque = (
 
 /**
  * Charge tous les risques du registre dans la base de données
- * @param siteId ID du site (par défaut 1 pour Cosmos Angré)
- * @param clearExisting Si true, supprime les risques existants avant le chargement
  */
 export async function seedRisquesCosmosAngre(
   siteId: number = 1,
@@ -205,12 +209,10 @@ export async function seedRisquesCosmosAngre(
   let count = 0;
 
   try {
-    // Optionnellement, vider les risques existants
     if (clearExisting) {
       await db.risques.where('siteId').equals(siteId).delete();
     }
 
-    // Convertir et insérer chaque risque
     for (const risque of REGISTRE_RISQUES_COSMOS_ANGRE) {
       try {
         const dbRisque = convertToDbRisque(risque, siteId);
@@ -274,4 +276,42 @@ export async function getRisquesStats(siteId: number = 1): Promise<{
  */
 export async function clearRisques(siteId: number = 1): Promise<number> {
   return db.risques.where('siteId').equals(siteId).delete();
+}
+
+// ============================================================================
+// MIGRATION v2.0
+// ============================================================================
+
+const MIGRATION_RISQUES_V2_KEY = 'migration_risques_v2_done';
+
+/**
+ * Migre les risques vers la v2.0 (68 risques corrigés)
+ * - Supprime les anciens risques du site
+ * - Re-seed depuis REGISTRE_RISQUES_COSMOS_ANGRE
+ * - Idempotent via localStorage flag
+ */
+export async function migrateRisquesV2(siteId: number = 1): Promise<{
+  skipped: boolean;
+  deleted: number;
+  created: number;
+}> {
+  if (localStorage.getItem(MIGRATION_RISQUES_V2_KEY)) {
+    return { skipped: true, deleted: 0, created: 0 };
+  }
+
+  const existingCount = await db.risques.where('siteId').equals(siteId).count();
+  console.log(`[migrateRisquesV2] ${existingCount} risques existants, migration vers 68 risques corrigés...`);
+
+  const deleted = await db.risques.where('siteId').equals(siteId).delete();
+
+  const result = await seedRisquesCosmosAngre(siteId, false);
+
+  localStorage.setItem(MIGRATION_RISQUES_V2_KEY, new Date().toISOString());
+
+  console.log(`[migrateRisquesV2] Migration terminée: ${deleted} supprimés, ${result.count} créés`);
+  if (result.errors.length > 0) {
+    console.warn('[migrateRisquesV2] Erreurs:', result.errors);
+  }
+
+  return { skipped: false, deleted, created: result.count };
 }
