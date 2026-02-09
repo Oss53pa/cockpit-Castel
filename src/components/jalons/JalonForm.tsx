@@ -70,6 +70,16 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
     try {
       const today = new Date().toISOString().split('T')[0];
 
+      // Parse commentaires avec protection
+      let commentaires = jalon.commentaires;
+      if (data.commentaires_externes) {
+        try {
+          commentaires = JSON.parse(data.commentaires_externes);
+        } catch {
+          console.warn('Format commentaires invalide, conservation des existants');
+        }
+      }
+
       await updateJalon(jalon.id, {
         // Champs principaux (édition interne)
         ...(data.titre && { titre: data.titre }),
@@ -83,10 +93,12 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         // Statut et validation
         statut: data.statut,
         date_validation: data.date_validation || null,
+        // Notes et commentaires
+        ...(data.notes_mise_a_jour !== undefined && { notes_mise_a_jour: data.notes_mise_a_jour }),
+        commentaires,
         // Métadonnées
         date_derniere_maj: today,
         maj_par: data.responsable || jalon.responsable || '',
-        commentaires: data.commentaires_externes ? JSON.parse(data.commentaires_externes) : jalon.commentaires,
       });
 
       toast.success('Jalon mis à jour', `"${data.titre || jalon.titre}" a été enregistré`);

@@ -68,6 +68,10 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
         // Statut et avancement
         statut: data.statut,
         avancement: data.avancement,
+        // Notes, commentaires, liens (champs texte)
+        ...(data.notes_mise_a_jour !== undefined && { notes_mise_a_jour: data.notes_mise_a_jour }),
+        ...(data.commentaires_externes !== undefined && { commentaires_externes: data.commentaires_externes }),
+        ...(data.liens_documents !== undefined && { liens_documents: data.liens_documents }),
         sous_taches: data.sousTaches,
         livrables: data.livrables?.map(l => ({
           id: l.id,
