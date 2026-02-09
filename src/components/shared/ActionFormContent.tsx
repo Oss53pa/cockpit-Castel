@@ -39,7 +39,7 @@ import {
   PercentInput,
 } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Action, type Axe, type ProjectPhase } from '@/types';
+import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Action, type Axe, type ProjectPhase } from '@/types';
 import { calculerPourcentageAction } from '@/lib/calculations';
 
 // ============================================================================
@@ -176,6 +176,7 @@ export interface ActionFormSaveData {
   date_debut_prevue?: string;
   date_fin_prevue?: string;
   projectPhase?: ProjectPhase;
+  axe?: Axe;
   // Statut et avancement
   statut: StatutAction;
   avancement: number;
@@ -220,6 +221,7 @@ export function ActionFormContent({
   const [dateDebut, setDateDebut] = useState(action?.date_debut_prevue || '');
   const [echeance, setEcheance] = useState(action?.date_fin_prevue || '');
   const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(action?.projectPhase);
+  const [axe, setAxe] = useState<Axe | undefined>(action?.axe);
   // Indicateur si les dates ont été modifiées manuellement
   const [datesModifiedManually, setDatesModifiedManually] = useState(false);
 
@@ -284,7 +286,8 @@ export function ActionFormContent({
 
   // Calculs
   const selectedJalon = jalonId ? jalons.find(j => j.id === jalonId) : null;
-  const axeHerite = selectedJalon?.axe || action?.axe || null;
+  // Priorité: axe édité manuellement > axe du jalon sélectionné > axe de l'action
+  const axeEffectif = axe || selectedJalon?.axe || action?.axe || null;
 
   const calculerPriorite = useCallback((dateEcheance: string): 'haute' | 'moyenne' | 'basse' => {
     if (!dateEcheance) return 'moyenne';
@@ -567,6 +570,7 @@ export function ActionFormContent({
       date_debut_prevue: isCreate || dateDebut !== action?.date_debut_prevue ? dateDebut : undefined,
       date_fin_prevue: isCreate || echeance !== action?.date_fin_prevue ? echeance : undefined,
       projectPhase: isCreate || projectPhase !== action?.projectPhase ? projectPhase : undefined,
+      axe: isCreate || axe !== action?.axe ? axe : undefined,
       // Statut et avancement
       statut,
       avancement,
@@ -854,7 +858,22 @@ export function ActionFormContent({
                 </div>
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">Axe</div>
-                  <div className="font-medium truncate">{axeHerite ? AXE_LABELS[axeHerite] : '-'}</div>
+                  {canEditInternal ? (
+                    <Select
+                      value={axe || ''}
+                      onChange={(e) => setAxe(e.target.value as Axe || undefined)}
+                      className="h-7 text-sm"
+                    >
+                      <SelectOption value="">Hériter du jalon</SelectOption>
+                      {AXES.map((a) => (
+                        <SelectOption key={a} value={a}>
+                          {AXE_LABELS[a]}
+                        </SelectOption>
+                      ))}
+                    </Select>
+                  ) : (
+                    <div className="font-medium truncate">{axeEffectif ? AXE_LABELS[axeEffectif] : '-'}</div>
+                  )}
                 </div>
                 <div className="p-2 bg-white rounded border">
                   <div className="text-xs text-neutral-500">Statut</div>

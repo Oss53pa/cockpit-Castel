@@ -73,10 +73,11 @@ export function ActionWizard({
 
     try {
       const selectedJalon = jalons.find(j => j.id === data.jalonId);
-      const axeHerite = selectedJalon?.axe || null;
+      // Priorité: axe édité manuellement > axe du jalon sélectionné
+      const axeEffectif = data.axe || selectedJalon?.axe || null;
 
-      if (!axeHerite) {
-        toast.error('Erreur', 'Impossible de déterminer l\'axe depuis le jalon');
+      if (!axeEffectif) {
+        toast.error('Erreur', 'Impossible de déterminer l\'axe (sélectionnez un axe ou un jalon)');
         setIsSubmitting(false);
         return;
       }
@@ -95,13 +96,13 @@ export function ActionWizard({
 
       const actionId = await createAction({
         // Identification (auto-calculé)
-        id_action: generateActionId(axeHerite, data.jalonId),
-        code_wbs: `WBS-${AXE_PREFIXES[axeHerite]}-A${String(allActions.length + 1).padStart(3, '0')}`,
+        id_action: generateActionId(axeEffectif, data.jalonId),
+        code_wbs: `WBS-${AXE_PREFIXES[axeEffectif]}-A${String(allActions.length + 1).padStart(3, '0')}`,
         titre: data.titre,
         description: data.titre,
 
         // Classification (axe hérité du jalon)
-        axe: axeHerite,
+        axe: axeEffectif,
         phase: 'execution',
         projectPhase: data.projectPhase || undefined,
         categorie: 'operationnel',
