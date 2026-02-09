@@ -239,6 +239,8 @@ export function ExternalUpdatePage() {
             commentaires_externes: jalonData.commentaires_externes,
             date_validation: jalonData.date_validation,
             derniere_mise_a_jour_externe: new Date().toISOString(),
+            ...(jalonData.date_debut_prevue && { date_debut_prevue: jalonData.date_debut_prevue }),
+            ...(jalonData.date_prevue && { date_prevue: jalonData.date_prevue }),
           };
           // Utiliser updateJalon avec flag externe pour le tracking
           await updateJalon(link.entityId, jalonUpdate, { isExternal: true });

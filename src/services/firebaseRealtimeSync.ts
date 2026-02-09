@@ -174,6 +174,8 @@ export interface ExternalUpdateData {
       }>;
 
       // Jalon
+      date_debut_prevue?: string;
+      date_prevue?: string;
       niveau_importance?: string;
       date_validation?: string | null;
 
@@ -373,6 +375,7 @@ export async function createUpdateLinkInFirebase(
       }
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
+      entitySnapshot.date_debut_prevue = jalon.date_debut_prevue;
       entitySnapshot.date_prevue = jalon.date_prevue;
       entitySnapshot.niveau_importance = jalon.niveau_importance;
       entitySnapshot.date_validation = (jalon as any).date_validation;
@@ -744,10 +747,16 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
         const isLocked = currentJalon?.date_verrouillage_manuel;
 
         if (changes.niveau_importance !== undefined) updateData.niveau_importance = changes.niveau_importance;
+        if (changes.date_debut_prevue !== undefined && !isLocked) {
+          updateData.date_debut_prevue = changes.date_debut_prevue;
+        }
+        if (changes.date_prevue !== undefined && !isLocked) {
+          updateData.date_prevue = changes.date_prevue;
+        }
         if (changes.date_validation !== undefined && !isLocked) {
           updateData.date_validation = changes.date_validation;
-        } else if (isLocked) {
-          console.log('[SyncToLocal] Jalon verrouillé — date_validation ignorée');
+        } else if (isLocked && (changes.date_debut_prevue || changes.date_prevue || changes.date_validation)) {
+          console.log('[SyncToLocal] Jalon verrouillé — dates ignorées');
         }
 
         await db.jalons.update(entityId, updateData);

@@ -169,6 +169,7 @@ export function ExternalUpdateFirebasePage() {
       } else if (type === 'jalon') {
         setEntity({
           ...baseEntity,
+          date_debut_prevue: snapshot.date_debut_prevue || '',
           date_prevue: snapshot.date_prevue || '',
           niveau_importance: snapshot.niveau_importance || 'standard',
           date_validation: snapshot.date_validation || null,
@@ -258,10 +259,12 @@ export function ExternalUpdateFirebasePage() {
       // Champs spécifiques aux jalons
       if (type === 'jalon') {
         const jalonData = formData as JalonFormSaveData;
+        if (jalonData.date_debut_prevue) response.changes.date_debut_prevue = jalonData.date_debut_prevue;
+        if (jalonData.date_prevue) response.changes.date_prevue = jalonData.date_prevue;
         response.changes.niveau_importance = jalonData.niveau_importance;
         response.changes.date_validation = jalonData.date_validation;
 
-        console.log('[ExternalUpdate] Jalon - niveau_importance:', jalonData.niveau_importance);
+        console.log('[ExternalUpdate] Jalon - dates:', jalonData.date_debut_prevue, jalonData.date_prevue, 'niveau_importance:', jalonData.niveau_importance);
       }
 
       // Champs spécifiques aux risques
