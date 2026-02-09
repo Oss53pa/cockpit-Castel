@@ -36,7 +36,7 @@ const f2 = (v: number) => Math.round(v * 100) / 100;
 function formatDateShort(d: string): string {
   if (!d) return '—';
   const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short.' });
+  return dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
 function mapMeteoInfo(meteo: string): { label: string; emoji: string; key: string } {
