@@ -523,11 +523,11 @@ export function DataInitialization() {
             <div>
               <h5 className="font-medium text-rose-900">Reset propre Jalons/Actions v4.0</h5>
               <p className="text-sm text-rose-600">
-                EFFACE TOUS les jalons/actions et recrée exactement 33 jalons + 195 actions (supprime les doublons)
+                Recrée 33 jalons + 195 actions, supprime les doublons, PRÉSERVE vos données (statut, avancement, notes, sous-tâches)
               </p>
               {cleanResetResult && (
                 <p className="text-xs text-rose-700 mt-1">
-                  Dernier reset : {cleanResetResult.jalonsCreated} jalons, {cleanResetResult.actionsCreated} actions
+                  Dernier reset : {cleanResetResult.jalonsCreated} jalons, {cleanResetResult.actionsCreated} actions ({cleanResetResult.actionsPreserved} préservées)
                 </p>
               )}
             </div>

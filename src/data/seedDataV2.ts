@@ -1241,7 +1241,8 @@ export async function syncAvancementFromProductionData(): Promise<{ updated: num
 /**
  * Normalise un titre pour la correspondance (lowercase, trim, remove accents)
  */
-function normalizeTitle(title: string): string {
+function normalizeTitle(title: string | undefined): string {
+  if (!title) return '';
   return title
     .toLowerCase()
     .trim()
@@ -1382,20 +1383,6 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
 // ============================================================================
 
 export const MIGRATION_V40_KEY = 'migration_v31_to_v40_v2_done';
-
-/**
- * Normalise un titre pour la comparaison (minuscules, sans accents, sans espaces multiples)
- */
-function normalizeTitle(title: string | undefined): string {
-  if (!title) return '';
-  return title
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
-    .replace(/[^a-z0-9]/g, ' ')      // Remplace les caractères spéciaux par des espaces
-    .replace(/\s+/g, ' ')            // Normalise les espaces multiples
-    .trim();
-}
 
 /**
  * Reset propre des jalons et actions - Recrée uniquement les données v4.0
