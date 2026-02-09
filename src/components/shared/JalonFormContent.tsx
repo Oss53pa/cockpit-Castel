@@ -82,6 +82,7 @@ export interface JalonFormSaveData {
   // Champs éditables en interne uniquement
   titre?: string;
   description?: string;
+  date_debut_prevue?: string;
   date_prevue?: string;
   responsable?: string;
   responsableId?: number;
@@ -113,6 +114,7 @@ export function JalonFormContent({
   const users = useUsers();
   const [titre, setTitre] = useState(jalon?.titre || '');
   const [description, setDescription] = useState(jalon?.description || '');
+  const [dateDebutPrevue, setDateDebutPrevue] = useState((jalon as any)?.date_debut_prevue || '');
   const [datePrevue, setDatePrevue] = useState(jalon?.date_prevue || '');
   const [responsable, setResponsable] = useState(jalon?.responsable || '');
   const [responsableId, setResponsableId] = useState<number | undefined>(jalon?.responsableId);
@@ -244,6 +246,7 @@ export function JalonFormContent({
       ...(canEditInternal && {
         titre,
         description,
+        date_debut_prevue: dateDebutPrevue || undefined,
         date_prevue: datePrevue,
         responsable,
         responsableId,
@@ -407,8 +410,27 @@ export function JalonFormContent({
 
           <div>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+              <Calendar className="w-4 h-4 text-green-600" />
+              Date de début
+            </Label>
+            {canEditInternal ? (
+              <Input
+                type="date"
+                value={dateDebutPrevue}
+                onChange={(e) => setDateDebutPrevue(e.target.value)}
+                className="bg-white"
+              />
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">
+                {dateDebutPrevue ? new Date(dateDebutPrevue).toLocaleDateString('fr-FR') : '-'}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               <Calendar className="w-4 h-4 text-blue-600" />
-              Échéance {isCreate && '*'}
+              Date de fin / Échéance {isCreate && '*'}
             </Label>
             {canEditInternal ? (
               <Input

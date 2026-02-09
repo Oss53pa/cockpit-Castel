@@ -1336,7 +1336,8 @@ export interface Jalon {
   // ═══════════════════════════════════════════════════════════════════════════
   // PLANIFICATION (Onglet: Planning)
   // ═══════════════════════════════════════════════════════════════════════════
-  date_prevue: string;            // Obligatoire
+  date_debut_prevue?: string;     // Date de début (optionnelle)
+  date_prevue: string;            // Échéance / Date de fin - Obligatoire
   date_reelle: string | null;     // Renseigné quand atteint
   heure_cible: string | null;     // Format "HH:MM"
   fuseau_horaire: string;         // Ex: "Africa/Abidjan"

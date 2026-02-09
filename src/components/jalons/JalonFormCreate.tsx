@@ -66,6 +66,7 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
         description: data.description || '',
         axe: data.axe,
         projectPhase: data.projectPhase || undefined,
+        date_debut_prevue: data.date_debut_prevue || undefined,
         date_prevue: data.date_prevue,
         responsable: responsableName,
         responsableId: data.responsableId,

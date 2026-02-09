@@ -74,6 +74,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         // Champs principaux (édition interne)
         ...(data.titre && { titre: data.titre }),
         ...(data.description !== undefined && { description: data.description }),
+        ...(data.date_debut_prevue !== undefined && { date_debut_prevue: data.date_debut_prevue || null }),
         ...(data.date_prevue && { date_prevue: data.date_prevue }),
         ...(data.responsable && { responsable: data.responsable }),
         ...(data.axe && { axe: data.axe }),
