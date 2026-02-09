@@ -307,9 +307,42 @@ export function buildRiskMatrix(risques: Risque[]): number[][] {
 }
 
 // ============================================================================
-// BUDGET / EVM CALCULATIONS
+// BUDGET / EVM CALCULATIONS (Earned Value Management)
+// ============================================================================
+//
+// EVM est une méthode de gestion de projet qui mesure la performance en intégrant:
+// - Le périmètre (scope)
+// - Le planning (schedule)
+// - Les coûts (cost)
+//
+// Termes clés:
+// - PV (Planned Value) : Valeur planifiée - budget prévu à date
+// - EV (Earned Value) : Valeur acquise - valeur du travail réellement accompli
+// - AC (Actual Cost) : Coût réel - dépenses réelles à date
+//
+// Indices de performance:
+// - SPI (Schedule Performance Index) = EV / PV
+//   - SPI > 1 : en avance sur le planning
+//   - SPI = 1 : dans les temps
+//   - SPI < 1 : en retard
+//
+// - CPI (Cost Performance Index) = EV / AC
+//   - CPI > 1 : sous le budget
+//   - CPI = 1 : dans le budget
+//   - CPI < 1 : dépassement budgétaire
+//
 // ============================================================================
 
+/**
+ * Calcule l'écart budgétaire (variance) entre prévu et réalisé.
+ *
+ * @param prevu - Montant budgété/prévu
+ * @param realise - Montant réellement dépensé
+ * @returns Objet avec valeur absolue et pourcentage d'écart
+ *
+ * @example
+ * calculateBudgetVariance(100000, 95000) // { value: -5000, percent: -5 }
+ */
 export function calculateBudgetVariance(
   prevu: number,
   realise: number
@@ -319,20 +352,52 @@ export function calculateBudgetVariance(
   return { value, percent };
 }
 
+/**
+ * Calcule le Schedule Performance Index (SPI).
+ *
+ * SPI = EV / PV
+ * - SPI > 1 : projet en avance
+ * - SPI = 1 : projet dans les temps
+ * - SPI < 1 : projet en retard
+ *
+ * @param EV - Earned Value (valeur acquise)
+ * @param PV - Planned Value (valeur planifiée)
+ * @returns SPI (1.0 si PV = 0)
+ */
 export function calculateSPI(EV: number, PV: number): number {
   return PV > 0 ? EV / PV : 1;
 }
 
+/**
+ * Calcule le Cost Performance Index (CPI).
+ *
+ * CPI = EV / AC
+ * - CPI > 1 : projet sous le budget
+ * - CPI = 1 : projet dans le budget
+ * - CPI < 1 : dépassement budgétaire
+ *
+ * @param EV - Earned Value (valeur acquise)
+ * @param AC - Actual Cost (coût réel)
+ * @returns CPI (1.0 si AC = 0)
+ */
 export function calculateCPI(EV: number, AC: number): number {
   return AC > 0 ? EV / AC : 1;
 }
 
+/**
+ * Interprète le SPI en catégorie lisible.
+ * Seuil de tolérance: ±5%
+ */
 export function interpretSPI(spi: number): 'ahead' | 'on_track' | 'behind' {
   if (spi > 1.05) return 'ahead';
   if (spi >= 0.95) return 'on_track';
   return 'behind';
 }
 
+/**
+ * Interprète le CPI en catégorie lisible.
+ * Seuil de tolérance: ±5%
+ */
 export function interpretCPI(cpi: number): 'under_budget' | 'on_budget' | 'over_budget' {
   if (cpi > 1.05) return 'under_budget';
   if (cpi >= 0.95) return 'on_budget';
