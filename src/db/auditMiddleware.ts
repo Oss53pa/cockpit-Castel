@@ -186,13 +186,23 @@ export function installAuditMiddleware(database: Dexie): void {
                 const range = req.range;
                 const entiteType = TABLE_TO_ENTITY_TYPE[tableName] || tableName;
 
+                // Extraire les clés à supprimer selon la structure de la requête
+                let keysToDelete: number[] = [];
+                if (range && range.type === 'range') {
+                  // Range delete - on ne peut pas facilement lister les clés
+                  keysToDelete = [];
+                } else if ((req as unknown as { keys: number[] }).keys) {
+                  keysToDelete = (req as unknown as { keys: number[] }).keys;
+                } else if (range && typeof range.lower !== 'undefined') {
+                  // Single key delete via range.lower
+                  keysToDelete = [range.lower as number];
+                }
+
                 // Capturer les anciennes valeurs
                 return downlevelTable
                   .getMany({
                     trans: req.trans,
-                    keys: range.type === 'range'
-                      ? [] // Range deletes: on ne peut pas facilement lister les clés
-                      : (req as unknown as { keys: number[] }).keys || [],
+                    keys: keysToDelete,
                   })
                   .then(oldValues => {
                     return downlevelTable.mutate(req).then(res => {
