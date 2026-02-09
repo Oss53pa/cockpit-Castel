@@ -66,8 +66,11 @@ export interface FirebaseUpdateLink {
  * Créer un lien de mise à jour dans Firestore
  */
 export async function createFirebaseUpdateLink(link: FirebaseUpdateLink): Promise<void> {
-  const db = getFirestoreOrThrow();
-  const docRef = doc(db, UPDATE_LINKS_COLLECTION, link.token);
+  if (!isFirebaseConfigured || !firestore) {
+    console.warn('[Firebase] createFirebaseUpdateLink ignoré - Firebase non configuré');
+    return;
+  }
+  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, link.token);
   await setDoc(docRef, {
     ...link,
     createdAt: link.createdAt,
@@ -79,7 +82,9 @@ export async function createFirebaseUpdateLink(link: FirebaseUpdateLink): Promis
  * Récupérer un lien par son token
  */
 export async function getFirebaseUpdateLink(token: string): Promise<FirebaseUpdateLink | null> {
-  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
+  if (!isFirebaseConfigured || !firestore) return null;
+
+  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
   const docSnap = await getDoc(docRef);
 
   if (!docSnap.exists()) {
@@ -101,7 +106,9 @@ export async function getFirebaseUpdateLink(token: string): Promise<FirebaseUpda
  * Marquer un lien comme utilisé
  */
 export async function markFirebaseLinkUsed(token: string): Promise<void> {
-  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
+  if (!isFirebaseConfigured || !firestore) return;
+
+  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
   await updateDoc(docRef, {
     isUsed: true,
     usedAt: new Date().toISOString(),
@@ -112,7 +119,9 @@ export async function markFirebaseLinkUsed(token: string): Promise<void> {
  * Marquer un lien comme accédé (première visite)
  */
 export async function markFirebaseLinkAccessed(token: string): Promise<void> {
-  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
+  if (!isFirebaseConfigured || !firestore) return;
+
+  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -132,8 +141,10 @@ export async function getFirebaseLinksByEntity(
   entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number
 ): Promise<FirebaseUpdateLink[]> {
+  if (!isFirebaseConfigured || !firestore) return [];
+
   const q = query(
-    collection(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION),
+    collection(firestore, UPDATE_LINKS_COLLECTION),
     where('entityType', '==', entityType),
     where('entityId', '==', entityId)
   );
@@ -146,7 +157,9 @@ export async function getFirebaseLinksByEntity(
  * Récupérer tous les liens envoyés (pour l'historique)
  */
 export async function getAllFirebaseLinks(): Promise<FirebaseUpdateLink[]> {
-  const querySnapshot = await getDocs(collection(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION));
+  if (!isFirebaseConfigured || !firestore) return [];
+
+  const querySnapshot = await getDocs(collection(firestore, UPDATE_LINKS_COLLECTION));
   return querySnapshot.docs.map(doc => doc.data() as FirebaseUpdateLink);
 }
 
@@ -186,8 +199,13 @@ export interface ExternalUpdate {
  * Sauvegarder une mise à jour externe dans Firebase
  */
 export async function saveExternalUpdate(update: ExternalUpdate): Promise<string> {
+  if (!isFirebaseConfigured || !firestore) {
+    console.warn('[Firebase] saveExternalUpdate ignoré - Firebase non configuré');
+    return '';
+  }
+
   const updateId = `${update.entityType}_${update.entityId}_${Date.now()}`;
-  const docRef = doc(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION, updateId);
+  const docRef = doc(firestore, EXTERNAL_UPDATES_COLLECTION, updateId);
 
   await setDoc(docRef, {
     ...update,
@@ -206,8 +224,10 @@ export async function saveExternalUpdate(update: ExternalUpdate): Promise<string
  * Récupérer toutes les mises à jour non synchronisées
  */
 export async function getPendingExternalUpdates(): Promise<ExternalUpdate[]> {
+  if (!isFirebaseConfigured || !firestore) return [];
+
   const q = query(
-    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
+    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
     where('isSynced', '==', false),
     orderBy('createdAt', 'desc')
   );
@@ -223,8 +243,10 @@ export async function getExternalUpdatesByEntity(
   entityType: 'action' | 'jalon' | 'risque' | 'budget',
   entityId: number
 ): Promise<ExternalUpdate[]> {
+  if (!isFirebaseConfigured || !firestore) return [];
+
   const q = query(
-    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
+    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
     where('entityType', '==', entityType),
     where('entityId', '==', entityId),
     orderBy('createdAt', 'desc')
@@ -238,7 +260,9 @@ export async function getExternalUpdatesByEntity(
  * Marquer une mise à jour comme synchronisée
  */
 export async function markUpdateSynced(updateId: string): Promise<void> {
-  const docRef = doc(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION, updateId);
+  if (!isFirebaseConfigured || !firestore) return;
+
+  const docRef = doc(firestore, EXTERNAL_UPDATES_COLLECTION, updateId);
   await updateDoc(docRef, {
     isSynced: true,
     syncedAt: new Date().toISOString(),
@@ -250,9 +274,14 @@ export async function markUpdateSynced(updateId: string): Promise<void> {
  */
 export function subscribeToExternalUpdates(
   callback: (updates: ExternalUpdate[]) => void
-): Unsubscribe {
+): Unsubscribe | (() => void) {
+  if (!isFirebaseConfigured || !firestore) {
+    // Retourner une fonction vide si Firebase non configuré
+    return () => {};
+  }
+
   const q = query(
-    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
+    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
     where('isSynced', '==', false),
     orderBy('createdAt', 'desc')
   );
@@ -279,4 +308,16 @@ function getFirestoreOrThrow(): Firestore {
   return firestore;
 }
 
-export { firestore, isFirebaseConfigured };
+/**
+ * Vérifie si Firebase est configuré avant d'exécuter une opération.
+ * Retourne null/[] si non configuré au lieu de crasher.
+ */
+function isFirebaseReady(): boolean {
+  if (!isFirebaseConfigured || !firestore) {
+    console.warn('[Firebase] Opération ignorée - Firebase non configuré');
+    return false;
+  }
+  return true;
+}
+
+export { firestore, isFirebaseConfigured, isFirebaseReady };
