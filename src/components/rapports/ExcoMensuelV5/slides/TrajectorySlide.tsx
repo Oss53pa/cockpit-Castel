@@ -17,8 +17,8 @@ export function TrajectorySlide({ data }: Props) {
 
   // SVG chart dimensions
   const svgW = 600;
-  const svgH = 160;
-  const pad = { top: 16, right: 28, bottom: 36, left: 38 };
+  const svgH = 180;
+  const pad = { top: 16, right: 28, bottom: 56, left: 38 };
   const plotW = svgW - pad.left - pad.right;
   const plotH = svgH - pad.top - pad.bottom;
 
@@ -110,11 +110,26 @@ export function TrajectorySlide({ data }: Props) {
             {data.jalonsCles.map((j, i, arr) => {
               const samePrev = i > 0 && arr[i - 1].pctTemps === j.pctTemps;
               const yOffset = samePrev ? 16 : 10;
+              // Couper le label en lignes de ~20 caractères max
+              const words = j.label.split(' ');
+              const lines: string[] = [];
+              let current = '';
+              for (const w of words) {
+                if (current && (current + ' ' + w).length > 20) {
+                  lines.push(current);
+                  current = w;
+                } else {
+                  current = current ? current + ' ' + w : w;
+                }
+              }
+              if (current) lines.push(current);
               return (
                 <g key={i}>
                   {!samePrev && <circle cx={toX(j.pctTemps)} cy={toY(0) + 2} r={2} fill={j.atteint ? C.green : C.gray500} />}
                   <text x={toX(j.pctTemps)} y={toY(0) + yOffset} textAnchor="middle" style={{ fontSize: 4.5, fill: j.atteint ? C.green : C.gray500 }}>
-                    {j.label}
+                    {lines.map((line, li) => (
+                      <tspan key={li} x={toX(j.pctTemps)} dy={li === 0 ? 0 : 5.5}>{line}</tspan>
+                    ))}
                   </text>
                 </g>
               );
@@ -195,7 +210,7 @@ export function TrajectorySlide({ data }: Props) {
             <div style={{ position: 'absolute', top: 20, left: 30, right: 30, height: 2, backgroundColor: C.gray200 }} />
 
             {data.jalonsCles.map((j, i) => (
-              <div key={i} style={{ textAlign: 'center', zIndex: 1, flex: 1 }}>
+              <div key={i} style={{ textAlign: 'center', zIndex: 1, flex: 1, minWidth: 0, padding: '0 4px' }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%', margin: '0 auto 8px',
                   backgroundColor: j.atteint ? C.greenBg : C.gray100,
@@ -205,8 +220,8 @@ export function TrajectorySlide({ data }: Props) {
                 }}>
                   {j.atteint ? '✓' : '—'}
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: C.navy }}>{j.label}</div>
-                <div style={{ fontSize: 10, color: C.gray500, marginTop: 2 }}>{j.pctTemps}% temps</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: C.navy, lineHeight: 1.3, overflowWrap: 'break-word', wordWrap: 'break-word' }}>{j.label}</div>
+                <div style={{ fontSize: 9, color: C.gray500, marginTop: 2 }}>{j.pctTemps}% temps</div>
               </div>
             ))}
           </div>
