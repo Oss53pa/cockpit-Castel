@@ -3,8 +3,9 @@
  * Design unifié avec le design system COSMOS (constantes C)
  */
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { C } from '@/components/rapports/ExcoMensuelV5/constants';
+import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
 
 // ============================================================================
 // DATA (statique pour ce rapport — sera remplacé par hooks live ultérieurement)
@@ -160,6 +161,18 @@ export function MonthlyReportPage() {
   const [filterAxe, setFilterAxe] = useState("Tous");
   const [filterOwner, setFilterOwner] = useState("Tous");
   const [view, setView] = useState("priority");
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const presentationDate = new Date().toISOString().split('T')[0];
+
+  const generateReportHtml = useCallback(() => {
+    if (!reportRef.current) return '';
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Rapport d'Actions - Cosmos Angré - ${d.month}</title>
+<style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:0;background:#f8f9fa;}
+@media print{body{background:#fff;}}</style>
+</head><body>${reportRef.current.innerHTML}</body></html>`;
+  }, []);
 
   const filtered = d.actions.filter(a => {
     if (filterAxe !== "Tous" && a.axe !== filterAxe) return false;
@@ -193,7 +206,7 @@ export function MonthlyReportPage() {
   const urgentThisWeek = filtered.filter(a => a.deadlineDay <= 15 && a.status !== "completed");
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
+    <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyMid} 100%)`, color: C.white, padding: "22px 28px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -204,6 +217,10 @@ export function MonthlyReportPage() {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 11, opacity: 0.5 }}>CRMC / New Heaven SA</div>
+            <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
+              <button onClick={() => window.print()} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: C.white, padding: "6px 14px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>PDF</button>
+              <button onClick={() => setShowSendModal(true)} style={{ background: C.gold, border: "none", color: C.navy, padding: "6px 14px", borderRadius: 6, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Envoyer</button>
+            </div>
             <div style={{ marginTop: 8, background: "rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 14px" }}>
               <div style={{ fontSize: 10, opacity: 0.7 }}>Mois écoulé à</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
@@ -426,6 +443,14 @@ export function MonthlyReportPage() {
           <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>CRMC / New Heaven SA — Cosmos Angré</div>
         </div>
       </div>
+
+      {/* Send Report Modal */}
+      <SendReportModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        presentationDate={presentationDate}
+        generateHtml={generateReportHtml}
+      />
     </div>
   );
 }

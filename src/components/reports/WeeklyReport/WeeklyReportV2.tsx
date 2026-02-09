@@ -4,9 +4,10 @@
  * Données 100% live via useWeeklyReportData
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { C, AXES_V5, METEO_CONFIG } from '@/components/rapports/ExcoMensuelV5/constants';
 import type { MeteoLevel } from '@/components/rapports/ExcoMensuelV5/constants';
+import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
 import { useWeeklyReportData } from './useWeeklyReportData';
 import type {
   WeeklyHighlight,
@@ -16,6 +17,9 @@ import type {
   WeeklyProjection,
 } from './useWeeklyReportData';
 import type { Action, Risque } from '@/types';
+
+/** Round to max 2 decimal places */
+const f2 = (v: number) => Math.round(v * 100) / 100;
 
 // ============================================================================
 // MICRO-COMPOSANTS INTERNES
@@ -359,6 +363,17 @@ function WMiniChart({ value, max = 100, color }: { value: number; max?: number; 
 export function WeeklyReportV2() {
   const data = useWeeklyReportData();
   const reportRef = useRef<HTMLDivElement>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const presentationDate = new Date().toISOString().split('T')[0];
+
+  const generateReportHtml = useCallback(() => {
+    if (!reportRef.current) return '';
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Rapport Hebdomadaire - ${data.projectName} - S${data.weekNumber}</title>
+<style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:24px;background:#f8f9fa;}
+@media print{body{padding:0;background:#fff;}}</style>
+</head><body>${reportRef.current.innerHTML}</body></html>`;
+  }, [data.projectName, data.weekNumber]);
 
   if (data.isLoading) {
     return (
@@ -445,6 +460,24 @@ export function WeeklyReportV2() {
               }}
             >
               PDF / Imprimer
+            </button>
+            <button
+              onClick={() => setShowSendModal(true)}
+              style={{
+                background: C.gold,
+                border: 'none',
+                color: C.navy,
+                borderRadius: 8,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              Envoyer
             </button>
           </div>
         </div>
@@ -546,14 +579,14 @@ export function WeeklyReportV2() {
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                 <span>{data.comparaisonAxes.technique.label}</span>
-                <span style={{ fontWeight: 700 }}>{data.comparaisonAxes.technique.avancement}%</span>
+                <span style={{ fontWeight: 700 }}>{f2(data.comparaisonAxes.technique.avancement)}%</span>
               </div>
               <WProgressBar value={data.comparaisonAxes.technique.avancement} color={C.orange} />
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                 <span>{data.comparaisonAxes.commercial.label}</span>
-                <span style={{ fontWeight: 700 }}>{data.comparaisonAxes.commercial.avancement}%</span>
+                <span style={{ fontWeight: 700 }}>{f2(data.comparaisonAxes.commercial.avancement)}%</span>
               </div>
               <WProgressBar value={data.comparaisonAxes.commercial.avancement} color={C.blue} />
             </div>
@@ -574,7 +607,7 @@ export function WeeklyReportV2() {
               >
                 {data.comparaisonAxes.estSynchronise
                   ? '● Synchronisé'
-                  : `● Écart ${data.comparaisonAxes.ecart > 0 ? '+' : ''}${data.comparaisonAxes.ecart} pts`}
+                  : `● Écart ${data.comparaisonAxes.ecart > 0 ? '+' : ''}${f2(data.comparaisonAxes.ecart)} pts`}
               </span>
             </div>
           </WCard>
@@ -884,7 +917,7 @@ export function WeeklyReportV2() {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>VÉLOCITÉ</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: C.navy }}>{data.projection.velocite}%</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: C.navy }}>{f2(data.projection.velocite)}%</div>
           </WCard>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>FIN ESTIMÉE</div>
@@ -952,12 +985,12 @@ export function WeeklyReportV2() {
                   Facteurs de confiance
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12 }}>
-                  <div>Vélocité: <strong>{data.confidenceScore.factors.velocite.value}%</strong></div>
-                  <div>Jalons: <strong>{data.confidenceScore.factors.jalons.value}%</strong></div>
-                  <div>Risques: <strong>{data.confidenceScore.factors.risques.value}%</strong></div>
-                  <div>Occupation: <strong>{data.confidenceScore.factors.occupation.value}%</strong></div>
-                  <div>Budget: <strong>{data.confidenceScore.factors.budget.value}%</strong></div>
-                  <div>Sync: <strong>{data.confidenceScore.factors.sync.value}%</strong></div>
+                  <div>Vélocité: <strong>{f2(data.confidenceScore.factors.velocite.value)}%</strong></div>
+                  <div>Jalons: <strong>{f2(data.confidenceScore.factors.jalons.value)}%</strong></div>
+                  <div>Risques: <strong>{f2(data.confidenceScore.factors.risques.value)}%</strong></div>
+                  <div>Occupation: <strong>{f2(data.confidenceScore.factors.occupation.value)}%</strong></div>
+                  <div>Budget: <strong>{f2(data.confidenceScore.factors.budget.value)}%</strong></div>
+                  <div>Sync: <strong>{f2(data.confidenceScore.factors.sync.value)}%</strong></div>
                 </div>
               </div>
               <div>
@@ -1032,6 +1065,14 @@ export function WeeklyReportV2() {
         })}
         {' '}— Document confidentiel — {data.projectName}
       </div>
+
+      {/* Send Report Modal */}
+      <SendReportModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        presentationDate={presentationDate}
+        generateHtml={generateReportHtml}
+      />
     </div>
   );
 }

@@ -3,8 +3,12 @@
  * Design unifié avec le design system COSMOS (constantes C)
  */
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { C } from '@/components/rapports/ExcoMensuelV5/constants';
+import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
+
+/** Round to max 2 decimal places */
+const f2 = (v: number) => Math.round(v * 100) / 100;
 
 // ============================================================================
 // DATA (statique pour ce rapport — sera remplacé par hooks live ultérieurement)
@@ -193,9 +197,21 @@ function MiniChart() {
 
 export function MonthlyReport() {
   const [_tab, setTab] = useState("all");
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const presentationDate = new Date().toISOString().split('T')[0];
+
+  const generateReportHtml = useCallback(() => {
+    if (!reportRef.current) return '';
+    return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Rapport Mensuel - Cosmos Angré - ${d.month}</title>
+<style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:0;background:#f8f9fa;}
+@media print{body{background:#fff;}}</style>
+</head><body>${reportRef.current.innerHTML}</body></html>`;
+  }, []);
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
+    <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 50%, ${C.navyMid} 100%)`, color: C.white, padding: "28px 32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -208,8 +224,9 @@ export function MonthlyReport() {
             <div style={{ fontSize: 11, opacity: 0.5 }}>CRMC / New Heaven SA</div>
             <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>Diffusion : COPIL / Direction Générale</div>
             <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: C.white, padding: "8px 16px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>📄 Export PDF</button>
+              <button onClick={() => window.print()} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: C.white, padding: "8px 16px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>📄 Export PDF</button>
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: C.white, padding: "8px 16px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>📊 Export Excel</button>
+              <button onClick={() => setShowSendModal(true)} style={{ background: C.gold, border: "none", color: C.navy, padding: "8px 16px", borderRadius: 6, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>Envoyer</button>
             </div>
           </div>
         </div>
@@ -259,15 +276,15 @@ export function MonthlyReport() {
           <Card>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 12, textTransform: "uppercase" }}>🔄 Synchronisation Chantier / Mobilisation</div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>🏗️ Construction (chantier)</span><span style={{ fontWeight: 700 }}>{d.sync.construction}%</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>🏗️ Construction (chantier)</span><span style={{ fontWeight: 700 }}>{f2(d.sync.construction)}%</span></div>
               <PB pct={d.sync.construction} color={C.gray400} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>📋 Mobilisation (COCKPIT)</span><span style={{ fontWeight: 700 }}>{d.sync.mobilisation}%</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>📋 Mobilisation (COCKPIT)</span><span style={{ fontWeight: 700 }}>{f2(d.sync.mobilisation)}%</span></div>
               <PB pct={d.sync.mobilisation} color={C.gold} />
             </div>
             <div style={{ background: C.orangeBg, borderRadius: 8, padding: "10px 14px", border: `1px solid ${C.orange}20` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>Écart : {d.sync.ecart} pts (~{d.sync.ecartDays} jours)</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>Écart : {f2(d.sync.ecart)} pts (~{d.sync.ecartDays} jours)</div>
               <div style={{ fontSize: 11, color: C.navyLight, marginTop: 2 }}>Mobilisation en avance sur le chantier. Normal à ce stade, mais à surveiller pour éviter les coûts de stockage prématurés.</div>
             </div>
           </Card>
@@ -525,6 +542,14 @@ export function MonthlyReport() {
           <div style={{ fontSize: 10, color: C.gray400, marginTop: 4 }}>Document confidentiel — Diffusion restreinte COPIL & Direction Générale</div>
         </div>
       </div>
+
+      {/* Send Report Modal */}
+      <SendReportModal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        presentationDate={presentationDate}
+        generateHtml={generateReportHtml}
+      />
     </div>
   );
 }
