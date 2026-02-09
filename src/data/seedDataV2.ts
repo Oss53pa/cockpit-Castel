@@ -40,7 +40,7 @@ export const PROJECT_METADATA = {
   compteurs: {
     axes: 8,
     jalons: 33, // RH:3 + COM:4 + TECH:6 + BUD:3 + MKT:4 + EXP:4 + CON:6 + DIV:3
-    actions: 200, // RH:31 + COM:25 + TECH:32 + BUD:14 + MKT:20 + EXP:21 + CON:42 + DIV:15
+    actions: 193, // RH:31 + COM:25 + TECH:30 + BUD:11 + MKT:20 + EXP:20 + CON:42 + DIV:14
   },
 };
 
