@@ -71,9 +71,18 @@ function computeDiff(
 /**
  * Installe le middleware d'audit sur une instance Dexie.
  * À appeler une fois après la construction de la DB.
+ *
+ * TEMPORAIREMENT DÉSACTIVÉ - Les queueMicrotask causent des erreurs
+ * "Cannot read properties of undefined (reading 'table')" car la
+ * transaction est terminée quand le callback s'exécute.
  */
-export function installAuditMiddleware(database: Dexie): void {
-  database.use({
+export function installAuditMiddleware(_database: Dexie): void {
+  // DÉSACTIVÉ TEMPORAIREMENT - à réactiver avec une implémentation corrigée
+  console.log('[AuditMiddleware] Middleware désactivé temporairement');
+  return;
+
+  // eslint-disable-next-line no-unreachable
+  _database.use({
     stack: 'dbcore',
     name: 'AuditMiddleware',
     create(downlevelDatabase: DBCore): DBCore {
