@@ -1384,6 +1384,82 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
 export const MIGRATION_V40_KEY = 'migration_v31_to_v40_v2_done';
 
 /**
+ * Reset propre des jalons et actions - EFFACE TOUT et recrée uniquement les données v4.0
+ * Utilise UNIQUEMENT ALL_JALONS (33) et ALL_ACTIONS (195)
+ *
+ * ATTENTION: Cette fonction efface TOUTES les modifications utilisateur sur jalons/actions !
+ */
+export async function cleanResetJalonsActions(): Promise<{
+  jalonsCreated: number;
+  actionsCreated: number;
+}> {
+  console.log('[cleanResetJalonsActions] Début du reset propre...');
+
+  const result = {
+    jalonsCreated: 0,
+    actionsCreated: 0,
+  };
+
+  // Récupérer ou créer le site par défaut
+  let siteId = 1;
+  const existingSite = await db.sites.toCollection().first();
+  if (existingSite?.id) {
+    siteId = existingSite.id;
+  }
+
+  // Récupérer les utilisateurs pour le mapping responsable
+  const users = await db.users.toArray();
+  const userMap = new Map(users.map(u => [`${u.prenom} ${u.nom}`, u.id!]));
+
+  await db.transaction('rw', [db.jalons, db.actions], async () => {
+    // 1. EFFACER tous les jalons et actions existants
+    await db.jalons.clear();
+    await db.actions.clear();
+    console.log('[cleanResetJalonsActions] Tables jalons et actions vidées');
+
+    // 2. Insérer UNIQUEMENT les jalons de ALL_JALONS
+    for (const jalon of ALL_JALONS) {
+      await db.jalons.add({
+        ...jalon,
+        siteId,
+      } as Jalon);
+      result.jalonsCreated++;
+    }
+    console.log(`[cleanResetJalonsActions] ${result.jalonsCreated} jalons créés`);
+
+    // 3. Récupérer les jalons pour le mapping jalonId
+    const jalons = await db.jalons.toArray();
+    const jalonMap = new Map(jalons.map(j => [j.id_jalon, j.id!]));
+
+    // 4. Insérer UNIQUEMENT les actions de ALL_ACTIONS
+    for (const action of ALL_ACTIONS) {
+      const actionWithCode = action as ActionWithJalonCode;
+      const jalonCode = actionWithCode._jalonCode;
+      const jalonId = jalonCode ? jalonMap.get(jalonCode) || null : null;
+      const responsableId = userMap.get(action.responsable) || 1;
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _jalonCode, ...actionData } = actionWithCode;
+
+      await db.actions.add({
+        ...actionData,
+        jalonId,
+        responsableId,
+        siteId,
+      } as Action);
+      result.actionsCreated++;
+    }
+    console.log(`[cleanResetJalonsActions] ${result.actionsCreated} actions créées`);
+  });
+
+  // Marquer la migration comme effectuée
+  localStorage.setItem(MIGRATION_V40_KEY, 'true');
+
+  console.log('[cleanResetJalonsActions] Reset terminé:', result);
+  return result;
+}
+
+/**
  * Migration v3.1 → v4.0 : Restructuration complète jalons & actions
  *
  * RÈGLES ABSOLUES :

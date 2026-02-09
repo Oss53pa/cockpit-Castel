@@ -164,7 +164,7 @@ export async function forceReseed(): Promise<{
   // Reset migration flags pour forcer leur ré-exécution
   localStorage.removeItem(MIGRATION_V40_KEY);
 
-  // Effacer TOUTES les données existantes (y compris project pour forcer un seed complet)
+  // Effacer TOUTES les données existantes
   await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams, db.project, db.sites, db.projectSettings], async () => {
     await db.users.clear();
     await db.jalons.clear();
@@ -178,15 +178,44 @@ export async function forceReseed(): Promise<{
     await db.projectSettings.clear();
   });
 
-  // Charger les vraies données de production avec siteId
-  const { seedDatabase } = await import('@/data/cosmosAngre');
-  await seedDatabase();
+  // Créer le site par défaut COSMOS si nécessaire
+  const existingSites = await db.sites.count();
+  if (existingSites === 0) {
+    const { PROJET_CONFIG } = await import('@/data/constants');
+    const now = new Date().toISOString();
+    await db.sites.add({
+      code: 'COSMOS',
+      nom: PROJET_CONFIG.nom,
+      description: 'Centre commercial Cosmos Angré - Abidjan',
+      localisation: 'Abidjan, Côte d\'Ivoire',
+      dateOuverture: '2026-10-16',
+      dateInauguration: '2026-11-15',
+      surface: 16184,
+      nombreBatiments: 6,
+      occupationCible: 85,
+      couleur: '#18181b',
+      actif: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log('[initDatabase] Site COSMOS créé');
+  }
 
-  // Aussi exécuter seedDatabaseV2 pour les données complémentaires
+  // Charger les données v4.0 (utilisateurs, jalons, actions, budget)
   const result = await seedDatabaseV2();
   console.log('[initDatabase] Seed V2 terminé:', result);
 
-  // Migration v3.1 → v4.0 (Soft Opening 16/10/2026, nouveaux jalons/actions)
+  // Charger les risques depuis PRODUCTION_DATA (non inclus dans seedDatabaseV2)
+  const { PRODUCTION_DATA } = await import('@/data/cosmosAngreProductionData');
+  if (PRODUCTION_DATA.risques?.length > 0) {
+    const defaultSite = await db.sites.toCollection().first();
+    const siteId = defaultSite?.id || 1;
+    const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId }));
+    await db.risques.bulkAdd(risquesWithSiteId);
+    console.log('[initDatabase] Risques ajoutés:', PRODUCTION_DATA.risques.length);
+  }
+
+  // Migration v3.1 → v4.0 (mises à jour des jalons/actions restructurés)
   const v40Result = await migrateV31toV40();
   console.log('[initDatabase] Migration v4.0:', v40Result);
 

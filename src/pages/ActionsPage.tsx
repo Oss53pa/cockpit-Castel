@@ -166,7 +166,7 @@ export function ActionsPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>

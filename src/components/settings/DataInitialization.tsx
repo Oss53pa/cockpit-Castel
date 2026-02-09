@@ -11,7 +11,7 @@ import { db } from '@/db';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { cleanupAllBudgetDuplicates } from '@/hooks/useBudgetExploitation';
 import { PROJET_CONFIG } from '@/data/constants';
-import { migrateV31toV40, MIGRATION_V40_KEY } from '@/data/seedDataV2';
+import { migrateV31toV40, MIGRATION_V40_KEY, cleanResetJalonsActions } from '@/data/seedDataV2';
 
 interface DatabaseStats {
   users: number;
@@ -33,6 +33,8 @@ export function DataInitialization() {
   const [duplicatesResult, setDuplicatesResult] = useState<{ totalRemoved: number } | null>(null);
   const [applyingMigration, setApplyingMigration] = useState(false);
   const [migrationResult, setMigrationResult] = useState<{ jalonsCreated: number; actionsCreated: number; jalonsUpdated: number } | null>(null);
+  const [cleanResetting, setCleanResetting] = useState(false);
+  const [cleanResetResult, setCleanResetResult] = useState<{ jalonsCreated: number; actionsCreated: number } | null>(null);
 
   // Charger les statistiques au montage
   useEffect(() => {
@@ -222,6 +224,31 @@ export function DataInitialization() {
       alert('Erreur lors de la migration v4.0');
     } finally {
       setApplyingMigration(false);
+    }
+  };
+
+  const handleCleanResetJalonsActions = async () => {
+    if (!confirm(
+      'ATTENTION: Cette action va EFFACER TOUS les jalons et actions existants et les remplacer par les données v4.0 propres.\n\n' +
+      '• 33 jalons\n• 195 actions\n\n' +
+      'Toutes vos modifications sur les jalons/actions seront PERDUES.\n\n' +
+      'Continuer ?'
+    )) {
+      return;
+    }
+
+    setCleanResetting(true);
+    setCleanResetResult(null);
+    try {
+      const result = await cleanResetJalonsActions();
+      setCleanResetResult(result);
+      await loadStats();
+      alert(`Reset propre terminé !\n- ${result.jalonsCreated} jalons créés\n- ${result.actionsCreated} actions créées\n\nLes doublons ont été supprimés.`);
+    } catch (err) {
+      console.error('Erreur clean reset:', err);
+      alert('Erreur lors du reset propre');
+    } finally {
+      setCleanResetting(false);
     }
   };
 
@@ -491,12 +518,45 @@ export function DataInitialization() {
             </Button>
           </div>
 
+          {/* Reset propre jalons/actions v4.0 */}
+          <div className="flex items-center justify-between p-4 bg-rose-50 rounded-lg">
+            <div>
+              <h5 className="font-medium text-rose-900">Reset propre Jalons/Actions v4.0</h5>
+              <p className="text-sm text-rose-600">
+                EFFACE TOUS les jalons/actions et recrée exactement 33 jalons + 195 actions (supprime les doublons)
+              </p>
+              {cleanResetResult && (
+                <p className="text-xs text-rose-700 mt-1">
+                  Dernier reset : {cleanResetResult.jalonsCreated} jalons, {cleanResetResult.actionsCreated} actions
+                </p>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleCleanResetJalonsActions}
+              disabled={cleanResetting}
+              className="bg-rose-100 hover:bg-rose-200 text-rose-700"
+            >
+              {cleanResetting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Reset...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Reset propre
+                </>
+              )}
+            </Button>
+          </div>
+
           {/* Appliquer migration v4.0 */}
           <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg">
             <div>
               <h5 className="font-medium text-indigo-900">Appliquer migration v4.0 (Soft Opening 16/10/2026)</h5>
               <p className="text-sm text-indigo-600">
-                Ajoute les 33 jalons et 200 actions restructurés SANS effacer vos modifications existantes
+                Ajoute les 33 jalons et 195 actions restructurés SANS effacer vos modifications existantes
               </p>
               {migrationResult && (migrationResult.jalonsCreated > 0 || migrationResult.actionsCreated > 0 || migrationResult.jalonsUpdated > 0) && (
                 <p className="text-xs text-indigo-700 mt-1">
