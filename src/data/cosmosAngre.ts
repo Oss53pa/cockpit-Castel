@@ -17,7 +17,8 @@ import type {
   Building,
 } from '@/types';
 import { getAlertDates, parseBuildingCodeFromId, type BuildingCode } from '@/lib/utils';
-import { PROJECT_BUDGET, budgetData } from './budgetData';
+// Import budget data - utilise l'exemple par défaut, peut être surchargé localement
+import { PROJECT_BUDGET, budgetData } from './budgetData.example';
 
 // Bâtiments du projet COSMOS ANGRÉ (8 structures)
 const buildingsData: Building[] = [
