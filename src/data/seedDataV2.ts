@@ -1423,7 +1423,7 @@ export async function migrateV31toV40(): Promise<{
   };
 
   try {
-    await db.transaction('rw', [db.jalons, db.actions, db.users, db.projectSettings], async () => {
+    await db.transaction('rw', [db.jalons, db.actions, db.users, db.projectSettings, db.sites], async () => {
       // =====================================================================
       // 0. Préparer les maps
       // =====================================================================
