@@ -76,6 +76,7 @@ import {
   useCurrentSite,
   useSites,
   useAvancementParAxe,
+  useAvancementGlobal,
   useUsers,
 } from '@/hooks';
 
@@ -573,7 +574,7 @@ function SlidePageGarde() {
   const openingDate = dateOuverture;
   const actionsTerminees = kpis?.actionsTerminees ?? 0;
   const totalActions = kpis?.totalActions ?? 0;
-  const avancementGlobal = totalActions > 0 ? (actionsTerminees / totalActions) * 100 : 0;
+  const avancementGlobal = useAvancementGlobal();
   const tauxOccupation = kpis?.tauxOccupation ?? 0;
 
   return (

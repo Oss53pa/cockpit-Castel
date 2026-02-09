@@ -25,6 +25,7 @@ import {
   useBudget,
   useDashboardKPIs,
   useCOPILTrends,
+  useAvancementGlobal,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
 
@@ -44,6 +45,7 @@ export function MonthlySummary({ className }: MonthlySummaryProps) {
   const { budget } = useBudget();
   const kpis = useDashboardKPIs();
   const trends = useCOPILTrends(siteId);
+  const avancementGlobalPondere = useAvancementGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const currentMonth = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -76,10 +78,8 @@ export function MonthlySummary({ className }: MonthlySummaryProps) {
     const budgetConsomme = budget?.consomme || kpis.budgetConsomme || 0;
     const budgetVariance = budget?.variance || 0;
 
-    // Avancement global
-    const avancementGlobal = actionsTotal > 0
-      ? Math.round(actions.reduce((sum, a) => sum + (a.avancement || 0), 0) / actionsTotal)
-      : 0;
+    // Avancement global — pondéré par axe
+    const avancementGlobal = Math.round(avancementGlobalPondere);
 
     // Statut du projet
     let projectStatus: ProjectStatus;

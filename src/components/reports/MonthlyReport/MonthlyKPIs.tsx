@@ -26,6 +26,7 @@ import {
   useBudget,
   useDashboardKPIs,
   useCOPILTrends,
+  useAvancementGlobal,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
 
@@ -56,6 +57,7 @@ export function MonthlyKPIs({ className }: MonthlyKPIsProps) {
   const { budget } = useBudget();
   const kpis = useDashboardKPIs();
   const trends = useCOPILTrends(siteId);
+  const avancementGlobalPondere = useAvancementGlobal();
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -81,9 +83,7 @@ export function MonthlyKPIs({ className }: MonthlyKPIsProps) {
       return score >= 12 && r.status !== 'ferme';
     }).length;
 
-    const avancementGlobal = actionsTotal > 0
-      ? Math.round(actions.reduce((sum, a) => sum + (a.avancement || 0), 0) / actionsTotal)
-      : 0;
+    const avancementGlobal = Math.round(avancementGlobalPondere);
 
     const tauxCompletion = actionsTotal > 0
       ? Math.round((actionsTerminees / actionsTotal) * 100)

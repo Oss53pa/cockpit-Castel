@@ -17,7 +17,7 @@ import { useCurrentSite } from '@/hooks/useSites';
 import { useSyncStatus } from '@/hooks/useSync';
 import { useProjectConfig } from '@/hooks/useProjectConfig';
 import { getSnapshotHistoryV2 } from '@/services/syncServiceV2';
-import { PROJET_CONFIG, SEUILS_METEO_REPORT, SEUILS_RISQUES, DEFAULT_CONFIG_PROPAGATION, DEFAULT_CONFIG_SCENARIOS } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_METEO_REPORT, SEUILS_RISQUES, DEFAULT_CONFIG_PROPAGATION, DEFAULT_CONFIG_SCENARIOS, AXES_CONFIG_FULL } from '@/data/constants';
 import {
   calculerImpactActions,
   calculerImpactJalons,
@@ -1209,10 +1209,25 @@ export function useExcoV5Data(savedExcoId?: number | null): ExcoV5Data {
 
   const moisCourant = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
-  // Global avancement
-  const avancementGlobal = allActions.length > 0
-    ? allActions.reduce((s, a) => s + a.avancement, 0) / allActions.length
-    : 0;
+  // Global avancement — pondéré par axe (même calcul que useAvancementGlobal)
+  const avancementGlobal = useMemo(() => {
+    if (allActions.length === 0) return 0;
+    const axeWeightMap: Record<string, number> = {};
+    Object.values(AXES_CONFIG_FULL).forEach(a => { axeWeightMap[a.code] = a.poids; });
+    const axes = [...new Set(allActions.map(a => a.axe))];
+    const axeAvancements: { avancement: number; poids: number }[] = [];
+    for (const axe of axes) {
+      const axeActions = allActions.filter(a => a.axe === axe);
+      const avg = axeActions.reduce((sum, a) => sum + a.avancement, 0) / axeActions.length;
+      const poids = axeWeightMap[axe] ?? 0;
+      axeAvancements.push({ avancement: avg, poids });
+    }
+    const totalPoids = axeAvancements.reduce((sum, a) => sum + a.poids, 0);
+    if (totalPoids === 0) {
+      return allActions.reduce((sum, a) => sum + a.avancement, 0) / allActions.length;
+    }
+    return axeAvancements.reduce((sum, a) => sum + a.avancement * (a.poids / totalPoids), 0);
+  }, [allActions]);
 
   // Linear projection
   const projectionLineaire = pourcentageTempsEcoule > 0

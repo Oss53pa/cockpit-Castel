@@ -22,6 +22,7 @@ import {
   useJalons,
   useRisques,
   useCOPILTrends,
+  useAvancementGlobal,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
 import { KPICard } from '../shared/KPICard';
@@ -40,6 +41,7 @@ export function WeeklyKPIs({ className }: WeeklyKPIsProps) {
   const jalons = useJalons();
   const risques = useRisques();
   const trends = useCOPILTrends(siteId);
+  const avancementGlobalPondere = useAvancementGlobal();
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -65,10 +67,8 @@ export function WeeklyKPIs({ className }: WeeklyKPIsProps) {
       return score >= 12 && r.status !== 'ferme';
     }).length;
 
-    // Avancement global
-    const avancementGlobal = actions.length > 0
-      ? Math.round(actions.reduce((sum, a) => sum + (a.avancement || 0), 0) / actions.length)
-      : 0;
+    // Avancement global — utilise le hook pondéré
+    const avancementGlobal = Math.round(avancementGlobalPondere);
 
     return {
       actionsTotal: actions.length,
