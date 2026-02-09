@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40 } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 
@@ -96,10 +96,11 @@ export async function initializeDatabase(): Promise<{
         // Migration vers les références de phase (dates relatives au Soft Opening)
         await migrateToPhaseReferencesIfNeeded();
 
-        // NOTE: Recalcul automatique désactivé pour préserver les modifications manuelles
-        // Pour recalculer manuellement, utiliser: recalculateAllAvancement()
-        // const avancementRecalc = await recalculateAllAvancement();
-        // console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
+        // Migration v3.1 → v4.0 (Soft Opening 16/10/2026)
+        const v40Result = await migrateV31toV40();
+        if (v40Result.jalonsCreated > 0 || v40Result.actionsCreated > 0) {
+          console.log('[initDatabase] Migration v4.0:', v40Result);
+        }
 
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
@@ -120,11 +121,11 @@ export async function initializeDatabase(): Promise<{
           console.log('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
         }
 
-        // NOTE: Recalcul automatique désactivé pour préserver les modifications manuelles
-        // const avancementRecalc = await recalculateAllAvancement();
-        // if (avancementRecalc.updated > 0) {
-        //   console.log('[initDatabase] Recalcul avancement:', avancementRecalc.updated, 'actions mises à jour');
-        // }
+        // Migration v3.1 → v4.0 (Soft Opening 16/10/2026)
+        const v40Result = await migrateV31toV40();
+        if (v40Result.jalonsCreated > 0 || v40Result.actionsCreated > 0 || v40Result.jalonsUpdated > 0) {
+          console.log('[initDatabase] Migration v4.0:', v40Result);
+        }
 
         isInitialized = true;
         return { wasEmpty: false, seeded: false };

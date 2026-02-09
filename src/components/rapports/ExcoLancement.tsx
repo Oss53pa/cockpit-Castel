@@ -566,7 +566,7 @@ function SlidePageGarde() {
   const moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   // KPIs depuis la base de données via useDashboardKPIs
-  const dateOuverture = site?.dateOuverture || '2026-11-15';
+  const dateOuverture = site?.dateOuverture || '2026-10-16';
   const opening = new Date(dateOuverture);
   const today = new Date();
   const joursRestants = Math.max(0, Math.ceil((opening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));

@@ -105,8 +105,8 @@ export const SEUILS_SYNC = [
   { phaseCode: 'PR', seuil: 100, axeCible: 'TECH', actionCode: 'J-TECH-4', description: 'Réception provisoire CC' },
 
   // Réception Provisoire CC
-  { phaseCode: 'RP', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-5', description: 'Coordonner ouvertures boutiques' },
-  { phaseCode: 'RP', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-4', description: 'Équipe opérationnelle' },
+  { phaseCode: 'RP', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-4', description: 'Coordonner ouvertures boutiques' },
+  { phaseCode: 'RP', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-3', description: 'Équipe opérationnelle' },
   { phaseCode: 'RP', seuil: 100, axeCible: 'EXP', actionCode: 'J-EXP-4', description: 'Tests opérationnels' },
 ] as const;
 
@@ -139,8 +139,8 @@ export const DEFAULT_PROJET_CONFIG = {
   dateDebut: '2026-01-01',
   dateFin: '2027-02-28',
   jalonsClés: {
-    softOpening: '2026-11-15',
-    inauguration: '2026-12-15',
+    softOpening: '2026-10-16',
+    inauguration: '2026-11-15',
     finStabilisation: '2027-02-28',
   },
   phases: [

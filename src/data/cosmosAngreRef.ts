@@ -34,8 +34,8 @@ export const JALONS_GLOBAUX = [
   { id: 'J-003', titre: 'Plan de commercialisation validé', date: '2026-02-28', responsable: RESPONSABLES.DGA, axe: 'axe2_commercial', critique: true, dependances: ['J-002'] },
   { id: 'J-004', titre: 'Budget projet consolidé approuvé', date: '2026-02-15', responsable: RESPONSABLES.DGA, axe: 'axe4_budget', critique: true, dependances: ['J-001'] },
   { id: 'J-005', titre: 'Stratégie communication validée', date: '2026-03-15', responsable: RESPONSABLES.DGA, axe: 'axe5_marketing', critique: false, dependances: ['J-003'] },
-  { id: 'J-006', titre: 'Soft Opening', date: '2026-11-15', responsable: RESPONSABLES.DGA, axe: 'global', critique: true, dependances: ['all'] },
-  { id: 'J-007', titre: 'Inauguration officielle', date: '2026-12-15', responsable: RESPONSABLES.DGA, axe: 'global', critique: true, dependances: ['J-006'] },
+  { id: 'J-006', titre: 'Soft Opening', date: '2026-10-16', responsable: RESPONSABLES.DGA, axe: 'global', critique: true, dependances: ['all'] },
+  { id: 'J-007', titre: 'Inauguration officielle', date: '2026-11-15', responsable: RESPONSABLES.DGA, axe: 'global', critique: true, dependances: ['J-006'] },
 ];
 
 // 1.2 JALONS AXE 1 : RH & ORGANISATION (J1-001 à J1-010)
@@ -63,7 +63,7 @@ export const JALONS_AXE2_GLOBAL = [
   { id: 'J2-006', titre: 'Locomotive alimentaire signée', date: '2026-03-31', responsable: RESPONSABLES.DGA, axe: 'axe2_commercial', critique: true, cible: 'Carrefour' },
   { id: 'J2-007', titre: '50% occupation atteinte', date: '2026-06-30', responsable: RESPONSABLES.COMMERCIAL_MGR, axe: 'axe2_commercial', critique: true, cible: '50% GLA' },
   { id: 'J2-008', titre: '75% occupation atteinte', date: '2026-09-30', responsable: RESPONSABLES.COMMERCIAL_MGR, axe: 'axe2_commercial', critique: true, cible: '75% GLA' },
-  { id: 'J2-009', titre: '85% occupation atteinte', date: '2026-11-15', responsable: RESPONSABLES.COMMERCIAL_MGR, axe: 'axe2_commercial', critique: true, cible: '85% GLA' },
+  { id: 'J2-009', titre: '85% occupation atteinte', date: '2026-10-16', responsable: RESPONSABLES.COMMERCIAL_MGR, axe: 'axe2_commercial', critique: true, cible: '85% GLA' },
   { id: 'J2-010', titre: '100% BEFA signés', date: '2026-09-30', responsable: RESPONSABLES.COMMERCIAL_MGR, axe: 'axe2_commercial', critique: false, cible: '55-60 lots' },
 ];
 
@@ -121,7 +121,7 @@ export const JALONS_AXE3_RECEPTION = [
   { id: 'J3-009', titre: 'OPR tous bâtiments', date: '2026-10-15', responsable: RESPONSABLES.FM, axe: 'axe3_technique', critique: true, buildingCode: undefined },
   { id: 'J3-010', titre: 'Levée réserves ≥80%', date: '2026-10-31', responsable: RESPONSABLES.FM, axe: 'axe3_technique', critique: true, buildingCode: undefined },
   { id: 'J3-011', titre: 'Levée réserves ≥95%', date: '2026-11-30', responsable: RESPONSABLES.FM, axe: 'axe3_technique', critique: true, buildingCode: undefined },
-  { id: 'J3-012', titre: 'DOE complet reçu', date: '2026-11-15', responsable: RESPONSABLES.FM, axe: 'axe3_technique', critique: true, buildingCode: undefined },
+  { id: 'J3-012', titre: 'DOE complet reçu', date: '2026-10-16', responsable: RESPONSABLES.FM, axe: 'axe3_technique', critique: true, buildingCode: undefined },
 ];
 
 // 1.4.2 Jalons fit-out preneurs (J3-FO-001 à J3-FO-008)
@@ -172,8 +172,8 @@ export const JALONS_AXE5 = [
   { id: 'J5-007', titre: 'Événement presse organisé', date: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, axe: 'axe5_marketing', critique: false },
   { id: 'J5-008', titre: 'Signalétique extérieure installée', date: '2026-11-01', responsable: RESPONSABLES.MARKETING_MGR, axe: 'axe5_marketing', critique: true },
   { id: 'J5-009', titre: 'Signalétique intérieure installée', date: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, axe: 'axe5_marketing', critique: true },
-  { id: 'J5-010', titre: 'Soft Opening réussi', date: '2026-11-15', responsable: RESPONSABLES.DGA, axe: 'axe5_marketing', critique: true },
-  { id: 'J5-011', titre: 'Inauguration officielle réussie', date: '2026-12-15', responsable: RESPONSABLES.DGA, axe: 'axe5_marketing', critique: true },
+  { id: 'J5-010', titre: 'Soft Opening réussi', date: '2026-10-16', responsable: RESPONSABLES.DGA, axe: 'axe5_marketing', critique: true },
+  { id: 'J5-011', titre: 'Inauguration officielle réussie', date: '2026-11-15', responsable: RESPONSABLES.DGA, axe: 'axe5_marketing', critique: true },
 ];
 
 // 1.7 JALONS AXE 6 : EXPLOITATION & SYSTÈMES (J6-001 à J6-011)

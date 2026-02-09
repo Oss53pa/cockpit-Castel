@@ -1423,6 +1423,7 @@ export function EnhancedReportExport() {
             'Axe': AXE_LABELS[j.axe] || j.axe,
             'Statut': JALON_STATUS_LABELS[j.statut] || j.statut,
             'Type': j.type_jalon || '',
+            'Date debut': j.date_debut_prevue || '',
             'Date prevue': j.date_prevue,
             'Date reelle': j.date_reelle || '',
             'Importance': j.niveau_importance,

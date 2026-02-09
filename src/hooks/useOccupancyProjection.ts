@@ -130,7 +130,7 @@ export function useOccupancyProjection(): OccupancyProjectionData | null {
     if (!actions || !dashboardKPIs) return null;
 
     // Configuration
-    const openingDate = currentSite?.dateOuverture ?? '2026-11-15';
+    const openingDate = currentSite?.dateOuverture ?? '2026-10-16';
     const targetRate = currentSite?.occupationCible ?? 85;
 
     const today = new Date();

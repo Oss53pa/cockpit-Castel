@@ -24,7 +24,7 @@ export function HomePage() {
   const { alertes = [] } = useAlertes();
 
   // Calculate days until opening from site configuration (database)
-  const dateOuverture = currentSite?.dateOuverture || '2026-11-15';
+  const dateOuverture = currentSite?.dateOuverture || '2026-10-16';
   const opening = new Date(dateOuverture);
   const today = new Date();
   const daysUntilOpening = Math.ceil((opening.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));

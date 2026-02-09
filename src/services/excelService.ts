@@ -109,6 +109,7 @@ export function exportJalons(jalons: Jalon[]): void {
     { key: 'id_jalon', header: 'Code', width: 15 },
     { key: 'titre', header: 'Libellé', width: 45 },
     { key: 'axe', header: 'Axe', width: 20 },
+    { key: 'date_debut_prevue', header: 'Date début', width: 12, transform: (v) => formatDate(v as string) },
     { key: 'date_prevue', header: 'Échéance', width: 12, transform: (v) => formatDate(v as string) },
     { key: 'responsable', header: 'Responsable', width: 20 },
     { key: 'statut', header: 'Statut', width: 12 },

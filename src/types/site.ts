@@ -28,8 +28,8 @@ export const DEFAULT_SITE: Omit<Site, 'id' | 'createdAt' | 'updatedAt'> = {
   nom: 'COSMOS ANGRE',
   description: 'Centre commercial Cosmos Angré - Abidjan',
   localisation: 'Angré, Abidjan, Côte d\'Ivoire',
-  dateOuverture: '2026-11-15',
-  dateInauguration: '2027-03-01',
+  dateOuverture: '2026-10-16',
+  dateInauguration: '2026-11-15',
   surface: 16184, // Surface GLA réelle
   boutiquesMin: 100,
   boutiquesMax: 120,

@@ -23,8 +23,8 @@ export const PROJECT_METADATA = {
   certification: 'EDGE Advanced (SFI/Banque Mondiale)',
   distinction: "Premier centre commercial EDGE Advanced d'Afrique de l'Ouest",
   objectifsOccupation: {
-    softOpening: { date: '2026-11-15', tauxCible: 70 },
-    inauguration: { date: '2026-12-15', tauxCible: 85 },
+    softOpening: { date: '2026-10-16', tauxCible: 70 },
+    inauguration: { date: '2026-11-15', tauxCible: 85 },
     moisPlus6: { date: '2027-06-15', tauxCible: 90 },
   },
 };
@@ -318,7 +318,7 @@ export const SUIVI_SOFT_OPENING = {
 // 16. INAUGURATION - PROGRAMME TYPE
 // ============================================================================
 export const PROGRAMME_INAUGURATION = {
-  date: '2026-12-15',
+  date: '2026-11-15',
   programme: [
     { horaire: '10h00', evenement: 'Accueil VIP, café', public: 'Invités' },
     { horaire: '10h30', evenement: 'Visite guidée', public: 'VIP' },
@@ -643,10 +643,10 @@ export const JALONS_CRITIQUES_CHEMIN_CRITIQUE = [
   { rang: 28, id: 'J3-EQ-009', jalon: 'Tests intégration systèmes', date: '2026-10-31', axe: 'AXE 3', criticite: 'critique' },
   { rang: 29, id: 'J5-009', jalon: 'Signalétique installée', date: '2026-11-10', axe: 'AXE 5', criticite: 'critique' },
   { rang: 30, id: 'J6-011', jalon: 'Commission sécurité favorable', date: '2026-11-10', axe: 'AXE 6', criticite: 'critique' },
-  { rang: 31, id: 'J-006', jalon: 'SOFT OPENING', date: '2026-11-15', axe: 'Tous', criticite: 'critique' },
+  { rang: 31, id: 'J-006', jalon: 'SOFT OPENING', date: '2026-10-16', axe: 'Tous', criticite: 'critique' },
   { rang: 32, id: 'J3-011', jalon: 'Levée réserves ≥95%', date: '2026-11-30', axe: 'AXE 3', criticite: 'critique' },
   { rang: 33, id: 'J4-007', jalon: 'Budget exploitation 2027 validé', date: '2026-11-30', axe: 'AXE 4', criticite: 'critique' },
-  { rang: 34, id: 'J-007', jalon: 'INAUGURATION OFFICIELLE', date: '2026-12-15', axe: 'Tous', criticite: 'critique' },
+  { rang: 34, id: 'J-007', jalon: 'INAUGURATION OFFICIELLE', date: '2026-11-15', axe: 'Tous', criticite: 'critique' },
 ];
 
 // ============================================================================

@@ -1,7 +1,7 @@
 // ============================================================================
 // COSMOS ANGRÉ - RÉFÉRENTIEL OFFICIEL V2.1
 // 4 Phases | 19 Jalons | 102 Actions
-// Dates clés: Soft Opening 15/11/2026 | Inauguration 15/12/2026
+// Dates clés: Soft Opening 16/10/2026 | Inauguration 15/11/2026
 // Budget mobilisation: 597 500 000 FCFA | Effectif cible: 35-40 personnes
 // ============================================================================
 
@@ -353,7 +353,7 @@ export const JALONS_V21: JalonV21[] = [
     numero: 16,
     titre: '★ SOFT OPENING ★',
     description: 'Ouverture au public du centre commercial COSMOS ANGRÉ',
-    date: '2026-11-15',
+    date: '2026-10-16',
     axe: 'Tous',
     niveau: 'critique',
     responsable: RESPONSABLES_V21.CENTER_MANAGER,
@@ -368,7 +368,7 @@ export const JALONS_V21: JalonV21[] = [
     numero: 17,
     titre: '★ INAUGURATION ★',
     description: 'Inauguration officielle avec les autorités et médias',
-    date: '2026-12-15',
+    date: '2026-11-15',
     axe: 'Marketing',
     niveau: 'critique',
     responsable: RESPONSABLES_V21.MARKETING_MGR,
@@ -1521,8 +1521,8 @@ export const ACTIONS_V21: ActionV21[] = [
     jalonId: 'J16',
     titre: 'Ouvrir le centre au public',
     description: 'Ouverture officielle au public - Soft Opening',
-    dateDebut: '2026-11-15',
-    dateFin: '2026-11-15',
+    dateDebut: '2026-10-16',
+    dateFin: '2026-10-16',
     responsable: RESPONSABLES_V21.CENTER_MANAGER,
     priorite: 'critique',
     dependances: ['16.1', '16.2', '16.3'],
@@ -1546,7 +1546,7 @@ export const ACTIONS_V21: ActionV21[] = [
     jalonId: 'J16',
     titre: 'Piloter les premiers jours',
     description: 'Pilotage renforcé des premiers jours d\'exploitation',
-    dateDebut: '2026-11-15',
+    dateDebut: '2026-10-16',
     dateFin: '2026-11-22',
     responsable: RESPONSABLES_V21.CENTER_MANAGER,
     priorite: 'critique',
@@ -1574,7 +1574,7 @@ export const ACTIONS_V21: ActionV21[] = [
     jalonId: 'J17',
     titre: 'Inviter les VIP et officiels',
     description: 'Gestion des invitations VIP et officiels',
-    dateDebut: '2026-11-15',
+    dateDebut: '2026-10-16',
     dateFin: '2026-12-05',
     responsable: RESPONSABLES_V21.DGA,
     priorite: 'haute',
@@ -1598,8 +1598,8 @@ export const ACTIONS_V21: ActionV21[] = [
     jalonId: 'J17',
     titre: 'Réaliser la cérémonie d\'inauguration',
     description: 'Déroulement de la cérémonie d\'inauguration',
-    dateDebut: '2026-12-15',
-    dateFin: '2026-12-15',
+    dateDebut: '2026-11-15',
+    dateFin: '2026-11-15',
     responsable: RESPONSABLES_V21.DGA,
     priorite: 'critique',
     dependances: ['17.1', '17.2', '17.3'],
@@ -1639,7 +1639,7 @@ export const ACTIONS_V21: ActionV21[] = [
     jalonId: 'J18',
     titre: 'Ajuster les procédures',
     description: 'Ajustement des procédures suite au REX d\'exploitation',
-    dateDebut: '2026-12-15',
+    dateDebut: '2026-11-15',
     dateFin: '2027-01-20',
     responsable: RESPONSABLES_V21.CENTER_MANAGER,
     priorite: 'moyenne',
@@ -1777,8 +1777,8 @@ export const STATS_V21 = {
   totalActions: ACTIONS_V21.length,
   jalonsCritiques: JALONS_V21.filter(j => j.niveau === 'critique').length,
   jalonsMajeurs: JALONS_V21.filter(j => j.niveau === 'majeur').length,
-  softOpeningDate: '2026-11-15',
-  inaugurationDate: '2026-12-15',
+  softOpeningDate: '2026-10-16',
+  inaugurationDate: '2026-11-15',
   budgetMobilisation: 597_500_000,
   effectifCible: { min: 35, max: 40 },
 } as const;

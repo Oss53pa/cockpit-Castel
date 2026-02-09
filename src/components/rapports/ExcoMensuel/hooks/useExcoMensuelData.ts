@@ -654,7 +654,7 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
       jalons: jalonsDb.map(j => ({
         id: j.code || j.id?.toString() || '',
         titre: j.titre,
-        dateDebut: j.date_prevue || '',
+        dateDebut: j.date_debut_prevue || j.date_prevue || '',
         dateFin: j.date_prevue || '',
         avancement: j.statut === 'atteint' ? 100 : 0,
         axe: dbCodeToAxe[j.axe] || 'general',

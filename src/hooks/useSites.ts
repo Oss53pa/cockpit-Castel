@@ -99,7 +99,7 @@ export async function initializeDefaultSite(): Promise<void> {
         description: `Centre commercial ${PROJET_CONFIG.nom} - Abidjan`,
         localisation: 'Abidjan, Côte d\'Ivoire',
         dateOuverture: PROJET_CONFIG.jalonsClés.softOpening,
-        dateInauguration: '2027-03-01',
+        dateInauguration: PROJET_CONFIG.jalonsClés.inauguration,
         surface: PROJET_CONFIG.surface.gla,
         nombreBatiments: PROJET_CONFIG.nombreBatiments,
         occupationCible: PROJET_CONFIG.occupationCible,

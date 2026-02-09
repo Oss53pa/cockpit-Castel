@@ -54,7 +54,7 @@ export const ACTIONS_AXE3_EQUIPEMENTS = [
   { id: 'A3-046', titre: 'Coordonner mise en service ascenseurs/escalators', dateFin: '2026-10-15', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite, systeme: 'Transport' },
   { id: 'A3-047', titre: 'Coordonner mise en service système parking', dateFin: '2026-08-31', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite, systeme: 'Parking', buildingCode: 'PK' },
   { id: 'A3-048', titre: 'Réaliser tests intégration tous systèmes', dateFin: '2026-10-31', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite, systeme: 'Tous' },
-  { id: 'A3-049', titre: 'Collecter et vérifier DOE complet', dateFin: '2026-11-15', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite, systeme: 'Tous' },
+  { id: 'A3-049', titre: 'Collecter et vérifier DOE complet', dateFin: '2026-10-16', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite, systeme: 'Tous' },
 ];
 
 // ============================================================================
@@ -85,12 +85,12 @@ export const ACTIONS_AXE5 = [
   { id: 'A5-006', titre: 'Produire contenu teasing', dateDebut: '2026-08-01', dateFin: '2026-08-31', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
   { id: 'A5-007', titre: 'Lancer campagne teasing', dateDebut: '2026-09-01', dateFin: '2026-10-31', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
   { id: 'A5-008', titre: 'Produire contenu campagne lancement', dateDebut: '2026-10-01', dateFin: '2026-10-31', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
-  { id: 'A5-009', titre: 'Lancer campagne lancement', dateDebut: '2026-11-01', dateFin: '2026-12-15', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
+  { id: 'A5-009', titre: 'Lancer campagne lancement', dateDebut: '2026-11-01', dateFin: '2026-11-15', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
   { id: 'A5-010', titre: 'Organiser événement presse', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'haute' as Priorite },
   { id: 'A5-011', titre: 'Coordonner installation signalétique extérieure', dateDebut: '2026-10-15', dateFin: '2026-11-01', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
   { id: 'A5-012', titre: 'Coordonner installation signalétique intérieure', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
-  { id: 'A5-013', titre: 'Organiser Soft Opening', dateDebut: '2026-11-01', dateFin: '2026-11-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A5-014', titre: 'Organiser Inauguration officielle', dateDebut: '2026-12-01', dateFin: '2026-12-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A5-013', titre: 'Organiser Soft Opening', dateDebut: '2026-10-01', dateFin: '2026-10-16', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A5-014', titre: 'Organiser Inauguration officielle', dateDebut: '2026-11-01', dateFin: '2026-11-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
   { id: 'A5-015', titre: 'Finaliser mission Yvan (parcours client, branding)', dateDebut: '2026-02-01', dateFin: '2026-02-28', responsable: RESPONSABLES.DGA, priorite: 'haute' as Priorite },
 ];
 

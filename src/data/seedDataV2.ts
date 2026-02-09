@@ -1,8 +1,8 @@
 // ============================================================================
-// RÉFÉRENTIEL COMPLET — COSMOS ANGRÉ v3.1
+// RÉFÉRENTIEL COMPLET — COSMOS ANGRÉ v4.0
 // ============================================================================
-// 8 Axes | 35 Jalons | 169 Actions
-// Date : 09 Février 2026 | Ouverture prévue : Q4 2026
+// 8 Axes | 33 Jalons | 200 Actions
+// Date : 09 Février 2026 | Soft Opening : 16/10/2026
 
 import type { User, Jalon, Action, Axe, ProjectPhase, BuildingCode } from '@/types';
 
@@ -25,22 +25,22 @@ export const PROJECT_METADATA = {
     kickoff: '2025-10-01',
     debutConstruction: '2024-01-01',
     debutMobilisation: '2026-01-01',
-    softOpening: '2026-11-15',
-    inauguration: '2026-12-15',
+    softOpening: '2026-10-16',
+    inauguration: '2026-11-15',
     finMobilisation: '2027-03-31',
   },
 
   objectifsOccupation: {
-    softOpening: { date: '2026-11-15', tauxCible: 70 },
-    inauguration: { date: '2026-12-15', tauxCible: 85 },
-    moisPlus6: { date: '2027-06-15', tauxCible: 95 },
+    softOpening: { date: '2026-10-16', tauxCible: 85 },
+    inauguration: { date: '2026-11-15', tauxCible: 90 },
+    moisPlus6: { date: '2027-04-16', tauxCible: 95 },
   },
 
-  // Compteurs v3.1 (après consolidation RH, COM, BUD + ajout DIV)
+  // Compteurs v4.0 (Soft Opening 16/10/2026)
   compteurs: {
     axes: 8,
-    jalons: 35, // RH:4 + COM:5 + TECH:6 + BUD:3 + MKT:4 + EXP:4 + CON:6 + DIV:3
-    actions: 169, // RH:8 + COM:27 + TECH:30 + BUD:6 + MKT:30 + EXP:17 + CON:42 + DIV:9
+    jalons: 33, // RH:3 + COM:4 + TECH:6 + BUD:3 + MKT:4 + EXP:4 + CON:6 + DIV:3
+    actions: 200, // RH:31 + COM:25 + TECH:32 + BUD:14 + MKT:20 + EXP:21 + CON:42 + DIV:15
   },
 };
 
@@ -55,6 +55,7 @@ export const SEED_USERS: Omit<User, 'id'>[] = [
   { nom: 'NTUMY', prenom: 'Deborah', email: 'dntumy@rocklanecapital.com', role: 'manager', createdAt: new Date().toISOString() },
   { nom: 'Timite', prenom: 'Hadja', email: 'htimite@cosmos-angre.com', role: 'manager', createdAt: new Date().toISOString() },
   { nom: 'Affian', prenom: 'Adele', email: 'aaffian@cosmos-angre.com', role: 'manager', createdAt: new Date().toISOString() },
+  { nom: 'Guehi', prenom: 'Yvan', email: 'Yvankguehi@gmail.com', role: 'manager', createdAt: new Date().toISOString() },
   // Lecteurs
   { nom: 'Sanankoua', prenom: 'Cheick', email: 'Csanankoua@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
   { nom: 'Assie', prenom: 'Julien', email: 'jassie@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
@@ -182,6 +183,22 @@ function createJalon(
 // Type étendu pour stocker le jalonCode temporairement
 type ActionWithJalonCode = Omit<Action, 'id'> & { _jalonCode?: string };
 
+// Raccourcis responsables
+const PA = 'Pamela ATOKOUNA';
+const DN = 'Deborah NTUMY';
+const HT = 'Hadja Timite';
+const AA = 'Adele Affian';
+const CS = 'Cheick Sanankoua';
+const JA = 'Julien Assie';
+const YG = 'Yvan Guehi';
+
+interface ActionOpts {
+  date_debut?: string;
+  priorite?: 'critique' | 'haute' | 'moyenne' | 'basse';
+  projectPhase?: ProjectPhase;
+  buildingCode?: BuildingCode;
+}
+
 function createAction(
   id_action: string,
   titre: string,
@@ -190,11 +207,25 @@ function createAction(
   responsable: string,
   description: string = '',
   jalonCode?: string,
-  projectPhase: ProjectPhase = 'phase2_mobilisation',
+  projectPhaseOrOpts?: ProjectPhase | ActionOpts,
   buildingCode?: BuildingCode
 ): ActionWithJalonCode {
-  const dateDebut = new Date(date_fin_prevue);
-  dateDebut.setDate(dateDebut.getDate() - 14);
+  // Parse options
+  let projectPhase: ProjectPhase = 'phase2_mobilisation';
+  let explicitDateDebut: string | undefined;
+  let priorite: 'critique' | 'haute' | 'moyenne' | 'basse' = 'moyenne';
+
+  if (typeof projectPhaseOrOpts === 'string') {
+    projectPhase = projectPhaseOrOpts;
+  } else if (projectPhaseOrOpts && typeof projectPhaseOrOpts === 'object') {
+    projectPhase = projectPhaseOrOpts.projectPhase || 'phase2_mobilisation';
+    buildingCode = projectPhaseOrOpts.buildingCode || buildingCode;
+    explicitDateDebut = projectPhaseOrOpts.date_debut;
+    priorite = projectPhaseOrOpts.priorite || 'moyenne';
+  }
+
+  const dateDebut = explicitDateDebut ? new Date(explicitDateDebut) : new Date(date_fin_prevue);
+  if (!explicitDateDebut) dateDebut.setDate(dateDebut.getDate() - 14);
 
   // Calculer l'avancement et le statut en fonction de la date actuelle
   const today = new Date('2026-01-31');
@@ -293,9 +324,9 @@ function createAction(
     points_blocage: null,
     escalade_requise: false,
     niveau_escalade: null,
-    priorite: 'moyenne',
+    priorite,
     score_priorite: null,
-    impact_si_retard: 'modere',
+    impact_si_retard: priorite === 'critique' ? 'critique' : priorite === 'haute' ? 'majeur' : 'modere',
     version: 1,
     date_modification: now,
     modifie_par: 'System',
@@ -306,230 +337,254 @@ function createAction(
 }
 
 // ============================================================================
-// AXE 1 : RH & ORGANISATION (20%) - 4 Jalons, 8 Actions
+// AXE 1 : RH & ORGANISATION (20%) - 3 Jalons, 27 Actions
 // ============================================================================
 
 export const JALONS_AXE1_RH: Omit<Jalon, 'id'>[] = [
-  createJalon('J-RH-1', 'Organigramme cible validé', 'axe1_rh', '2026-01-31', 'Pamela ATOKOUNA', '', 'phase1_preparation'),
-  createJalon('J-RH-2', 'Recrutement', 'axe1_rh', '2026-10-15', 'Pamela ATOKOUNA', 'Toutes les vagues de recrutement'),
-  createJalon('J-RH-3', 'Formation & Intégration', 'axe1_rh', '2026-10-30', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
-  createJalon('J-RH-4', 'Équipe 100% opérationnelle', 'axe1_rh', '2026-11-01', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
+  createJalon('J-RH-1', 'Organigramme cible validé', 'axe1_rh', '2026-01-31', PA, '', 'phase1_preparation'),
+  createJalon('J-RH-2', 'Recrutement', 'axe1_rh', '2026-10-05', PA, 'Toutes les vagues de recrutement'),
+  createJalon('J-RH-3', 'Équipe 100% opérationnelle', 'axe1_rh', '2026-10-16', PA, '', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE1_RH: Omit<Action, 'id'>[] = [
-  // J-RH-1 : Organigramme
-  createAction('A-RH-1.1', 'Valider organigramme et fiches de poste', 'axe1_rh', '2026-01-20', 'Pamela ATOKOUNA', '', 'J-RH-1', 'phase1_preparation'),
-  createAction('A-RH-1.2', 'Valider grille salariale et budget RH', 'axe1_rh', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-RH-1', 'phase1_preparation'),
-  // J-RH-2 : Recrutement (toutes les vagues consolidées)
-  createAction('A-RH-2.1', 'Recruter Vague 1 (FSM, CM, MM)', 'axe1_rh', '2026-03-31', 'Pamela ATOKOUNA', '', 'J-RH-2'),
-  createAction('A-RH-2.2', 'Recruter Vague 2 (Team Leads)', 'axe1_rh', '2026-05-31', 'Mariam Keita', '', 'J-RH-2'),
-  createAction('A-RH-2.3', 'Recruter Vague 3 (Seniors/Assistants)', 'axe1_rh', '2026-07-31', 'Mariam Keita', '', 'J-RH-2'),
-  createAction('A-RH-2.4', 'Recruter Vague 4 (Personnel terrain)', 'axe1_rh', '2026-10-15', 'Mariam Keita', '', 'J-RH-2'),
-  // J-RH-3 : Formation & Intégration
-  createAction('A-RH-3.1', 'Former toutes les équipes', 'axe1_rh', '2026-10-25', 'Pamela ATOKOUNA', '', 'J-RH-3', 'phase3_lancement'),
-  createAction('A-RH-3.2', 'Exercice grandeur nature', 'axe1_rh', '2026-10-30', 'Deborah NTUMY', '', 'J-RH-3', 'phase3_lancement'),
+  // J-RH-1 : Organigramme cible validé (06/01 → 31/01/2026)
+  createAction('A-RH-1.1', 'Définir l\'organigramme cible', 'axe1_rh', '2026-01-25', PA, '', 'J-RH-1', { date_debut: '2026-01-06', projectPhase: 'phase1_preparation' }),
+  createAction('A-RH-1.2', 'Définir les fiches de poste', 'axe1_rh', '2026-01-25', PA, '', 'J-RH-1', { date_debut: '2026-01-06', priorite: 'haute', projectPhase: 'phase1_preparation' }),
+  createAction('A-RH-1.3', 'Établir le budget masse salariale', 'axe1_rh', '2026-01-25', PA, '', 'J-RH-1', { date_debut: '2026-01-13', priorite: 'haute', projectPhase: 'phase1_preparation' }),
+  createAction('A-RH-1.4', 'Valider l\'organigramme avec la DG', 'axe1_rh', '2026-01-31', CS, '', 'J-RH-1', { date_debut: '2026-01-26', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  // J-RH-2 : Recrutement (01/02 → 05/10/2026)
+  createAction('A-RH-2.1', 'Recruter le Center Manager', 'axe1_rh', '2026-02-28', CS, '', 'J-RH-2', { date_debut: '2026-02-01' }),
+  createAction('A-RH-2.2', 'Recruter le Facility Services Manager', 'axe1_rh', '2026-03-15', PA, '', 'J-RH-2', { date_debut: '2026-02-01' }),
+  createAction('A-RH-2.3', 'Recruter le Marketing Manager', 'axe1_rh', '2026-03-31', PA, '', 'J-RH-2', { date_debut: '2026-03-01' }),
+  createAction('A-RH-2.4', 'Recruter le Security Manager', 'axe1_rh', '2026-03-20', PA, '', 'J-RH-2', { date_debut: '2026-02-01' }),
+  createAction('A-RH-2.5', 'Organiser les sessions d\'onboarding Vague 1', 'axe1_rh', '2026-03-31', PA, '', 'J-RH-2', { date_debut: '2026-03-15' }),
+  createAction('A-RH-2.6', 'Recruter le Team Leader Sécurité', 'axe1_rh', '2026-04-30', PA, '', 'J-RH-2', { date_debut: '2026-04-01', priorite: 'haute' }),
+  createAction('A-RH-2.7', 'Recruter le Team Leader Maintenance', 'axe1_rh', '2026-04-30', PA, '', 'J-RH-2', { date_debut: '2026-04-01', priorite: 'haute' }),
+  createAction('A-RH-2.8', 'Recruter le Team Leader Nettoyage', 'axe1_rh', '2026-05-15', PA, '', 'J-RH-2', { date_debut: '2026-04-15', priorite: 'haute' }),
+  createAction('A-RH-2.9', 'Définir les plannings et rotations', 'axe1_rh', '2026-05-20', PA, '', 'J-RH-2', { date_debut: '2026-05-01' }),
+  createAction('A-RH-2.10', 'Lancer les formations encadrement', 'axe1_rh', '2026-05-31', PA, '', 'J-RH-2', { date_debut: '2026-05-15' }),
+  createAction('A-RH-2.11', 'Recruter les superviseurs', 'axe1_rh', '2026-06-30', PA, '', 'J-RH-2', { date_debut: '2026-06-01' }),
+  createAction('A-RH-2.12', 'Recruter les chefs d\'équipe', 'axe1_rh', '2026-06-30', PA, '', 'J-RH-2', { date_debut: '2026-06-01' }),
+  createAction('A-RH-2.13', 'Recruter les assistants administratifs', 'axe1_rh', '2026-07-15', PA, '', 'J-RH-2', { date_debut: '2026-06-15' }),
+  createAction('A-RH-2.14', 'Intégrer l\'équipe encadrement', 'axe1_rh', '2026-07-20', PA, '', 'J-RH-2', { date_debut: '2026-07-01' }),
+  createAction('A-RH-2.15', 'Lancer les formations seniors', 'axe1_rh', '2026-07-31', PA, '', 'J-RH-2', { date_debut: '2026-07-15', priorite: 'haute' }),
+  createAction('A-RH-2.16', 'Recruter les agents de sécurité', 'axe1_rh', '2026-08-31', PA, '', 'J-RH-2', { date_debut: '2026-08-01' }),
+  createAction('A-RH-2.17', 'Recruter les agents techniques', 'axe1_rh', '2026-08-15', PA, '', 'J-RH-2', { date_debut: '2026-08-01' }),
+  createAction('A-RH-2.18', 'Recruter les agents d\'accueil', 'axe1_rh', '2026-08-20', PA, '', 'J-RH-2', { date_debut: '2026-08-01' }),
+  createAction('A-RH-2.19', 'Équiper les agents (uniformes, badges)', 'axe1_rh', '2026-09-05', PA, '', 'J-RH-2', { date_debut: '2026-08-15' }),
+  createAction('A-RH-2.20', 'Former les équipes opérationnelles', 'axe1_rh', '2026-09-15', PA, '', 'J-RH-2', { date_debut: '2026-08-20' }),
+  createAction('A-RH-2.21', 'Valider l\'effectif terrain', 'axe1_rh', '2026-09-15', PA, '', 'J-RH-2', { date_debut: '2026-09-10' }),
+  createAction('A-RH-2.22', 'Recruter les agents complémentaires', 'axe1_rh', '2026-09-30', PA, '', 'J-RH-2', { date_debut: '2026-09-16' }),
+  createAction('A-RH-2.23', 'Compléter les formations terrain', 'axe1_rh', '2026-10-05', PA, '', 'J-RH-2', { date_debut: '2026-09-25', priorite: 'haute' }),
+  createAction('A-RH-2.24', 'Réaliser les évaluations période d\'essai', 'axe1_rh', '2026-10-05', PA, '', 'J-RH-2', { date_debut: '2026-10-01' }),
+  // J-RH-3 : Équipe 100% opérationnelle (06/10 → 16/10/2026)
+  createAction('A-RH-3.1', 'Stabiliser les équipes', 'axe1_rh', '2026-10-12', PA, '', 'J-RH-3', { date_debut: '2026-10-06', priorite: 'haute', projectPhase: 'phase3_lancement' }),
+  createAction('A-RH-3.2', 'Briefer toutes les équipes pour l\'ouverture', 'axe1_rh', '2026-10-15', PA, '', 'J-RH-3', { date_debut: '2026-10-13', priorite: 'critique', projectPhase: 'phase3_lancement' }),
+  createAction('A-RH-3.3', 'Valider l\'effectif complet et opérationnel', 'axe1_rh', '2026-10-16', PA, '', 'J-RH-3', { date_debut: '2026-10-15', priorite: 'critique', projectPhase: 'phase3_lancement' }),
 ];
 
 // ============================================================================
-// AXE 2 : COMMERCIAL & LEASING (25%) - 7 Jalons, 25 Actions
+// AXE 2 : COMMERCIAL & LEASING (25%) - 4 Jalons, 22 Actions
 // ============================================================================
 
 export const JALONS_AXE2_COMMERCIAL: Omit<Jalon, 'id'>[] = [
-  createJalon('J-COM-1', 'BEFA Centre Commercial Signés', 'axe2_commercial', '2026-04-15', 'Hadja Timite', 'Toutes les signatures BEFA'),
-  createJalon('J-COM-2', 'Plans aménagement validés', 'axe2_commercial', '2026-04-30', 'Hadja Timite'),
-  createJalon('J-COM-3', 'Occupation 50%', 'axe2_commercial', '2026-06-30', 'Hadja Timite'),
-  createJalon('J-COM-4', 'Locomotives signées (≥3)', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA'),
-  createJalon('J-COM-5', 'Occupation 85%', 'axe2_commercial', '2026-11-15', 'Hadja Timite', '', 'phase3_lancement'),
+  createJalon('J-COM-1', 'BEFA Centre Commercial Signés', 'axe2_commercial', '2026-04-15', HT, 'Toutes les signatures BEFA'),
+  createJalon('J-COM-2', 'Calendrier livraison Tenants', 'axe2_commercial', '2026-04-30', HT),
+  createJalon('J-COM-3', 'BEFA Big Boxes signés', 'axe2_commercial', '2026-08-31', HT),
+  createJalon('J-COM-4', 'Taux occupation ≥85%', 'axe2_commercial', '2026-10-16', DN, '', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE2_COMMERCIAL: Omit<Action, 'id'>[] = [
-  // J-COM-1 : BEFA Centre Commercial Signés (toutes les actions BEFA consolidées)
-  createAction('A-COM-1.1', 'Finaliser étude de marché / zone chalandise', 'axe2_commercial', '2026-01-20', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.2', 'Définir positionnement commercial', 'axe2_commercial', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-COM-1'),
-  createAction('A-COM-1.3', 'Identifier locomotives cibles', 'axe2_commercial', '2026-02-10', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.4', 'Finaliser stratégie locative', 'axe2_commercial', '2026-02-15', 'Pamela ATOKOUNA', '', 'J-COM-1'),
-  createAction('A-COM-1.5', 'Valider grille de loyers', 'axe2_commercial', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-COM-1'),
-  createAction('A-COM-1.6', 'Négocier BEFA prioritaires', 'axe2_commercial', '2026-02-15', 'Pamela ATOKOUNA', '', 'J-COM-1'),
-  createAction('A-COM-1.7', 'Signer BEFA Vague 1 (25%)', 'axe2_commercial', '2026-02-15', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.8', 'Relancer prospects pipeline', 'axe2_commercial', '2026-02-28', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.9', 'Négocier BEFA Vague 2', 'axe2_commercial', '2026-03-10', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.10', 'Coordonner avec Hadja & Adèle', 'axe2_commercial', '2026-03-15', 'Pamela ATOKOUNA', '', 'J-COM-1'),
-  createAction('A-COM-1.11', 'Signer BEFA Vague 2 (50% cumulé)', 'axe2_commercial', '2026-03-15', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.12', 'Intensifier prospection', 'axe2_commercial', '2026-03-31', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.13', 'Négocier BEFA restants', 'axe2_commercial', '2026-04-10', 'Hadja Timite', '', 'J-COM-1'),
-  createAction('A-COM-1.14', 'Signer BEFA Vague 3 (100%)', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-1'),
-  // J-COM-2 : Plans aménagement validés
-  createAction('A-COM-2.1', 'Collecter plans preneurs', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-2'),
-  createAction('A-COM-2.2', 'Vérifier conformité technique', 'axe2_commercial', '2026-04-25', 'Cheick Sanankoua', '', 'J-COM-2'),
-  createAction('A-COM-2.3', 'Valider plans aménagement', 'axe2_commercial', '2026-04-30', 'Pamela ATOKOUNA', '', 'J-COM-2'),
-  // J-COM-3 : Occupation 50%
-  createAction('A-COM-3.1', 'Suivre avancement travaux preneurs', 'axe2_commercial', '2026-06-30', 'Hadja Timite', '', 'J-COM-3'),
-  createAction('A-COM-3.2', 'Coordonner avec Pilote B', 'axe2_commercial', '2026-06-30', 'Cheick Sanankoua', '', 'J-COM-3'),
-  createAction('A-COM-3.3', 'Valider occupation 50%', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-3'),
-  // J-COM-4 : Locomotives signées
-  createAction('A-COM-4.1', 'Négocier locomotive alimentaire', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
-  createAction('A-COM-4.2', 'Négocier locomotive mode', 'axe2_commercial', '2026-08-31', 'Pamela ATOKOUNA', '', 'J-COM-4'),
-  createAction('A-COM-4.3', 'Négocier locomotive loisirs/restauration', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
-  createAction('A-COM-4.4', 'Signer ≥3 locomotives', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
-  // J-COM-5 : Occupation 85%
-  createAction('A-COM-5.1', 'Finaliser derniers baux', 'axe2_commercial', '2026-10-31', 'Hadja Timite', '', 'J-COM-5', 'phase3_lancement'),
-  createAction('A-COM-5.2', 'Valider preneurs prêts ouverture', 'axe2_commercial', '2026-11-10', 'Hadja Timite', '', 'J-COM-5', 'phase3_lancement'),
-  createAction('A-COM-5.3', 'Confirmer occupation 85%', 'axe2_commercial', '2026-11-15', 'Pamela ATOKOUNA', '', 'J-COM-5', 'phase3_lancement'),
+  // J-COM-1 : BEFA Centre Commercial (06/01 → 15/04/2026)
+  createAction('A-COM-1.1', 'Définir le mix enseignes cible', 'axe2_commercial', '2026-02-05', CS, '', 'J-COM-1', { date_debut: '2026-01-06' }),
+  createAction('A-COM-1.2', 'Établir la grille tarifaire', 'axe2_commercial', '2026-02-10', CS, '', 'J-COM-1', { date_debut: '2026-01-06' }),
+  createAction('A-COM-1.3', 'Identifier les prospects prioritaires', 'axe2_commercial', '2026-02-15', CS, '', 'J-COM-1', { date_debut: '2026-01-06' }),
+  createAction('A-COM-1.4', 'Préparer les documents commerciaux', 'axe2_commercial', '2026-02-10', PA, '', 'J-COM-1', { date_debut: '2026-01-06' }),
+  createAction('A-COM-1.5', 'Valider la stratégie commerciale', 'axe2_commercial', '2026-02-28', CS, '', 'J-COM-1', { date_debut: '2026-02-16' }),
+  createAction('A-COM-1.6', 'Mettre en place le pipeline CRM commercial', 'axe2_commercial', '2026-01-31', HT, '', 'J-COM-1', { date_debut: '2026-01-06', priorite: 'haute' }),
+  createAction('A-COM-1.7', 'Signer les BEFA prioritaires (25%)', 'axe2_commercial', '2026-02-15', HT, '', 'J-COM-1', { date_debut: '2026-02-01' }),
+  createAction('A-COM-1.8', 'Animer le pipeline commercial', 'axe2_commercial', '2026-04-15', HT, '', 'J-COM-1', { date_debut: '2026-02-16' }),
+  createAction('A-COM-1.9', 'Organiser les visites site', 'axe2_commercial', '2026-03-31', HT, '', 'J-COM-1', { date_debut: '2026-02-16' }),
+  createAction('A-COM-1.10', 'Préparer les dossiers locataires', 'axe2_commercial', '2026-04-15', AA, '', 'J-COM-1', { date_debut: '2026-03-16' }),
+  createAction('A-COM-1.11', 'Signer les BEFA vague 2 (50%)', 'axe2_commercial', '2026-03-15', HT, '', 'J-COM-1', { date_debut: '2026-03-01' }),
+  createAction('A-COM-1.12', 'Finaliser les négociations en cours', 'axe2_commercial', '2026-04-05', HT, '', 'J-COM-1', { date_debut: '2026-03-16' }),
+  createAction('A-COM-1.13', 'Signer les derniers BEFA (100%)', 'axe2_commercial', '2026-04-15', HT, '', 'J-COM-1', { date_debut: '2026-04-01' }),
+  // J-COM-2 : Calendrier livraison Tenants (16/03 → 30/04/2026)
+  createAction('A-COM-2.1', 'Transmettre les cahiers des charges aux preneurs', 'axe2_commercial', '2026-03-30', HT, '', 'J-COM-2', { date_debut: '2026-03-16' }),
+  createAction('A-COM-2.2', 'Planifier les livraisons preneurs', 'axe2_commercial', '2026-04-20', HT, '', 'J-COM-2', { date_debut: '2026-04-01' }),
+  createAction('A-COM-2.3', 'Valider le calendrier de livraison avec les preneurs', 'axe2_commercial', '2026-04-30', DN, '', 'J-COM-2', { date_debut: '2026-04-21', priorite: 'critique' }),
+  // J-COM-3 : BEFA Big Boxes signés (01/05 → 31/08/2026)
+  createAction('A-COM-3.1', 'Négocier les conditions Big Boxes', 'axe2_commercial', '2026-06-30', HT, '', 'J-COM-3', { date_debut: '2026-05-01', priorite: 'critique' }),
+  createAction('A-COM-3.2', 'Signer les BEFA Big Boxes', 'axe2_commercial', '2026-08-31', HT, '', 'J-COM-3', { date_debut: '2026-07-01', priorite: 'critique' }),
+  createAction('A-COM-3.3', 'Accompagner les fit-out preneurs Big Boxes', 'axe2_commercial', '2026-08-31', DN, '', 'J-COM-3', { date_debut: '2026-07-01', priorite: 'haute' }),
+  // J-COM-4 : Taux d'occupation ≥ 85% (01/09 → 16/10/2026)
+  createAction('A-COM-4.1', 'Suivre le taux d\'occupation', 'axe2_commercial', '2026-10-10', HT, '', 'J-COM-4', { date_debut: '2026-09-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-COM-4.2', 'Accompagner les fit-out preneurs Centre Commercial', 'axe2_commercial', '2026-10-05', DN, '', 'J-COM-4', { date_debut: '2026-09-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-COM-4.3', 'Coordonner les livraisons preneurs', 'axe2_commercial', '2026-10-05', DN, '', 'J-COM-4', { date_debut: '2026-09-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-COM-4.4', 'Former et livrer les UC aux preneurs par vague', 'axe2_commercial', '2026-10-08', HT, '', 'J-COM-4', { date_debut: '2026-09-15', projectPhase: 'phase3_lancement' }),
+  createAction('A-COM-4.5', 'Vérifier l\'opérationnalité preneurs', 'axe2_commercial', '2026-10-12', DN, '', 'J-COM-4', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
+  createAction('A-COM-4.6', 'Confirmer le taux d\'occupation ≥ 85%', 'axe2_commercial', '2026-10-16', DN, '', 'J-COM-4', { date_debut: '2026-10-13', priorite: 'critique', projectPhase: 'phase3_lancement' }),
 ];
 
 // ============================================================================
-// AXE 3 : TECHNIQUE & HANDOVER (20%) - 6 Jalons, 30 Actions
+// AXE 3 : TECHNIQUE & HANDOVER (20%) - 6 Jalons, 32 Actions
 // ============================================================================
 
 export const JALONS_AXE3_TECHNIQUE: Omit<Jalon, 'id'>[] = [
-  createJalon('J-TECH-1', 'Phase A complétée (DOE)', 'axe3_technique', '2026-06-30', 'Cheick Sanankoua'),
-  createJalon('J-TECH-2', 'Tests techniques réussis', 'axe3_technique', '2026-09-30', 'Deborah NTUMY'),
-  createJalon('J-TECH-3', 'Formations complétées', 'axe3_technique', '2026-09-30', 'Deborah NTUMY'),
-  createJalon('J-TECH-4', 'Commission sécurité OK', 'axe3_technique', '2026-10-15', 'Pamela ATOKOUNA', '', 'phase3_lancement', 'CC'),
-  createJalon('J-TECH-5', 'Réserves bloquantes levées', 'axe3_technique', '2026-10-20', 'Pamela ATOKOUNA', '', 'phase3_lancement', 'CC'),
-  createJalon('J-TECH-6', 'PV réception signé', 'axe3_technique', '2026-10-31', 'Pamela ATOKOUNA', '', 'phase3_lancement', 'CC'),
+  createJalon('J-TECH-1', 'Phase A complétée (DOE)', 'axe3_technique', '2026-06-30', DN),
+  createJalon('J-TECH-2', 'Tests techniques réussis', 'axe3_technique', '2026-08-31', DN),
+  createJalon('J-TECH-3', 'Formations complétées', 'axe3_technique', '2026-09-15', DN),
+  createJalon('J-TECH-4', 'Commission sécurité OK', 'axe3_technique', '2026-09-30', AA, '', 'phase3_lancement', 'CC'),
+  createJalon('J-TECH-5', 'Suivi levées réserves', 'axe3_technique', '2026-10-05', AA, '', 'phase3_lancement', 'CC'),
+  createJalon('J-TECH-6', 'Réceptions définitives', 'axe3_technique', '2026-10-16', DN, '', 'phase3_lancement', 'CC'),
 ];
 
 export const ACTIONS_AXE3_TECHNIQUE: Omit<Action, 'id'>[] = [
-  // J-TECH-1
-  createAction('A-TECH-1.1', 'Collecter DOE constructeur (Lot 1-5)', 'axe3_technique', '2026-04-30', 'Cheick Sanankoua', '', 'J-TECH-1'),
-  createAction('A-TECH-1.2', 'Collecter DOE lots techniques', 'axe3_technique', '2026-05-31', 'Cheick Sanankoua', '', 'J-TECH-1'),
-  createAction('A-TECH-1.3', 'Vérifier complétude DOE', 'axe3_technique', '2026-06-15', 'Deborah NTUMY', '', 'J-TECH-1'),
-  createAction('A-TECH-1.4', 'Archiver DOE GED', 'axe3_technique', '2026-06-30', 'Cheick Sanankoua', '', 'J-TECH-1'),
-  createAction('A-TECH-1.5', 'Établir liste réserves Phase A', 'axe3_technique', '2026-06-30', 'Cheick Sanankoua', '', 'J-TECH-1'),
-  // J-TECH-2
-  createAction('A-TECH-2.1', 'Planifier tests CVC/HVAC', 'axe3_technique', '2026-08-01', 'Deborah NTUMY', '', 'J-TECH-2'),
-  createAction('A-TECH-2.2', 'Exécuter tests électricité HT/BT', 'axe3_technique', '2026-08-31', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.3', 'Exécuter tests plomberie', 'axe3_technique', '2026-08-31', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.4', 'Exécuter tests CVC/HVAC', 'axe3_technique', '2026-09-15', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.5', 'Exécuter tests SSI', 'axe3_technique', '2026-09-15', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.6', 'Exécuter tests ascenseurs/escalators', 'axe3_technique', '2026-09-20', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.7', 'Exécuter tests CCTV/contrôle accès', 'axe3_technique', '2026-09-25', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.8', 'Exécuter tests GTC/BMS', 'axe3_technique', '2026-09-30', 'Cheick Sanankoua', '', 'J-TECH-2'),
-  createAction('A-TECH-2.9', 'Valider PV tests', 'axe3_technique', '2026-09-30', 'Deborah NTUMY', '', 'J-TECH-2'),
-  // J-TECH-3
-  createAction('A-TECH-3.1', 'Former équipe technique CVC', 'axe3_technique', '2026-09-15', 'Cheick Sanankoua', '', 'J-TECH-3'),
-  createAction('A-TECH-3.2', 'Former équipe technique SSI', 'axe3_technique', '2026-09-15', 'Cheick Sanankoua', '', 'J-TECH-3'),
-  createAction('A-TECH-3.3', 'Former équipe technique GTC/BMS', 'axe3_technique', '2026-09-20', 'Cheick Sanankoua', '', 'J-TECH-3'),
-  createAction('A-TECH-3.4', 'Former équipe sécurité CCTV', 'axe3_technique', '2026-09-25', 'Cheick Sanankoua', '', 'J-TECH-3'),
-  createAction('A-TECH-3.5', 'Valider attestations formation', 'axe3_technique', '2026-09-30', 'Deborah NTUMY', '', 'J-TECH-3'),
-  // J-TECH-4
-  createAction('A-TECH-4.1', 'Préparer dossier commission sécurité', 'axe3_technique', '2026-09-30', 'Deborah NTUMY', '', 'J-TECH-4'),
-  createAction('A-TECH-4.2', 'Pré-visite interne', 'axe3_technique', '2026-10-05', 'Deborah NTUMY', '', 'J-TECH-4', 'phase3_lancement'),
-  createAction('A-TECH-4.3', 'Accueillir commission sécurité', 'axe3_technique', '2026-10-15', 'Pamela ATOKOUNA', '', 'J-TECH-4', 'phase3_lancement'),
-  createAction('A-TECH-4.4', 'Obtenir avis favorable', 'axe3_technique', '2026-10-15', 'Pamela ATOKOUNA', '', 'J-TECH-4', 'phase3_lancement'),
-  // J-TECH-5
-  createAction('A-TECH-5.1', 'Identifier réserves bloquantes', 'axe3_technique', '2026-10-01', 'Deborah NTUMY', '', 'J-TECH-5', 'phase3_lancement'),
-  createAction('A-TECH-5.2', 'Relancer entreprises pour levées', 'axe3_technique', '2026-10-10', 'Cheick Sanankoua', '', 'J-TECH-5', 'phase3_lancement'),
-  createAction('A-TECH-5.3', 'Vérifier levées réserves', 'axe3_technique', '2026-10-18', 'Deborah NTUMY', '', 'J-TECH-5', 'phase3_lancement'),
-  createAction('A-TECH-5.4', 'Valider 0 réserve bloquante', 'axe3_technique', '2026-10-20', 'Pamela ATOKOUNA', '', 'J-TECH-5', 'phase3_lancement'),
-  // J-TECH-6
-  createAction('A-TECH-6.1', 'Préparer PV réception', 'axe3_technique', '2026-10-25', 'Deborah NTUMY', '', 'J-TECH-6', 'phase3_lancement'),
-  createAction('A-TECH-6.2', 'Organiser visite réception finale', 'axe3_technique', '2026-10-28', 'Pamela ATOKOUNA', '', 'J-TECH-6', 'phase3_lancement'),
-  createAction('A-TECH-6.3', 'Signer PV réception', 'axe3_technique', '2026-10-31', 'Pamela ATOKOUNA', '', 'J-TECH-6', 'phase3_lancement'),
+  // J-TECH-1 : Phase A complétée — DOE collectés (01/02 → 30/06/2026)
+  createAction('A-TECH-1.1', 'Consolider le planning travaux avec MOE', 'axe3_technique', '2026-02-28', DN, '', 'J-TECH-1', { date_debut: '2026-02-01' }),
+  createAction('A-TECH-1.2', 'Établir le calendrier des OPR', 'axe3_technique', '2026-02-28', DN, '', 'J-TECH-1', { date_debut: '2026-02-01' }),
+  createAction('A-TECH-1.3', 'Identifier les réserves prévisibles', 'axe3_technique', '2026-03-31', DN, '', 'J-TECH-1', { date_debut: '2026-03-01' }),
+  createAction('A-TECH-1.4', 'Planifier les livraisons par lot', 'axe3_technique', '2026-04-30', DN, '', 'J-TECH-1', { date_debut: '2026-03-01' }),
+  createAction('A-TECH-1.5', 'Valider le planning technique', 'axe3_technique', '2026-04-30', DN, '', 'J-TECH-1', { date_debut: '2026-04-01' }),
+  createAction('A-TECH-1.6', 'Collecter les DOE par lot technique', 'axe3_technique', '2026-06-30', AA, '', 'J-TECH-1', { date_debut: '2026-05-01', priorite: 'critique' }),
+  createAction('A-TECH-1.7', 'Constituer le dossier technique complet', 'axe3_technique', '2026-06-30', DN, '', 'J-TECH-1', { date_debut: '2026-06-15', priorite: 'haute' }),
+  // J-TECH-2 : Tests techniques réussis (01/06 → 31/08/2026)
+  createAction('A-TECH-2.1', 'Réceptionner le lot électricité', 'axe3_technique', '2026-06-15', AA, '', 'J-TECH-2', { date_debut: '2026-06-01' }),
+  createAction('A-TECH-2.2', 'Réceptionner le lot climatisation', 'axe3_technique', '2026-06-20', AA, '', 'J-TECH-2', { date_debut: '2026-06-01' }),
+  createAction('A-TECH-2.3', 'Réceptionner le lot SSI', 'axe3_technique', '2026-06-25', AA, '', 'J-TECH-2', { date_debut: '2026-06-10' }),
+  createAction('A-TECH-2.4', 'Réceptionner le lot plomberie', 'axe3_technique', '2026-06-20', AA, '', 'J-TECH-2', { date_debut: '2026-06-10' }),
+  createAction('A-TECH-2.5', 'Lever les réserves prioritaires lots techniques', 'axe3_technique', '2026-06-30', AA, '', 'J-TECH-2', { date_debut: '2026-06-15' }),
+  createAction('A-TECH-2.6', 'Valider les réceptions techniques', 'axe3_technique', '2026-06-30', DN, '', 'J-TECH-2', { date_debut: '2026-06-25' }),
+  createAction('A-TECH-2.7', 'Réceptionner les Big Box', 'axe3_technique', '2026-08-15', AA, '', 'J-TECH-2', { date_debut: '2026-07-01' }),
+  createAction('A-TECH-2.8', 'Réceptionner le parking', 'axe3_technique', '2026-08-20', AA, '', 'J-TECH-2', { date_debut: '2026-07-01' }),
+  createAction('A-TECH-2.9', 'Tester les équipements parking', 'axe3_technique', '2026-08-25', AA, '', 'J-TECH-2', { date_debut: '2026-08-15' }),
+  createAction('A-TECH-2.10', 'Configurer les systèmes de contrôle d\'accès', 'axe3_technique', '2026-08-20', JA, '', 'J-TECH-2', { date_debut: '2026-08-01' }),
+  createAction('A-TECH-2.11', 'Lever les réserves Big Box/Parking', 'axe3_technique', '2026-08-31', AA, '', 'J-TECH-2', { date_debut: '2026-08-15' }),
+  createAction('A-TECH-2.12', 'Valider les réceptions Big Box/Parking', 'axe3_technique', '2026-08-31', DN, '', 'J-TECH-2', { date_debut: '2026-08-25' }),
+  createAction('A-TECH-2.13', 'Réaliser les essais généraux', 'axe3_technique', '2026-08-31', AA, '', 'J-TECH-2', { date_debut: '2026-08-20' }),
+  // J-TECH-3 : Formations complétées (01/08 → 15/09/2026)
+  createAction('A-TECH-3.1', 'Former l\'équipe technique sur les installations', 'axe3_technique', '2026-08-31', AA, '', 'J-TECH-3', { date_debut: '2026-08-01', priorite: 'haute' }),
+  createAction('A-TECH-3.2', 'Former aux systèmes de sécurité incendie', 'axe3_technique', '2026-09-10', AA, '', 'J-TECH-3', { date_debut: '2026-09-01', priorite: 'critique' }),
+  createAction('A-TECH-3.3', 'Former aux procédures d\'exploitation technique', 'axe3_technique', '2026-09-15', DN, '', 'J-TECH-3', { date_debut: '2026-09-05', priorite: 'haute' }),
+  createAction('A-TECH-3.4', 'Valider les compétences techniques acquises', 'axe3_technique', '2026-09-15', DN, '', 'J-TECH-3', { date_debut: '2026-09-10', priorite: 'critique' }),
+  // J-TECH-4 : Commission sécurité OK (01/09 → 30/09/2026)
+  createAction('A-TECH-4.1', 'Préparer le dossier commission sécurité', 'axe3_technique', '2026-09-15', AA, '', 'J-TECH-4', { date_debut: '2026-09-01', priorite: 'critique' }),
+  createAction('A-TECH-4.2', 'Organiser la visite de la commission sécurité', 'axe3_technique', '2026-09-25', AA, '', 'J-TECH-4', { date_debut: '2026-09-16', priorite: 'critique' }),
+  createAction('A-TECH-4.3', 'Obtenir l\'avis favorable commission sécurité', 'axe3_technique', '2026-09-30', AA, '', 'J-TECH-4', { date_debut: '2026-09-25' }),
+  // J-TECH-5 : Suivi levées réserves (01/07 → 05/10/2026)
+  createAction('A-TECH-5.1', 'Suivre la levée des réserves par lot', 'axe3_technique', '2026-09-30', AA, '', 'J-TECH-5', { date_debut: '2026-07-01', priorite: 'critique' }),
+  createAction('A-TECH-5.2', 'Lever toutes les réserves bloquantes', 'axe3_technique', '2026-10-05', AA, '', 'J-TECH-5', { date_debut: '2026-10-01', projectPhase: 'phase3_lancement' }),
+  // J-TECH-6 : Réceptions définitives (01/10 → 16/10/2026)
+  createAction('A-TECH-6.1', 'Valider les réceptions techniques finales', 'axe3_technique', '2026-10-08', DN, '', 'J-TECH-6', { date_debut: '2026-10-01', priorite: 'critique', projectPhase: 'phase3_lancement' }),
+  createAction('A-TECH-6.2', 'Signer les PV de réception définitive', 'axe3_technique', '2026-10-12', DN, '', 'J-TECH-6', { date_debut: '2026-10-08', priorite: 'critique', projectPhase: 'phase3_lancement' }),
+  createAction('A-TECH-6.3', 'Valider la préparation technique globale', 'axe3_technique', '2026-10-16', DN, '', 'J-TECH-6', { date_debut: '2026-10-12', projectPhase: 'phase3_lancement' }),
 ];
 
 // ============================================================================
-// AXE 4 : BUDGET & PILOTAGE (10%) - 3 Jalons, 6 Actions
+// AXE 4 : BUDGET & PILOTAGE (10%) - 3 Jalons, 14 Actions
 // ============================================================================
 
 export const JALONS_AXE4_BUDGET: Omit<Jalon, 'id'>[] = [
-  createJalon('J-BUD-1', 'Budget mobilisation validé', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'phase1_preparation'),
-  createJalon('J-BUD-2', 'Budget exploitation validé', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'phase1_preparation'),
-  createJalon('J-BUD-3', 'Suivi budget de Mobilisation', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', 'Suivi continu T1/T2/T3 + Clôture', 'phase4_stabilisation'),
+  createJalon('J-BUD-1', 'Budget mobilisation validé', 'axe4_budget', '2026-02-16', PA, '', 'phase1_preparation'),
+  createJalon('J-BUD-2', 'Budget exploitation validé', 'axe4_budget', '2026-02-16', PA, '', 'phase1_preparation'),
+  createJalon('J-BUD-3', 'Suivi budget de Mobilisation', 'axe4_budget', '2026-11-16', DN, 'Suivi continu + Clôture', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE4_BUDGET: Omit<Action, 'id'>[] = [
-  createAction('A-BUD-1.1', 'Consolider et valider budget mobilisation', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'J-BUD-1', 'phase1_preparation'),
-  createAction('A-BUD-2.1', 'Construire et valider P&L prévisionnel Y1', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'J-BUD-2', 'phase1_preparation'),
-  // J-BUD-3 : Suivi budget continu (consolide T1/T2/T3/Clôture)
-  createAction('A-BUD-3.1', 'Analyser écarts T1 et proposer corrections', 'axe4_budget', '2026-03-31', 'Deborah NTUMY', '', 'J-BUD-3'),
-  createAction('A-BUD-3.2', 'Analyser écarts T2 et proposer corrections', 'axe4_budget', '2026-06-30', 'Deborah NTUMY', '', 'J-BUD-3'),
-  createAction('A-BUD-3.3', 'Analyser écarts T3 et proposer corrections', 'axe4_budget', '2026-09-30', 'Deborah NTUMY', '', 'J-BUD-3'),
-  createAction('A-BUD-3.4', 'Établir bilan financier et clôturer projet', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', '', 'J-BUD-3', 'phase4_stabilisation'),
+  // J-BUD-1 : Budget mobilisation validé (06/01 → 16/02/2026)
+  createAction('A-BUD-1.1', 'Consolider le budget de mobilisation', 'axe4_budget', '2026-01-31', PA, '', 'J-BUD-1', { date_debut: '2026-01-06', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  createAction('A-BUD-1.2', 'Présenter et valider le budget mobilisation DG', 'axe4_budget', '2026-02-16', PA, '', 'J-BUD-1', { date_debut: '2026-02-01', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  // J-BUD-2 : Budget exploitation validé (06/01 → 16/02/2026)
+  createAction('A-BUD-2.1', 'Consolider le budget d\'exploitation An 1', 'axe4_budget', '2026-01-31', PA, '', 'J-BUD-2', { date_debut: '2026-01-06', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  createAction('A-BUD-2.2', 'Présenter et valider le budget exploitation DG', 'axe4_budget', '2026-02-16', PA, '', 'J-BUD-2', { date_debut: '2026-02-01', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  // J-BUD-3 : Suivi budget de Mobilisation (01/03 → 16/11/2026)
+  createAction('A-BUD-3.1', 'Mettre en place le reporting mensuel budget', 'axe4_budget', '2026-03-15', PA, '', 'J-BUD-3', { date_debut: '2026-03-01', priorite: 'haute' }),
+  createAction('A-BUD-3.2', 'Suivre les écarts budgétaires mensuels', 'axe4_budget', '2026-10-16', PA, '', 'J-BUD-3', { date_debut: '2026-03-01', priorite: 'haute' }),
+  createAction('A-BUD-3.3', 'Préparer les revues budgétaires trimestrielles', 'axe4_budget', '2026-10-16', PA, '', 'J-BUD-3', { date_debut: '2026-03-01' }),
+  createAction('A-BUD-3.4', 'Analyser les KPIs d\'exploitation', 'axe4_budget', '2026-11-15', HT, '', 'J-BUD-3', { date_debut: '2026-10-17', projectPhase: 'phase3_lancement' }),
+  createAction('A-BUD-3.5', 'Ajuster les procédures', 'axe4_budget', '2026-11-10', HT, '', 'J-BUD-3', { date_debut: '2026-10-20', projectPhase: 'phase3_lancement' }),
+  createAction('A-BUD-3.6', 'Valider la stabilisation', 'axe4_budget', '2026-11-16', DN, '', 'J-BUD-3', { date_debut: '2026-11-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-BUD-3.7', 'Documenter le REX projet', 'axe4_budget', '2026-10-30', DN, '', 'J-BUD-3', { date_debut: '2026-10-01' }),
+  createAction('A-BUD-3.8', 'Archiver la documentation projet', 'axe4_budget', '2026-11-15', HT, '', 'J-BUD-3', { date_debut: '2026-10-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-BUD-3.9', 'Transférer la gestion opérationnelle au Center Manager', 'axe4_budget', '2026-11-16', DN, '', 'J-BUD-3', { date_debut: '2026-10-17', projectPhase: 'phase3_lancement' }),
+  createAction('A-BUD-3.10', 'Clôturer le projet mobilisation', 'axe4_budget', '2026-11-16', DN, '', 'J-BUD-3', { date_debut: '2026-11-01', projectPhase: 'phase3_lancement' }),
 ];
 
 // ============================================================================
-// AXE 5 : MARKETING & COMMUNICATION (15%) - 4 Jalons, 23 Actions
+// AXE 5 : MARKETING & COMMUNICATION (15%) - 4 Jalons, 19 Actions
 // ============================================================================
 
 export const JALONS_AXE5_MARKETING: Omit<Jalon, 'id'>[] = [
-  createJalon('J-MKT-1', 'Phase 1 : Planification stratégique', 'axe5_marketing', '2026-02-15', 'Adele Affian', 'Période Jan-Fév', 'phase1_preparation'),
-  createJalon('J-MKT-2', 'Phase 2 : Développement et mise en œuvre', 'axe5_marketing', '2026-05-31', 'Adele Affian', 'Période Mars-Mai'),
-  createJalon('J-MKT-3', 'Phase 3 : Préparation inauguration', 'axe5_marketing', '2026-09-15', 'Adele Affian', 'Période Juin-Sept'),
-  createJalon('J-MKT-4', 'Phase 4 : Inauguration et post-lancement', 'axe5_marketing', '2026-10-31', 'Adele Affian', 'Période Oct', 'phase3_lancement'),
+  createJalon('J-MKT-1', 'Phase 1 : Planification stratégique', 'axe5_marketing', '2026-02-15', YG, 'Période Jan-Fév', 'phase1_preparation'),
+  createJalon('J-MKT-2', 'Phase 2 : Développement et mise en œuvre', 'axe5_marketing', '2026-05-31', YG, 'Période Mars-Mai'),
+  createJalon('J-MKT-3', 'Phase 3 : Préparation inauguration', 'axe5_marketing', '2026-09-15', YG, 'Période Juin-Sept'),
+  createJalon('J-MKT-4', 'Phase 4 : Inauguration et post-lancement', 'axe5_marketing', '2026-11-16', YG, 'Période Oct-Nov', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE5_MARKETING: Omit<Action, 'id'>[] = [
-  // J-MKT-1
-  createAction('A-MKT-1.1', 'Note de cadrage stratégique', 'axe5_marketing', '2026-01-31', 'Adele Affian', 'Format: PDF', 'J-MKT-1', 'phase1_preparation'),
-  createAction('A-MKT-1.2', 'Plan marketing global', 'axe5_marketing', '2026-02-10', 'Adele Affian', 'Format: PowerPoint', 'J-MKT-1', 'phase1_preparation'),
-  createAction('A-MKT-1.3', 'Cartographie parcours client', 'axe5_marketing', '2026-02-10', 'Adele Affian', 'Format: PNG/Visio', 'J-MKT-1', 'phase1_preparation'),
-  createAction('A-MKT-1.4', 'Charte graphique', 'axe5_marketing', '2026-02-15', 'Adele Affian', 'Format: PDF', 'J-MKT-1', 'phase1_preparation'),
-  createAction('A-MKT-1.5', 'Rapport de focus group', 'axe5_marketing', '2026-02-15', 'Adele Affian', 'Format: Word', 'J-MKT-1', 'phase1_preparation'),
-  createAction('A-MKT-1.6', 'REVUE : Validation livrables Phase 1', 'axe5_marketing', '2026-02-15', 'Adele Affian', '', 'J-MKT-1', 'phase1_preparation'),
-  // J-MKT-2
-  createAction('A-MKT-2.1', 'Stratégie digitale et calendrier éditorial', 'axe5_marketing', '2026-03-15', 'Adele Affian', 'Format: Excel', 'J-MKT-2'),
-  createAction('A-MKT-2.2', 'Maquettes site web', 'axe5_marketing', '2026-03-31', 'Adele Affian', 'Format: PDF', 'J-MKT-2'),
-  createAction('A-MKT-2.3', 'Choix de la régie publicitaire', 'axe5_marketing', '2026-03-31', 'Adele Affian', 'Format: Contrat', 'J-MKT-2'),
-  createAction('A-MKT-2.4', 'Kits réseaux sociaux', 'axe5_marketing', '2026-04-10', 'Adele Affian', 'Format: ZIP', 'J-MKT-2'),
-  createAction('A-MKT-2.5', 'REVUE : Validation maquettes et programme fidélité', 'axe5_marketing', '2026-04-15', 'Adele Affian', '', 'J-MKT-2'),
-  createAction('A-MKT-2.6', 'Document programme fidélité', 'axe5_marketing', '2026-04-20', 'Adele Affian', 'Format: Word', 'J-MKT-2'),
-  createAction('A-MKT-2.7', 'Plans aménagement et signalétique', 'axe5_marketing', '2026-04-30', 'Adele Affian', 'Format: PDF/PNG', 'J-MKT-2'),
-  createAction('A-MKT-2.8', 'REVUE : Validation finale livrables Phase 2', 'axe5_marketing', '2026-05-31', 'Adele Affian', '', 'J-MKT-2'),
-  // J-MKT-3
-  createAction('A-MKT-3.1', 'Plan de communication du lancement', 'axe5_marketing', '2026-06-10', 'Adele Affian', 'Format: PowerPoint', 'J-MKT-3'),
-  createAction('A-MKT-3.2', 'Liste invités VIP et presse', 'axe5_marketing', '2026-06-15', 'Adele Affian', 'Format: Excel', 'J-MKT-3'),
-  createAction('A-MKT-3.3', 'Dossier de presse', 'axe5_marketing', '2026-06-30', 'Adele Affian', 'Format: PDF', 'J-MKT-3'),
-  createAction('A-MKT-3.4', 'Contenus marketing', 'axe5_marketing', '2026-07-15', 'Adele Affian', 'Format: ZIP', 'J-MKT-3'),
-  createAction('A-MKT-3.5', 'REVUE : Validation invitations et dossier presse', 'axe5_marketing', '2026-07-15', 'Adele Affian', '', 'J-MKT-3'),
-  createAction('A-MKT-3.6', 'Check-list opérationnelle', 'axe5_marketing', '2026-07-31', 'Adele Affian', 'Format: Excel', 'J-MKT-3'),
-  createAction('A-MKT-3.7', 'Brief agence événementielle', 'axe5_marketing', '2026-08-10', 'Adele Affian', 'Format: Word', 'J-MKT-3'),
-  createAction('A-MKT-3.8', 'Goodies personnalisés', 'axe5_marketing', '2026-08-15', 'Adele Affian', 'Format: PDF/PNG', 'J-MKT-3'),
-  createAction('A-MKT-3.9', 'Vidéo institutionnelle', 'axe5_marketing', '2026-08-31', 'Adele Affian', 'Format: MP4', 'J-MKT-3'),
-  createAction('A-MKT-3.10', 'Spot publicitaire', 'axe5_marketing', '2026-09-10', 'Adele Affian', 'Format: MP4', 'J-MKT-3'),
-  createAction('A-MKT-3.11', 'REVUE : Validation finale avant lancement', 'axe5_marketing', '2026-09-15', 'Adele Affian', '', 'J-MKT-3'),
-  // J-MKT-4
-  createAction('A-MKT-4.1', 'Rapport de perception de la marque', 'axe5_marketing', '2026-10-15', 'Adele Affian', 'Format: PDF', 'J-MKT-4', 'phase3_lancement'),
-  createAction('A-MKT-4.2', 'Bilan de l\'inauguration', 'axe5_marketing', '2026-10-20', 'Adele Affian', 'Format: PowerPoint', 'J-MKT-4', 'phase3_lancement'),
-  createAction('A-MKT-4.3', 'Rapport d\'analyse des retombées', 'axe5_marketing', '2026-10-25', 'Adele Affian', 'Format: Excel/PDF', 'J-MKT-4', 'phase3_lancement'),
-  createAction('A-MKT-4.4', 'Plan d\'actions correctives', 'axe5_marketing', '2026-10-31', 'Adele Affian', 'Format: Word', 'J-MKT-4', 'phase3_lancement'),
-  createAction('A-MKT-4.5', 'REVUE FINALE : Validation bilans et actions', 'axe5_marketing', '2026-10-31', 'Adele Affian', '', 'J-MKT-4', 'phase3_lancement'),
+  // J-MKT-1 : Phase 1 — Planification stratégique (06/01 → 15/02/2026)
+  createAction('A-MKT-1.1', 'Réaliser l\'étude de positionnement marché', 'axe5_marketing', '2026-01-31', YG, '', 'J-MKT-1', { date_debut: '2026-01-06', priorite: 'haute', projectPhase: 'phase1_preparation' }),
+  createAction('A-MKT-1.2', 'Valider la stratégie marketing globale', 'axe5_marketing', '2026-02-15', PA, '', 'J-MKT-1', { date_debut: '2026-02-01', priorite: 'critique', projectPhase: 'phase1_preparation' }),
+  // J-MKT-2 : Phase 2 — Développement et mise en œuvre (16/02 → 31/05/2026)
+  createAction('A-MKT-2.1', 'Valider l\'identité de marque', 'axe5_marketing', '2026-03-15', YG, '', 'J-MKT-2', { date_debut: '2026-02-16' }),
+  createAction('A-MKT-2.2', 'Finaliser la charte graphique', 'axe5_marketing', '2026-03-27', YG, '', 'J-MKT-2', { date_debut: '2026-03-16', priorite: 'critique' }),
+  createAction('A-MKT-2.3', 'Cartographier le parcours client', 'axe5_marketing', '2026-03-31', YG, '', 'J-MKT-2', { date_debut: '2026-03-01' }),
+  createAction('A-MKT-2.4', 'Concevoir la signalétique intérieure/extérieure', 'axe5_marketing', '2026-04-30', YG, '', 'J-MKT-2', { date_debut: '2026-04-01' }),
+  createAction('A-MKT-2.5', 'Rédiger le cahier des charges du site internet', 'axe5_marketing', '2026-04-30', YG, '', 'J-MKT-2', { date_debut: '2026-04-01' }),
+  createAction('A-MKT-2.6', 'Définir la stratégie digitale et le calendrier éditorial', 'axe5_marketing', '2026-05-31', YG, '', 'J-MKT-2', { date_debut: '2026-05-01' }),
+  // J-MKT-3 : Phase 3 — Préparation inauguration (01/06 → 15/09/2026)
+  createAction('A-MKT-3.1', 'Développer le site internet', 'axe5_marketing', '2026-07-31', PA, '', 'J-MKT-3', { date_debut: '2026-06-01' }),
+  createAction('A-MKT-3.2', 'Produire les kits réseaux sociaux', 'axe5_marketing', '2026-08-31', YG, '', 'J-MKT-3', { date_debut: '2026-07-01' }),
+  createAction('A-MKT-3.3', 'Nouer les partenariats média', 'axe5_marketing', '2026-08-31', YG, '', 'J-MKT-3', { date_debut: '2026-07-01' }),
+  createAction('A-MKT-3.4', 'Concevoir le programme de fidélité', 'axe5_marketing', '2026-09-15', YG, '', 'J-MKT-3', { date_debut: '2026-07-01' }),
+  createAction('A-MKT-3.5', 'Élaborer le plan de communication lancement', 'axe5_marketing', '2026-09-15', YG, '', 'J-MKT-3', { date_debut: '2026-07-01' }),
+  createAction('A-MKT-3.6', 'Lancer la campagne média teasing', 'axe5_marketing', '2026-09-15', YG, '', 'J-MKT-3', { date_debut: '2026-09-01' }),
+  // J-MKT-4 : Phase 4 — Inauguration et post-lancement (16/09 → 16/11/2026)
+  createAction('A-MKT-4.1', 'Installer la signalétique définitive', 'axe5_marketing', '2026-10-05', YG, '', 'J-MKT-4', { date_debut: '2026-09-16', projectPhase: 'phase3_lancement' }),
+  createAction('A-MKT-4.2', 'Gérer la communication ouverture', 'axe5_marketing', '2026-10-20', YG, '', 'J-MKT-4', { date_debut: '2026-10-10', projectPhase: 'phase3_lancement' }),
+  createAction('A-MKT-4.3', 'Préparer l\'événement inauguration', 'axe5_marketing', '2026-11-10', YG, '', 'J-MKT-4', { date_debut: '2026-10-01', projectPhase: 'phase3_lancement' }),
+  createAction('A-MKT-4.4', 'Inviter les VIP et officiels', 'axe5_marketing', '2026-11-05', PA, '', 'J-MKT-4', { date_debut: '2026-10-15', projectPhase: 'phase3_lancement' }),
+  createAction('A-MKT-4.5', 'Préparer le dossier presse inauguration', 'axe5_marketing', '2026-11-10', YG, '', 'J-MKT-4', { date_debut: '2026-11-01', priorite: 'haute', projectPhase: 'phase3_lancement' }),
+  createAction('A-MKT-4.6', 'Produire le rapport de perception marque', 'axe5_marketing', '2026-12-15', YG, '', 'J-MKT-4', { date_debut: '2026-11-17', projectPhase: 'phase4_stabilisation' }),
 ];
 
 // ============================================================================
-// AXE 6 : EXPLOITATION & SYSTÈMES (5%) - 4 Jalons, 14 Actions
+// AXE 6 : EXPLOITATION & SYSTÈMES (5%) - 4 Jalons, 13 Actions
 // ============================================================================
 
 export const JALONS_AXE6_EXPLOITATION: Omit<Jalon, 'id'>[] = [
-  createJalon('J-EXP-1', 'Contrats prestataires signés', 'axe6_exploitation', '2026-09-30', 'Deborah NTUMY'),
-  createJalon('J-EXP-2', 'Systèmes déployés (ERP, GMAO, CRM)', 'axe6_exploitation', '2026-10-15', 'Deborah NTUMY', '', 'phase3_lancement'),
-  createJalon('J-EXP-3', 'Procédures validées', 'axe6_exploitation', '2026-10-31', 'Deborah NTUMY', '', 'phase3_lancement'),
-  createJalon('J-EXP-4', 'Centre prêt à opérer', 'axe6_exploitation', '2026-11-01', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
+  createJalon('J-EXP-1', 'Contrats prestataires signés', 'axe6_exploitation', '2026-08-31', DN),
+  createJalon('J-EXP-2', 'Systèmes déployés (ERP, GMAO, CRM)', 'axe6_exploitation', '2026-09-30', DN),
+  createJalon('J-EXP-3', 'Procédures d\'exploitation validées', 'axe6_exploitation', '2026-10-10', DN, '', 'phase3_lancement'),
+  createJalon('J-EXP-4', 'Centre prêt à opérer', 'axe6_exploitation', '2026-10-16', PA, '', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE6_EXPLOITATION: Omit<Action, 'id'>[] = [
-  // J-EXP-1
-  createAction('A-EXP-1.1', 'Lancer AO nettoyage', 'axe6_exploitation', '2026-06-01', 'Deborah NTUMY', '', 'J-EXP-1'),
-  createAction('A-EXP-1.2', 'Lancer AO sécurité/gardiennage', 'axe6_exploitation', '2026-06-01', 'Deborah NTUMY', '', 'J-EXP-1'),
-  createAction('A-EXP-1.3', 'Lancer AO maintenance technique', 'axe6_exploitation', '2026-06-15', 'Deborah NTUMY', '', 'J-EXP-1'),
-  createAction('A-EXP-1.4', 'Lancer AO espaces verts', 'axe6_exploitation', '2026-06-15', 'Deborah NTUMY', '', 'J-EXP-1'),
-  createAction('A-EXP-1.5', 'Analyser offres et négocier', 'axe6_exploitation', '2026-08-31', 'Deborah NTUMY', '', 'J-EXP-1'),
-  createAction('A-EXP-1.6', 'Signer contrats prestataires', 'axe6_exploitation', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-EXP-1'),
-  // J-EXP-2
-  createAction('A-EXP-2.1', 'Configurer ERP (comptabilité, facturation)', 'axe6_exploitation', '2026-09-30', 'Julien Assie', '', 'J-EXP-2'),
-  createAction('A-EXP-2.2', 'Déployer GMAO', 'axe6_exploitation', '2026-10-05', 'Deborah NTUMY', '', 'J-EXP-2', 'phase3_lancement'),
-  createAction('A-EXP-2.3', 'Déployer CRM locataires', 'axe6_exploitation', '2026-10-10', 'Hadja Timite', '', 'J-EXP-2', 'phase3_lancement'),
-  createAction('A-EXP-2.4', 'Tester intégrations systèmes', 'axe6_exploitation', '2026-10-15', 'Julien Assie', '', 'J-EXP-2', 'phase3_lancement'),
-  createAction('A-EXP-2.5', 'Former utilisateurs', 'axe6_exploitation', '2026-10-15', 'Julien Assie', '', 'J-EXP-2', 'phase3_lancement'),
-  // J-EXP-3
-  createAction('A-EXP-3.1', 'Adapter procédures Yopougon', 'axe6_exploitation', '2026-10-15', 'Deborah NTUMY', '', 'J-EXP-3', 'phase3_lancement'),
-  createAction('A-EXP-3.2', 'Rédiger procédures spécifiques Angré', 'axe6_exploitation', '2026-10-25', 'Deborah NTUMY', '', 'J-EXP-3', 'phase3_lancement'),
-  createAction('A-EXP-3.3', 'Valider procédures', 'axe6_exploitation', '2026-10-31', 'Pamela ATOKOUNA', '', 'J-EXP-3', 'phase3_lancement'),
-  // J-EXP-4
-  createAction('A-EXP-4.1', 'Check-list pré-ouverture', 'axe6_exploitation', '2026-10-28', 'Deborah NTUMY', '', 'J-EXP-4', 'phase3_lancement'),
-  createAction('A-EXP-4.2', 'Test exploitation grandeur nature', 'axe6_exploitation', '2026-10-30', 'Deborah NTUMY', '', 'J-EXP-4', 'phase3_lancement'),
-  createAction('A-EXP-4.3', 'Go/No-Go ouverture', 'axe6_exploitation', '2026-11-01', 'Pamela ATOKOUNA', '', 'J-EXP-4', 'phase3_lancement'),
+  // J-EXP-1 : Contrats prestataires signés (01/06 → 31/08/2026)
+  createAction('A-EXP-1.1', 'Lancer AO sécurité/gardiennage', 'axe6_exploitation', '2026-06-30', DN, '', 'J-EXP-1', { date_debut: '2026-06-01' }),
+  createAction('A-EXP-1.2', 'Lancer AO maintenance technique', 'axe6_exploitation', '2026-06-30', DN, '', 'J-EXP-1', { date_debut: '2026-06-01' }),
+  createAction('A-EXP-1.3', 'Lancer l\'AO nettoyage et espaces verts', 'axe6_exploitation', '2026-06-30', DN, '', 'J-EXP-1', { date_debut: '2026-06-01' }),
+  createAction('A-EXP-1.4', 'Analyser les offres et négocier', 'axe6_exploitation', '2026-08-15', DN, '', 'J-EXP-1', { date_debut: '2026-07-01' }),
+  createAction('A-EXP-1.5', 'Signer les contrats prestataires', 'axe6_exploitation', '2026-08-31', PA, '', 'J-EXP-1', { date_debut: '2026-08-15' }),
+  // J-EXP-2 : Systèmes déployés (01/08 → 30/09/2026)
+  createAction('A-EXP-2.1', 'Configurer l\'ERP comptabilité & facturation', 'axe6_exploitation', '2026-08-31', JA, '', 'J-EXP-2', { date_debut: '2026-08-01' }),
+  createAction('A-EXP-2.2', 'Déployer la GMAO', 'axe6_exploitation', '2026-09-15', DN, '', 'J-EXP-2', { date_debut: '2026-09-01' }),
+  createAction('A-EXP-2.3', 'Déployer le CRM locataires', 'axe6_exploitation', '2026-09-25', HT, '', 'J-EXP-2', { date_debut: '2026-09-10' }),
+  createAction('A-EXP-2.4', 'Tester les intégrations systèmes', 'axe6_exploitation', '2026-09-28', JA, '', 'J-EXP-2', { date_debut: '2026-09-20' }),
+  createAction('A-EXP-2.5', 'Former les utilisateurs aux systèmes', 'axe6_exploitation', '2026-09-30', JA, '', 'J-EXP-2', { date_debut: '2026-09-25' }),
+  // J-EXP-3 : Procédures d'exploitation validées (15/09 → 10/10/2026)
+  createAction('A-EXP-3.1', 'Rédiger les procédures opérationnelles', 'axe6_exploitation', '2026-09-25', DN, '', 'J-EXP-3', { date_debut: '2026-09-15' }),
+  createAction('A-EXP-3.2', 'Élaborer le plan de sécurité', 'axe6_exploitation', '2026-09-25', HT, '', 'J-EXP-3', { date_debut: '2026-09-15' }),
+  createAction('A-EXP-3.3', 'Adapter les procédures Yopougon pour Angré', 'axe6_exploitation', '2026-10-05', DN, '', 'J-EXP-3', { date_debut: '2026-09-25', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-3.4', 'Valider les procédures avec la DGA', 'axe6_exploitation', '2026-10-10', PA, '', 'J-EXP-3', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
+  // J-EXP-4 : Centre prêt à opérer (05/10 → 16/10/2026)
+  createAction('A-EXP-4.1', 'Établir la check-list pré-ouverture', 'axe6_exploitation', '2026-10-08', DN, '', 'J-EXP-4', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.2', 'Réaliser le test exploitation grandeur nature', 'axe6_exploitation', '2026-10-12', DN, '', 'J-EXP-4', { date_debut: '2026-10-08', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.3', 'Organiser la répétition générale', 'axe6_exploitation', '2026-10-14', HT, '', 'J-EXP-4', { date_debut: '2026-10-12', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.4', 'Tester les procédures d\'urgence', 'axe6_exploitation', '2026-10-14', HT, '', 'J-EXP-4', { date_debut: '2026-10-12', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.5', 'Activer tous les systèmes', 'axe6_exploitation', '2026-10-15', AA, '', 'J-EXP-4', { date_debut: '2026-10-14', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.6', 'Décider le Go/No-Go ouverture', 'axe6_exploitation', '2026-10-16', PA, '', 'J-EXP-4', { date_debut: '2026-10-15', priorite: 'critique', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-4.7', 'Piloter les premiers jours', 'axe6_exploitation', '2026-10-22', HT, '', 'J-EXP-4', { date_debut: '2026-10-17', projectPhase: 'phase3_lancement' }),
 ];
 
 // ============================================================================
@@ -568,37 +623,43 @@ export const ACTIONS_AXE7_CONSTRUCTION: Omit<Action, 'id'>[] = [
 ];
 
 // ============================================================================
-// AXE 8 : DIVERSIFICATION (5%) - 3 Jalons, 9 Actions
+// AXE 8 : DIVERSIFICATION (5%) - 3 Jalons, 12 Actions
 // ============================================================================
 
 export const JALONS_AXE8_DIVERSIFICATION: Omit<Jalon, 'id'>[] = [
-  createJalon('J-DIV-1', 'Contrats de diversification signés', 'axe8_divers', '2026-06-30', 'Pamela ATOKOUNA', 'Parkings, événementiel, média'),
-  createJalon('J-DIV-2', 'Revenus annexes activés', 'axe8_divers', '2026-10-31', 'Pamela ATOKOUNA', 'Activation des sources de revenus complémentaires', 'phase3_lancement'),
-  createJalon('J-DIV-3', 'Partenariats stratégiques signés', 'axe8_divers', '2026-09-30', 'Pamela ATOKOUNA', 'Accord avec partenaires clés'),
+  createJalon('J-DIV-1', 'Note de cadrage validée', 'axe8_divers', '2026-01-31', PA, 'Note de cadrage projet', 'phase1_preparation'),
+  createJalon('J-DIV-2', 'Conformité admin/réglementaire', 'axe8_divers', '2026-10-10', PA, 'Autorisations, assurances, permis'),
+  createJalon('J-DIV-3', 'Divers', 'axe8_divers', '2026-12-31', PA, 'Actions transverses en continu', 'phase4_stabilisation'),
 ];
 
 export const ACTIONS_AXE8_DIVERSIFICATION: Omit<Action, 'id'>[] = [
-  // J-DIV-1 : Contrats de diversification
-  createAction('A-DIV-1.1', 'Définir stratégie parking payant', 'axe8_divers', '2026-03-31', 'Deborah NTUMY', '', 'J-DIV-1'),
-  createAction('A-DIV-1.2', 'Négocier contrats événementiel', 'axe8_divers', '2026-05-31', 'Adele Affian', '', 'J-DIV-1'),
-  createAction('A-DIV-1.3', 'Signer contrats média/affichage', 'axe8_divers', '2026-06-30', 'Adele Affian', '', 'J-DIV-1'),
-  // J-DIV-2 : Revenus annexes
-  createAction('A-DIV-2.1', 'Déployer système parking', 'axe8_divers', '2026-09-30', 'Deborah NTUMY', '', 'J-DIV-2'),
-  createAction('A-DIV-2.2', 'Installer équipements média', 'axe8_divers', '2026-10-15', 'Cheick Sanankoua', '', 'J-DIV-2', 'phase3_lancement'),
-  createAction('A-DIV-2.3', 'Valider revenus annexes opérationnels', 'axe8_divers', '2026-10-31', 'Pamela ATOKOUNA', '', 'J-DIV-2', 'phase3_lancement'),
-  // J-DIV-3 : Partenariats stratégiques
-  createAction('A-DIV-3.1', 'Identifier partenaires potentiels', 'axe8_divers', '2026-04-30', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
-  createAction('A-DIV-3.2', 'Négocier accords partenariats', 'axe8_divers', '2026-07-31', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
-  createAction('A-DIV-3.3', 'Signer partenariats stratégiques', 'axe8_divers', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
+  // J-DIV-1 : Note de cadrage projet validée (06/01 → 31/01/2026)
+  createAction('A-DIV-1.1', 'Définir la gouvernance projet', 'axe8_divers', '2026-01-15', PA, '', 'J-DIV-1', { date_debut: '2026-01-06', projectPhase: 'phase1_preparation' }),
+  createAction('A-DIV-1.2', 'Consolider le budget mobilisation', 'axe8_divers', '2026-01-20', PA, '', 'J-DIV-1', { date_debut: '2026-01-06', projectPhase: 'phase1_preparation' }),
+  createAction('A-DIV-1.3', 'Établir le planning macro', 'axe8_divers', '2026-01-20', PA, '', 'J-DIV-1', { date_debut: '2026-01-06', projectPhase: 'phase1_preparation' }),
+  createAction('A-DIV-1.4', 'Valider la note de cadrage', 'axe8_divers', '2026-01-31', PA, '', 'J-DIV-1', { date_debut: '2026-01-20', projectPhase: 'phase1_preparation' }),
+  // J-DIV-2 : Conformité admin. et réglementaire (01/02 → 10/10/2026)
+  createAction('A-DIV-2.1', 'Préparer le dossier de remboursement de financement', 'axe8_divers', '2026-10-10', PA, '', 'J-DIV-2', { date_debut: '2026-02-01' }),
+  createAction('A-DIV-2.2', 'Identifier les besoins en assurance', 'axe8_divers', '2026-02-28', PA, '', 'J-DIV-2', { date_debut: '2026-02-01', priorite: 'haute' }),
+  createAction('A-DIV-2.3', 'Souscrire les polices d\'assurance', 'axe8_divers', '2026-03-31', PA, '', 'J-DIV-2', { date_debut: '2026-03-01', priorite: 'haute' }),
+  createAction('A-DIV-2.4', 'Identifier les autorisations administratives requises', 'axe8_divers', '2026-04-30', PA, '', 'J-DIV-2', { date_debut: '2026-03-01', priorite: 'haute' }),
+  createAction('A-DIV-2.5', 'Préparer et déposer les demandes d\'autorisations', 'axe8_divers', '2026-06-30', PA, '', 'J-DIV-2', { date_debut: '2026-05-01', priorite: 'haute' }),
+  createAction('A-DIV-2.6', 'Obtenir les autorisations administratives', 'axe8_divers', '2026-08-31', PA, '', 'J-DIV-2', { date_debut: '2026-07-01', priorite: 'haute' }),
+  createAction('A-DIV-2.7', 'Signer les conventions pompiers/police', 'axe8_divers', '2026-08-31', PA, '', 'J-DIV-2', { date_debut: '2026-07-01', priorite: 'haute' }),
+  createAction('A-DIV-2.8', 'Préparer le dossier de demande de permis d\'exploitation', 'axe8_divers', '2026-09-30', PA, '', 'J-DIV-2', { date_debut: '2026-09-01', priorite: 'critique' }),
+  createAction('A-DIV-2.9', 'Obtenir le permis d\'exploitation', 'axe8_divers', '2026-10-10', PA, '', 'J-DIV-2', { date_debut: '2026-10-01', priorite: 'critique', projectPhase: 'phase3_lancement' }),
+  // J-DIV-3 : Divers (01/02 → en continu)
+  createAction('A-DIV-3.1', 'Prospecter les régies publicitaires', 'axe8_divers', '2026-12-31', PA, '', 'J-DIV-3', { date_debut: '2026-02-01' }),
+  createAction('A-DIV-3.2', 'Obtenir l\'offre de JC Decaux', 'axe8_divers', '2026-12-31', PA, '', 'J-DIV-3', { date_debut: '2026-02-01' }),
 ];
 
 // ============================================================================
-// AGGREGATION - 36 JALONS, 157 ACTIONS
+// AGGREGATION - 33 JALONS, ~181 ACTIONS
 // ============================================================================
 
 export const ALL_JALONS: Omit<Jalon, 'id'>[] = [
-  ...JALONS_AXE1_RH,             // 4 jalons
-  ...JALONS_AXE2_COMMERCIAL,     // 5 jalons
+  ...JALONS_AXE1_RH,             // 3 jalons
+  ...JALONS_AXE2_COMMERCIAL,     // 4 jalons
   ...JALONS_AXE3_TECHNIQUE,      // 6 jalons
   ...JALONS_AXE4_BUDGET,         // 3 jalons
   ...JALONS_AXE5_MARKETING,      // 4 jalons
@@ -608,14 +669,14 @@ export const ALL_JALONS: Omit<Jalon, 'id'>[] = [
 ];
 
 export const ALL_ACTIONS: Omit<Action, 'id'>[] = [
-  ...ACTIONS_AXE1_RH,             // 8 actions
-  ...ACTIONS_AXE2_COMMERCIAL,     // 27 actions
-  ...ACTIONS_AXE3_TECHNIQUE,      // 30 actions
-  ...ACTIONS_AXE4_BUDGET,         // 6 actions
-  ...ACTIONS_AXE5_MARKETING,      // 30 actions
-  ...ACTIONS_AXE6_EXPLOITATION,   // 17 actions
+  ...ACTIONS_AXE1_RH,             // 27 actions
+  ...ACTIONS_AXE2_COMMERCIAL,     // 22 actions (was ~27, removed doublons)
+  ...ACTIONS_AXE3_TECHNIQUE,      // 32 actions
+  ...ACTIONS_AXE4_BUDGET,         // 14 actions
+  ...ACTIONS_AXE5_MARKETING,      // 20 actions
+  ...ACTIONS_AXE6_EXPLOITATION,   // 22 actions
   ...ACTIONS_AXE7_CONSTRUCTION,   // 42 actions
-  ...ACTIONS_AXE8_DIVERSIFICATION, // 9 actions
+  ...ACTIONS_AXE8_DIVERSIFICATION, // 16 actions
 ];
 
 // ============================================================================
@@ -1310,4 +1371,268 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
   }
 
   return { updated, skipped };
+}
+
+// ============================================================================
+// MIGRATION v3.1 → v4.0  (Soft Opening 16/10/2026)
+// ============================================================================
+// RÈGLE ABSOLUE : ne JAMAIS modifier statut, avancement, responsableId,
+// documents, sous_taches, notes_internes, commentaires_externes,
+// historique_commentaires sur les actions existantes.
+// ============================================================================
+
+const MIGRATION_V40_KEY = 'migration_v31_to_v40_done';
+
+/**
+ * Migration v3.1 → v4.0 : Restructuration complète jalons & actions
+ *
+ * Opérations :
+ * 1. Met à jour les jalons existants (titre, date_prevue)
+ * 2. Supprime jalons obsolètes (J-RH-4, J-COM-5)
+ * 3. Crée les nouveaux jalons
+ * 4. Met à jour les actions (titre, dates, jalonId) — PRÉSERVE statut/avancement
+ * 5. Crée les nouvelles actions
+ * 6. Supprime les doublons identifiés
+ * 7. Met à jour PROJECT_METADATA dans projectSettings
+ *
+ * Idempotent : ne s'exécute qu'une fois (vérifie un flag dans localStorage)
+ */
+export async function migrateV31toV40(): Promise<{
+  jalonsUpdated: number;
+  jalonsCreated: number;
+  jalonsDeleted: number;
+  actionsUpdated: number;
+  actionsCreated: number;
+  actionsDeleted: number;
+}> {
+  // Vérifier si déjà exécutée
+  if (localStorage.getItem(MIGRATION_V40_KEY) === 'true') {
+    console.log('[migrateV31toV40] Migration déjà effectuée, skip.');
+    return { jalonsUpdated: 0, jalonsCreated: 0, jalonsDeleted: 0, actionsUpdated: 0, actionsCreated: 0, actionsDeleted: 0 };
+  }
+
+  console.log('[migrateV31toV40] Démarrage migration v3.1 → v4.0...');
+
+  const result = {
+    jalonsUpdated: 0,
+    jalonsCreated: 0,
+    jalonsDeleted: 0,
+    actionsUpdated: 0,
+    actionsCreated: 0,
+    actionsDeleted: 0,
+  };
+
+  try {
+    await db.transaction('rw', [db.jalons, db.actions, db.users, db.projectSettings], async () => {
+      // =====================================================================
+      // 0. Préparer les maps
+      // =====================================================================
+      const allDbJalons = await db.jalons.toArray();
+      const jalonByCode = new Map(allDbJalons.map(j => [j.id_jalon, j]));
+
+      const allDbActions = await db.actions.toArray();
+      const actionByCode = new Map(allDbActions.map(a => [a.id_action, a]));
+
+      const usersArr = await db.users.toArray();
+      const userIdMap = new Map(usersArr.map(u => [`${u.prenom} ${u.nom}`, u.id!]));
+
+      // =====================================================================
+      // 1. Mettre à jour les jalons existants (titre, date_prevue)
+      // =====================================================================
+      const jalonUpdates: Array<{ id_jalon: string; titre?: string; date_prevue?: string }> = [
+        { id_jalon: 'J-RH-2', date_prevue: '2026-10-05' },
+        { id_jalon: 'J-RH-3', titre: 'Équipe 100% opérationnelle', date_prevue: '2026-10-16' },
+        { id_jalon: 'J-COM-1', date_prevue: '2026-04-15' },
+        { id_jalon: 'J-COM-2', titre: 'Calendrier livraison Tenants', date_prevue: '2026-04-30' },
+        { id_jalon: 'J-COM-3', titre: 'BEFA Big Boxes signés', date_prevue: '2026-08-31' },
+        { id_jalon: 'J-COM-4', titre: 'Taux occupation ≥85%', date_prevue: '2026-10-16' },
+        { id_jalon: 'J-TECH-2', date_prevue: '2026-08-31' },
+        { id_jalon: 'J-TECH-3', titre: 'Formations complétées', date_prevue: '2026-09-15' },
+        { id_jalon: 'J-TECH-4', date_prevue: '2026-09-30' },
+        { id_jalon: 'J-TECH-5', titre: 'Suivi levées réserves', date_prevue: '2026-10-05' },
+        { id_jalon: 'J-TECH-6', titre: 'Réceptions définitives', date_prevue: '2026-10-16' },
+        { id_jalon: 'J-BUD-1', date_prevue: '2026-02-16' },
+        { id_jalon: 'J-BUD-2', date_prevue: '2026-02-16' },
+        { id_jalon: 'J-BUD-3', date_prevue: '2026-11-16' },
+        { id_jalon: 'J-MKT-4', date_prevue: '2026-11-16' },
+        { id_jalon: 'J-EXP-1', date_prevue: '2026-08-31' },
+        { id_jalon: 'J-EXP-2', date_prevue: '2026-09-30' },
+        { id_jalon: 'J-EXP-3', titre: 'Procédures d\'exploitation validées', date_prevue: '2026-10-10' },
+        { id_jalon: 'J-EXP-4', date_prevue: '2026-10-16' },
+        { id_jalon: 'J-DIV-1', titre: 'Note de cadrage validée', date_prevue: '2026-01-31' },
+        { id_jalon: 'J-DIV-2', titre: 'Conformité admin/réglementaire', date_prevue: '2026-10-10' },
+        { id_jalon: 'J-DIV-3', titre: 'Divers', date_prevue: '2026-12-31' },
+      ];
+
+      for (const upd of jalonUpdates) {
+        const existing = jalonByCode.get(upd.id_jalon);
+        if (existing && existing.id) {
+          const updates: Record<string, unknown> = {};
+          if (upd.titre) updates.titre = upd.titre;
+          if (upd.date_prevue) updates.date_prevue = upd.date_prevue;
+          if (Object.keys(updates).length > 0) {
+            await db.jalons.update(existing.id, updates);
+            result.jalonsUpdated++;
+          }
+        }
+      }
+
+      // =====================================================================
+      // 2. Supprimer jalons obsolètes (J-RH-4, J-COM-5)
+      // =====================================================================
+      for (const code of ['J-RH-4', 'J-COM-5']) {
+        const jalon = jalonByCode.get(code);
+        if (jalon && jalon.id) {
+          await db.jalons.delete(jalon.id);
+          result.jalonsDeleted++;
+        }
+      }
+
+      // =====================================================================
+      // 3. Créer les nouveaux jalons (s'ils n'existent pas déjà)
+      // =====================================================================
+      const updatedJalons = await db.jalons.toArray();
+      const existingJalonIds = new Set(updatedJalons.map(j => j.id_jalon));
+
+      for (const jalon of ALL_JALONS) {
+        if (!existingJalonIds.has(jalon.id_jalon)) {
+          await db.jalons.add(jalon as Jalon);
+          result.jalonsCreated++;
+        }
+      }
+
+      // Re-fetch jalons for jalonId mapping
+      const finalJalons = await db.jalons.toArray();
+      const jalonIdMap = new Map(finalJalons.map(j => [j.id_jalon, j.id!]));
+
+      // =====================================================================
+      // 4. Mettre à jour les actions existantes (titre, dates, jalonId)
+      //    PRÉSERVE : statut, avancement, responsableId, documents, etc.
+      // =====================================================================
+      for (const seedAction of ALL_ACTIONS) {
+        const actionWithCode = seedAction as ActionWithJalonCode;
+        const existing = actionByCode.get(actionWithCode.id_action);
+        if (existing && existing.id) {
+          const updates: Record<string, unknown> = {};
+
+          // Mettre à jour le titre si différent
+          if (existing.titre !== actionWithCode.titre) {
+            updates.titre = actionWithCode.titre;
+          }
+
+          // Mettre à jour les dates
+          if (existing.date_fin_prevue !== actionWithCode.date_fin_prevue) {
+            updates.date_fin_prevue = actionWithCode.date_fin_prevue;
+          }
+          if (existing.date_debut_prevue !== actionWithCode.date_debut_prevue) {
+            updates.date_debut_prevue = actionWithCode.date_debut_prevue;
+          }
+
+          // Mettre à jour l'axe si différent
+          if (existing.axe !== actionWithCode.axe) {
+            updates.axe = actionWithCode.axe;
+          }
+
+          // Réattribuer au bon jalon
+          const newJalonCode = actionWithCode._jalonCode;
+          if (newJalonCode) {
+            const newJalonId = jalonIdMap.get(newJalonCode) || null;
+            if (newJalonId !== existing.jalonId) {
+              updates.jalonId = newJalonId;
+            }
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await db.actions.update(existing.id, updates);
+            result.actionsUpdated++;
+          }
+        }
+      }
+
+      // =====================================================================
+      // 5. Créer les nouvelles actions (celles qui n'existent pas en BDD)
+      // =====================================================================
+      const existingActionIds = new Set(allDbActions.map(a => a.id_action));
+
+      for (const seedAction of ALL_ACTIONS) {
+        const actionWithCode = seedAction as ActionWithJalonCode;
+        if (!existingActionIds.has(actionWithCode.id_action)) {
+          const jalonCode = actionWithCode._jalonCode;
+          const jalonId = jalonCode ? jalonIdMap.get(jalonCode) || null : null;
+          const responsableId = userIdMap.get(actionWithCode.responsable) || 1;
+
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { _jalonCode: _jc, ...actionData } = actionWithCode;
+
+          await db.actions.add({
+            ...actionData,
+            jalonId,
+            responsableId,
+          } as Action);
+          result.actionsCreated++;
+        }
+      }
+
+      // =====================================================================
+      // 6. Supprimer les doublons identifiés
+      // =====================================================================
+      const doublonTitles = [
+        'atteindre 100% de commercialisation',
+        'accompagner les preneurs',
+      ];
+
+      const refreshedActions = await db.actions.toArray();
+      for (const action of refreshedActions) {
+        if (!action.id) continue;
+        const titleLower = action.titre?.toLowerCase() || '';
+
+        const isDoublon = doublonTitles.some(t => titleLower === t);
+        if (isDoublon) {
+          await db.actions.delete(action.id);
+          result.actionsDeleted++;
+        }
+      }
+
+      // =====================================================================
+      // 7. Mettre à jour projectSettings (softOpening)
+      // =====================================================================
+      const settings = await db.projectSettings.toArray();
+      if (settings.length > 0 && settings[0].id) {
+        await db.projectSettings.update(settings[0].id, {
+          datesClePtojet: {
+            kickoff: '2025-10-01',
+            softOpening: '2026-10-16',
+            inauguration: '2026-11-15',
+          },
+          objectifsOccupation: {
+            softOpening: { date: '2026-10-16', tauxCible: 85 },
+            inauguration: { date: '2026-11-15', tauxCible: 90 },
+            moisPlus6: { date: '2027-04-16', tauxCible: 95 },
+          },
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // =====================================================================
+      // 8. Mettre à jour site COSMOS (dateOuverture / dateInauguration)
+      // =====================================================================
+      const cosmosSite = await db.sites.where('code').equals('COSMOS').first();
+      if (cosmosSite?.id) {
+        await db.sites.update(cosmosSite.id, {
+          dateOuverture: '2026-10-16',
+          dateInauguration: '2026-11-15',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    // Marquer la migration comme effectuée
+    localStorage.setItem(MIGRATION_V40_KEY, 'true');
+
+    console.log('[migrateV31toV40] Migration terminée:', result);
+  } catch (error) {
+    console.error('[migrateV31toV40] Erreur:', error);
+  }
+
+  return result;
 }

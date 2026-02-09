@@ -330,8 +330,8 @@ export function DataInitialization() {
         </div>
 
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-          <Badge variant="info">35 Jalons</Badge>
-          <Badge variant="success">7 Axes</Badge>
+          <Badge variant="info">33 Jalons</Badge>
+          <Badge variant="success">8 Axes</Badge>
           <Badge variant="warning">6 Bâtiments</Badge>
           <Badge variant="default">100% Poids</Badge>
         </div>
