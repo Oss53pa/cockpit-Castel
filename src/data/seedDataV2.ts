@@ -1381,19 +1381,17 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
 // historique_commentaires sur les actions existantes.
 // ============================================================================
 
-export const MIGRATION_V40_KEY = 'migration_v31_to_v40_done';
+export const MIGRATION_V40_KEY = 'migration_v31_to_v40_v2_done';
 
 /**
  * Migration v3.1 → v4.0 : Restructuration complète jalons & actions
  *
- * Opérations :
- * 1. Met à jour les jalons existants (titre, date_prevue)
- * 2. Supprime jalons obsolètes (J-RH-4, J-COM-5)
- * 3. Crée les nouveaux jalons
- * 4. Met à jour les actions (titre, dates, jalonId) — PRÉSERVE statut/avancement
- * 5. Crée les nouvelles actions
- * 6. Supprime les doublons identifiés
- * 7. Met à jour PROJECT_METADATA dans projectSettings
+ * RÈGLES ABSOLUES :
+ * - PRÉSERVER sur chaque action existante : statut, avancement, responsableId,
+ *   documents, sous_taches, notes_internes, commentaires_externes, historique
+ * - CORRECTIONS AUTORISÉES : libellé (reformulation) + dates + jalonId + axe
+ * - Matcher par TITRE NORMALISÉ (pas id_action) pour retrouver les existantes
+ * - NOUVELLES ACTIONS : créer seulement si aucun titre similaire n'existe
  *
  * Idempotent : ne s'exécute qu'une fois (vérifie un flag dans localStorage)
  */
@@ -1411,7 +1409,11 @@ export async function migrateV31toV40(): Promise<{
     return { jalonsUpdated: 0, jalonsCreated: 0, jalonsDeleted: 0, actionsUpdated: 0, actionsCreated: 0, actionsDeleted: 0 };
   }
 
-  console.log('[migrateV31toV40] Démarrage migration v3.1 → v4.0...');
+  console.log('[migrateV31toV40] Démarrage migration v3.1 → v4.0 (v2 — match par titre)...');
+
+  // Normaliser un titre pour comparaison
+  const norm = (t: string | undefined): string =>
+    (t || '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/[''`]/g, "'");
 
   const result = {
     jalonsUpdated: 0,
@@ -1424,22 +1426,71 @@ export async function migrateV31toV40(): Promise<{
 
   try {
     await db.transaction('rw', [db.jalons, db.actions, db.users, db.projectSettings, db.sites], async () => {
+
       // =====================================================================
-      // 0. Préparer les maps
+      // 0. NETTOYAGE : supprimer les doublons créés par la migration buggée
+      //    Garder l'original (id le plus bas = données utilisateur), supprimer le reste
+      // =====================================================================
+      const allActionsRaw = await db.actions.toArray();
+      const titleGroups = new Map<string, typeof allActionsRaw>();
+      for (const a of allActionsRaw) {
+        const key = norm(a.titre);
+        if (!key) continue;
+        const group = titleGroups.get(key) || [];
+        group.push(a);
+        titleGroups.set(key, group);
+      }
+      for (const [, group] of titleGroups) {
+        if (group.length <= 1) continue;
+        // Trier par id croissant (le plus ancien = l'original avec données utilisateur)
+        group.sort((a, b) => (a.id || 0) - (b.id || 0));
+        // Supprimer tous sauf le premier (l'original)
+        for (let i = 1; i < group.length; i++) {
+          if (group[i].id) {
+            await db.actions.delete(group[i].id!);
+            result.actionsDeleted++;
+          }
+        }
+      }
+
+      // Même nettoyage pour les jalons
+      const allJalonsRaw = await db.jalons.toArray();
+      const jalonTitleGroups = new Map<string, typeof allJalonsRaw>();
+      for (const j of allJalonsRaw) {
+        const key = norm(j.titre);
+        if (!key) continue;
+        const group = jalonTitleGroups.get(key) || [];
+        group.push(j);
+        jalonTitleGroups.set(key, group);
+      }
+      for (const [, group] of jalonTitleGroups) {
+        if (group.length <= 1) continue;
+        group.sort((a, b) => (a.id || 0) - (b.id || 0));
+        for (let i = 1; i < group.length; i++) {
+          if (group[i].id) {
+            await db.jalons.delete(group[i].id!);
+            result.jalonsDeleted++;
+          }
+        }
+      }
+
+      console.log('[migrateV31toV40] Nettoyage doublons:', result.actionsDeleted, 'actions,', result.jalonsDeleted, 'jalons supprimés');
+
+      // =====================================================================
+      // 1. Préparer les maps (après nettoyage)
       // =====================================================================
       const allDbJalons = await db.jalons.toArray();
       const jalonByCode = new Map(allDbJalons.map(j => [j.id_jalon, j]));
-
-      const allDbActions = await db.actions.toArray();
-      const actionByCode = new Map(allDbActions.map(a => [a.id_action, a]));
+      const jalonByTitle = new Map(allDbJalons.map(j => [norm(j.titre), j]));
 
       const usersArr = await db.users.toArray();
       const userIdMap = new Map(usersArr.map(u => [`${u.prenom} ${u.nom}`, u.id!]));
 
       // =====================================================================
-      // 1. Mettre à jour les jalons existants (titre, date_prevue)
+      // 2. Mettre à jour les jalons existants (titre, date_prevue)
+      //    Match par id_jalon OU par titre normalisé
       // =====================================================================
-      const jalonUpdates: Array<{ id_jalon: string; titre?: string; date_prevue?: string }> = [
+      const jalonUpdates: Array<{ id_jalon: string; titre?: string; date_prevue?: string; ancienTitre?: string }> = [
         { id_jalon: 'J-RH-2', date_prevue: '2026-10-05' },
         { id_jalon: 'J-RH-3', titre: 'Équipe 100% opérationnelle', date_prevue: '2026-10-16' },
         { id_jalon: 'J-COM-1', date_prevue: '2026-04-15' },
@@ -1465,11 +1516,17 @@ export async function migrateV31toV40(): Promise<{
       ];
 
       for (const upd of jalonUpdates) {
-        const existing = jalonByCode.get(upd.id_jalon);
+        // Match par id_jalon OU par titre
+        const existing = jalonByCode.get(upd.id_jalon)
+          || (upd.titre ? jalonByTitle.get(norm(upd.titre)) : undefined)
+          || (upd.ancienTitre ? jalonByTitle.get(norm(upd.ancienTitre)) : undefined);
+
         if (existing && existing.id) {
           const updates: Record<string, unknown> = {};
           if (upd.titre) updates.titre = upd.titre;
           if (upd.date_prevue) updates.date_prevue = upd.date_prevue;
+          // Mettre à jour id_jalon pour les futurs matchs
+          if (existing.id_jalon !== upd.id_jalon) updates.id_jalon = upd.id_jalon;
           if (Object.keys(updates).length > 0) {
             await db.jalons.update(existing.id, updates);
             result.jalonsUpdated++;
@@ -1478,10 +1535,13 @@ export async function migrateV31toV40(): Promise<{
       }
 
       // =====================================================================
-      // 2. Supprimer jalons obsolètes (J-RH-4, J-COM-5)
+      // 3. Supprimer jalons obsolètes (J-RH-4, J-COM-5)
       // =====================================================================
+      // Re-fetch après updates
+      const jalonsAfterUpdate = await db.jalons.toArray();
+      const jalonByCode2 = new Map(jalonsAfterUpdate.map(j => [j.id_jalon, j]));
       for (const code of ['J-RH-4', 'J-COM-5']) {
-        const jalon = jalonByCode.get(code);
+        const jalon = jalonByCode2.get(code);
         if (jalon && jalon.id) {
           await db.jalons.delete(jalon.id);
           result.jalonsDeleted++;
@@ -1489,13 +1549,14 @@ export async function migrateV31toV40(): Promise<{
       }
 
       // =====================================================================
-      // 3. Créer les nouveaux jalons (s'ils n'existent pas déjà)
+      // 4. Créer les nouveaux jalons (s'ils n'existent pas par id NI par titre)
       // =====================================================================
-      const updatedJalons = await db.jalons.toArray();
-      const existingJalonIds = new Set(updatedJalons.map(j => j.id_jalon));
+      const jalonsAfterDelete = await db.jalons.toArray();
+      const existingJalonIds = new Set(jalonsAfterDelete.map(j => j.id_jalon));
+      const existingJalonTitles = new Set(jalonsAfterDelete.map(j => norm(j.titre)));
 
       for (const jalon of ALL_JALONS) {
-        if (!existingJalonIds.has(jalon.id_jalon)) {
+        if (!existingJalonIds.has(jalon.id_jalon) && !existingJalonTitles.has(norm(jalon.titre))) {
           await db.jalons.add(jalon as Jalon);
           result.jalonsCreated++;
         }
@@ -1506,18 +1567,41 @@ export async function migrateV31toV40(): Promise<{
       const jalonIdMap = new Map(finalJalons.map(j => [j.id_jalon, j.id!]));
 
       // =====================================================================
-      // 4. Mettre à jour les actions existantes (titre, dates, jalonId)
-      //    PRÉSERVE : statut, avancement, responsableId, documents, etc.
+      // 5. Mettre à jour les actions existantes (titre, dates, jalonId, axe)
+      //    Match par id_action OU par TITRE NORMALISÉ
+      //    PRÉSERVE : statut, avancement, responsableId, documents,
+      //               sous_taches, notes_internes, commentaires_externes
       // =====================================================================
+      const allDbActions = await db.actions.toArray();
+      const actionByCode = new Map(allDbActions.map(a => [a.id_action, a]));
+      const actionByTitle = new Map<string, (typeof allDbActions)[0]>();
+      for (const a of allDbActions) {
+        const key = norm(a.titre);
+        if (key && !actionByTitle.has(key)) {
+          actionByTitle.set(key, a);
+        }
+      }
+      const matchedDbIds = new Set<number>(); // track DB ids already matched
+
       for (const seedAction of ALL_ACTIONS) {
         const actionWithCode = seedAction as ActionWithJalonCode;
-        const existing = actionByCode.get(actionWithCode.id_action);
-        if (existing && existing.id) {
+
+        // Match par id_action d'abord, puis par titre
+        const existing = actionByCode.get(actionWithCode.id_action)
+          || actionByTitle.get(norm(actionWithCode.titre));
+
+        if (existing && existing.id && !matchedDbIds.has(existing.id)) {
+          matchedDbIds.add(existing.id);
           const updates: Record<string, unknown> = {};
 
-          // Mettre à jour le titre si différent
+          // Mettre à jour le titre (reformulation autorisée)
           if (existing.titre !== actionWithCode.titre) {
             updates.titre = actionWithCode.titre;
+          }
+
+          // Mettre à jour id_action pour harmoniser les codes
+          if (existing.id_action !== actionWithCode.id_action) {
+            updates.id_action = actionWithCode.id_action;
           }
 
           // Mettre à jour les dates
@@ -1528,7 +1612,7 @@ export async function migrateV31toV40(): Promise<{
             updates.date_debut_prevue = actionWithCode.date_debut_prevue;
           }
 
-          // Mettre à jour l'axe si différent
+          // Mettre à jour l'axe
           if (existing.axe !== actionWithCode.axe) {
             updates.axe = actionWithCode.axe;
           }
@@ -1542,6 +1626,9 @@ export async function migrateV31toV40(): Promise<{
             }
           }
 
+          // ❌ JAMAIS toucher : statut, avancement, responsableId, documents,
+          //    sous_taches, notes_internes, commentaires_externes, historique
+
           if (Object.keys(updates).length > 0) {
             await db.actions.update(existing.id, updates);
             result.actionsUpdated++;
@@ -1550,13 +1637,17 @@ export async function migrateV31toV40(): Promise<{
       }
 
       // =====================================================================
-      // 5. Créer les nouvelles actions (celles qui n'existent pas en BDD)
+      // 6. Créer les nouvelles actions (aucun match par id NI par titre)
       // =====================================================================
-      const existingActionIds = new Set(allDbActions.map(a => a.id_action));
+      // Re-fetch après les mises à jour (id_action ont pu changer)
+      const actionsAfterUpdate = await db.actions.toArray();
+      const existingActionIds = new Set(actionsAfterUpdate.map(a => a.id_action));
+      const existingActionTitles = new Set(actionsAfterUpdate.map(a => norm(a.titre)));
 
       for (const seedAction of ALL_ACTIONS) {
         const actionWithCode = seedAction as ActionWithJalonCode;
-        if (!existingActionIds.has(actionWithCode.id_action)) {
+        // Créer seulement si aucun match par id ET par titre
+        if (!existingActionIds.has(actionWithCode.id_action) && !existingActionTitles.has(norm(actionWithCode.titre))) {
           const jalonCode = actionWithCode._jalonCode;
           const jalonId = jalonCode ? jalonIdMap.get(jalonCode) || null : null;
           const responsableId = userIdMap.get(actionWithCode.responsable) || 1;
@@ -1570,26 +1661,6 @@ export async function migrateV31toV40(): Promise<{
             responsableId,
           } as Action);
           result.actionsCreated++;
-        }
-      }
-
-      // =====================================================================
-      // 6. Supprimer les doublons identifiés
-      // =====================================================================
-      const doublonTitles = [
-        'atteindre 100% de commercialisation',
-        'accompagner les preneurs',
-      ];
-
-      const refreshedActions = await db.actions.toArray();
-      for (const action of refreshedActions) {
-        if (!action.id) continue;
-        const titleLower = action.titre?.toLowerCase() || '';
-
-        const isDoublon = doublonTitles.some(t => titleLower === t);
-        if (isDoublon) {
-          await db.actions.delete(action.id);
-          result.actionsDeleted++;
         }
       }
 

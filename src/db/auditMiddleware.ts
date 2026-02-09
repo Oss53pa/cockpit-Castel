@@ -71,18 +71,9 @@ function computeDiff(
 /**
  * Installe le middleware d'audit sur une instance Dexie.
  * À appeler une fois après la construction de la DB.
- *
- * TEMPORAIREMENT DÉSACTIVÉ - Les queueMicrotask causent des erreurs
- * "Cannot read properties of undefined (reading 'table')" car la
- * transaction est terminée quand le callback s'exécute.
  */
-export function installAuditMiddleware(_database: Dexie): void {
-  // DÉSACTIVÉ TEMPORAIREMENT - à réactiver avec une implémentation corrigée
-  console.log('[AuditMiddleware] Middleware désactivé temporairement');
-  return;
-
-  // eslint-disable-next-line no-unreachable
-  _database.use({
+export function installAuditMiddleware(database: Dexie): void {
+  database.use({
     stack: 'dbcore',
     name: 'AuditMiddleware',
     create(downlevelDatabase: DBCore): DBCore {
@@ -97,168 +88,178 @@ export function installAuditMiddleware(_database: Dexie): void {
 
           return {
             ...downlevelTable,
-            mutate(req: DBCoreMutateRequest): Promise<DBCoreMutateResponse> {
+            async mutate(req: DBCoreMutateRequest): Promise<DBCoreMutateResponse> {
               // Capturer le contexte AVANT l'écriture
               const writeCtx = getCurrentWriteContext();
+              const entiteType = TABLE_TO_ENTITY_TYPE[tableName] || tableName;
+              const now = new Date().toISOString();
 
-              if (req.type === 'put' || req.type === 'add') {
-                // Pour put: capturer les anciennes valeurs avant la mutation
-                const values = req.values as Record<string, unknown>[];
-                const keys = req.keys as (number | undefined)[] | undefined;
+              try {
+                if (req.type === 'add') {
+                  // Pour add: exécuter d'abord, puis logger
+                  const res = await downlevelTable.mutate(req);
 
-                // Obtenir les clés primaires
-                const primaryKeys: (number | undefined)[] = [];
-                if (keys) {
-                  primaryKeys.push(...keys);
-                } else {
-                  for (const val of values) {
-                    primaryKeys.push(val.id as number | undefined);
+                  // Logger les créations (fire-and-forget, ne bloque pas)
+                  const values = req.values as Record<string, unknown>[];
+                  const historiqueEntries: Array<Record<string, unknown>> = [];
+
+                  for (let i = 0; i < values.length; i++) {
+                    const entityId = res.results?.[i] ?? values[i].id;
+                    historiqueEntries.push({
+                      timestamp: now,
+                      entiteType,
+                      entiteId: entityId,
+                      champModifie: '_creation',
+                      ancienneValeur: '',
+                      nouvelleValeur: `Création (${writeCtx?.source || 'system'})`,
+                      auteurId: writeCtx?.auteurId ?? 0,
+                      source: writeCtx?.source || 'system',
+                    });
                   }
+
+                  if (historiqueEntries.length > 0) {
+                    // Écrire en asynchrone sans bloquer le résultat
+                    downlevelDatabase.table('historique').mutate({
+                      type: 'add',
+                      trans: req.trans,
+                      values: historiqueEntries,
+                    }).catch(() => {
+                      // Silently ignore audit errors
+                    });
+                  }
+
+                  return res;
                 }
 
-                // Capturer les anciennes valeurs pour les puts (pas les adds)
-                const oldValuesPromise = req.type === 'put'
-                  ? Promise.all(
-                      primaryKeys.map(k =>
-                        k !== undefined
-                          ? downlevelTable.get({ trans: req.trans, key: k })
-                          : Promise.resolve(undefined)
-                      )
+                if (req.type === 'put') {
+                  // Pour put: capturer les anciennes valeurs d'abord
+                  const values = req.values as Record<string, unknown>[];
+                  const keys = req.keys as (number | undefined)[] | undefined;
+
+                  const primaryKeys: (number | undefined)[] = [];
+                  if (keys) {
+                    primaryKeys.push(...keys);
+                  } else {
+                    for (const val of values) {
+                      primaryKeys.push(val.id as number | undefined);
+                    }
+                  }
+
+                  // Récupérer les anciennes valeurs
+                  const oldValues = await Promise.all(
+                    primaryKeys.map(k =>
+                      k !== undefined
+                        ? downlevelTable.get({ trans: req.trans, key: k })
+                        : Promise.resolve(undefined)
                     )
-                  : Promise.resolve(primaryKeys.map(() => undefined));
+                  );
 
-                return oldValuesPromise.then(oldValues => {
-                  return downlevelTable.mutate(req).then(res => {
-                    // Après écriture réussie : calculer les diffs et historiser
-                    queueMicrotask(() => {
-                      const entiteType = TABLE_TO_ENTITY_TYPE[tableName] || tableName;
-                      const historiqueEntries: Array<Record<string, unknown>> = [];
-                      const now = new Date().toISOString();
+                  // Exécuter la mutation
+                  const res = await downlevelTable.mutate(req);
 
-                      for (let i = 0; i < values.length; i++) {
-                        const newVal = values[i];
-                        const oldVal = oldValues[i] as Record<string, unknown> | undefined;
-                        const entityId = (res.results?.[i] ?? primaryKeys[i] ?? newVal.id) as number;
+                  // Calculer les diffs et historiser
+                  const historiqueEntries: Array<Record<string, unknown>> = [];
 
-                        if (req.type === 'add') {
-                          // Pour les adds, juste logger la création
-                          historiqueEntries.push({
-                            timestamp: now,
-                            entiteType,
-                            entiteId: entityId,
-                            champModifie: '_creation',
-                            ancienneValeur: '',
-                            nouvelleValeur: `Création (${writeCtx?.source || 'unknown'})`,
-                            auteurId: writeCtx?.auteurId ?? 0,
-                            source: writeCtx?.source || 'system',
-                          });
-                        } else {
-                          // Pour les puts, calculer le diff
-                          const diffs = computeDiff(oldVal, newVal);
-                          for (const diff of diffs) {
-                            historiqueEntries.push({
-                              timestamp: now,
-                              entiteType,
-                              entiteId: entityId,
-                              champModifie: diff.champ,
-                              ancienneValeur: diff.ancien,
-                              nouvelleValeur: diff.nouveau,
-                              auteurId: writeCtx?.auteurId ?? 0,
-                              source: writeCtx?.source || 'system',
-                            });
-                          }
-                        }
-                      }
+                  for (let i = 0; i < values.length; i++) {
+                    const newVal = values[i];
+                    const oldVal = oldValues[i] as Record<string, unknown> | undefined;
+                    const entityId = (res.results?.[i] ?? primaryKeys[i] ?? newVal.id) as number;
 
-                      if (historiqueEntries.length > 0) {
-                        // Écrire dans historique via le downlevel (bypass le middleware)
-                        const historiqueTable = downlevelDatabase.table('historique');
-                        historiqueTable
-                          .mutate({
-                            type: 'add',
-                            trans: req.trans,
-                            values: historiqueEntries,
-                          })
-                          .catch((err: unknown) => {
-                            console.warn('[AuditMiddleware] Erreur écriture historique:', err);
-                          });
-                      }
+                    const diffs = computeDiff(oldVal, newVal);
+                    for (const diff of diffs) {
+                      historiqueEntries.push({
+                        timestamp: now,
+                        entiteType,
+                        entiteId: entityId,
+                        champModifie: diff.champ,
+                        ancienneValeur: diff.ancien,
+                        nouvelleValeur: diff.nouveau,
+                        auteurId: writeCtx?.auteurId ?? 0,
+                        source: writeCtx?.source || 'system',
+                      });
+                    }
+                  }
+
+                  if (historiqueEntries.length > 0) {
+                    downlevelDatabase.table('historique').mutate({
+                      type: 'add',
+                      trans: req.trans,
+                      values: historiqueEntries,
+                    }).catch(() => {
+                      // Silently ignore audit errors
                     });
+                  }
 
-                    return res;
-                  });
-                });
-              }
-
-              if (req.type === 'delete') {
-                // Pour les deletes : capturer avant suppression
-                const range = req.range;
-                const entiteType = TABLE_TO_ENTITY_TYPE[tableName] || tableName;
-
-                // Extraire les clés à supprimer selon la structure de la requête
-                let keysToDelete: number[] = [];
-                if (range && range.type === 'range') {
-                  // Range delete - on ne peut pas facilement lister les clés
-                  keysToDelete = [];
-                } else if ((req as unknown as { keys: number[] }).keys) {
-                  keysToDelete = (req as unknown as { keys: number[] }).keys;
-                } else if (range && typeof range.lower !== 'undefined') {
-                  // Single key delete via range.lower
-                  keysToDelete = [range.lower as number];
+                  return res;
                 }
 
-                // Capturer les anciennes valeurs
-                return downlevelTable
-                  .getMany({
-                    trans: req.trans,
-                    keys: keysToDelete,
-                  })
-                  .then(oldValues => {
-                    return downlevelTable.mutate(req).then(res => {
-                      queueMicrotask(() => {
-                        const now = new Date().toISOString();
-                        const historiqueEntries: Array<Record<string, unknown>> = [];
+                if (req.type === 'delete') {
+                  // Pour delete: capturer avant suppression
+                  const range = req.range;
 
-                        for (const oldVal of oldValues) {
-                          if (!oldVal) continue;
-                          const entityId = (oldVal as Record<string, unknown>).id as number;
-                          historiqueEntries.push({
-                            timestamp: now,
-                            entiteType,
-                            entiteId: entityId,
-                            champModifie: '_suppression',
-                            ancienneValeur: JSON.stringify(oldVal),
-                            nouvelleValeur: '',
-                            auteurId: writeCtx?.auteurId ?? 0,
-                            source: writeCtx?.source || 'system',
-                          });
-                        }
+                  // Extraire les clés selon la structure
+                  let keysToDelete: number[] = [];
+                  if ((req as unknown as { keys: number[] }).keys) {
+                    keysToDelete = (req as unknown as { keys: number[] }).keys;
+                  } else if (range && typeof range.lower !== 'undefined' && range.lower === range.upper) {
+                    // Single key delete
+                    keysToDelete = [range.lower as number];
+                  }
+                  // Pour les range deletes complexes, on skip l'audit
 
-                        if (historiqueEntries.length > 0) {
-                          const historiqueTable = downlevelDatabase.table('historique');
-                          historiqueTable
-                            .mutate({
-                              type: 'add',
-                              trans: req.trans,
-                              values: historiqueEntries,
-                            })
-                            .catch((err: unknown) => {
-                              console.warn('[AuditMiddleware] Erreur écriture historique suppression:', err);
-                            });
-                        }
+                  let oldValues: unknown[] = [];
+                  if (keysToDelete.length > 0) {
+                    try {
+                      oldValues = await downlevelTable.getMany({
+                        trans: req.trans,
+                        keys: keysToDelete,
                       });
+                    } catch {
+                      // Si getMany échoue, on continue sans audit
+                      oldValues = [];
+                    }
+                  }
 
-                      return res;
+                  // Exécuter la suppression
+                  const res = await downlevelTable.mutate(req);
+
+                  // Logger les suppressions
+                  const historiqueEntries: Array<Record<string, unknown>> = [];
+                  for (const oldVal of oldValues) {
+                    if (!oldVal) continue;
+                    const entityId = (oldVal as Record<string, unknown>).id as number;
+                    historiqueEntries.push({
+                      timestamp: now,
+                      entiteType,
+                      entiteId: entityId,
+                      champModifie: '_suppression',
+                      ancienneValeur: JSON.stringify(oldVal),
+                      nouvelleValeur: '',
+                      auteurId: writeCtx?.auteurId ?? 0,
+                      source: writeCtx?.source || 'system',
                     });
-                  })
-                  .catch(() => {
-                    // Si getMany échoue (range delete), on passe quand même la mutation
-                    return downlevelTable.mutate(req);
-                  });
-              }
+                  }
 
-              // deleteRange ou autres types non gérés
-              return downlevelTable.mutate(req);
+                  if (historiqueEntries.length > 0) {
+                    downlevelDatabase.table('historique').mutate({
+                      type: 'add',
+                      trans: req.trans,
+                      values: historiqueEntries,
+                    }).catch(() => {
+                      // Silently ignore audit errors
+                    });
+                  }
+
+                  return res;
+                }
+
+                // Autres types de mutation (deleteRange, etc.)
+                return downlevelTable.mutate(req);
+
+              } catch (error) {
+                // Si une erreur survient, on la propage sans bloquer
+                throw error;
+              }
             },
           };
         },
