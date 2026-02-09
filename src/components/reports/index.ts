@@ -23,15 +23,6 @@ export { AxisSync } from './AxisExco/AxisSync';
 export { WeeklyReport } from './WeeklyReport';
 
 // ============================================================================
-// Monthly Report components
+// Monthly Report V2
 // ============================================================================
-export {
-  MonthlyReport,
-  MonthlySync,
-  MonthlySummary,
-  MonthlyKPIs,
-  MonthlyCharts,
-  MonthlyBudget,
-  MonthlyRisks,
-  MonthlyPlan,
-} from './MonthlyReport';
+export { MonthlyReport } from './MonthlyReport';
