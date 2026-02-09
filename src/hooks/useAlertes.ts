@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { Alerte, AlerteFilters, AlerteType, Criticite, AlerteEmailHistorique } from '@/types';
+import { MOBILISATION_AXES } from '@/types';
 import { getDaysUntil } from '@/lib/utils';
 import {
   sendAlerteEmailSimple as sendAlerteEmail,
@@ -379,14 +380,8 @@ export async function generateAlertesAutomatiques(): Promise<void> {
   // Construction = axe3_technique
   const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
   // Mobilisation = les 5 autres axes (RH, Commercial, Budget, Marketing, Exploitation)
-  const axesMobilisation: Array<'axe1_rh' | 'axe2_commercial' | 'axe4_budget' | 'axe5_marketing' | 'axe6_exploitation'> = [
-    'axe1_rh',
-    'axe2_commercial',
-    'axe4_budget',
-    'axe5_marketing',
-    'axe6_exploitation',
-  ];
-  const actionsMobilisation = actions.filter((a) => axesMobilisation.includes(a.axe as typeof axesMobilisation[number]));
+  // Utilise la constante centralisée MOBILISATION_AXES pour éviter les incohérences
+  const actionsMobilisation = actions.filter((a) => (MOBILISATION_AXES as readonly string[]).includes(a.axe));
 
   const avancementTechnique =
     actionsTechniques.length > 0

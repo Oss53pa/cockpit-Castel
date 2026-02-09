@@ -17,6 +17,7 @@ import { Card, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useActions, useJalons, useProjectConfig, useRisques } from '@/hooks';
 import type { Axe } from '@/types';
+import { MOBILISATION_AXES } from '@/types';
 import { PROJET_CONFIG, AXES_CONFIG_FULL } from '@/data/constants';
 
 // ============================================================================
@@ -582,11 +583,10 @@ export function TimelineSynchronisee() {
 
   // ══════════════════════════════════════════════════════════════════════════
   // GÉNÉRATION DES AXES DE MOBILISATION À PARTIR DES DONNÉES RÉELLES
+  // Utilise la constante centralisée MOBILISATION_AXES pour cohérence avec sync
   // ══════════════════════════════════════════════════════════════════════════
   const axesTimeline = useMemo((): AxeTimeline[] => {
-    const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe3_technique', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
-
-    return mobilisationAxes.map(axe => {
+    return MOBILISATION_AXES.map(axe => {
       const axeConfig = AXES_CONFIG_FULL[axe.replace('axe1_', '').replace('axe2_', '').replace('axe3_', '').replace('axe4_', '').replace('axe5_', '').replace('axe6_', '') as keyof typeof AXES_CONFIG_FULL] || {};
       const visualConfig = AXE_VISUAL_CONFIG[axe] || AXE_VISUAL_CONFIG.axe1_rh;
       const axeJalons = allJalons.filter(j => j.axe === axe);

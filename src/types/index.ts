@@ -51,6 +51,16 @@ export const AXES = [
 ] as const;
 export type Axe = (typeof AXES)[number];
 
+// Axes de mobilisation (excluant axe3_technique qui est construction pure)
+// Source unique pour éviter les incohérences entre modules
+export const MOBILISATION_AXES: readonly Axe[] = [
+  'axe1_rh',
+  'axe2_commercial',
+  'axe4_budget',
+  'axe5_marketing',
+  'axe6_exploitation',
+] as const;
+
 export const AXE_LABELS: Record<Axe, string> = {
   axe1_rh: 'AXE 1 - RH & Organisation',
   axe2_commercial: 'AXE 2 - Commercial & Leasing',

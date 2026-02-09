@@ -21,7 +21,7 @@ import type {
   SyncActionStatus,
 } from '@/types/sync.types';
 import type { Axe, ProjectPhase, Action, Jalon } from '@/types';
-import { AXE_LABELS, AXE_SHORT_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@/types';
+import { AXE_LABELS, AXE_SHORT_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, MOBILISATION_AXES } from '@/types';
 
 // ============================================================================
 // CONFIGURATION DES CATÉGORIES BASÉE SUR LES AXES RÉELS
@@ -226,7 +226,7 @@ export async function calculateMobilisationProgress(siteId: number): Promise<{
   byAxe: Record<Axe, CategoryProgress>;
 }> {
   // Les axes de mobilisation (tous sauf technique qui est construction)
-  const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+  const mobilisationAxes = MOBILISATION_AXES;
 
   const byAxe: Partial<Record<Axe, CategoryProgress>> = {};
   let totalWeightedProgress = 0;
@@ -338,7 +338,7 @@ export function generateSyncCategories(): SyncCategory[] {
   });
 
   // Catégories Mobilisation (Axes)
-  const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+  const mobilisationAxes = MOBILISATION_AXES;
   mobilisationAxes.forEach((axe, index) => {
     const config = AXE_CONFIG[axe];
     categories.push({
@@ -526,7 +526,7 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
  * Obtient les détails de progression par catégorie pour la Mobilisation
  */
 export async function getMobilisationCategoryDetails(siteId: number): Promise<CategoryProgress[]> {
-  const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+  const mobilisationAxes = MOBILISATION_AXES;
   const result: CategoryProgress[] = [];
 
   // Récupérer toutes les sous-tâches et utilisateurs pour éviter N+1 queries
@@ -643,7 +643,7 @@ async function identifyProblemCategoriesV2(
 
   if (syncStatus.gap > 0) {
     // Construction en avance → identifier les axes de mobilisation en retard
-    const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+    const mobilisationAxes = MOBILISATION_AXES;
     for (const axe of mobilisationAxes) {
       const axeData = await calculateAxeProgress(siteId, axe);
       if (axeData.progress < syncStatus.mobilizationProgress - 5) {
@@ -906,7 +906,7 @@ export async function getSyncStatsV2(siteId: number): Promise<{
   // Identifier l'axe en retard
   let axeEnRetard: string | null = null;
   let minAxeProgress = Infinity;
-  const mobilisationAxes: Axe[] = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
+  const mobilisationAxes = MOBILISATION_AXES;
   for (const axe of mobilisationAxes) {
     const axeData = await calculateAxeProgress(siteId, axe);
     if (axeData.progress < minAxeProgress && axeData.totalItems > 0) {
