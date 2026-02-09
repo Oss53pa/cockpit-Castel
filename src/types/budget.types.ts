@@ -30,6 +30,7 @@ export const BUDGET_CATEGORY_LABELS: Record<BudgetCategory, string> = {
 };
 
 // Catégories d'exploitation (pour le budget opérationnel)
+// Consolidation des 14 catégories (base + extended)
 export const CATEGORIES_EXPLOITATION = [
   'masse_salariale',
   'prestations',
@@ -39,6 +40,13 @@ export const CATEGORIES_EXPLOITATION = [
   'marketing',
   'provisions',
   'contingence',
+  // Extended categories
+  'recrutement',
+  'formation',
+  'evenements',
+  'it_equipements',
+  'amenagement',
+  'frais_generaux',
 ] as const;
 export type CategorieExploitation = (typeof CATEGORIES_EXPLOITATION)[number];
 
@@ -51,6 +59,13 @@ export const CATEGORIE_EXPLOITATION_LABELS: Record<CategorieExploitation, string
   marketing: 'Marketing & Communication',
   provisions: 'Provisions',
   contingence: 'Contingence',
+  // Extended
+  recrutement: 'Recrutement',
+  formation: 'Formation',
+  evenements: 'Événements',
+  it_equipements: 'IT & Équipements',
+  amenagement: 'Aménagement',
+  frais_generaux: 'Frais généraux',
 };
 
 export const CATEGORIE_EXPLOITATION_COLORS: Record<CategorieExploitation, string> = {
@@ -62,6 +77,13 @@ export const CATEGORIE_EXPLOITATION_COLORS: Record<CategorieExploitation, string
   marketing: '#EF4444',        // red
   provisions: '#6366F1',       // indigo
   contingence: '#9CA3AF',      // gray
+  // Extended
+  recrutement: '#14B8A6',      // teal
+  formation: '#0EA5E9',        // sky
+  evenements: '#F97316',       // orange
+  it_equipements: '#64748B',   // slate
+  amenagement: '#84CC16',      // lime
+  frais_generaux: '#A855F7',   // purple
 };
 
 // Sous-catégories prestations
@@ -409,6 +431,13 @@ export const CATEGORIE_MAPPING: Record<CategorieExploitation, BudgetCategory> = 
   marketing: 'divers',
   provisions: 'divers',
   contingence: 'divers',
+  // Extended categories
+  recrutement: 'honoraires',
+  formation: 'honoraires',
+  evenements: 'divers',
+  it_equipements: 'equipements',
+  amenagement: 'travaux',
+  frais_generaux: 'divers',
 };
 
 /**
@@ -423,4 +452,11 @@ export const CATEGORIE_AXE_MAPPING: Record<CategorieExploitation, Axe> = {
   marketing: 'axe5_marketing',
   provisions: 'axe4_budget',
   contingence: 'axe4_budget',
+  // Extended categories
+  recrutement: 'axe1_rh',
+  formation: 'axe1_rh',
+  evenements: 'axe5_marketing',
+  it_equipements: 'axe6_exploitation',
+  amenagement: 'axe3_technique',
+  frais_generaux: 'axe4_budget',
 };

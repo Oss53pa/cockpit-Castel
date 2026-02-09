@@ -27,6 +27,7 @@ import {
   Download,
 } from 'lucide-react';
 import { useMonthlyReport, MOIS_FR, AXE_LABELS } from './hooks/useMonthlyReport';
+import { THEME_COLORS, AXES_CONFIG_FULL } from '@/data/constants';
 import type { Action, Jalon } from '@/types';
 
 // ============================================================================
@@ -75,13 +76,15 @@ function getActionStatus(action: Action): { label: string; color: string; bg: st
   return { label: 'En cours', color: 'text-blue-700', bg: 'bg-blue-50' };
 }
 
+// Couleurs alignées sur AXES_CONFIG_FULL
 const AXE_COLORS: Record<string, { gradient: string; light: string; text: string; border: string }> = {
-  'axe1_rh': { gradient: 'from-amber-500 to-orange-500', light: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  'axe2_commercial': { gradient: 'from-blue-500 to-indigo-500', light: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  'axe3_technique': { gradient: 'from-emerald-500 to-teal-500', light: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'axe4_budget': { gradient: 'from-purple-500 to-violet-500', light: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  'axe5_marketing': { gradient: 'from-pink-500 to-rose-500', light: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  'axe6_exploitation': { gradient: 'from-cyan-500 to-sky-500', light: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
+  'axe1_rh': { gradient: 'from-red-500 to-red-600', light: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },           // #EF4444
+  'axe2_commercial': { gradient: 'from-blue-500 to-blue-600', light: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },  // #3B82F6
+  'axe3_technique': { gradient: 'from-violet-500 to-purple-600', light: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' }, // #8B5CF6
+  'axe4_budget': { gradient: 'from-amber-500 to-amber-600', light: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },  // #F59E0B
+  'axe5_marketing': { gradient: 'from-pink-500 to-pink-600', light: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },    // #EC4899
+  'axe6_exploitation': { gradient: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' }, // #10B981
+  'axe8_divers': { gradient: 'from-gray-500 to-gray-600', light: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },       // #6B7280
 };
 
 // ============================================================================
@@ -144,16 +147,16 @@ export function MonthlyReportPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* ====== HEADER ====== */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white relative overflow-hidden">
+      <header className="text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${THEME_COLORS.primary} 0%, #1a365d 50%, #2d5a8e 100%)` }}>
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
         <div className="max-w-7xl mx-auto px-6 py-10 relative">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
-              <p className="text-blue-400 text-sm font-medium tracking-wider uppercase mb-2">
-                COCKPIT Project Management
+              <p className="text-sm font-medium tracking-wider uppercase mb-2" style={{ color: THEME_COLORS.secondary }}>
+                COCKPIT — Cosmos Angré
               </p>
               <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                Rapport Mensuel
+                Rappel des Actions
               </h1>
               <div className="flex items-center gap-4 text-slate-300">
                 <span className="flex items-center gap-2">
@@ -161,7 +164,7 @@ export function MonthlyReportPage() {
                   {data.projectName}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-slate-500" />
-                <span className="text-blue-400 font-semibold">J-{data.joursRestants}</span>
+                <span className="font-semibold" style={{ color: THEME_COLORS.secondary }}>J-{data.joursRestants}</span>
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
@@ -229,13 +232,13 @@ export function MonthlyReportPage() {
         {/* === KPIs === */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Actions du mois', value: data.stats.totalActions, icon: ClipboardList, gradient: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', iconColor: 'text-blue-600' },
-            { label: 'Jalons du mois', value: data.stats.totalJalons, icon: Flag, gradient: 'from-purple-500 to-violet-600', light: 'bg-purple-50', iconColor: 'text-purple-600' },
-            { label: 'En retard', value: data.stats.actionsEnRetard, icon: AlertTriangle, gradient: data.stats.actionsEnRetard > 0 ? 'from-red-500 to-rose-600' : 'from-emerald-500 to-teal-600', light: data.stats.actionsEnRetard > 0 ? 'bg-red-50' : 'bg-emerald-50', iconColor: data.stats.actionsEnRetard > 0 ? 'text-red-600' : 'text-emerald-600' },
-            { label: 'Terminées', value: data.stats.actionsTerminees, icon: CheckCircle2, gradient: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', iconColor: 'text-emerald-600' },
+            { label: 'Actions du mois', value: data.stats.totalActions, icon: ClipboardList, color: THEME_COLORS.primary, light: 'bg-blue-50', iconColor: 'text-blue-700' },
+            { label: 'Jalons du mois', value: data.stats.totalJalons, icon: Flag, color: THEME_COLORS.info, light: 'bg-blue-50', iconColor: 'text-blue-600' },
+            { label: 'En retard', value: data.stats.actionsEnRetard, icon: AlertTriangle, color: data.stats.actionsEnRetard > 0 ? THEME_COLORS.danger : THEME_COLORS.accent, light: data.stats.actionsEnRetard > 0 ? 'bg-red-50' : 'bg-emerald-50', iconColor: data.stats.actionsEnRetard > 0 ? 'text-red-600' : 'text-emerald-600' },
+            { label: 'Terminées', value: data.stats.actionsTerminees, icon: CheckCircle2, color: THEME_COLORS.accent, light: 'bg-emerald-50', iconColor: 'text-emerald-600' },
           ].map((kpi, idx) => (
             <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow">
-              <div className={`h-1 bg-gradient-to-r ${kpi.gradient}`} />
+              <div className="h-1" style={{ background: kpi.color }} />
               <div className="p-5">
                 <div className={`w-12 h-12 ${kpi.light} rounded-xl flex items-center justify-center mb-4`}>
                   <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />

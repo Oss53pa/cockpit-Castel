@@ -17,6 +17,7 @@ import type {
   Building,
 } from '@/types';
 import { getAlertDates, parseBuildingCodeFromId, type BuildingCode } from '@/lib/utils';
+import { PROJECT_BUDGET, budgetData } from './budgetData';
 
 // Bâtiments du projet COSMOS ANGRÉ (8 structures)
 const buildingsData: Building[] = [
@@ -211,7 +212,7 @@ DATES CLÉS OFFICIELLES:
 6. Exploitation & Systèmes`,
   dateDebut: '2024-01-01',
   dateFin: '2026-12-31',
-  budget: 500000000,
+  budget: PROJECT_BUDGET,
   buildings: buildingsData,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -8260,33 +8261,7 @@ const _risquesData: Omit<Risque, 'id'>[] = [
   { titre: 'Formation équipes incomplète', description: 'Les équipes d\'exploitation ne sont pas suffisamment formées pour l\'ouverture', categorie: 'technique', probabilite: 2, impact: 3, score: 6, status: 'open', responsableId: 5, planMitigation: 'Programme de formation anticipé, simulation, période de rodage', actionsPreventives: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
 ];
 
-const budgetData: Omit<BudgetItem, 'id'>[] = [
-  // Études
-  { libelle: 'Études architecturales', categorie: 'etudes', axe: 'axe3_technique', montantPrevu: 25000000, montantEngage: 25000000, montantRealise: 22000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Études techniques', categorie: 'etudes', axe: 'axe3_technique', montantPrevu: 15000000, montantEngage: 15000000, montantRealise: 14000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Études environnementales', categorie: 'etudes', axe: 'axe3_technique', montantPrevu: 8000000, montantEngage: 8000000, montantRealise: 7500000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-
-  // Travaux
-  { libelle: 'Fondations', categorie: 'travaux', axe: 'axe3_technique', montantPrevu: 80000000, montantEngage: 75000000, montantRealise: 65000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Gros œuvre', categorie: 'travaux', axe: 'axe3_technique', montantPrevu: 150000000, montantEngage: 120000000, montantRealise: 45000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Second œuvre', categorie: 'travaux', axe: 'axe3_technique', montantPrevu: 100000000, montantEngage: 30000000, montantRealise: 5000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-
-  // Équipements
-  { libelle: 'Équipements électriques', categorie: 'equipements', axe: 'axe3_technique', montantPrevu: 40000000, montantEngage: 35000000, montantRealise: 10000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Climatisation', categorie: 'equipements', axe: 'axe3_technique', montantPrevu: 35000000, montantEngage: 20000000, montantRealise: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Ascenseurs', categorie: 'equipements', axe: 'axe3_technique', montantPrevu: 25000000, montantEngage: 0, montantRealise: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-
-  // Honoraires
-  { libelle: 'Maîtrise d\'œuvre', categorie: 'honoraires', axe: 'axe3_technique', montantPrevu: 15000000, montantEngage: 15000000, montantRealise: 8000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Conseils juridiques', categorie: 'honoraires', axe: 'axe4_budget', montantPrevu: 5000000, montantEngage: 4000000, montantRealise: 2500000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-
-  // Assurances
-  { libelle: 'Assurance chantier', categorie: 'assurances', axe: 'axe4_budget', montantPrevu: 3000000, montantEngage: 3000000, montantRealise: 3000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-
-  // Divers
-  { libelle: 'Frais administratifs', categorie: 'divers', axe: 'axe4_budget', montantPrevu: 5000000, montantEngage: 4000000, montantRealise: 3000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { libelle: 'Communication', categorie: 'divers', axe: 'axe5_marketing', montantPrevu: 10000000, montantEngage: 5000000, montantRealise: 2000000, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-];
+// budgetData est importé depuis ./budgetData.ts (fichier gitignore pour protéger les données sensibles)
 
 // Liens de synchronisation entre actions techniques et commerciales
 function generateLiensSync(): LienChantierMobilisation[] {

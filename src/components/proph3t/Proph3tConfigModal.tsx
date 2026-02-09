@@ -69,14 +69,16 @@ export function Proph3tConfigModal({ isOpen, onClose }: Proph3tConfigModalProps)
         });
         if (!response.ok) throw new Error('Clé OpenRouter invalide');
       } else if (provider === 'anthropic' && anthropicKey) {
-        // Test simple avec un message court
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // Test simple avec un message court - utilise le proxy en dev
+        const apiUrl = import.meta.env.DEV
+          ? '/api/anthropic/v1/messages'
+          : 'https://api.anthropic.com/v1/messages';
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': anthropicKey,
+            ...(import.meta.env.PROD && { 'x-api-key': anthropicKey }),
             'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
           },
           body: JSON.stringify({
             model: anthropicModel,

@@ -7,13 +7,20 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy pour l'API Anthropic (Claude)
+      // Proxy pour l'API Anthropic (Claude) - clé API gérée côté serveur
       '/api/anthropic': {
         target: 'https://api.anthropic.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
-        headers: {
-          'anthropic-dangerous-direct-browser-access': 'true',
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Injecter la clé API depuis les variables d'environnement serveur
+            const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+            if (apiKey) {
+              proxyReq.setHeader('x-api-key', apiKey);
+            }
+            proxyReq.setHeader('anthropic-version', '2023-06-01');
+          });
         },
       },
       // Proxy pour OpenRouter

@@ -50,17 +50,17 @@ const SYNC_STATS_KEY = 'firebase_sync_stats';
 const UPDATE_LINKS_COLLECTION = 'updateLinks';
 const UPDATE_RESPONSES_COLLECTION = 'updateResponses';
 
-// Default config (values from existing firebase.ts for backward compatibility)
-// Firebase est activé par défaut pour la synchronisation temps réel
+// Configuration par défaut via variables d'environnement
+// Firebase est activé seulement si les variables sont configurées
 const DEFAULT_CONFIG: FirebaseConfig = {
-  enabled: true,
-  apiKey: 'AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0',
-  authDomain: 'cockpit-project-management.firebaseapp.com',
-  projectId: 'cockpit-project-management',
-  storageBucket: 'cockpit-project-management.firebasestorage.app',
-  messagingSenderId: '525943959593',
-  appId: '1:525943959593:web:2f69e6d45c76ddf5846c38',
-  measurementId: 'G-43WJ8SGNCH',
+  enabled: Boolean(import.meta.env.VITE_FIREBASE_API_KEY),
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
 
 // ============================================================================

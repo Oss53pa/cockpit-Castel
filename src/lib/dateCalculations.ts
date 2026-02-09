@@ -23,6 +23,43 @@ function normalizeDate(dateStr: string): string {
 }
 
 /**
+ * Validate a date string and return true if it's a valid date.
+ * Handles YYYY-MM-DD and YYYY-MM formats.
+ */
+export function isValidDateString(dateStr: string | null | undefined): boolean {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+
+  const normalized = normalizeDate(dateStr);
+  const date = new Date(normalized);
+
+  // Check if date is valid (not NaN) and the string matches expected format
+  if (isNaN(date.getTime())) return false;
+
+  // Verify the date components match (to catch invalid dates like 2024-02-30)
+  const [year, month, day] = normalized.split('-').map(Number);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() + 1 === month &&
+    date.getDate() === day
+  );
+}
+
+/**
+ * Safely parse a date string, returning null if invalid.
+ */
+export function safeParseDateString(dateStr: string | null | undefined): Date | null {
+  if (!isValidDateString(dateStr)) return null;
+  return new Date(normalizeDate(dateStr!));
+}
+
+/**
+ * Format a Date object to YYYY-MM-DD string.
+ */
+export function formatDateToISO(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+/**
  * Get the date for a project phase from config.
  */
 export function getPhaseDate(config: ProjectConfig, phaseRef: PhaseReference): string {

@@ -197,13 +197,19 @@ async function callAnthropic(
     throw new Error('Clé API Anthropic non configurée');
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  // Utiliser le proxy Vite pour éviter les appels directs depuis le navigateur
+  const apiUrl = import.meta.env.DEV
+    ? '/api/anthropic/v1/messages'  // Proxy en développement
+    : (import.meta.env.VITE_WORKER_URL || 'https://api.anthropic.com') + '/v1/messages';
+
+  const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.anthropicApiKey,
+      ...(import.meta.env.PROD && config.anthropicApiKey && {
+        'x-api-key': config.anthropicApiKey,
+      }),
       'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: config.anthropicModel || 'claude-sonnet-4-20250514',

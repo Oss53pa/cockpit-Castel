@@ -1709,9 +1709,9 @@ async function callAnthropic(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.anthropicApiKey,
+      // En dev, la clé API est injectée par le proxy Vite
+      ...(import.meta.env.PROD && { 'x-api-key': config.anthropicApiKey }),
       'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: config.anthropicModel || 'claude-3-5-sonnet-20241022',

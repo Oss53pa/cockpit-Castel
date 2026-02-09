@@ -21,10 +21,18 @@ import { GovernanceRules } from '@/components/settings/GovernanceRules';
 import { AlgorithmsSettings } from '@/components/settings/AlgorithmsSettings';
 import { PROJET_CONFIG } from '@/data/constants';
 
-const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Atokp0879*';
+// Mot de passe admin via variable d'environnement (optionnel - si vide = pas de protection admin)
+const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD?.trim();
+
+// Warning si pas de protection admin configurée
+if (!SETTINGS_PASSWORD && import.meta.env.PROD) {
+  console.warn('[SÉCURITÉ] VITE_ADMIN_PASSWORD non configuré - page Paramètres non protégée');
+}
 
 export function SettingsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Si pas de mot de passe admin configuré, accès direct
+    if (!SETTINGS_PASSWORD) return true;
     return sessionStorage.getItem('settings_authenticated') === 'true';
   });
   const [passwordInput, setPasswordInput] = useState('');
@@ -44,6 +52,12 @@ export function SettingsPage() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Si pas de mot de passe admin configuré, accès libre (déjà authentifié via useEffect)
+    if (!SETTINGS_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('settings_authenticated', 'true');
+      return;
+    }
     if (passwordInput === SETTINGS_PASSWORD) {
       setIsAuthenticated(true);
       sessionStorage.setItem('settings_authenticated', 'true');

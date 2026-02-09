@@ -226,9 +226,9 @@ export async function extractWithClaude(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': config.apiKey,
+        // En dev, la clé API est injectée par le proxy Vite
+        ...(import.meta.env.PROD && { 'x-api-key': config.apiKey }),
         'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
         model,

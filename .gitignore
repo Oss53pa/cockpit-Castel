@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Données sensibles (budgets réels, configurations privées)
+src/data/budgetData.ts
+src/data/cosmosAngreProductionData.ts

@@ -1,20 +1,31 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, query, where, getDocs, orderBy, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, query, where, getDocs, orderBy, onSnapshot, Unsubscribe, Firestore } from 'firebase/firestore';
 
-// Configuration Firebase
+// Configuration Firebase via variables d'environnement
 const firebaseConfig = {
-  apiKey: "AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0",
-  authDomain: "cockpit-project-management.firebaseapp.com",
-  projectId: "cockpit-project-management",
-  storageBucket: "cockpit-project-management.firebasestorage.app",
-  messagingSenderId: "525943959593",
-  appId: "1:525943959593:web:2f69e6d45c76ddf5846c38",
-  measurementId: "G-43WJ8SGNCH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialiser Firebase
-const app = initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
+// Vérification configuration Firebase
+const isFirebaseConfigured = Object.values(firebaseConfig).every(v => v && v !== '');
+
+let app: FirebaseApp | null = null;
+let firestore: Firestore | null = null;
+
+if (isFirebaseConfigured) {
+  // Initialiser Firebase seulement si configuré
+  app = initializeApp(firebaseConfig);
+  firestore = getFirestore(app);
+} else {
+  console.warn('[Firebase] Configuration incomplète - Firebase désactivé');
+  console.warn('[Firebase] Configurez les variables VITE_FIREBASE_* dans .env');
+}
 
 // Collections Firestore
 const UPDATE_LINKS_COLLECTION = 'updateLinks';
@@ -55,7 +66,8 @@ export interface FirebaseUpdateLink {
  * Créer un lien de mise à jour dans Firestore
  */
 export async function createFirebaseUpdateLink(link: FirebaseUpdateLink): Promise<void> {
-  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, link.token);
+  const db = getFirestoreOrThrow();
+  const docRef = doc(db, UPDATE_LINKS_COLLECTION, link.token);
   await setDoc(docRef, {
     ...link,
     createdAt: link.createdAt,
@@ -67,7 +79,7 @@ export async function createFirebaseUpdateLink(link: FirebaseUpdateLink): Promis
  * Récupérer un lien par son token
  */
 export async function getFirebaseUpdateLink(token: string): Promise<FirebaseUpdateLink | null> {
-  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
+  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
   const docSnap = await getDoc(docRef);
 
   if (!docSnap.exists()) {
@@ -89,7 +101,7 @@ export async function getFirebaseUpdateLink(token: string): Promise<FirebaseUpda
  * Marquer un lien comme utilisé
  */
 export async function markFirebaseLinkUsed(token: string): Promise<void> {
-  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
+  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
   await updateDoc(docRef, {
     isUsed: true,
     usedAt: new Date().toISOString(),
@@ -100,7 +112,7 @@ export async function markFirebaseLinkUsed(token: string): Promise<void> {
  * Marquer un lien comme accédé (première visite)
  */
 export async function markFirebaseLinkAccessed(token: string): Promise<void> {
-  const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, token);
+  const docRef = doc(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION, token);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
@@ -121,7 +133,7 @@ export async function getFirebaseLinksByEntity(
   entityId: number
 ): Promise<FirebaseUpdateLink[]> {
   const q = query(
-    collection(firestore, UPDATE_LINKS_COLLECTION),
+    collection(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION),
     where('entityType', '==', entityType),
     where('entityId', '==', entityId)
   );
@@ -134,7 +146,7 @@ export async function getFirebaseLinksByEntity(
  * Récupérer tous les liens envoyés (pour l'historique)
  */
 export async function getAllFirebaseLinks(): Promise<FirebaseUpdateLink[]> {
-  const querySnapshot = await getDocs(collection(firestore, UPDATE_LINKS_COLLECTION));
+  const querySnapshot = await getDocs(collection(getFirestoreOrThrow(), UPDATE_LINKS_COLLECTION));
   return querySnapshot.docs.map(doc => doc.data() as FirebaseUpdateLink);
 }
 
@@ -175,7 +187,7 @@ export interface ExternalUpdate {
  */
 export async function saveExternalUpdate(update: ExternalUpdate): Promise<string> {
   const updateId = `${update.entityType}_${update.entityId}_${Date.now()}`;
-  const docRef = doc(firestore, EXTERNAL_UPDATES_COLLECTION, updateId);
+  const docRef = doc(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION, updateId);
 
   await setDoc(docRef, {
     ...update,
@@ -195,7 +207,7 @@ export async function saveExternalUpdate(update: ExternalUpdate): Promise<string
  */
 export async function getPendingExternalUpdates(): Promise<ExternalUpdate[]> {
   const q = query(
-    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
+    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
     where('isSynced', '==', false),
     orderBy('createdAt', 'desc')
   );
@@ -212,7 +224,7 @@ export async function getExternalUpdatesByEntity(
   entityId: number
 ): Promise<ExternalUpdate[]> {
   const q = query(
-    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
+    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
     where('entityType', '==', entityType),
     where('entityId', '==', entityId),
     orderBy('createdAt', 'desc')
@@ -226,7 +238,7 @@ export async function getExternalUpdatesByEntity(
  * Marquer une mise à jour comme synchronisée
  */
 export async function markUpdateSynced(updateId: string): Promise<void> {
-  const docRef = doc(firestore, EXTERNAL_UPDATES_COLLECTION, updateId);
+  const docRef = doc(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION, updateId);
   await updateDoc(docRef, {
     isSynced: true,
     syncedAt: new Date().toISOString(),
@@ -240,7 +252,7 @@ export function subscribeToExternalUpdates(
   callback: (updates: ExternalUpdate[]) => void
 ): Unsubscribe {
   const q = query(
-    collection(firestore, EXTERNAL_UPDATES_COLLECTION),
+    collection(getFirestoreOrThrow(), EXTERNAL_UPDATES_COLLECTION),
     where('isSynced', '==', false),
     orderBy('createdAt', 'desc')
   );
@@ -259,4 +271,12 @@ export async function countPendingUpdates(): Promise<number> {
   return updates.length;
 }
 
-export { firestore };
+// Helper pour vérifier si Firebase est disponible
+function getFirestoreOrThrow(): Firestore {
+  if (!firestore) {
+    throw new Error('Firebase non configuré. Vérifiez les variables VITE_FIREBASE_* dans .env');
+  }
+  return firestore;
+}
+
+export { firestore, isFirebaseConfigured };
