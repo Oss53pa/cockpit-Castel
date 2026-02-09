@@ -1,8 +1,8 @@
 // ============================================================================
-// RÉFÉRENTIEL COMPLET — COSMOS ANGRÉ v3.0
+// RÉFÉRENTIEL COMPLET — COSMOS ANGRÉ v3.1
 // ============================================================================
-// 7 Axes | 39 Jalons | 148 Actions
-// Date : 30 Janvier 2026 | Ouverture prévue : Q4 2026
+// 8 Axes | 35 Jalons | 169 Actions
+// Date : 09 Février 2026 | Ouverture prévue : Q4 2026
 
 import type { User, Jalon, Action, Axe, ProjectPhase, BuildingCode } from '@/types';
 
@@ -36,11 +36,11 @@ export const PROJECT_METADATA = {
     moisPlus6: { date: '2027-06-15', tauxCible: 95 },
   },
 
-  // Compteurs v3.0
+  // Compteurs v3.1 (après consolidation RH, COM, BUD + ajout DIV)
   compteurs: {
-    axes: 7,
-    jalons: 39,
-    actions: 148,
+    axes: 8,
+    jalons: 35, // RH:4 + COM:5 + TECH:6 + BUD:3 + MKT:4 + EXP:4 + CON:6 + DIV:3
+    actions: 169, // RH:8 + COM:27 + TECH:30 + BUD:6 + MKT:30 + EXP:17 + CON:42 + DIV:9
   },
 };
 
@@ -306,33 +306,28 @@ function createAction(
 }
 
 // ============================================================================
-// AXE 1 : RH & ORGANISATION (20%) - 6 Jalons, 8 Actions
+// AXE 1 : RH & ORGANISATION (20%) - 4 Jalons, 8 Actions
 // ============================================================================
 
 export const JALONS_AXE1_RH: Omit<Jalon, 'id'>[] = [
   createJalon('J-RH-1', 'Organigramme cible validé', 'axe1_rh', '2026-01-31', 'Pamela ATOKOUNA', '', 'phase1_preparation'),
-  createJalon('J-RH-2', 'Vague 1 complétée (FSM, CM, MM)', 'axe1_rh', '2026-03-31', 'Pamela ATOKOUNA'),
-  createJalon('J-RH-3', 'Vague 2 complétée (Team Leads)', 'axe1_rh', '2026-05-31', 'Mariam Keita'),
-  createJalon('J-RH-4', 'Vague 3 complétée (Seniors/Assistants)', 'axe1_rh', '2026-07-31', 'Mariam Keita'),
-  createJalon('J-RH-5', 'Vague 4 complétée (Terrain)', 'axe1_rh', '2026-10-15', 'Mariam Keita'),
-  createJalon('J-RH-6', 'Équipe 100% opérationnelle', 'axe1_rh', '2026-11-01', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
+  createJalon('J-RH-2', 'Recrutement', 'axe1_rh', '2026-10-15', 'Pamela ATOKOUNA', 'Toutes les vagues de recrutement'),
+  createJalon('J-RH-3', 'Formation & Intégration', 'axe1_rh', '2026-10-30', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
+  createJalon('J-RH-4', 'Équipe 100% opérationnelle', 'axe1_rh', '2026-11-01', 'Pamela ATOKOUNA', '', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE1_RH: Omit<Action, 'id'>[] = [
-  // J-RH-1
+  // J-RH-1 : Organigramme
   createAction('A-RH-1.1', 'Valider organigramme et fiches de poste', 'axe1_rh', '2026-01-20', 'Pamela ATOKOUNA', '', 'J-RH-1', 'phase1_preparation'),
   createAction('A-RH-1.2', 'Valider grille salariale et budget RH', 'axe1_rh', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-RH-1', 'phase1_preparation'),
-  // J-RH-2
+  // J-RH-2 : Recrutement (toutes les vagues consolidées)
   createAction('A-RH-2.1', 'Recruter Vague 1 (FSM, CM, MM)', 'axe1_rh', '2026-03-31', 'Pamela ATOKOUNA', '', 'J-RH-2'),
-  // J-RH-3
-  createAction('A-RH-3.1', 'Recruter Vague 2 (Team Leads)', 'axe1_rh', '2026-05-31', 'Mariam Keita', '', 'J-RH-3'),
-  // J-RH-4
-  createAction('A-RH-4.1', 'Recruter Vague 3 (Seniors/Assistants)', 'axe1_rh', '2026-07-31', 'Mariam Keita', '', 'J-RH-4'),
-  // J-RH-5
-  createAction('A-RH-5.1', 'Recruter Vague 4 (Personnel terrain)', 'axe1_rh', '2026-10-15', 'Mariam Keita', '', 'J-RH-5'),
-  // J-RH-6
-  createAction('A-RH-6.1', 'Former toutes les équipes', 'axe1_rh', '2026-10-25', 'Pamela ATOKOUNA', '', 'J-RH-6', 'phase3_lancement'),
-  createAction('A-RH-6.2', 'Exercice grandeur nature', 'axe1_rh', '2026-10-30', 'Deborah NTUMY', '', 'J-RH-6', 'phase3_lancement'),
+  createAction('A-RH-2.2', 'Recruter Vague 2 (Team Leads)', 'axe1_rh', '2026-05-31', 'Mariam Keita', '', 'J-RH-2'),
+  createAction('A-RH-2.3', 'Recruter Vague 3 (Seniors/Assistants)', 'axe1_rh', '2026-07-31', 'Mariam Keita', '', 'J-RH-2'),
+  createAction('A-RH-2.4', 'Recruter Vague 4 (Personnel terrain)', 'axe1_rh', '2026-10-15', 'Mariam Keita', '', 'J-RH-2'),
+  // J-RH-3 : Formation & Intégration
+  createAction('A-RH-3.1', 'Former toutes les équipes', 'axe1_rh', '2026-10-25', 'Pamela ATOKOUNA', '', 'J-RH-3', 'phase3_lancement'),
+  createAction('A-RH-3.2', 'Exercice grandeur nature', 'axe1_rh', '2026-10-30', 'Deborah NTUMY', '', 'J-RH-3', 'phase3_lancement'),
 ];
 
 // ============================================================================
@@ -340,17 +335,15 @@ export const ACTIONS_AXE1_RH: Omit<Action, 'id'>[] = [
 // ============================================================================
 
 export const JALONS_AXE2_COMMERCIAL: Omit<Jalon, 'id'>[] = [
-  createJalon('J-COM-1', 'BEFA Vague 1 signés (25%)', 'axe2_commercial', '2026-02-15', 'Hadja Timite'),
-  createJalon('J-COM-2', 'BEFA Vague 2 signés (50%)', 'axe2_commercial', '2026-03-15', 'Hadja Timite'),
-  createJalon('J-COM-3', 'BEFA Vague 3 signés (100%)', 'axe2_commercial', '2026-04-15', 'Hadja Timite'),
-  createJalon('J-COM-4', 'Plans aménagement validés', 'axe2_commercial', '2026-04-30', 'Hadja Timite'),
-  createJalon('J-COM-5', 'Occupation 50%', 'axe2_commercial', '2026-06-30', 'Hadja Timite'),
-  createJalon('J-COM-6', 'Locomotives signées (≥3)', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA'),
-  createJalon('J-COM-7', 'Occupation 85%', 'axe2_commercial', '2026-11-15', 'Hadja Timite', '', 'phase3_lancement'),
+  createJalon('J-COM-1', 'BEFA Centre Commercial Signés', 'axe2_commercial', '2026-04-15', 'Hadja Timite', 'Toutes les signatures BEFA'),
+  createJalon('J-COM-2', 'Plans aménagement validés', 'axe2_commercial', '2026-04-30', 'Hadja Timite'),
+  createJalon('J-COM-3', 'Occupation 50%', 'axe2_commercial', '2026-06-30', 'Hadja Timite'),
+  createJalon('J-COM-4', 'Locomotives signées (≥3)', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA'),
+  createJalon('J-COM-5', 'Occupation 85%', 'axe2_commercial', '2026-11-15', 'Hadja Timite', '', 'phase3_lancement'),
 ];
 
 export const ACTIONS_AXE2_COMMERCIAL: Omit<Action, 'id'>[] = [
-  // J-COM-1
+  // J-COM-1 : BEFA Centre Commercial Signés (toutes les actions BEFA consolidées)
   createAction('A-COM-1.1', 'Finaliser étude de marché / zone chalandise', 'axe2_commercial', '2026-01-20', 'Hadja Timite', '', 'J-COM-1'),
   createAction('A-COM-1.2', 'Définir positionnement commercial', 'axe2_commercial', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-COM-1'),
   createAction('A-COM-1.3', 'Identifier locomotives cibles', 'axe2_commercial', '2026-02-10', 'Hadja Timite', '', 'J-COM-1'),
@@ -358,32 +351,30 @@ export const ACTIONS_AXE2_COMMERCIAL: Omit<Action, 'id'>[] = [
   createAction('A-COM-1.5', 'Valider grille de loyers', 'axe2_commercial', '2026-01-31', 'Pamela ATOKOUNA', '', 'J-COM-1'),
   createAction('A-COM-1.6', 'Négocier BEFA prioritaires', 'axe2_commercial', '2026-02-15', 'Pamela ATOKOUNA', '', 'J-COM-1'),
   createAction('A-COM-1.7', 'Signer BEFA Vague 1 (25%)', 'axe2_commercial', '2026-02-15', 'Hadja Timite', '', 'J-COM-1'),
-  // J-COM-2
-  createAction('A-COM-2.1', 'Relancer prospects pipeline', 'axe2_commercial', '2026-02-28', 'Hadja Timite', '', 'J-COM-2'),
-  createAction('A-COM-2.2', 'Négocier BEFA Vague 2', 'axe2_commercial', '2026-03-10', 'Hadja Timite', '', 'J-COM-2'),
-  createAction('A-COM-2.3', 'Coordonner avec Hadja & Adèle', 'axe2_commercial', '2026-03-15', 'Pamela ATOKOUNA', '', 'J-COM-2'),
-  createAction('A-COM-2.4', 'Signer BEFA Vague 2 (50% cumulé)', 'axe2_commercial', '2026-03-15', 'Hadja Timite', '', 'J-COM-2'),
-  // J-COM-3
-  createAction('A-COM-3.1', 'Intensifier prospection', 'axe2_commercial', '2026-03-31', 'Hadja Timite', '', 'J-COM-3'),
-  createAction('A-COM-3.2', 'Négocier BEFA restants', 'axe2_commercial', '2026-04-10', 'Hadja Timite', '', 'J-COM-3'),
-  createAction('A-COM-3.3', 'Signer BEFA Vague 3 (100%)', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-3'),
-  // J-COM-4
-  createAction('A-COM-4.1', 'Collecter plans preneurs', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-4'),
-  createAction('A-COM-4.2', 'Vérifier conformité technique', 'axe2_commercial', '2026-04-25', 'Cheick Sanankoua', '', 'J-COM-4'),
-  createAction('A-COM-4.3', 'Valider plans aménagement', 'axe2_commercial', '2026-04-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
-  // J-COM-5
-  createAction('A-COM-5.1', 'Suivre avancement travaux preneurs', 'axe2_commercial', '2026-06-30', 'Hadja Timite', '', 'J-COM-5'),
-  createAction('A-COM-5.2', 'Coordonner avec Pilote B', 'axe2_commercial', '2026-06-30', 'Cheick Sanankoua', '', 'J-COM-5'),
-  createAction('A-COM-5.3', 'Valider occupation 50%', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-5'),
-  // J-COM-6
-  createAction('A-COM-6.1', 'Négocier locomotive alimentaire', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-6'),
-  createAction('A-COM-6.2', 'Négocier locomotive mode', 'axe2_commercial', '2026-08-31', 'Pamela ATOKOUNA', '', 'J-COM-6'),
-  createAction('A-COM-6.3', 'Négocier locomotive loisirs/restauration', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-6'),
-  createAction('A-COM-6.4', 'Signer ≥3 locomotives', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-6'),
-  // J-COM-7
-  createAction('A-COM-7.1', 'Finaliser derniers baux', 'axe2_commercial', '2026-10-31', 'Hadja Timite', '', 'J-COM-7', 'phase3_lancement'),
-  createAction('A-COM-7.2', 'Valider preneurs prêts ouverture', 'axe2_commercial', '2026-11-10', 'Hadja Timite', '', 'J-COM-7', 'phase3_lancement'),
-  createAction('A-COM-7.3', 'Confirmer occupation 85%', 'axe2_commercial', '2026-11-15', 'Pamela ATOKOUNA', '', 'J-COM-7', 'phase3_lancement'),
+  createAction('A-COM-1.8', 'Relancer prospects pipeline', 'axe2_commercial', '2026-02-28', 'Hadja Timite', '', 'J-COM-1'),
+  createAction('A-COM-1.9', 'Négocier BEFA Vague 2', 'axe2_commercial', '2026-03-10', 'Hadja Timite', '', 'J-COM-1'),
+  createAction('A-COM-1.10', 'Coordonner avec Hadja & Adèle', 'axe2_commercial', '2026-03-15', 'Pamela ATOKOUNA', '', 'J-COM-1'),
+  createAction('A-COM-1.11', 'Signer BEFA Vague 2 (50% cumulé)', 'axe2_commercial', '2026-03-15', 'Hadja Timite', '', 'J-COM-1'),
+  createAction('A-COM-1.12', 'Intensifier prospection', 'axe2_commercial', '2026-03-31', 'Hadja Timite', '', 'J-COM-1'),
+  createAction('A-COM-1.13', 'Négocier BEFA restants', 'axe2_commercial', '2026-04-10', 'Hadja Timite', '', 'J-COM-1'),
+  createAction('A-COM-1.14', 'Signer BEFA Vague 3 (100%)', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-1'),
+  // J-COM-2 : Plans aménagement validés
+  createAction('A-COM-2.1', 'Collecter plans preneurs', 'axe2_commercial', '2026-04-15', 'Hadja Timite', '', 'J-COM-2'),
+  createAction('A-COM-2.2', 'Vérifier conformité technique', 'axe2_commercial', '2026-04-25', 'Cheick Sanankoua', '', 'J-COM-2'),
+  createAction('A-COM-2.3', 'Valider plans aménagement', 'axe2_commercial', '2026-04-30', 'Pamela ATOKOUNA', '', 'J-COM-2'),
+  // J-COM-3 : Occupation 50%
+  createAction('A-COM-3.1', 'Suivre avancement travaux preneurs', 'axe2_commercial', '2026-06-30', 'Hadja Timite', '', 'J-COM-3'),
+  createAction('A-COM-3.2', 'Coordonner avec Pilote B', 'axe2_commercial', '2026-06-30', 'Cheick Sanankoua', '', 'J-COM-3'),
+  createAction('A-COM-3.3', 'Valider occupation 50%', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-3'),
+  // J-COM-4 : Locomotives signées
+  createAction('A-COM-4.1', 'Négocier locomotive alimentaire', 'axe2_commercial', '2026-06-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
+  createAction('A-COM-4.2', 'Négocier locomotive mode', 'axe2_commercial', '2026-08-31', 'Pamela ATOKOUNA', '', 'J-COM-4'),
+  createAction('A-COM-4.3', 'Négocier locomotive loisirs/restauration', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
+  createAction('A-COM-4.4', 'Signer ≥3 locomotives', 'axe2_commercial', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-COM-4'),
+  // J-COM-5 : Occupation 85%
+  createAction('A-COM-5.1', 'Finaliser derniers baux', 'axe2_commercial', '2026-10-31', 'Hadja Timite', '', 'J-COM-5', 'phase3_lancement'),
+  createAction('A-COM-5.2', 'Valider preneurs prêts ouverture', 'axe2_commercial', '2026-11-10', 'Hadja Timite', '', 'J-COM-5', 'phase3_lancement'),
+  createAction('A-COM-5.3', 'Confirmer occupation 85%', 'axe2_commercial', '2026-11-15', 'Pamela ATOKOUNA', '', 'J-COM-5', 'phase3_lancement'),
 ];
 
 // ============================================================================
@@ -439,25 +430,23 @@ export const ACTIONS_AXE3_TECHNIQUE: Omit<Action, 'id'>[] = [
 ];
 
 // ============================================================================
-// AXE 4 : BUDGET & PILOTAGE (15%) - 6 Jalons, 6 Actions
+// AXE 4 : BUDGET & PILOTAGE (10%) - 3 Jalons, 6 Actions
 // ============================================================================
 
 export const JALONS_AXE4_BUDGET: Omit<Jalon, 'id'>[] = [
   createJalon('J-BUD-1', 'Budget mobilisation validé', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'phase1_preparation'),
   createJalon('J-BUD-2', 'Budget exploitation validé', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'phase1_preparation'),
-  createJalon('J-BUD-3', 'Suivi T1 conforme (≤5%)', 'axe4_budget', '2026-03-31', 'Deborah NTUMY'),
-  createJalon('J-BUD-4', 'Suivi T2 conforme (≤5%)', 'axe4_budget', '2026-06-30', 'Deborah NTUMY'),
-  createJalon('J-BUD-5', 'Suivi T3 conforme (≤5%)', 'axe4_budget', '2026-09-30', 'Deborah NTUMY'),
-  createJalon('J-BUD-6', 'Clôture projet conforme', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', '', 'phase4_stabilisation'),
+  createJalon('J-BUD-3', 'Suivi budget de Mobilisation', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', 'Suivi continu T1/T2/T3 + Clôture', 'phase4_stabilisation'),
 ];
 
 export const ACTIONS_AXE4_BUDGET: Omit<Action, 'id'>[] = [
   createAction('A-BUD-1.1', 'Consolider et valider budget mobilisation', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'J-BUD-1', 'phase1_preparation'),
   createAction('A-BUD-2.1', 'Construire et valider P&L prévisionnel Y1', 'axe4_budget', '2026-01-31', 'Deborah NTUMY', '', 'J-BUD-2', 'phase1_preparation'),
+  // J-BUD-3 : Suivi budget continu (consolide T1/T2/T3/Clôture)
   createAction('A-BUD-3.1', 'Analyser écarts T1 et proposer corrections', 'axe4_budget', '2026-03-31', 'Deborah NTUMY', '', 'J-BUD-3'),
-  createAction('A-BUD-4.1', 'Analyser écarts T2 et proposer corrections', 'axe4_budget', '2026-06-30', 'Deborah NTUMY', '', 'J-BUD-4'),
-  createAction('A-BUD-5.1', 'Analyser écarts T3 et proposer corrections', 'axe4_budget', '2026-09-30', 'Deborah NTUMY', '', 'J-BUD-5'),
-  createAction('A-BUD-6.1', 'Établir bilan financier et clôturer projet', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', '', 'J-BUD-6', 'phase4_stabilisation'),
+  createAction('A-BUD-3.2', 'Analyser écarts T2 et proposer corrections', 'axe4_budget', '2026-06-30', 'Deborah NTUMY', '', 'J-BUD-3'),
+  createAction('A-BUD-3.3', 'Analyser écarts T3 et proposer corrections', 'axe4_budget', '2026-09-30', 'Deborah NTUMY', '', 'J-BUD-3'),
+  createAction('A-BUD-3.4', 'Établir bilan financier et clôturer projet', 'axe4_budget', '2026-12-31', 'Deborah NTUMY', '', 'J-BUD-3', 'phase4_stabilisation'),
 ];
 
 // ============================================================================
@@ -579,27 +568,54 @@ export const ACTIONS_AXE7_CONSTRUCTION: Omit<Action, 'id'>[] = [
 ];
 
 // ============================================================================
-// AGGREGATION - 39 JALONS, 148 ACTIONS
+// AXE 8 : DIVERSIFICATION (5%) - 3 Jalons, 9 Actions
+// ============================================================================
+
+export const JALONS_AXE8_DIVERSIFICATION: Omit<Jalon, 'id'>[] = [
+  createJalon('J-DIV-1', 'Contrats de diversification signés', 'axe8_divers', '2026-06-30', 'Pamela ATOKOUNA', 'Parkings, événementiel, média'),
+  createJalon('J-DIV-2', 'Revenus annexes activés', 'axe8_divers', '2026-10-31', 'Pamela ATOKOUNA', 'Activation des sources de revenus complémentaires', 'phase3_lancement'),
+  createJalon('J-DIV-3', 'Partenariats stratégiques signés', 'axe8_divers', '2026-09-30', 'Pamela ATOKOUNA', 'Accord avec partenaires clés'),
+];
+
+export const ACTIONS_AXE8_DIVERSIFICATION: Omit<Action, 'id'>[] = [
+  // J-DIV-1 : Contrats de diversification
+  createAction('A-DIV-1.1', 'Définir stratégie parking payant', 'axe8_divers', '2026-03-31', 'Deborah NTUMY', '', 'J-DIV-1'),
+  createAction('A-DIV-1.2', 'Négocier contrats événementiel', 'axe8_divers', '2026-05-31', 'Adele Affian', '', 'J-DIV-1'),
+  createAction('A-DIV-1.3', 'Signer contrats média/affichage', 'axe8_divers', '2026-06-30', 'Adele Affian', '', 'J-DIV-1'),
+  // J-DIV-2 : Revenus annexes
+  createAction('A-DIV-2.1', 'Déployer système parking', 'axe8_divers', '2026-09-30', 'Deborah NTUMY', '', 'J-DIV-2'),
+  createAction('A-DIV-2.2', 'Installer équipements média', 'axe8_divers', '2026-10-15', 'Cheick Sanankoua', '', 'J-DIV-2', 'phase3_lancement'),
+  createAction('A-DIV-2.3', 'Valider revenus annexes opérationnels', 'axe8_divers', '2026-10-31', 'Pamela ATOKOUNA', '', 'J-DIV-2', 'phase3_lancement'),
+  // J-DIV-3 : Partenariats stratégiques
+  createAction('A-DIV-3.1', 'Identifier partenaires potentiels', 'axe8_divers', '2026-04-30', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
+  createAction('A-DIV-3.2', 'Négocier accords partenariats', 'axe8_divers', '2026-07-31', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
+  createAction('A-DIV-3.3', 'Signer partenariats stratégiques', 'axe8_divers', '2026-09-30', 'Pamela ATOKOUNA', '', 'J-DIV-3'),
+];
+
+// ============================================================================
+// AGGREGATION - 36 JALONS, 157 ACTIONS
 // ============================================================================
 
 export const ALL_JALONS: Omit<Jalon, 'id'>[] = [
-  ...JALONS_AXE1_RH,           // 6 jalons
-  ...JALONS_AXE2_COMMERCIAL,   // 7 jalons
-  ...JALONS_AXE3_TECHNIQUE,    // 6 jalons
-  ...JALONS_AXE4_BUDGET,       // 6 jalons
-  ...JALONS_AXE5_MARKETING,    // 4 jalons
-  ...JALONS_AXE6_EXPLOITATION, // 4 jalons
-  ...JALONS_AXE7_CONSTRUCTION, // 6 jalons
+  ...JALONS_AXE1_RH,             // 4 jalons
+  ...JALONS_AXE2_COMMERCIAL,     // 5 jalons
+  ...JALONS_AXE3_TECHNIQUE,      // 6 jalons
+  ...JALONS_AXE4_BUDGET,         // 3 jalons
+  ...JALONS_AXE5_MARKETING,      // 4 jalons
+  ...JALONS_AXE6_EXPLOITATION,   // 4 jalons
+  ...JALONS_AXE7_CONSTRUCTION,   // 6 jalons
+  ...JALONS_AXE8_DIVERSIFICATION, // 3 jalons
 ];
 
 export const ALL_ACTIONS: Omit<Action, 'id'>[] = [
-  ...ACTIONS_AXE1_RH,           // 8 actions
-  ...ACTIONS_AXE2_COMMERCIAL,   // 27 actions
-  ...ACTIONS_AXE3_TECHNIQUE,    // 30 actions
-  ...ACTIONS_AXE4_BUDGET,       // 6 actions
-  ...ACTIONS_AXE5_MARKETING,    // 30 actions
-  ...ACTIONS_AXE6_EXPLOITATION, // 17 actions
-  ...ACTIONS_AXE7_CONSTRUCTION, // 42 actions
+  ...ACTIONS_AXE1_RH,             // 8 actions
+  ...ACTIONS_AXE2_COMMERCIAL,     // 27 actions
+  ...ACTIONS_AXE3_TECHNIQUE,      // 30 actions
+  ...ACTIONS_AXE4_BUDGET,         // 6 actions
+  ...ACTIONS_AXE5_MARKETING,      // 30 actions
+  ...ACTIONS_AXE6_EXPLOITATION,   // 17 actions
+  ...ACTIONS_AXE7_CONSTRUCTION,   // 42 actions
+  ...ACTIONS_AXE8_DIVERSIFICATION, // 9 actions
 ];
 
 // ============================================================================

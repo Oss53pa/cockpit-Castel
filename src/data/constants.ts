@@ -84,12 +84,12 @@ export const LEGACY_BUILDING_CODES = {
 // ============================================================================
 export const SEUILS_SYNC = [
   // Gros œuvre CC
-  { phaseCode: 'GO', seuil: 75, axeCible: 'RH', actionCode: 'J-RH-2', description: 'Lancer Recrutement Vague 1' },
-  { phaseCode: 'GO', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-3-PREP', description: 'Préparer Vague 2' },
-  { phaseCode: 'GO', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-2', description: 'Accélérer signatures BEFA' },
+  { phaseCode: 'GO', seuil: 75, axeCible: 'RH', actionCode: 'J-RH-2', description: 'Lancer Recrutement' },
+  { phaseCode: 'GO', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-2', description: 'Accélérer Recrutement' },
+  { phaseCode: 'GO', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-1', description: 'Accélérer signatures BEFA' },
 
   // Second œuvre CC
-  { phaseCode: 'SO', seuil: 50, axeCible: 'RH', actionCode: 'J-RH-3', description: 'Lancer Vague 2' },
+  { phaseCode: 'SO', seuil: 50, axeCible: 'RH', actionCode: 'J-RH-2', description: 'Poursuivre Recrutement' },
   { phaseCode: 'SO', seuil: 50, axeCible: 'TECH', actionCode: 'J-TECH-2', description: 'Émettre CDC techniques' },
   { phaseCode: 'SO', seuil: 75, axeCible: 'EXP', actionCode: 'J-EXP-1-AO', description: 'Lancer AO prestataires' },
   { phaseCode: 'SO', seuil: 75, axeCible: 'MKT', actionCode: 'J-MKT-2', description: 'Finaliser identité marque' },
@@ -101,12 +101,12 @@ export const SEUILS_SYNC = [
 
   // Pré-réception CC
   { phaseCode: 'PR', seuil: 50, axeCible: 'MKT', actionCode: 'J-MKT-3-EVENT', description: 'Préparer Soft Opening' },
-  { phaseCode: 'PR', seuil: 75, axeCible: 'RH', actionCode: 'J-RH-4', description: 'Formations initiales' },
+  { phaseCode: 'PR', seuil: 75, axeCible: 'RH', actionCode: 'J-RH-3', description: 'Formations & Intégration' },
   { phaseCode: 'PR', seuil: 100, axeCible: 'TECH', actionCode: 'J-TECH-4', description: 'Réception provisoire CC' },
 
   // Réception Provisoire CC
-  { phaseCode: 'RP', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-7', description: 'Coordonner ouvertures boutiques' },
-  { phaseCode: 'RP', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-5', description: 'Équipe opérationnelle' },
+  { phaseCode: 'RP', seuil: 100, axeCible: 'COM', actionCode: 'J-COM-5', description: 'Coordonner ouvertures boutiques' },
+  { phaseCode: 'RP', seuil: 100, axeCible: 'RH', actionCode: 'J-RH-4', description: 'Équipe opérationnelle' },
   { phaseCode: 'RP', seuil: 100, axeCible: 'EXP', actionCode: 'J-EXP-4', description: 'Tests opérationnels' },
 ] as const;
 
