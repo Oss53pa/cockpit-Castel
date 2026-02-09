@@ -1384,20 +1384,40 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
 export const MIGRATION_V40_KEY = 'migration_v31_to_v40_v2_done';
 
 /**
- * Reset propre des jalons et actions - EFFACE TOUT et recrée uniquement les données v4.0
+ * Normalise un titre pour la comparaison (minuscules, sans accents, sans espaces multiples)
+ */
+function normalizeTitle(title: string | undefined): string {
+  if (!title) return '';
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/[^a-z0-9]/g, ' ')      // Remplace les caractères spéciaux par des espaces
+    .replace(/\s+/g, ' ')            // Normalise les espaces multiples
+    .trim();
+}
+
+/**
+ * Reset propre des jalons et actions - Recrée uniquement les données v4.0
  * Utilise UNIQUEMENT ALL_JALONS (33) et ALL_ACTIONS (195)
  *
- * ATTENTION: Cette fonction efface TOUTES les modifications utilisateur sur jalons/actions !
+ * RÈGLES ABSOLUES :
+ * - PRÉSERVER sur chaque action existante : statut, avancement (%), responsable,
+ *   preuves, sous-tâches, notes, commentaires — NE RIEN TOUCHER
+ * - CORRECTIONS AUTORISÉES : libellé (reformulation) + dates + jalonId + axe
+ * - Matcher par TITRE NORMALISÉ pour retrouver les actions existantes
  */
 export async function cleanResetJalonsActions(): Promise<{
   jalonsCreated: number;
   actionsCreated: number;
+  actionsPreserved: number;
 }> {
-  console.log('[cleanResetJalonsActions] Début du reset propre...');
+  console.log('[cleanResetJalonsActions] Début du reset propre avec préservation par TITRE...');
 
   const result = {
     jalonsCreated: 0,
     actionsCreated: 0,
+    actionsPreserved: 0,
   };
 
   // Récupérer ou créer le site par défaut
@@ -1411,45 +1431,129 @@ export async function cleanResetJalonsActions(): Promise<{
   const users = await db.users.toArray();
   const userMap = new Map(users.map(u => [`${u.prenom} ${u.nom}`, u.id!]));
 
+  // 1. SAUVEGARDER les données utilisateur des actions existantes par TITRE NORMALISÉ
+  const existingActions = await db.actions.toArray();
+  const savedActionDataByTitle = new Map<string, {
+    statut: string;
+    avancement: number;
+    responsableId: number | null;
+    documents: unknown[];
+    sous_taches: unknown[];
+    notes_internes: string;
+    commentaires_externes: string;
+    historique_commentaires: unknown[];
+    livrables: string;
+    date_realisation: string | null;
+    preuves: unknown[];
+  }>();
+
+  for (const action of existingActions) {
+    const normTitle = normalizeTitle(action.titre);
+    if (normTitle && !savedActionDataByTitle.has(normTitle)) {
+      // Garder la première occurrence (celle avec l'id le plus bas = données utilisateur)
+      savedActionDataByTitle.set(normTitle, {
+        statut: action.statut || 'a_faire',
+        avancement: action.avancement || 0,
+        responsableId: action.responsableId || null,
+        documents: (action as Record<string, unknown>).documents as unknown[] || [],
+        sous_taches: (action as Record<string, unknown>).sous_taches as unknown[] || [],
+        notes_internes: (action as Record<string, unknown>).notes_internes as string || '',
+        commentaires_externes: (action as Record<string, unknown>).commentaires_externes as string || '',
+        historique_commentaires: (action as Record<string, unknown>).historique_commentaires as unknown[] || [],
+        livrables: (action as Record<string, unknown>).livrables as string || '',
+        date_realisation: (action as Record<string, unknown>).date_realisation as string || null,
+        preuves: (action as Record<string, unknown>).preuves as unknown[] || [],
+      });
+    }
+  }
+  console.log(`[cleanResetJalonsActions] ${savedActionDataByTitle.size} actions sauvegardées par titre`);
+
+  // 2. Sauvegarder les données utilisateur des jalons existants par TITRE NORMALISÉ
+  const existingJalons = await db.jalons.toArray();
+  const savedJalonDataByTitle = new Map<string, {
+    statut: string;
+    avancement: number;
+    date_realisation: string | null;
+  }>();
+
+  for (const jalon of existingJalons) {
+    const normTitle = normalizeTitle(jalon.titre);
+    if (normTitle && !savedJalonDataByTitle.has(normTitle)) {
+      savedJalonDataByTitle.set(normTitle, {
+        statut: jalon.statut || 'en_attente',
+        avancement: jalon.avancement || 0,
+        date_realisation: jalon.date_realisation || null,
+      });
+    }
+  }
+
   await db.transaction('rw', [db.jalons, db.actions], async () => {
-    // 1. EFFACER tous les jalons et actions existants
+    // 3. EFFACER tous les jalons et actions existants
     await db.jalons.clear();
     await db.actions.clear();
     console.log('[cleanResetJalonsActions] Tables jalons et actions vidées');
 
-    // 2. Insérer UNIQUEMENT les jalons de ALL_JALONS
+    // 4. Insérer les jalons de ALL_JALONS avec restauration des données utilisateur
     for (const jalon of ALL_JALONS) {
+      const normTitle = normalizeTitle(jalon.titre);
+      const saved = savedJalonDataByTitle.get(normTitle);
+
       await db.jalons.add({
         ...jalon,
         siteId,
+        // Restaurer les données utilisateur si elles existent
+        ...(saved ? {
+          statut: saved.statut,
+          avancement: saved.avancement,
+          date_realisation: saved.date_realisation,
+        } : {}),
       } as Jalon);
       result.jalonsCreated++;
     }
     console.log(`[cleanResetJalonsActions] ${result.jalonsCreated} jalons créés`);
 
-    // 3. Récupérer les jalons pour le mapping jalonId
+    // 5. Récupérer les jalons pour le mapping jalonId
     const jalons = await db.jalons.toArray();
     const jalonMap = new Map(jalons.map(j => [j.id_jalon, j.id!]));
 
-    // 4. Insérer UNIQUEMENT les actions de ALL_ACTIONS
+    // 6. Insérer les actions de ALL_ACTIONS avec restauration des données utilisateur
     for (const action of ALL_ACTIONS) {
       const actionWithCode = action as ActionWithJalonCode;
       const jalonCode = actionWithCode._jalonCode;
       const jalonId = jalonCode ? jalonMap.get(jalonCode) || null : null;
-      const responsableId = userMap.get(action.responsable) || 1;
+      const defaultResponsableId = userMap.get(action.responsable) || 1;
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { _jalonCode, ...actionData } = actionWithCode;
 
+      // Chercher les données sauvegardées par TITRE NORMALISÉ
+      const normTitle = normalizeTitle(actionData.titre);
+      const saved = savedActionDataByTitle.get(normTitle);
+
       await db.actions.add({
         ...actionData,
         jalonId,
-        responsableId,
         siteId,
+        // PRÉSERVER les données utilisateur (NE RIEN TOUCHER)
+        statut: saved?.statut ?? actionData.statut ?? 'a_faire',
+        avancement: saved?.avancement ?? actionData.avancement ?? 0,
+        responsableId: saved?.responsableId ?? defaultResponsableId,
+        documents: saved?.documents ?? [],
+        sous_taches: saved?.sous_taches ?? [],
+        notes_internes: saved?.notes_internes ?? '',
+        commentaires_externes: saved?.commentaires_externes ?? '',
+        historique_commentaires: saved?.historique_commentaires ?? [],
+        livrables: saved?.livrables ?? '',
+        date_realisation: saved?.date_realisation ?? null,
+        preuves: saved?.preuves ?? [],
       } as Action);
+
       result.actionsCreated++;
+      if (saved && (saved.avancement > 0 || saved.statut !== 'a_faire')) {
+        result.actionsPreserved++;
+      }
     }
-    console.log(`[cleanResetJalonsActions] ${result.actionsCreated} actions créées`);
+    console.log(`[cleanResetJalonsActions] ${result.actionsCreated} actions créées, ${result.actionsPreserved} avec données préservées`);
   });
 
   // Marquer la migration comme effectuée

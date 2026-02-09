@@ -106,7 +106,7 @@ export function Proph3tPage() {
 
   if (data.isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-gray-300 animate-spin mx-auto mb-3" />
           <p className="text-xs text-gray-400">Chargement...</p>
@@ -116,7 +116,7 @@ export function Proph3tPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full overflow-auto bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between">

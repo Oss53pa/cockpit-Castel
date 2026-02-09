@@ -34,7 +34,7 @@ export function DataInitialization() {
   const [applyingMigration, setApplyingMigration] = useState(false);
   const [migrationResult, setMigrationResult] = useState<{ jalonsCreated: number; actionsCreated: number; jalonsUpdated: number } | null>(null);
   const [cleanResetting, setCleanResetting] = useState(false);
-  const [cleanResetResult, setCleanResetResult] = useState<{ jalonsCreated: number; actionsCreated: number } | null>(null);
+  const [cleanResetResult, setCleanResetResult] = useState<{ jalonsCreated: number; actionsCreated: number; actionsPreserved: number } | null>(null);
 
   // Charger les statistiques au montage
   useEffect(() => {
@@ -243,7 +243,7 @@ export function DataInitialization() {
       const result = await cleanResetJalonsActions();
       setCleanResetResult(result);
       await loadStats();
-      alert(`Reset propre terminé !\n- ${result.jalonsCreated} jalons créés\n- ${result.actionsCreated} actions créées\n\nLes doublons ont été supprimés.`);
+      alert(`Reset propre terminé !\n- ${result.jalonsCreated} jalons créés\n- ${result.actionsCreated} actions créées\n- ${result.actionsPreserved} actions avec données préservées (statut, avancement, notes...)\n\nLes doublons ont été supprimés.`);
     } catch (err) {
       console.error('Erreur clean reset:', err);
       alert('Erreur lors du reset propre');

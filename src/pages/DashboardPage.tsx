@@ -348,7 +348,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div ref={containerRef} className="h-[calc(100vh-112px)] overflow-auto">
+    <div ref={containerRef} className="h-full overflow-auto">
       <div className="space-y-6 pb-6">
         {/* View Toggle */}
         <ViewToggle view={view} setView={setView} isVisible={isVisible} />
