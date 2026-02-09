@@ -1000,6 +1000,45 @@ export async function seedBudgetOnly(): Promise<{ budgetCreated: number; budgetS
 }
 
 /**
+ * Migration: Corrige responsableId sur toutes les actions et jalons.
+ * Le seed initial hardcode responsableId: 1 dans createAction().
+ * Cette migration remet le bon ID en matchant le champ texte `responsable`
+ * contre la table users (prenom + nom).
+ * Idempotente: ne modifie que si le responsableId actuel ne correspond pas au champ responsable.
+ */
+export async function migrateFixResponsableIds(): Promise<{ actionsFixed: number; jalonsFixed: number }> {
+  const users = await db.users.toArray();
+  const userMap = new Map(users.map(u => [`${u.prenom} ${u.nom}`, u.id!]));
+
+  let actionsFixed = 0;
+  let jalonsFixed = 0;
+
+  // Fix actions
+  const actions = await db.actions.toArray();
+  for (const action of actions) {
+    if (!action.responsable || !action.id) continue;
+    const correctId = userMap.get(action.responsable);
+    if (correctId && correctId !== action.responsableId) {
+      await db.actions.update(action.id, { responsableId: correctId });
+      actionsFixed++;
+    }
+  }
+
+  // Fix jalons
+  const jalons = await db.jalons.toArray();
+  for (const jalon of jalons) {
+    if (!jalon.responsable || !jalon.id) continue;
+    const correctId = userMap.get(jalon.responsable);
+    if (correctId && jalon.responsableId !== correctId) {
+      await db.jalons.update(jalon.id, { responsableId: correctId });
+      jalonsFixed++;
+    }
+  }
+
+  return { actionsFixed, jalonsFixed };
+}
+
+/**
  * Migration: Ajoute buildingCode aux actions de construction existantes
  * basé sur leur id_action ou titre
  */

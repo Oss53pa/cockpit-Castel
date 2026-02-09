@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40, MIGRATION_V40_KEY } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40, migrateFixResponsableIds, MIGRATION_V40_KEY } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 import { migrateRisquesV2 } from '@/data/seedRisques';
@@ -109,6 +109,12 @@ export async function initializeDatabase(): Promise<{
           console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
         }
 
+        // Migration: corriger responsableId (hardcodé à 1 dans createAction)
+        const respFixResult = await migrateFixResponsableIds();
+        if (respFixResult.actionsFixed > 0 || respFixResult.jalonsFixed > 0) {
+          console.log('[initDatabase] Fix responsableIds:', respFixResult);
+        }
+
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
       } else {
@@ -138,6 +144,12 @@ export async function initializeDatabase(): Promise<{
         const risquesV2Result = await migrateRisquesV2();
         if (!risquesV2Result.skipped) {
           console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
+        }
+
+        // Migration: corriger responsableId (hardcodé à 1 dans createAction)
+        const respFixResult2 = await migrateFixResponsableIds();
+        if (respFixResult2.actionsFixed > 0 || respFixResult2.jalonsFixed > 0) {
+          console.log('[initDatabase] Fix responsableIds:', respFixResult2);
         }
 
         isInitialized = true;
