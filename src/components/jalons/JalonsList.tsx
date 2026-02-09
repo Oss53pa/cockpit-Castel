@@ -11,7 +11,6 @@ import {
   TableCell,
   Badge,
   Button,
-  Progress,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -56,19 +55,16 @@ type SortOrder = 'asc' | 'desc';
 function JalonActionsCount({ jalonId }: { jalonId?: number }) {
   const actions = useActionsByJalon(jalonId);
   const terminees = actions.filter(a => a.statut === 'termine').length;
-  const avancement = actions.length > 0
-    ? Math.round(actions.reduce((sum, a) => sum + a.avancement, 0) / actions.length)
-    : 0;
+
+  if (actions.length === 0) {
+    return <span className="text-primary-400 text-sm">-</span>;
+  }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 min-w-[100px]">
-        <Progress value={avancement} size="sm" className="w-16" />
-        <span className="text-xs text-primary-500 w-8">{avancement}%</span>
-      </div>
-      <span className="text-xs text-primary-400">
-        ({terminees}/{actions.length})
-      </span>
+    <div className="flex items-center gap-1">
+      <span className="font-medium text-primary-700">{terminees}</span>
+      <span className="text-primary-400">/</span>
+      <span className="text-primary-600">{actions.length}</span>
     </div>
   );
 }
@@ -184,7 +180,7 @@ function JalonRow({
           )}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="text-center">
         <JalonActionsCount jalonId={jalon.id} />
       </TableCell>
       <TableCell>
@@ -330,8 +326,8 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
   }
 
   return (
-    <>
-      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0 rounded-lg border bg-white overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-primary-50/50">
@@ -368,7 +364,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
                   Échéance <SortIcon field="datePrevue" />
                 </div>
               </TableHead>
-              <TableHead>Avancement</TableHead>
+              <TableHead className="text-center">Actions</TableHead>
               <TableHead>Responsable</TableHead>
               <TableHead className="w-12 text-center" title="Modifications récentes">Modif</TableHead>
               <TableHead className="w-24">Actions</TableHead>
@@ -390,8 +386,8 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
         </Table>
       </div>
 
-      {/* Summary footer */}
-      <div className="flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm">
+      {/* Summary footer - fixé en bas */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">
         <span className="text-primary-600">
           {jalons.length} jalon{jalons.length > 1 ? 's' : ''} au total
         </span>
@@ -428,6 +424,6 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
           entity={selectedJalonForShare}
         />
       )}
-    </>
+    </div>
   );
 }

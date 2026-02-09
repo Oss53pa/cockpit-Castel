@@ -156,9 +156,9 @@ export function JalonsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h2 className="text-xl font-bold text-primary-900">Jalons</h2>
           <p className="text-sm text-primary-500">
@@ -205,7 +205,7 @@ export function JalonsPage() {
       </div>
 
       {/* Filters and view toggle */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg border">
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg border flex-shrink-0 mt-4">
         <Select
           value={jalonFilters.axe ?? ''}
           onChange={(e) =>
@@ -305,8 +305,10 @@ export function JalonsPage() {
         </div>
       </div>
 
-      {/* Content */}
-      {renderContent()}
+      {/* Content - flex-1 prend l'espace restant, le scroll est géré dans chaque vue */}
+      <div className="flex-1 min-h-0 mt-4">
+        {renderContent()}
+      </div>
 
       {/* Formulaire v2.0 (création et édition) */}
       <JalonForm
