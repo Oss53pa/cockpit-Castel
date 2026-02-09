@@ -199,7 +199,7 @@ export function MonthlyReportPage() {
               <select
                 value={filtreAxe}
                 onChange={(e) => setFiltreAxe(e.target.value)}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
               >
                 <option value="">Tous les axes</option>
                 {Object.entries(AXE_LABELS).map(([code, label]) => (
@@ -209,7 +209,7 @@ export function MonthlyReportPage() {
               <select
                 value={filtreResponsable}
                 onChange={(e) => setFiltreResponsable(e.target.value)}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-600 focus:border-transparent"
               >
                 <option value="">Tous les responsables</option>
                 {responsables.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -253,16 +253,16 @@ export function MonthlyReportPage() {
         {/* === ACTIONS PAR AXE === */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <ClipboardList className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: THEME_COLORS.primary }}>
+              <ClipboardList className="w-5 h-5" style={{ color: THEME_COLORS.primary }} />
               Actions par Axe
             </h2>
             <div className="flex gap-2 text-sm">
-              <button onClick={() => setExpandedAxes(new Set(Object.keys(AXE_LABELS)))} className="text-blue-600 hover:text-blue-800">
+              <button onClick={() => setExpandedAxes(new Set(Object.keys(AXE_LABELS)))} className="hover:opacity-80" style={{ color: THEME_COLORS.primary }}>
                 Tout déplier
               </button>
               <span className="text-slate-300">|</span>
-              <button onClick={() => setExpandedAxes(new Set())} className="text-blue-600 hover:text-blue-800">
+              <button onClick={() => setExpandedAxes(new Set())} className="hover:opacity-80" style={{ color: THEME_COLORS.primary }}>
                 Tout replier
               </button>
             </div>
@@ -271,7 +271,7 @@ export function MonthlyReportPage() {
           <div className="space-y-3">
             {Object.entries(AXE_LABELS).map(([axeCode, axeLabel]) => {
               if (filtreAxe && filtreAxe !== axeCode) return null;
-              const colors = AXE_COLORS[axeCode] || AXE_COLORS['axe6_exploitation'];
+              const colors = AXE_COLORS[axeCode] || AXE_COLORS['axe8_divers'];
               const actions = (data.actionsByAxe[axeCode] || []).filter(a => !filtreResponsable || a.responsable === filtreResponsable);
               const isExpanded = expandedAxes.has(axeCode);
 
@@ -353,8 +353,8 @@ export function MonthlyReportPage() {
 
         {/* === JALONS === */}
         <section>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <Flag className="w-5 h-5 text-purple-600" />
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-4" style={{ color: THEME_COLORS.primary }}>
+            <Flag className="w-5 h-5" style={{ color: THEME_COLORS.info }} />
             Jalons du Mois
             <span className="text-sm font-normal text-slate-500">({data.jalonsduMois.length})</span>
           </h2>
@@ -420,8 +420,8 @@ export function MonthlyReportPage() {
 
         {/* === RÉCAP PAR RESPONSABLE === */}
         <section>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <Users className="w-5 h-5 text-indigo-600" />
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-4" style={{ color: THEME_COLORS.primary }}>
+            <Users className="w-5 h-5" style={{ color: THEME_COLORS.secondary }} />
             Par Responsable
           </h2>
 
@@ -444,9 +444,13 @@ export function MonthlyReportPage() {
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
-                          filtreResponsable === resp.nom ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
+                          style={filtreResponsable === resp.nom
+                            ? { background: THEME_COLORS.primary, color: '#fff' }
+                            : { background: '#f1f5f9', color: '#475569' }
+                          }
+                        >
                           {resp.nom.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
                         <span className="font-medium text-slate-900">{resp.nom}</span>
@@ -478,16 +482,16 @@ export function MonthlyReportPage() {
       </main>
 
       {/* ====== FOOTER ====== */}
-      <footer className="bg-slate-900 text-white mt-12">
+      <footer className="text-white mt-12" style={{ background: THEME_COLORS.primary }}>
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <p className="font-semibold">COCKPIT Project Management</p>
-              <p className="text-slate-400 text-sm">
+              <p className="font-semibold">COCKPIT v2.0 — Cosmos Angré</p>
+              <p className="text-slate-300 text-sm">
                 Rapport généré le {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
-            <p className="text-slate-500 text-sm">{data.projectName}</p>
+            <p className="text-slate-300 text-sm">CRMC / New Heaven SA • {data.projectName}</p>
           </div>
         </div>
       </footer>

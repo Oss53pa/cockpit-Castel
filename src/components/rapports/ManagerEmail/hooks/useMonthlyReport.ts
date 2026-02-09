@@ -81,6 +81,7 @@ const AXE_LABELS: Record<string, string> = {
   'axe4_budget': 'AXE 4 - Budget & Pilotage',
   'axe5_marketing': 'AXE 5 - Marketing & Communication',
   'axe6_exploitation': 'AXE 6 - Exploitation & Systèmes',
+  'axe8_divers': 'AXE 8 - Divers & Transverse',
 };
 
 // ============================================================================
