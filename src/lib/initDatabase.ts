@@ -5,7 +5,7 @@
 // avec les données de production v2.0
 
 import { db } from '@/db';
-import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40 } from '@/data/seedDataV2';
+import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateActionsFromProductionData, migrateV31toV40, MIGRATION_V40_KEY } from '@/data/seedDataV2';
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 
@@ -161,6 +161,9 @@ export async function forceReseed(): Promise<{
   isInitialized = false;
   initPromise = null;
 
+  // Reset migration flags pour forcer leur ré-exécution
+  localStorage.removeItem(MIGRATION_V40_KEY);
+
   // Effacer TOUTES les données existantes (y compris project pour forcer un seed complet)
   await db.transaction('rw', [db.users, db.jalons, db.actions, db.risques, db.budget, db.alertes, db.teams, db.project, db.sites, db.projectSettings], async () => {
     await db.users.clear();
@@ -181,8 +184,13 @@ export async function forceReseed(): Promise<{
 
   // Aussi exécuter seedDatabaseV2 pour les données complémentaires
   const result = await seedDatabaseV2();
-  console.log('[initDatabase] Force reseed terminé:', result);
+  console.log('[initDatabase] Seed V2 terminé:', result);
 
+  // Migration v3.1 → v4.0 (Soft Opening 16/10/2026, nouveaux jalons/actions)
+  const v40Result = await migrateV31toV40();
+  console.log('[initDatabase] Migration v4.0:', v40Result);
+
+  console.log('[initDatabase] Force reseed terminé');
   return result;
 }
 

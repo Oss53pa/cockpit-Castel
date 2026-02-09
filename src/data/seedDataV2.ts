@@ -1381,7 +1381,7 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
 // historique_commentaires sur les actions existantes.
 // ============================================================================
 
-const MIGRATION_V40_KEY = 'migration_v31_to_v40_done';
+export const MIGRATION_V40_KEY = 'migration_v31_to_v40_done';
 
 /**
  * Migration v3.1 → v4.0 : Restructuration complète jalons & actions
