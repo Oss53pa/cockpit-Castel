@@ -11,6 +11,7 @@ import { db } from '@/db';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { cleanupAllBudgetDuplicates } from '@/hooks/useBudgetExploitation';
 import { PROJET_CONFIG } from '@/data/constants';
+import { migrateV31toV40, MIGRATION_V40_KEY } from '@/data/seedDataV2';
 
 interface DatabaseStats {
   users: number;
@@ -30,6 +31,8 @@ export function DataInitialization() {
   const [repairResult, setRepairResult] = useState<{ risques: number; budget: number } | null>(null);
   const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   const [duplicatesResult, setDuplicatesResult] = useState<{ totalRemoved: number } | null>(null);
+  const [applyingMigration, setApplyingMigration] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ jalonsCreated: number; actionsCreated: number; jalonsUpdated: number } | null>(null);
 
   // Charger les statistiques au montage
   useEffect(() => {
@@ -194,6 +197,31 @@ export function DataInitialization() {
       alert('Erreur lors du nettoyage des doublons');
     } finally {
       setCleaningDuplicates(false);
+    }
+  };
+
+  const handleApplyMigrationV40 = async () => {
+    setApplyingMigration(true);
+    setMigrationResult(null);
+    try {
+      // Supprimer le flag pour forcer la migration
+      localStorage.removeItem(MIGRATION_V40_KEY);
+
+      // Exécuter la migration
+      const result = await migrateV31toV40();
+      setMigrationResult(result);
+      await loadStats();
+
+      if (result.jalonsCreated > 0 || result.actionsCreated > 0 || result.jalonsUpdated > 0) {
+        alert(`Migration v4.0 appliquée !\n- ${result.jalonsCreated} jalons créés\n- ${result.jalonsUpdated} jalons mis à jour\n- ${result.actionsCreated} actions créées\n\nVos données existantes (statuts, avancements, notes) ont été préservées.`);
+      } else {
+        alert('La migration v4.0 est déjà appliquée. Aucune modification nécessaire.');
+      }
+    } catch (err) {
+      console.error('Erreur migration v4.0:', err);
+      alert('Erreur lors de la migration v4.0');
+    } finally {
+      setApplyingMigration(false);
     }
   };
 
@@ -458,6 +486,39 @@ export function DataInitialization() {
                 <>
                   <Copy className="h-4 w-4 mr-2" />
                   Nettoyer doublons
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Appliquer migration v4.0 */}
+          <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg">
+            <div>
+              <h5 className="font-medium text-indigo-900">Appliquer migration v4.0 (Soft Opening 16/10/2026)</h5>
+              <p className="text-sm text-indigo-600">
+                Ajoute les 33 jalons et 200 actions restructurés SANS effacer vos modifications existantes
+              </p>
+              {migrationResult && (migrationResult.jalonsCreated > 0 || migrationResult.actionsCreated > 0 || migrationResult.jalonsUpdated > 0) && (
+                <p className="text-xs text-indigo-700 mt-1">
+                  Dernière migration : {migrationResult.jalonsCreated} jalons créés, {migrationResult.jalonsUpdated} mis à jour, {migrationResult.actionsCreated} actions
+                </p>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={handleApplyMigrationV40}
+              disabled={applyingMigration}
+              className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+            >
+              {applyingMigration ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Migration...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Appliquer v4.0
                 </>
               )}
             </Button>
