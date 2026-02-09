@@ -28,7 +28,7 @@ import {
   useBudgetSynthese,
 } from '@/hooks';
 import { useSiteStore } from '@/stores/siteStore';
-import { AXES_CONFIG_FULL, SEUILS_RISQUES, SEUILS_SYNC_REPORT, SEUILS_UI } from '@/data/constants';
+import { AXES_CONFIG_FULL, THEME_COLORS, SEUILS_RISQUES, SEUILS_SYNC_REPORT, SEUILS_UI } from '@/data/constants';
 
 const axesList = Object.values(AXES_CONFIG_FULL);
 
@@ -54,7 +54,7 @@ function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: num
 }
 
 // Donut chart
-function DonutChart({ value, size = 80, strokeWidth = 8, color = '#6366f1' }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
+function DonutChart({ value, size = 80, strokeWidth = 8, color = THEME_COLORS.primary }: { value: number; size?: number; strokeWidth?: number; color?: string }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (Math.min(value, 100) / 100) * circumference;
@@ -77,7 +77,7 @@ function DonutChart({ value, size = 80, strokeWidth = 8, color = '#6366f1' }: { 
 }
 
 // Sparkline
-function Sparkline({ data, color = '#6366f1', height = 32 }: { data: number[]; color?: string; height?: number }) {
+function Sparkline({ data, color = THEME_COLORS.primary, height = 32 }: { data: number[]; color?: string; height?: number }) {
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const range = max - min || 1;
@@ -226,7 +226,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
       const doc = new jsPDF();
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-      const navy = [30, 41, 59];
+      const navy = [28, 49, 99]; // #1C3163 - Cosmos Blue
       const gray = [100, 116, 139];
       const dark = [15, 23, 42];
       const getY = () => (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
@@ -421,19 +421,20 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${THEME_COLORS.primary} 0%, ${THEME_COLORS.secondary} 100%)` }}>
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">Rapport Mensuel</h1>
+                <h1 className="text-xl font-semibold" style={{ color: THEME_COLORS.primary }}>Rapport Mensuel</h1>
                 <p className="text-sm text-slate-500 capitalize">{currentMonth}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">COPIL</span>
+              <span className="text-xs font-medium text-white px-3 py-1.5 rounded-full" style={{ background: THEME_COLORS.secondary }}>COPIL</span>
               <button
                 onClick={handleExportPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors hover:opacity-90"
+                style={{ background: THEME_COLORS.primary }}
               >
                 <Download className="w-4 h-4" />
                 Exporter PDF
@@ -447,15 +448,15 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         {/* Executive Summary */}
         <div className="grid grid-cols-5 gap-4">
           {[
-            { label: 'Avancement', value: metrics.avancement, suffix: '%', trend: trendVariation, color: '#6366f1' },
-            { label: 'Actions', value: metrics.actionsTerminees, total: metrics.total, color: '#8b5cf6' },
-            { label: 'Jalons', value: metrics.jalonsAtteints, total: metrics.jalonsTotal, color: '#06b6d4' },
-            { label: 'Occupation', value: metrics.occupation, suffix: '%', color: '#10b981' },
-            { label: 'Budget', value: metrics.budgetConsomme, suffix: '%', color: '#f59e0b' },
+            { label: 'Avancement', value: metrics.avancement, suffix: '%', trend: trendVariation, color: THEME_COLORS.primary },
+            { label: 'Actions', value: metrics.actionsTerminees, total: metrics.total, color: THEME_COLORS.secondary },
+            { label: 'Jalons', value: metrics.jalonsAtteints, total: metrics.jalonsTotal, color: THEME_COLORS.info },
+            { label: 'Occupation', value: metrics.occupation, suffix: '%', color: THEME_COLORS.accent },
+            { label: 'Budget', value: metrics.budgetConsomme, suffix: '%', color: THEME_COLORS.warning },
           ].map((item, idx) => (
             <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-slate-500">{item.label}</span>
+                <span className="text-sm font-medium" style={{ color: item.color }}>{item.label}</span>
                 {item.trend !== undefined && item.trend !== 0 && (
                   <span className={cn(
                     'flex items-center gap-0.5 text-xs font-medium',
@@ -485,7 +486,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
           {/* Synchronisation */}
           <div className="col-span-2 bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-slate-900">Synchronisation Projet / Mobilisation</h2>
+              <h2 className="text-base font-semibold" style={{ color: THEME_COLORS.primary }}>Synchronisation Projet / Mobilisation</h2>
               <span className={cn(
                 'text-xs font-medium px-2.5 py-1 rounded-full',
                 Math.abs(syncGap) <= SEUILS_SYNC_REPORT.synchronise ? 'bg-emerald-50 text-emerald-600' :
@@ -498,7 +499,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
 
             <div className="grid grid-cols-3 gap-6 items-center">
               <div className="text-center">
-                <DonutChart value={projectProgress} size={100} strokeWidth={10} color="#6366f1" />
+                <DonutChart value={projectProgress} size={100} strokeWidth={10} color={THEME_COLORS.primary} />
                 <p className="text-sm font-medium text-slate-600 mt-3">Construction</p>
               </div>
 
@@ -515,7 +516,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
               </div>
 
               <div className="text-center">
-                <DonutChart value={mobilizationProgress} size={100} strokeWidth={10} color="#8b5cf6" />
+                <DonutChart value={mobilizationProgress} size={100} strokeWidth={10} color={THEME_COLORS.secondary} />
                 <p className="text-sm font-medium text-slate-600 mt-3">Mobilisation</p>
               </div>
             </div>
@@ -523,7 +524,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
 
           {/* Alertes */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-5">Points d'attention</h2>
+            <h2 className="text-base font-semibold mb-5" style={{ color: THEME_COLORS.primary }}>Points d'attention</h2>
             <div className="space-y-4">
               {[
                 { label: 'Actions en retard', value: metrics.actionsEnRetard, max: SEUILS_UI.topActions },
@@ -542,8 +543,9 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
                       className={cn(
                         'h-full rounded-full transition-all duration-700',
                         item.value / item.max > 0.8 ? 'bg-rose-500' :
-                        item.value / item.max > 0.5 ? 'bg-amber-500' : 'bg-indigo-500'
+                        item.value / item.max > 0.5 ? 'bg-amber-500' : ''
                       )}
+                      style={item.value / item.max <= 0.5 ? { background: THEME_COLORS.primary } : undefined}
                       style={{ width: `${Math.min((item.value / item.max) * 100, 100)}%` }}
                     />
                   </div>
@@ -555,12 +557,12 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
 
         {/* Avancement par axe */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h2 className="text-base font-semibold text-slate-900 mb-6">Avancement par axe stratégique</h2>
+          <h2 className="text-base font-semibold mb-6" style={{ color: THEME_COLORS.primary }}>Avancement par axe stratégique</h2>
           <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
             {axeStats.map((item, idx) => (
               <div key={idx} className="text-center">
-                <DonutChart value={item.pct} size={72} strokeWidth={6} color="#6366f1" />
-                <p className="text-sm font-medium text-slate-900 mt-3">{item.axe.labelCourt || item.axe.label}</p>
+                <DonutChart value={item.pct} size={72} strokeWidth={6} color={item.axe.color} />
+                <p className="text-sm font-medium mt-3" style={{ color: item.axe.color }}>{item.axe.labelCourt || item.axe.label}</p>
                 <p className="text-xs text-slate-400">{item.termine}/{item.total} actions</p>
               </div>
             ))}
@@ -572,7 +574,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
           {/* Risques */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-slate-900">Risques majeurs</h2>
+              <h2 className="text-base font-semibold" style={{ color: THEME_COLORS.danger }}>Risques majeurs</h2>
               <span className="text-xs text-slate-400">{metrics.risquesTotal} actifs</span>
             </div>
             <div className="space-y-3">
@@ -607,14 +609,14 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
           {/* Plan M+1 */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-slate-900">Plan d'action M+1</h2>
+              <h2 className="text-base font-semibold" style={{ color: THEME_COLORS.primary }}>Plan d'action M+1</h2>
               <span className="text-xs text-slate-400">{actionsPrioritaires.length} prioritaires</span>
             </div>
             <div className="space-y-3">
               {actionsPrioritaires.length > 0 ? actionsPrioritaires.map((action, idx) => {
                 const axe = axesList.find(a => a.code === action.axe);
                 const priorityDot = action.priorite === 'critique' ? 'bg-rose-400' :
-                  action.priorite === 'haute' ? 'bg-amber-400' : 'bg-indigo-400';
+                  action.priorite === 'haute' ? 'bg-amber-400' : 'bg-blue-400';
 
                 return (
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
@@ -647,17 +649,17 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
         {/* Budget Section */}
         {budgetSynthese.prevu > 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-6">Exécution budgétaire</h2>
+            <h2 className="text-base font-semibold mb-6" style={{ color: THEME_COLORS.primary }}>Exécution budgétaire</h2>
             <div className="grid grid-cols-4 gap-6">
               {[
-                { label: 'Budget prévu', value: budgetSynthese.prevu, color: 'bg-slate-500' },
-                { label: 'Engagé', value: budgetSynthese.engage, color: 'bg-indigo-500' },
-                { label: 'Réalisé', value: budgetSynthese.realise, color: 'bg-emerald-500' },
-                { label: 'Reste à engager', value: budgetSynthese.ecartEngagement, color: 'bg-amber-500' },
+                { label: 'Budget prévu', value: budgetSynthese.prevu, color: THEME_COLORS.primary },
+                { label: 'Engagé', value: budgetSynthese.engage, color: THEME_COLORS.secondary },
+                { label: 'Réalisé', value: budgetSynthese.realise, color: THEME_COLORS.accent },
+                { label: 'Reste à engager', value: budgetSynthese.ecartEngagement, color: THEME_COLORS.warning },
               ].map((item, idx) => (
                 <div key={idx} className="p-4 rounded-xl bg-slate-50">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={cn('w-2 h-2 rounded-full', item.color)} />
+                    <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
                     <span className="text-sm text-slate-500">{item.label}</span>
                   </div>
                   <p className="text-xl font-semibold text-slate-900">{formatBudget(item.value)} <span className="text-sm text-slate-400">FCFA</span></p>
@@ -665,8 +667,8 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
               ))}
             </div>
             <div className="mt-4 h-3 bg-slate-100 rounded-full overflow-hidden flex">
-              <div className="h-full bg-emerald-500" style={{ width: `${budgetSynthese.tauxRealisation}%` }} />
-              <div className="h-full bg-indigo-500" style={{ width: `${Math.max(0, budgetSynthese.tauxEngagement - budgetSynthese.tauxRealisation)}%` }} />
+              <div className="h-full" style={{ width: `${budgetSynthese.tauxRealisation}%`, background: THEME_COLORS.accent }} />
+              <div className="h-full" style={{ width: `${Math.max(0, budgetSynthese.tauxEngagement - budgetSynthese.tauxRealisation)}%`, background: THEME_COLORS.secondary }} />
             </div>
             <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
               <span>0%</span>
@@ -681,7 +683,7 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-slate-400" />
-              <h2 className="text-base font-semibold text-slate-900">Notes & Commentaires COPIL</h2>
+              <h2 className="text-base font-semibold" style={{ color: THEME_COLORS.primary }}>Notes & Commentaires COPIL</h2>
             </div>
             <button
               onClick={handleSaveNotes}
@@ -700,14 +702,18 @@ export function MonthlyReport({ className }: MonthlyReportProps) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ajoutez vos notes, décisions prises, points de vigilance ou commentaires pour ce COPIL..."
-            className="w-full h-40 p-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent placeholder:text-slate-400"
+            className="w-full h-40 p-4 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-400"
+            style={{ '--tw-ring-color': THEME_COLORS.primary } as React.CSSProperties}
           />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-4">
-          <p>Généré le {today.toLocaleDateString('fr-FR')} à {today.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-          <p>COCKPIT • Format COPIL • Données temps réel</p>
+        <div className="pt-4 border-t-2" style={{ borderColor: THEME_COLORS.primary }}>
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <p>Généré le {today.toLocaleDateString('fr-FR')} à {today.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+            <p style={{ color: THEME_COLORS.primary, fontWeight: 600 }}>COCKPIT v2.0 — Cosmos Angré</p>
+            <p>CRMC / New Heaven SA • Format COPIL</p>
+          </div>
         </div>
       </div>
     </div>
