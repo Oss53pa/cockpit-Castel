@@ -62,8 +62,8 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
-      // Current user
-      currentUserId: 1, // Default to first user
+      // Current user - null until explicitly set via auth
+      currentUserId: null as number | null,
       setCurrentUserId: (id) => set({ currentUserId: id }),
 
       // Online status

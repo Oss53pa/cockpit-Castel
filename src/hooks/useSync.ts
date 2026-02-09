@@ -115,7 +115,12 @@ export function useSync(siteId: number, projectId: string): UseSyncReturn {
 
   // Initialize on mount
   useEffect(() => {
-    refreshSync().then(() => setInitialized(true));
+    refreshSync()
+      .then(() => setInitialized(true))
+      .catch((error) => {
+        console.error('[useSync] Error during initialization:', error);
+        setInitialized(true); // Still mark as initialized to prevent infinite retries
+      });
   }, [refreshSync]);
 
   // Refresh when jalons or actions change
@@ -263,7 +268,12 @@ export function useSyncStatus(siteId: number) {
 
   useEffect(() => {
     if (jalons || actions) {
-      syncServiceV2.calculateSyncStatusV2(siteId).then(setStatus);
+      syncServiceV2.calculateSyncStatusV2(siteId)
+        .then(setStatus)
+        .catch((error) => {
+          console.error('[useSyncStatus] Error calculating sync status:', error);
+          setStatus(null);
+        });
     }
   }, [siteId, jalons, actions]);
 

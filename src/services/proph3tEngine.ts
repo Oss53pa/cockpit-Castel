@@ -160,7 +160,7 @@ async function callOpenRouter(
     throw new Error('Clé API OpenRouter non configurée');
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ async function callOpenRouter(
       temperature: config.temperature || 0.7,
       max_tokens: config.maxTokens || 4096,
     }),
-  });
+  }, API_TIMEOUT_MS);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -202,7 +202,7 @@ async function callAnthropic(
     ? '/api/anthropic/v1/messages'  // Proxy en développement
     : (import.meta.env.VITE_WORKER_URL || 'https://api.anthropic.com') + '/v1/messages';
 
-  const response = await fetch(apiUrl, {
+  const response = await fetchWithTimeout(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -217,7 +217,7 @@ async function callAnthropic(
       system: systemPrompt,
       messages: messages.filter(m => m.role !== 'system'),
     }),
-  });
+  }, API_TIMEOUT_MS);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -226,6 +226,65 @@ async function callAnthropic(
 
   const data = await response.json();
   return data.content?.[0]?.text || '';
+}
+
+// Configuration des timeouts et retries
+const API_TIMEOUT_MS = 30000; // 30 secondes
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+
+/**
+ * Wrapper fetch avec timeout
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = API_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Retry wrapper avec délai exponentiel
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = MAX_RETRIES,
+  delayMs: number = RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Ne pas retry si c'est une erreur d'authentification ou de validation
+      if (lastError.message.includes('401') || lastError.message.includes('403') ||
+          lastError.message.includes('non configurée') || lastError.message.includes('invalide')) {
+        throw lastError;
+      }
+
+      if (attempt < maxRetries) {
+        console.warn(`[PROPH3T] Tentative ${attempt + 1}/${maxRetries + 1} échouée, retry dans ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError || new Error('Échec après plusieurs tentatives');
 }
 
 /**

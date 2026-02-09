@@ -103,8 +103,14 @@ export function useReportActivities(reportId?: number) {
 // MUTATIONS
 // ============================================================================
 
+interface UserContext {
+  userId?: number | null;
+  userName?: string;
+}
+
 export async function createReport(
-  report: Omit<StudioReport, 'id' | 'createdAt' | 'updatedAt' | 'version'>
+  report: Omit<StudioReport, 'id' | 'createdAt' | 'updatedAt' | 'version'>,
+  userContext?: UserContext
 ): Promise<number> {
   const now = new Date().toISOString();
   const id = await db.reports.add({
@@ -128,8 +134,8 @@ export async function createReport(
     reportId: id,
     type: 'created',
     description: 'Rapport créé',
-    userId: 1,
-    userName: 'Utilisateur',
+    userId: userContext?.userId ?? null,
+    userName: userContext?.userName || report.author || 'Utilisateur',
     createdAt: now,
   });
 
@@ -178,12 +184,12 @@ export async function saveReportContent(
     updatedAt: now,
   });
 
-  // Add activity
+  // Add activity (userId is optional - will be null if not provided)
   await db.reportActivities.add({
     reportId: id,
     type: 'edited',
     description: `Version ${newVersion} sauvegardée`,
-    userId: 1,
+    userId: null, // TODO: Pass user context when available
     userName: 'Utilisateur',
     createdAt: now,
   });
@@ -205,7 +211,7 @@ export async function updateReportStatus(
     reportId: id,
     type: 'status_changed',
     description: `Statut changé en "${status}"`,
-    userId: 1,
+    userId: null, // TODO: Pass user context when available
     userName: 'Utilisateur',
     createdAt: now,
   });
