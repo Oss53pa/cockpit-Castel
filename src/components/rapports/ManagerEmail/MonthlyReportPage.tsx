@@ -1,43 +1,79 @@
 /**
  * MonthlyReportPage — Rapport d'Actions Mensuel
  * Design unifié avec le design system COSMOS (constantes C)
+ * Données 100% live depuis la base de données Dexie
  */
 
-import { useState, useRef, useCallback } from "react";
-import { C } from '@/components/rapports/ExcoMensuelV5/constants';
+import { useState, useRef, useCallback, useMemo } from "react";
+import { C, AXES_V5 } from '@/components/rapports/ExcoMensuelV5/constants';
 import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
+import { useActions } from '@/hooks/useActions';
+import { useJalons } from '@/hooks/useJalons';
+import { useUsers, getUserFullName } from '@/hooks/useUsers';
+import type { Action, Jalon } from '@/types';
 
 // ============================================================================
-// DATA (statique pour ce rapport — sera remplacé par hooks live ultérieurement)
+// HELPERS
 // ============================================================================
 
-const d = {
-  month: "Février 2026",
-  generated: "9 février 2026 à 19:29",
-  daysInMonth: 28, daysPassed: 9, daysRemaining: 19,
-  actions: [
-    { id: 1, title: "Finaliser et faire valider la note de cadrage", axe: "DIV", axeColor: C.teal, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "9 févr.", deadlineDay: 9, pct: 85, status: "late" as const, priority: "critical" as const, milestone: "Note de cadrage validée", blocker: "En attente signature DG depuis le 5 févr.", dependencies: [] as number[] },
-    { id: 2, title: "Lancer l'étude de marché concurrentiel", axe: "MKT", axeColor: C.purple, owner: "Yvan Guehi", ownerInit: "YG", deadline: "10 févr.", deadlineDay: 10, pct: 60, status: "late" as const, priority: "high" as const, milestone: null, blocker: "Données terrain partielles — analyse en cours", dependencies: [] as number[] },
-    { id: 3, title: "Valider la stratégie marketing globale", axe: "MKT", axeColor: C.purple, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "15 févr.", deadlineDay: 15, pct: 0, status: "blocked" as const, priority: "critical" as const, milestone: "Phase 1 : Planification stratégique", blocker: "Bloqué par étude de marché (#2)", dependencies: [2] },
-    { id: 4, title: "Présenter et valider le budget mobilisation DG", axe: "BUD", axeColor: C.green, owner: "Deborah NTUMY", ownerInit: "DN", deadline: "16 févr.", deadlineDay: 16, pct: 50, status: "inprogress" as const, priority: "critical" as const, milestone: "Budget mobilisation validé", blocker: null, dependencies: [] as number[] },
-    { id: 5, title: "Définir l'organigramme cible du centre", axe: "RH", axeColor: C.blue, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "28 févr.", deadlineDay: 28, pct: 15, status: "inprogress" as const, priority: "high" as const, milestone: null, blocker: null, dependencies: [] as number[] },
-    { id: 6, title: "Mettre à jour le plan de commercialisation", axe: "COM", axeColor: C.orange, owner: "Deborah NTUMY", ownerInit: "DN", deadline: "20 févr.", deadlineDay: 20, pct: 40, status: "inprogress" as const, priority: "medium" as const, milestone: null, blocker: null, dependencies: [] as number[] },
-    { id: 7, title: "Suivre les négociations preneurs en cours", axe: "COM", axeColor: C.orange, owner: "Deborah NTUMY", ownerInit: "DN", deadline: "28 févr.", deadlineDay: 28, pct: 25, status: "inprogress" as const, priority: "high" as const, milestone: null, blocker: "3 LOI en attente retour preneurs", dependencies: [] as number[] },
-    { id: 8, title: "Établir le cahier des charges IT & systèmes", axe: "TECH", axeColor: C.red, owner: "Deborah NTUMY", ownerInit: "DN", deadline: "28 févr.", deadlineDay: 28, pct: 0, status: "notstarted" as const, priority: "critical" as const, milestone: null, blocker: "Aucun prestataire IT identifié", dependencies: [] as number[] },
-    { id: 9, title: "Rédiger le modèle de bail type OHADA", axe: "JUR", axeColor: C.blue, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "28 févr.", deadlineDay: 28, pct: 20, status: "inprogress" as const, priority: "medium" as const, milestone: null, blocker: null, dependencies: [] as number[] },
-    { id: 10, title: "Définir l'identité de marque Cosmos Angré", axe: "MKT", axeColor: C.purple, owner: "Yvan Guehi", ownerInit: "YG", deadline: "28 févr.", deadlineDay: 28, pct: 10, status: "inprogress" as const, priority: "medium" as const, milestone: null, blocker: null, dependencies: [3] },
-    { id: 11, title: "Mettre en place le suivi budgétaire", axe: "BUD", axeColor: C.green, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "25 févr.", deadlineDay: 25, pct: 30, status: "inprogress" as const, priority: "medium" as const, milestone: null, blocker: null, dependencies: [4] },
-    { id: 12, title: "Souscrire les polices d'assurance", axe: "DIV", axeColor: C.teal, owner: "Pamela ATOKOUNA", ownerInit: "PA", deadline: "28 févr.", deadlineDay: 28, pct: 10, status: "inprogress" as const, priority: "medium" as const, milestone: null, blocker: null, dependencies: [] as number[] },
-  ],
-  milestones: [
-    { name: "Note de cadrage validée", axe: "DIV", owner: "Pamela ATOKOUNA", date: "9 févr.", day: 9, status: "late" as const, actionIds: [1] },
-    { name: "Phase 1 : Planification stratégique", axe: "MKT", owner: "Yvan Guehi", date: "15 févr.", day: 15, status: "atrisk" as const, actionIds: [2, 3] },
-    { name: "Budget mobilisation validé", axe: "BUD", owner: "Pamela ATOKOUNA", date: "20 févr.", day: 20, status: "ontrack" as const, actionIds: [4] },
-  ],
-};
+const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
-const owners = [...new Set(d.actions.map(a => a.owner))];
-const axeCodes = [...new Set(d.actions.map(a => a.axe))];
+/** Map axe dbCode → AXES_V5 entry */
+const axeMap = Object.fromEntries(AXES_V5.map(a => [a.dbCode, a]));
+
+/** Map DB statut → display status */
+function mapActionStatus(a: Action, today: string): string {
+  if (a.statut === 'termine') return 'completed';
+  if (a.statut === 'bloque') return 'blocked';
+  if (a.statut === 'annule') return 'completed'; // treat as done
+  if (a.statut === 'a_planifier' || a.statut === 'planifie') {
+    if (a.date_fin_prevue && a.date_fin_prevue < today) return 'late';
+    return 'notstarted';
+  }
+  // en_cours, en_attente, en_validation, a_faire, reporte
+  if (a.date_fin_prevue && a.date_fin_prevue < today && a.avancement < 100) return 'late';
+  return 'inprogress';
+}
+
+/** Map DB priorite → display priority */
+function mapPriority(p: string | undefined): string {
+  const m: Record<string, string> = { critique: 'critical', haute: 'high', moyenne: 'medium', basse: 'low' };
+  return m[p ?? ''] ?? 'medium';
+}
+
+/** Map Jalon statut → display status */
+function mapJalonStatus(j: Jalon, today: string): string {
+  if (j.statut === 'atteint') return 'completed';
+  if (j.statut === 'depasse') return 'late';
+  if (j.statut === 'en_danger') return 'late';
+  if (j.statut === 'annule') return 'completed';
+  if (j.statut === 'en_approche') return 'atrisk';
+  // a_venir — check if date is past
+  if (j.date_prevue && j.date_prevue < today) return 'late';
+  return 'ontrack';
+}
+
+/** Format ISO date → "9 févr." */
+function fmtShort(iso: string | undefined): string {
+  if (!iso) return '—';
+  const dt = new Date(iso + 'T00:00:00');
+  if (isNaN(dt.getTime())) return '—';
+  const day = dt.getDate();
+  const monthNames = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  return `${day} ${monthNames[dt.getMonth()]}`;
+}
+
+/** Get day-of-month from ISO date */
+function dayOf(iso: string | undefined): number {
+  if (!iso) return 31;
+  const dt = new Date(iso + 'T00:00:00');
+  return isNaN(dt.getTime()) ? 31 : dt.getDate();
+}
+
+/** Get owner initials */
+function initials(name: string): string {
+  return name.split(' ').map(n => n[0] || '').join('').toUpperCase().slice(0, 2);
+}
 
 // ============================================================================
 // MICRO-COMPOSANTS
@@ -112,9 +148,11 @@ interface ActionData {
   dependencies: number[];
 }
 
+const TODAY_DAY = new Date().getDate();
+
 function ActionRow({ a, isLast, showOwner }: { a: ActionData; isLast: boolean; showOwner: boolean }) {
-  const deadlinePassed = a.deadlineDay <= 9;
-  const deadlineSoon = a.deadlineDay <= 15 && !deadlinePassed;
+  const deadlinePassed = a.deadlineDay <= TODAY_DAY;
+  const deadlineSoon = a.deadlineDay <= TODAY_DAY + 7 && !deadlinePassed;
 
   return (
     <Card style={{ marginBottom: isLast ? 0 : 6, borderLeft: `4px solid ${a.axeColor}`, padding: "12px 14px" }}>
@@ -165,6 +203,96 @@ export function MonthlyReportPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const presentationDate = new Date().toISOString().split('T')[0];
 
+  // Live data from DB
+  const allActions = useActions();
+  const allJalons = useJalons();
+  const users = useUsers();
+
+  const d = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.toISOString().split('T')[0];
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysPassed = now.getDate();
+    const daysRemaining = daysInMonth - daysPassed;
+    const monthLabel = `${MONTHS_FR[month].charAt(0).toUpperCase() + MONTHS_FR[month].slice(1)} ${year}`;
+    const generated = `${daysPassed} ${MONTHS_FR[month]} ${year} à ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Map users by id
+    const usersById = Object.fromEntries(users.map(u => [u.id, u]));
+
+    // Filter actions for current month: date_fin_prevue in current month, or active (not done/cancelled)
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const monthActions = (allActions ?? []).filter(a => {
+      // Include if deadline is in current month
+      if (a.date_fin_prevue && a.date_fin_prevue >= monthStart && a.date_fin_prevue <= monthEnd) return true;
+      // Include if active and not terminated
+      if (a.statut !== 'termine' && a.statut !== 'annule' && a.date_fin_prevue && a.date_fin_prevue < monthEnd) return true;
+      return false;
+    });
+
+    const actions: ActionData[] = monthActions.map(a => {
+      const axeInfo = axeMap[a.axe] || { labelCourt: a.axe, color: C.gray500 };
+      const user = a.responsableId ? usersById[a.responsableId] : undefined;
+      const ownerName = user ? getUserFullName(user) : 'Non assigné';
+      const status = mapActionStatus(a, today);
+      // Find associated milestone
+      const linkedJalon = a.jalonId ? (allJalons ?? []).find(j => j.id === a.jalonId) : undefined;
+
+      return {
+        id: a.id as number,
+        title: a.titre,
+        axe: axeInfo.labelCourt,
+        axeColor: axeInfo.color,
+        owner: ownerName,
+        ownerInit: initials(ownerName),
+        deadline: fmtShort(a.date_fin_prevue),
+        deadlineDay: dayOf(a.date_fin_prevue),
+        pct: a.avancement ?? 0,
+        status,
+        priority: mapPriority(a.priorite),
+        milestone: linkedJalon ? linkedJalon.titre : null,
+        blocker: a.points_blocage || null,
+        dependencies: [] as number[],
+      };
+    });
+
+    // Milestones for current month
+    const monthJalons = (allJalons ?? []).filter(j => {
+      if (!j.date_prevue) return false;
+      return j.date_prevue >= monthStart && j.date_prevue <= monthEnd;
+    });
+
+    const milestones = monthJalons.map(j => {
+      const axeInfo = axeMap[j.axe] || { labelCourt: j.axe, color: C.gray500 };
+      const user = j.responsableId ? usersById[j.responsableId] : undefined;
+      const ownerName = user ? getUserFullName(user) : 'Non assigné';
+      const jalonStatus = mapJalonStatus(j, today);
+      // Find actions linked to this milestone
+      const linkedActionIds = monthActions
+        .filter(a => a.jalonId === j.id)
+        .map(a => a.id as number);
+
+      return {
+        name: j.titre,
+        axe: axeInfo.labelCourt,
+        owner: ownerName,
+        date: fmtShort(j.date_prevue),
+        day: dayOf(j.date_prevue),
+        status: jalonStatus,
+        actionIds: linkedActionIds,
+      };
+    });
+
+    return { month: monthLabel, generated, daysInMonth, daysPassed, daysRemaining, actions, milestones };
+  }, [allActions, allJalons, users]);
+
+  const owners = useMemo(() => [...new Set(d.actions.map(a => a.owner))], [d.actions]);
+  const axeCodes = useMemo(() => [...new Set(d.actions.map(a => a.axe))], [d.actions]);
+
   const generateReportHtml = useCallback(() => {
     if (!reportRef.current) return '';
     return `<!DOCTYPE html>
@@ -172,7 +300,7 @@ export function MonthlyReportPage() {
 <style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:0;background:#f8f9fa;}
 @media print{body{background:#fff;}}</style>
 </head><body>${reportRef.current.innerHTML}</body></html>`;
-  }, []);
+  }, [d.month]);
 
   const filtered = d.actions.filter(a => {
     if (filterAxe !== "Tous" && a.axe !== filterAxe) return false;
@@ -203,7 +331,8 @@ export function MonthlyReportPage() {
   };
 
   const pctMonth = Math.round((d.daysPassed / d.daysInMonth) * 100);
-  const urgentThisWeek = filtered.filter(a => a.deadlineDay <= 15 && a.status !== "completed");
+  const weekEnd = TODAY_DAY + 7;
+  const urgentThisWeek = filtered.filter(a => a.deadlineDay <= weekEnd && a.status !== "completed");
 
   return (
     <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
@@ -290,7 +419,7 @@ export function MonthlyReportPage() {
         <Sec title="Jalons du mois" icon="🎯" right={<span style={{ fontSize: 11, fontWeight: 600, color: C.gray500 }}>{d.milestones.length} jalons</span>}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
             {d.milestones.map((m, i) => {
-              const bc: Record<string, string> = { late: C.red, atrisk: C.orange, ontrack: C.green };
+              const bc: Record<string, string> = { late: C.red, atrisk: C.orange, ontrack: C.green, completed: C.green };
               return (
                 <Card key={i} style={{ borderTop: `3px solid ${bc[m.status]}`, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -420,7 +549,7 @@ export function MonthlyReportPage() {
         </Sec>
 
         {/* Semaine en focus */}
-        <Sec title="Focus cette semaine (S7 : 9-15 févr.)" icon="🔥" accent={C.red}>
+        <Sec title={`Focus cette semaine (${TODAY_DAY}-${Math.min(weekEnd, d.daysInMonth)} ${MONTHS_FR[new Date().getMonth()].slice(0, 4)}.)`} icon="🔥" accent={C.red}>
           <Card style={{ background: C.orangeBg, border: `1px solid ${C.orange}30` }}>
             <div style={{ fontSize: 12, color: C.navyLight, lineHeight: 1.7 }}>
               <strong>Échéances immédiates :</strong>

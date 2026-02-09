@@ -1,105 +1,16 @@
 /**
  * MonthlyReport — Rapport Mensuel Professionnel (format COPIL)
  * Design unifié avec le design system COSMOS (constantes C)
+ * Données 100% live via useMonthlyReportData
  */
 
 import { useState, useRef, useCallback } from "react";
 import { C } from '@/components/rapports/ExcoMensuelV5/constants';
 import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
+import { useMonthlyReportData } from './useMonthlyReportData';
 
 /** Round to max 2 decimal places */
 const f2 = (v: number) => Math.round(v * 100) / 100;
-
-// ============================================================================
-// DATA (statique pour ce rapport — sera remplacé par hooks live ultérieurement)
-// ============================================================================
-
-const d = {
-  month: "Février 2026",
-  generated: "09/02/2026 à 18:57",
-  weather: "cloudy",
-  weatherLabel: "Vigilance",
-  weatherSummary: "Le projet est en phase de démarrage avec un avancement global de 8%. La mobilisation avance plus vite que le chantier (-6.53 pts d'écart), ce qui est normal à ce stade mais nécessite un suivi rapproché. Les axes TECH et EXP à 0% constituent le principal point de vigilance. Le budget n'est pas encore engagé — la validation DG est attendue pour débloquer les premières dépenses.",
-  kpis: [
-    { label: "Avancement global", value: "8%", sub: "vs 3% en jan.", trend: "+5pts", dir: "up", icon: "📊", target: "12%", onTrack: false },
-    { label: "Actions terminées", value: "2 / 117", sub: "1.7% du total", trend: "+2", dir: "up", icon: "✅", target: "10/117", onTrack: false },
-    { label: "Jalons atteints", value: "0 / 33", sub: "3 jalons en fév.", trend: "stable", dir: "stable", icon: "🎯", target: "3/33", onTrack: false },
-    { label: "Taux d'occupation", value: "41%", sub: "Baux signés/cibles", trend: "+6pts", dir: "up", icon: "🏢", target: "50%", onTrack: false },
-    { label: "Budget engagé", value: "0 FCFA", sub: "sur 552M prévus", trend: "stable", dir: "stable", icon: "💰", target: "50M", onTrack: false },
-    { label: "Retard projeté", value: "~45j", sub: "à vélocité actuelle", trend: "nouveau", dir: "down", icon: "⏱️", target: "0j", onTrack: false },
-  ],
-  sync: { construction: 9.86, mobilisation: 16.39, ecart: -6.53, ecartDays: 10, status: "attention" },
-  trendMonthly: [
-    { m: "Oct", pct: 0 }, { m: "Nov", pct: 0 }, { m: "Déc", pct: 1 },
-    { m: "Jan", pct: 3 }, { m: "Fév", pct: 8 },
-  ],
-  trendIdeal: [
-    { m: "Oct", pct: 0 }, { m: "Nov", pct: 2 }, { m: "Déc", pct: 5 },
-    { m: "Jan", pct: 8 }, { m: "Fév", pct: 12 },
-  ],
-  axes: [
-    { code: "RH", name: "Ressources Humaines", pct: 17, done: 0, total: 5, late: 1, janPct: 10, status: "progress", keyFact: "Profils clés identifiés, recrutements non lancés", blocker: "Attente validation organigramme et budget" },
-    { code: "COM", name: "Communication", pct: 27, done: 0, total: 9, late: 0, janPct: 20, status: "progress", keyFact: "Stratégie COM en cours d'élaboration", blocker: "Charte graphique en attente validation DG" },
-    { code: "TECH", name: "Technique & IT", pct: 0, done: 0, total: 9, late: 2, janPct: 0, status: "blocked", keyFact: "Aucune action démarrée", blocker: "Aucun prestataire IT identifié, pas de cahier des charges" },
-    { code: "BUD", name: "Budget & Finance", pct: 48, done: 0, total: 4, late: 0, janPct: 35, status: "progress", keyFact: "Budget pré-ouverture finalisé à 398M FCFA", blocker: "En attente de validation DG" },
-    { code: "MKT", name: "Marketing & Commercialisation", pct: 3, done: 0, total: 20, late: 1, janPct: 1, status: "slow", keyFact: "Phase planification démarrée", blocker: "Étude de marché non finalisée, ressources limitées" },
-    { code: "EXP", name: "Exploitation & Maintenance", pct: 0, done: 0, total: 21, late: 0, janPct: 0, status: "notstarted", keyFact: "Non démarré — conditionné au chantier", blocker: "Dépend de l'avancement construction (>40%)" },
-    { code: "JUR", name: "Juridique & Conformité", pct: 12, done: 0, total: 8, late: 0, janPct: 8, status: "progress", keyFact: "Modèles de baux en rédaction", blocker: "Revue juridique OHADA en cours" },
-    { code: "DIV", name: "Divers & Transversal", pct: 40, done: 2, total: 7, late: 0, janPct: 25, status: "progress", keyFact: "Note de cadrage finalisée, COCKPIT opérationnel", blocker: "RAS" },
-  ],
-  budget: {
-    prevu: 552, engage: 0, realise: 0, resteAEngager: 552,
-    lines: [
-      { cat: "Aménagements & Travaux", prevu: 180, engage: 0, pct: 0 },
-      { cat: "Équipements techniques", prevu: 120, engage: 0, pct: 0 },
-      { cat: "Marketing & Communication", prevu: 85, engage: 0, pct: 0 },
-      { cat: "RH & Formation", prevu: 65, engage: 0, pct: 0 },
-      { cat: "IT & Systèmes", prevu: 52, engage: 0, pct: 0 },
-      { cat: "Juridique & Assurances", prevu: 30, engage: 0, pct: 0 },
-      { cat: "Divers & Imprévus", prevu: 20, engage: 0, pct: 0 },
-    ]
-  },
-  risks: [
-    { score: 20, title: "Retard livraison chantier", pi: "P4×I5", evolution: "stable" as const, owner: "MOE", mitigation: "Réunions hebdo chantier + escalade promoteur", impact: "Décalage global de l'ouverture" },
-    { score: 20, title: "Retard livraison gros œuvre", pi: "P4×I5", evolution: "stable" as const, owner: "MOE", mitigation: "Suivi renforcé planning TCE", impact: "Bloque fit-out et équipements" },
-    { score: 16, title: "Retards fit-out preneurs", pi: "P4×I4", evolution: "up" as const, owner: "Hadja", mitigation: "❌ Plan à définir", impact: "Retard ouverture boutiques" },
-    { score: 16, title: "Retard second œuvre", pi: "P4×I4", evolution: "stable" as const, owner: "MOE", mitigation: "Intégré suivi chantier", impact: "Décale les finitions et réceptions" },
-    { score: 16, title: "Réserves non levées", pi: "P4×I4", evolution: "up" as const, owner: "MOE", mitigation: "Relance formelle entrepreneur", impact: "Non-conformité à la réception" },
-  ],
-  milestonesFeb: [
-    { name: "Note de cadrage validée", axe: "DIV", date: "9 févr.", status: "done" as const },
-    { name: "Phase 1 : Planification stratégique", axe: "MKT", date: "15 févr.", status: "atrisk" as const },
-    { name: "Budget mobilisation validé", axe: "BUD", date: "20 févr.", status: "ontrack" as const },
-  ],
-  milestonesMar: [
-    { name: "Cahier des charges IT validé", axe: "TECH", date: "1 mars", status: "compromised" as const },
-    { name: "Organigramme cible validé", axe: "RH", date: "5 mars", status: "atrisk" as const },
-    { name: "Plan COM validé", axe: "COM", date: "5 mars", status: "ontrack" as const },
-    { name: "Template bail type validé", axe: "JUR", date: "10 mars", status: "ontrack" as const },
-    { name: "Identité de marque validée", axe: "MKT", date: "15 mars", status: "atrisk" as const },
-  ],
-  actions: [
-    { title: "Valider le calendrier de livraison preneurs", axe: "COM", date: "30 mars", owner: "Deborah NTUMY", priority: "critical" as const },
-    { title: "Présenter et valider le budget exploitation DG", axe: "BUD", date: "31 mars", owner: "Pamela ATOKOUNA", priority: "critical" as const },
-    { title: "Finaliser la charte graphique", axe: "MKT", date: "27 mars", owner: "Yvan Guehi", priority: "high" as const },
-    { title: "Souscrire les polices d'assurance", axe: "DIV", date: "31 mars", owner: "Pamela ATOKOUNA", priority: "high" as const },
-    { title: "Valider l'identité de marque", axe: "MKT", date: "15 mars", owner: "Yvan Guehi", priority: "high" as const },
-    { title: "Cartographier le parcours client", axe: "MKT", date: "31 mars", owner: "Yvan Guehi", priority: "medium" as const },
-  ],
-  decisions: [
-    { urgency: "critical" as const, title: "Validation budget mobilisation (398M FCFA)", context: "Finalisé depuis S5, en attente signature DG. Bloque tous les engagements.", deadline: "20 févr.", owner: "Cheick Sanankoua" },
-    { urgency: "critical" as const, title: "Lancement sélection prestataire IT", context: "Axe TECH à 0%. Sans décision, retard cascade sur caisse, sécurité, GTC, parking.", deadline: "28 févr.", owner: "Deborah / DG" },
-    { urgency: "high" as const, title: "Validation charte graphique & identité visuelle", context: "Bloque la communication, la signalétique et le marketing. Maquettes prêtes.", deadline: "15 mars", owner: "DG" },
-  ],
-  achievements: [
-    "Note de cadrage projet finalisée et diffusée",
-    "Matrice budgétaire pré-ouverture (398M FCFA) complétée",
-    "COCKPIT déployé et opérationnel avec les 8 axes",
-    "Taux d'occupation commerciale atteint 41%",
-    "Stratégie de communication en cours de formalisation",
-  ],
-  projection: { velocity: 5, estimatedEnd: "Déc. 2026", target: "Oct. 2026", daysLate: 45, requiredVelocity: 8 },
-};
 
 // ============================================================================
 // MICRO-COMPOSANTS
@@ -165,11 +76,12 @@ function Card({ children, style = {} }: { children: React.ReactNode; style?: Rea
   );
 }
 
-function MiniChart() {
+function MiniChart({ trendMonthly, trendIdeal }: { trendMonthly: Array<{ m: string; pct: number }>; trendIdeal: Array<{ m: string; pct: number }> }) {
+  if (trendMonthly.length < 2) return null;
   const w = 320, h = 100, px = 35, py = 15;
-  const mx = 15;
-  const pts = d.trendMonthly.map((p, i) => ({ x: px + (i / (d.trendMonthly.length - 1)) * (w - 2 * px), y: h - py - (p.pct / mx) * (h - 2 * py) }));
-  const ideal = d.trendIdeal.map((p, i) => ({ x: px + (i / (d.trendIdeal.length - 1)) * (w - 2 * px), y: h - py - (p.pct / mx) * (h - 2 * py) }));
+  const mx = Math.max(15, ...trendMonthly.map(p => p.pct), ...trendIdeal.map(p => p.pct));
+  const pts = trendMonthly.map((p, i) => ({ x: px + (i / (trendMonthly.length - 1)) * (w - 2 * px), y: h - py - (p.pct / mx) * (h - 2 * py) }));
+  const ideal = trendIdeal.map((p, i) => ({ x: px + (i / (trendIdeal.length - 1)) * (w - 2 * px), y: h - py - (p.pct / mx) * (h - 2 * py) }));
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
   const iLine = ideal.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
   const area = line + ` L${pts[pts.length - 1].x},${h - py} L${pts[0].x},${h - py} Z`;
@@ -182,8 +94,8 @@ function MiniChart() {
       {pts.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={4} fill={C.white} stroke={C.gold} strokeWidth={2} />
-          <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={10} fontWeight="700" fill={C.gold}>{d.trendMonthly[i].pct}%</text>
-          <text x={p.x} y={h + 14} textAnchor="middle" fontSize={9} fill={C.gray400}>{d.trendMonthly[i].m}</text>
+          <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={10} fontWeight="700" fill={C.gold}>{trendMonthly[i].pct}%</text>
+          <text x={p.x} y={h + 14} textAnchor="middle" fontSize={9} fill={C.gray400}>{trendMonthly[i].m}</text>
         </g>
       ))}
       <text x={w - 10} y={ideal[ideal.length - 1].y} fontSize={9} fill={C.gray400} textAnchor="end">cible</text>
@@ -196,7 +108,7 @@ function MiniChart() {
 // ============================================================================
 
 export function MonthlyReport() {
-  const [_tab, setTab] = useState("all");
+  const d = useMonthlyReportData();
   const reportRef = useRef<HTMLDivElement>(null);
   const [showSendModal, setShowSendModal] = useState(false);
   const presentationDate = new Date().toISOString().split('T')[0];
@@ -204,11 +116,27 @@ export function MonthlyReport() {
   const generateReportHtml = useCallback(() => {
     if (!reportRef.current) return '';
     return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Rapport Mensuel - Cosmos Angré - ${d.month}</title>
+<html><head><meta charset="utf-8"><title>Rapport Mensuel - Cosmos Angré - ${d?.month ?? ''}</title>
 <style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:0;background:#f8f9fa;}
 @media print{body{background:#fff;}}</style>
 </head><body>${reportRef.current.innerHTML}</body></html>`;
-  }, []);
+  }, [d?.month]);
+
+  if (!d) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.gray400 }}>
+        Chargement du rapport mensuel...
+      </div>
+    );
+  }
+
+  const meteoColors: Record<string, { bg: string; border: string; text: string }> = {
+    sunny: { bg: C.greenBg, border: C.green, text: C.green },
+    cloudy: { bg: C.orangeBg, border: C.orange, text: C.orange },
+    rainy: { bg: C.orangeBg, border: C.orange, text: C.orange },
+    stormy: { bg: C.redBg, border: C.red, text: C.red },
+  };
+  const mc = meteoColors[d.weather] || meteoColors.cloudy;
 
   return (
     <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
@@ -236,10 +164,10 @@ export function MonthlyReport() {
 
         {/* Météo */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, background: C.orangeBg, borderRadius: 12, padding: "16px 20px", border: `1px solid ${C.orange}30` }}>
-            <span style={{ fontSize: 42 }}>⛅</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, background: mc.bg, borderRadius: 12, padding: "16px 20px", border: `1px solid ${mc.border}30` }}>
+            <span style={{ fontSize: 42 }}>{d.weatherEmoji}</span>
             <div>
-              <div style={{ fontWeight: 800, color: C.orange, fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>Météo Projet : {d.weatherLabel}</div>
+              <div style={{ fontWeight: 800, color: mc.text, fontSize: 13, textTransform: "uppercase", letterSpacing: 1 }}>Météo Projet : {d.weatherLabel}</div>
               <div style={{ fontSize: 13, color: C.navy, lineHeight: 1.6, marginTop: 4 }}>{d.weatherSummary}</div>
             </div>
           </div>
@@ -267,7 +195,7 @@ export function MonthlyReport() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
           <Card>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 8, textTransform: "uppercase" }}>📈 Évolution mensuelle</div>
-            <MiniChart />
+            <MiniChart trendMonthly={d.trendMonthly} trendIdeal={d.trendIdeal} />
             <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: 10 }}>
               <span style={{ color: C.gold }}>● Réel</span>
               <span style={{ color: C.gray300 }}>- - Trajectoire cible</span>
@@ -276,16 +204,19 @@ export function MonthlyReport() {
           <Card>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 12, textTransform: "uppercase" }}>🔄 Synchronisation Chantier / Mobilisation</div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>🏗️ Construction (chantier)</span><span style={{ fontWeight: 700 }}>{f2(d.sync.construction)}%</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>🏗️ Construction (chantier)</span><span style={{ fontWeight: 700 }}>{d.sync.construction}%</span></div>
               <PB pct={d.sync.construction} color={C.gray400} />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>📋 Mobilisation (COCKPIT)</span><span style={{ fontWeight: 700 }}>{f2(d.sync.mobilisation)}%</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}><span>📋 Mobilisation (COCKPIT)</span><span style={{ fontWeight: 700 }}>{d.sync.mobilisation}%</span></div>
               <PB pct={d.sync.mobilisation} color={C.gold} />
             </div>
             <div style={{ background: C.orangeBg, borderRadius: 8, padding: "10px 14px", border: `1px solid ${C.orange}20` }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>Écart : {f2(d.sync.ecart)} pts (~{d.sync.ecartDays} jours)</div>
-              <div style={{ fontSize: 11, color: C.navyLight, marginTop: 2 }}>Mobilisation en avance sur le chantier. Normal à ce stade, mais à surveiller pour éviter les coûts de stockage prématurés.</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>Écart : {d.sync.ecart} pts (~{d.sync.ecartDays} jours)</div>
+              <div style={{ fontSize: 11, color: C.navyLight, marginTop: 2 }}>
+                {d.sync.ecart < 0 ? "Mobilisation en avance sur le chantier." : d.sync.ecart > 0 ? "Chantier en avance sur la mobilisation." : "Construction et mobilisation synchronisées."}
+                {" "}À surveiller pour éviter les décalages.
+              </div>
             </div>
           </Card>
         </div>
@@ -293,7 +224,9 @@ export function MonthlyReport() {
         {/* Réalisations du mois */}
         <Sec title="Réalisations du Mois" icon="🏆" accent={C.green}>
           <Card style={{ background: C.greenBg, border: `1px solid ${C.green}20` }}>
-            {d.achievements.map((a, i) => (
+            {d.achievements.length === 0 ? (
+              <div style={{ fontSize: 13, color: C.gray400 }}>Aucune action terminée ce mois.</div>
+            ) : d.achievements.map((a, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: i < d.achievements.length - 1 ? `1px solid ${C.green}15` : "none" }}>
                 <span style={{ color: C.green, fontSize: 14 }}>✅</span>
                 <span style={{ fontSize: 13, color: C.navy }}>{a}</span>
@@ -303,21 +236,23 @@ export function MonthlyReport() {
         </Sec>
 
         {/* Décisions requises COPIL */}
-        <Sec title="Décisions Requises — COPIL" icon="🔴" accent={C.red}>
-          {d.decisions.map((x, i) => (
-            <Card key={i} style={{ marginBottom: 10, borderLeft: `4px solid ${x.urgency === "critical" ? C.red : C.orange}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <Badge text={x.urgency === "critical" ? "URGENT" : "IMPORTANT"} color={x.urgency === "critical" ? C.red : C.orange} />
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{x.title}</span>
-              </div>
-              <div style={{ fontSize: 12, color: C.gray600, lineHeight: 1.6 }}>{x.context}</div>
-              <div style={{ display: "flex", gap: 20, fontSize: 11, color: C.gray500, marginTop: 6 }}>
-                <span>👤 {x.owner}</span>
-                <span>📅 {x.deadline}</span>
-              </div>
-            </Card>
-          ))}
-        </Sec>
+        {d.decisions.length > 0 && (
+          <Sec title="Décisions Requises — COPIL" icon="🔴" accent={C.red}>
+            {d.decisions.map((x, i) => (
+              <Card key={i} style={{ marginBottom: 10, borderLeft: `4px solid ${x.urgency === "critical" ? C.red : C.orange}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <Badge text={x.urgency === "critical" ? "URGENT" : "IMPORTANT"} color={x.urgency === "critical" ? C.red : C.orange} />
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{x.title}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.gray600, lineHeight: 1.6 }}>{x.context}</div>
+                <div style={{ display: "flex", gap: 20, fontSize: 11, color: C.gray500, marginTop: 6 }}>
+                  <span>👤 {x.owner}</span>
+                  <span>📅 {x.deadline}</span>
+                </div>
+              </Card>
+            ))}
+          </Sec>
+        )}
 
         {/* Axes */}
         <Sec title="Avancement Détaillé par Axe Stratégique" icon="📈" pageBreak>
@@ -340,7 +275,7 @@ export function MonthlyReport() {
                 <PB pct={a.pct} color={barColor} />
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10, fontSize: 12, color: C.gray600, lineHeight: 1.5 }}>
                   <div><strong>Actions :</strong> {a.done}/{a.total} terminées {a.late > 0 && <span style={{ color: C.red, fontWeight: 600 }}>({a.late} en retard)</span>}</div>
-                  <div><strong>Janv. :</strong> {a.janPct}% → <strong>Févr. :</strong> {a.pct}%</div>
+                  <div><strong>Avancement :</strong> {a.pct}%</div>
                   <div><strong>Fait marquant :</strong> {a.keyFact}</div>
                   <div><strong>Bloquant :</strong> <span style={{ color: a.blocker === "RAS" ? C.green : C.orange }}>{a.blocker}</span></div>
                 </div>
@@ -350,12 +285,14 @@ export function MonthlyReport() {
         </Sec>
 
         {/* Jalons */}
-        <Sec title="Jalons — Février & Mars" icon="🎯">
+        <Sec title={`Jalons — ${d.currentMonthLabel} & ${d.nextMonthLabel.replace(' (à venir)', '')}`} icon="🎯">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <Card>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Février 2026</div>
-              {d.milestonesFeb.map((m, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < d.milestonesFeb.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>{d.currentMonthLabel}</div>
+              {d.milestonesCurrent.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.gray400 }}>Aucun jalon ce mois.</div>
+              ) : d.milestonesCurrent.map((m, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < d.milestonesCurrent.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600 }}>{m.name}</div>
                     <div style={{ fontSize: 10, color: C.gray500 }}>{m.axe} • {m.date}</div>
@@ -365,9 +302,11 @@ export function MonthlyReport() {
               ))}
             </Card>
             <Card>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Mars 2026 (à venir)</div>
-              {d.milestonesMar.map((m, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < d.milestonesMar.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>{d.nextMonthLabel}</div>
+              {d.milestonesNext.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.gray400 }}>Aucun jalon le mois prochain.</div>
+              ) : d.milestonesNext.map((m, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < d.milestonesNext.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600 }}>{m.name}</div>
                     <div style={{ fontSize: 10, color: C.gray500 }}>{m.axe} • {m.date}</div>
@@ -395,24 +334,30 @@ export function MonthlyReport() {
                 </div>
               ))}
             </div>
-            <PB pct={0} h={12} color={C.green} bg={C.gray200} />
+            <PB pct={d.budget.prevu > 0 ? f2((d.budget.realise / d.budget.prevu) * 100) : 0} h={12} color={C.green} bg={C.gray200} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.gray500, marginTop: 4 }}>
-              <span>Réalisé 0%</span><span>Engagé 0%</span><span>100%</span>
+              <span>Réalisé {d.budget.prevu > 0 ? f2((d.budget.realise / d.budget.prevu) * 100) : 0}%</span>
+              <span>Engagé {d.budget.prevu > 0 ? f2((d.budget.engage / d.budget.prevu) * 100) : 0}%</span>
+              <span>100%</span>
             </div>
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Ventilation par catégorie (M FCFA)</div>
-              {d.budget.lines.map((l, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: `1px solid ${C.gray100}`, fontSize: 12 }}>
-                  <span style={{ flex: 1 }}>{l.cat}</span>
-                  <span style={{ width: 60, textAlign: "right", fontWeight: 600 }}>{l.prevu}M</span>
-                  <div style={{ width: 120 }}><PB pct={l.pct} h={6} color={C.green} /></div>
-                  <span style={{ width: 30, textAlign: "right", fontSize: 10, color: C.gray500 }}>{l.pct}%</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: C.orangeBg, borderRadius: 8, padding: "10px 14px", marginTop: 12, fontSize: 12 }}>
-              <strong style={{ color: C.orange }}>⚠️ Note :</strong> <span style={{ color: C.navyLight }}>Aucun engagement budgétaire à date. La validation du budget mobilisation (décision #1) est le prérequis pour débloquer les premiers engagements.</span>
-            </div>
+            {d.budget.lines.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Ventilation par catégorie (M FCFA)</div>
+                {d.budget.lines.map((l, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: `1px solid ${C.gray100}`, fontSize: 12 }}>
+                    <span style={{ flex: 1 }}>{l.cat}</span>
+                    <span style={{ width: 60, textAlign: "right", fontWeight: 600 }}>{l.prevu}M</span>
+                    <div style={{ width: 120 }}><PB pct={l.pct} h={6} color={C.green} /></div>
+                    <span style={{ width: 30, textAlign: "right", fontSize: 10, color: C.gray500 }}>{l.pct}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {d.budget.engage === 0 && d.budget.prevu > 0 && (
+              <div style={{ background: C.orangeBg, borderRadius: 8, padding: "10px 14px", marginTop: 12, fontSize: 12 }}>
+                <strong style={{ color: C.orange }}>⚠️ Note :</strong> <span style={{ color: C.navyLight }}>Aucun engagement budgétaire à date. La validation du budget est le prérequis pour débloquer les premiers engagements.</span>
+              </div>
+            )}
           </Card>
         </Sec>
 
@@ -420,9 +365,9 @@ export function MonthlyReport() {
         <Sec title="Cartographie des Risques" icon="⚠️" accent={C.orange}>
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             {[
-              { l: "Critiques (≥16)", n: 5, c: C.red },
-              { l: "Élevés (9-15)", n: 12, c: C.orange },
-              { l: "Modérés (≤8)", n: 58, c: C.blue },
+              { l: "Critiques (≥16)", n: d.riskStats.critical, c: C.red },
+              { l: "Élevés (9-15)", n: d.riskStats.high, c: C.orange },
+              { l: "Modérés (≤8)", n: d.riskStats.moderate, c: C.blue },
             ].map((r, i) => (
               <div key={i} style={{ flex: 1, background: `${r.c}10`, borderRadius: 8, padding: "10px 14px", textAlign: "center", border: `1px solid ${r.c}20` }}>
                 <div style={{ fontSize: 22, fontWeight: 800, color: r.c }}>{r.n}</div>
@@ -430,36 +375,40 @@ export function MonthlyReport() {
               </div>
             ))}
           </div>
-          <Card>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Top 5 — Risques Critiques</div>
-            {d.risks.map((r, i) => {
-              const sc = r.score >= 20 ? C.red : C.orange;
-              const evIc: Record<string, string> = { stable: "— Stable", up: "▲ En hausse", down: "▼ En baisse" };
-              const evCl: Record<string, string> = { stable: C.gray500, up: C.red, down: C.green };
-              return (
-                <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < d.risks.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
-                  <div style={{ background: sc, color: C.white, fontSize: 14, fontWeight: 800, minWidth: 40, height: 40, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>{r.score}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>{r.title}</span>
-                      <span style={{ fontSize: 10, color: C.gray500 }}>({r.pi})</span>
-                      <span style={{ fontSize: 10, color: evCl[r.evolution], fontWeight: 600 }}>{evIc[r.evolution]}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: C.gray600 }}>Impact : {r.impact}</div>
-                    <div style={{ fontSize: 11, color: C.gray500, marginTop: 2 }}>
-                      👤 {r.owner} &nbsp;|&nbsp; Mitigation : <span style={{ color: r.mitigation.startsWith("❌") ? C.red : C.gray600 }}>{r.mitigation}</span>
+          {d.risks.length > 0 && (
+            <Card>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Top 5 — Risques Critiques</div>
+              {d.risks.map((r, i) => {
+                const sc = r.score >= 20 ? C.red : C.orange;
+                const evIc: Record<string, string> = { stable: "— Stable", up: "▲ En hausse", down: "▼ En baisse" };
+                const evCl: Record<string, string> = { stable: C.gray500, up: C.red, down: C.green };
+                return (
+                  <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0", borderBottom: i < d.risks.length - 1 ? `1px solid ${C.gray100}` : "none" }}>
+                    <div style={{ background: sc, color: C.white, fontSize: 14, fontWeight: 800, minWidth: 40, height: 40, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>{r.score}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>{r.title}</span>
+                        <span style={{ fontSize: 10, color: C.gray500 }}>({r.pi})</span>
+                        <span style={{ fontSize: 10, color: evCl[r.evolution], fontWeight: 600 }}>{evIc[r.evolution]}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.gray600 }}>Impact : {r.impact}</div>
+                      <div style={{ fontSize: 11, color: C.gray500, marginTop: 2 }}>
+                        👤 {r.owner} &nbsp;|&nbsp; Mitigation : <span style={{ color: r.mitigation.startsWith("❌") ? C.red : C.gray600 }}>{r.mitigation}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </Card>
+                );
+              })}
+            </Card>
+          )}
         </Sec>
 
-        {/* Plan d'action M+1 */}
-        <Sec title="Plan d'Action — Mars 2026" icon="📋" accent={C.purple}>
+        {/* Plan d'action prioritaire */}
+        <Sec title="Plan d'Action Prioritaire" icon="📋" accent={C.purple}>
           <Card>
-            {d.actions.map((a, i) => {
+            {d.actions.length === 0 ? (
+              <div style={{ fontSize: 13, color: C.gray400 }}>Aucune action prioritaire identifiée.</div>
+            ) : d.actions.map((a, i) => {
               const pc: Record<string, string> = { critical: C.red, high: C.orange, medium: C.blue };
               const pl: Record<string, string> = { critical: "P1", high: "P2", medium: "P3" };
               return (
@@ -493,37 +442,33 @@ export function MonthlyReport() {
                 </div>
               ))}
             </div>
-            <div style={{ background: C.redBg, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
-              <div style={{ fontSize: 14, color: C.red, fontWeight: 700 }}>⚠️ Retard projeté : ~{d.projection.daysLate} jours</div>
-              <div style={{ fontSize: 12, color: C.navy, marginTop: 4 }}>La vélocité doit passer de {d.projection.velocity} à {d.projection.requiredVelocity} pts/mois pour respecter l'ouverture Q4 2026. Cela nécessite le déblocage immédiat du budget et le lancement des axes TECH et EXP.</div>
-            </div>
+            {d.projection.daysLate > 0 && (
+              <div style={{ background: C.redBg, borderRadius: 8, padding: "12px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 14, color: C.red, fontWeight: 700 }}>⚠️ Retard projeté : ~{d.projection.daysLate} jours</div>
+                <div style={{ fontSize: 12, color: C.navy, marginTop: 4 }}>La vélocité doit passer de {d.projection.velocity} à {d.projection.requiredVelocity} pts/mois pour respecter la date d'ouverture.</div>
+              </div>
+            )}
           </Card>
         </Sec>
 
         {/* PROPH3T */}
-        <Sec title="Analyse PROPH3T — Intelligence Artificielle" icon="🤖" accent={C.purple}>
-          <Card style={{ background: `linear-gradient(135deg, ${C.blueBg} 0%, ${C.purpleBg} 100%)`, border: `1px solid ${C.blue}` }}>
-            <div style={{ fontSize: 13, lineHeight: 1.7, color: C.navy, marginBottom: 12 }}>
-              <strong>Synthèse IA :</strong> Le projet Cosmos Angré affiche un avancement de 8% à M+5, en-deçà de la trajectoire cible (12%). Deux axes critiques (TECH et EXP) restent à 0%, créant un risque d'effet falaise au S2 2026. Le budget non engagé constitue le verrou principal. La concentration de 5 jalons sur mars nécessite une accélération significative dès février. À vélocité constante, l'ouverture glisserait à décembre 2026.
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.purple, marginBottom: 8 }}>Recommandations prioritaires :</div>
-            {[
-              "Débloquer la validation budget immédiatement — chaque semaine de retard repousse l'ouverture de 3 jours",
-              "Lancer un appel d'offres IT express (fast-track) — l'axe TECH est le chemin critique du projet",
-              "Anticiper les recrutements clés (Directeur Centre, Responsable Technique) — délai moyen de recrutement = 3 mois en CI",
-            ].map((r, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 12, color: C.navy }}>
-                <span style={{ color: C.purple, fontWeight: 700 }}>{i + 1}.</span>
-                <span>{r}</span>
+        {d.confidenceScore && (
+          <Sec title="Analyse PROPH3T — Intelligence Artificielle" icon="🤖" accent={C.purple}>
+            <Card style={{ background: `linear-gradient(135deg, ${C.blueBg} 0%, ${C.purpleBg} 100%)`, border: `1px solid ${C.blue}` }}>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: C.navy, marginBottom: 12 }}>
+                <strong>Synthèse IA :</strong> {d.weatherSummary}
+                {d.projection.daysLate > 0 && ` À vélocité constante (${d.projection.velocity} pts/mois), l'ouverture glisserait à ${d.projection.estimatedEnd}.`}
               </div>
-            ))}
-            <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", fontSize: 11 }}>
-              <span style={{ background: C.purple, color: C.white, padding: "3px 10px", borderRadius: 12 }}>Confiance : 74%</span>
-              <span style={{ color: C.gray500 }}>Analyse générée le {d.generated}</span>
-              <button style={{ marginLeft: "auto", background: C.purple, color: C.white, border: "none", padding: "4px 14px", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>🔄 Rafraîchir</button>
-            </div>
-          </Card>
-        </Sec>
+              <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", fontSize: 11 }}>
+                <span style={{
+                  background: d.confidenceScore.status === 'vert' ? C.green : d.confidenceScore.status === 'jaune' ? C.orange : C.red,
+                  color: C.white, padding: "3px 10px", borderRadius: 12,
+                }}>Confiance : {d.confidenceScore.score}%</span>
+                <span style={{ color: C.gray500 }}>Analyse générée le {d.generated}</span>
+              </div>
+            </Card>
+          </Sec>
+        )}
 
         {/* Notes COPIL */}
         <Sec title="Notes & Commentaires COPIL" icon="📝">
