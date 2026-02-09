@@ -9,20 +9,20 @@ export function MainLayout() {
   const { sidebarCollapsed } = useAppStore();
 
   return (
-    <div className="min-h-screen bg-primary-50">
+    <div className="h-screen bg-primary-50 overflow-hidden">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main content */}
       <div
         className={cn(
-          'transition-all duration-300',
+          'h-full flex flex-col transition-all duration-300',
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         )}
       >
         <Header />
 
-        <main className="p-4 lg:p-6">
+        <main className="flex-1 min-h-0 p-4 lg:p-6 overflow-hidden">
           <Outlet />
         </main>
       </div>

@@ -55,7 +55,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-primary-200 bg-white px-4 lg:px-6">
+    <header className="flex-shrink-0 sticky top-0 z-30 flex h-16 items-center justify-between border-b border-primary-200 bg-white px-4 lg:px-6">
       {/* Left section */}
       <div className="flex items-center gap-4">
         <Button
