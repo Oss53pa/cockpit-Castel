@@ -96,7 +96,7 @@ export interface ExternalUpdateData {
 
     // Jalon
     date_prevue?: string;
-    preuve_url?: string;
+    niveau_importance?: string;
     date_validation?: string | null;
 
     // Risque
@@ -174,7 +174,7 @@ export interface ExternalUpdateData {
       }>;
 
       // Jalon
-      preuve_url?: string;
+      niveau_importance?: string;
       date_validation?: string | null;
 
       // Risque
@@ -374,7 +374,7 @@ export async function createUpdateLinkInFirebase(
     } else if (entityType === 'jalon') {
       const jalon = entity as Jalon;
       entitySnapshot.date_prevue = jalon.date_prevue;
-      entitySnapshot.preuve_url = (jalon as any).preuve_url;
+      entitySnapshot.niveau_importance = jalon.niveau_importance;
       entitySnapshot.date_validation = (jalon as any).date_validation;
       // Inclure les commentaires
       if ((jalon as any).commentaires) {
@@ -743,7 +743,7 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
         const currentJalon = await db.jalons.get(entityId);
         const isLocked = currentJalon?.date_verrouillage_manuel;
 
-        if (changes.preuve_url !== undefined) updateData.preuve_url = changes.preuve_url;
+        if (changes.niveau_importance !== undefined) updateData.niveau_importance = changes.niveau_importance;
         if (changes.date_validation !== undefined && !isLocked) {
           updateData.date_validation = changes.date_validation;
         } else if (isLocked) {

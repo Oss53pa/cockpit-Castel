@@ -78,9 +78,9 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         ...(data.responsable && { responsable: data.responsable }),
         ...(data.axe && { axe: data.axe }),
         ...(data.projectPhase !== undefined && { projectPhase: data.projectPhase }),
+        ...(data.niveau_importance && { niveau_importance: data.niveau_importance }),
         // Statut et validation
         statut: data.statut,
-        preuve_url: data.preuve_url || null,
         date_validation: data.date_validation || null,
         // Métadonnées
         date_derniere_maj: today,

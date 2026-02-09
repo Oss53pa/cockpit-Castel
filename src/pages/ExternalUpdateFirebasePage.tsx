@@ -170,7 +170,7 @@ export function ExternalUpdateFirebasePage() {
         setEntity({
           ...baseEntity,
           date_prevue: snapshot.date_prevue || '',
-          preuve_url: snapshot.preuve_url || '',
+          niveau_importance: snapshot.niveau_importance || 'standard',
           date_validation: snapshot.date_validation || null,
           commentaires: snapshot.commentaires || [],
         } as Jalon);
@@ -258,10 +258,10 @@ export function ExternalUpdateFirebasePage() {
       // Champs spécifiques aux jalons
       if (type === 'jalon') {
         const jalonData = formData as JalonFormSaveData;
-        response.changes.preuve_url = jalonData.preuve_url;
+        response.changes.niveau_importance = jalonData.niveau_importance;
         response.changes.date_validation = jalonData.date_validation;
 
-        console.log('[ExternalUpdate] Jalon - preuve_url:', jalonData.preuve_url);
+        console.log('[ExternalUpdate] Jalon - niveau_importance:', jalonData.niveau_importance);
       }
 
       // Champs spécifiques aux risques

@@ -234,7 +234,7 @@ export function ExternalUpdatePage() {
           const jalonData = data as JalonFormSaveData;
           const jalonUpdate: Record<string, any> = {
             statut: jalonData.statut,
-            preuve_url: jalonData.preuve_url,
+            niveau_importance: jalonData.niveau_importance,
             notes_mise_a_jour: jalonData.notes_mise_a_jour,
             commentaires_externes: jalonData.commentaires_externes,
             date_validation: jalonData.date_validation,

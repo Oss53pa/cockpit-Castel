@@ -7,7 +7,6 @@ import {
   Target,
   Calendar,
   User,
-  Link2,
   MessageSquare,
   Sun,
   Cloud,
@@ -30,7 +29,7 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useUsers } from '@/hooks';
-import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Jalon, type Axe, type MeteoJalon, type ProjectPhase } from '@/types';
+import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, NIVEAUX_IMPORTANCE, NIVEAU_IMPORTANCE_LABELS, type Jalon, type Axe, type MeteoJalon, type ProjectPhase, type NiveauImportance } from '@/types';
 
 // ============================================================================
 // TYPES
@@ -88,8 +87,8 @@ export interface JalonFormSaveData {
   responsableId?: number;
   axe?: Axe;
   projectPhase?: ProjectPhase;
+  niveau_importance?: NiveauImportance;
   // Champs éditables en interne ET externe
-  preuve_url?: string;
   notes_mise_a_jour?: string;
   commentaires_externes?: string;
   date_validation?: string | null;
@@ -119,10 +118,10 @@ export function JalonFormContent({
   const [responsableId, setResponsableId] = useState<number | undefined>(jalon?.responsableId);
   const [axe, setAxe] = useState<Axe | undefined>(jalon?.axe || (isCreate ? 'axe3_technique' : undefined));
   const [projectPhase, setProjectPhase] = useState<ProjectPhase | undefined>(jalon?.projectPhase);
+  const [niveauImportance, setNiveauImportance] = useState<NiveauImportance>(jalon?.niveau_importance || 'standard');
 
   // Champs éditables en interne ET externe
   const [dateValidation, setDateValidation] = useState<string | null>((jalon as any)?.date_validation || null);
-  const [preuveUrl, setPreuveUrl] = useState(jalon?.preuve_url || '');
   const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any)?.notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(() => {
     if (!jalon) return [];
@@ -250,9 +249,9 @@ export function JalonFormContent({
         responsableId,
         axe,
         projectPhase,
+        niveau_importance: niveauImportance,
       }),
       // Champs communs (interne + externe)
-      preuve_url: preuveUrl,
       notes_mise_a_jour: notesMiseAJour,
       commentaires_externes: JSON.stringify(comments),
       date_validation: dateValidation,
@@ -371,6 +370,25 @@ export function JalonFormContent({
             )}
           </div>
 
+          <div>
+            <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
+              Niveau d'importance
+            </Label>
+            {canEditInternal ? (
+              <Select
+                value={niveauImportance}
+                onChange={(e) => setNiveauImportance(e.target.value as NiveauImportance)}
+                className="bg-white"
+              >
+                {NIVEAUX_IMPORTANCE.map((niveau) => (
+                  <SelectOption key={niveau} value={niveau}>{NIVEAU_IMPORTANCE_LABELS[niveau]}</SelectOption>
+                ))}
+              </Select>
+            ) : (
+              <div className="p-2 bg-white rounded border text-sm">{NIVEAU_IMPORTANCE_LABELS[niveauImportance]}</div>
+            )}
+          </div>
+
           <div className={isCreate ? 'md:col-span-2' : 'md:col-span-2'}>
             <Label className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
               Libellé {isCreate && '*'}
@@ -464,29 +482,6 @@ export function JalonFormContent({
           <span className="text-neutral-500">Météo:</span>
           <MeteoIcon meteo={meteo} className="w-4 h-4" />
         </div>
-      </div>
-
-      {/* Preuve */}
-      <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
-        <h3 className="text-sm font-semibold text-cyan-800 mb-3 flex items-center gap-2">
-          <Link2 className="w-4 h-4" />
-          Preuve de réalisation
-        </h3>
-        {isEditing ? (
-          <Input
-            value={preuveUrl}
-            onChange={(e) => setPreuveUrl(e.target.value)}
-            placeholder="Lien vers le document justificatif..."
-          />
-        ) : (
-          <div className="p-2 bg-white rounded border text-sm">
-            {preuveUrl ? (
-              <a href={preuveUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                {preuveUrl}
-              </a>
-            ) : '-'}
-          </div>
-        )}
       </div>
 
       {/* Notes de mise à jour */}

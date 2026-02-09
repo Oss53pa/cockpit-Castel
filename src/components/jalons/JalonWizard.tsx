@@ -12,7 +12,6 @@ import {
   Check,
   X,
   Sparkles,
-  Link2,
   FileText,
   MessageSquare,
   GitBranch,
@@ -61,7 +60,6 @@ const step1Schema = z.object({
 // Schema pour les champs optionnels
 const step2Schema = z.object({
   prerequis: z.array(z.string()).optional(),
-  preuve: z.string().max(500).optional(),
   commentaire: z.string().max(500).optional(),
 });
 
@@ -124,7 +122,6 @@ export function JalonWizard({
       date_prevue: '',
       responsableId: undefined,
       prerequis: [],
-      preuve: '',
       commentaire: '',
     },
   });
@@ -144,7 +141,6 @@ export function JalonWizard({
         date_prevue: '',
         responsableId: undefined,
         prerequis: [],
-        preuve: '',
         commentaire: '',
       });
       setSelectedPrerequis([]);
@@ -229,7 +225,6 @@ export function JalonWizard({
 
         // Champs optionnels
         prerequis_jalons: selectedPrerequis,
-        preuve_url: data.preuve || null,
 
         // Champs avec valeurs par défaut
         categorie: 'validation',
@@ -560,21 +555,7 @@ export function JalonWizard({
                 )}
               </div>
 
-              {/* Preuve (Fichier/Lien) */}
-              <div>
-                <Label htmlFor="preuve" className="flex items-center gap-1.5 text-sm font-medium mb-1.5">
-                  <Link2 className="w-4 h-4 text-green-600" />
-                  Preuve (lien ou référence)
-                </Label>
-                <Input
-                  id="preuve"
-                  {...register('preuve')}
-                  placeholder="Ex: https://drive.google.com/... ou Réf. Document #123"
-                />
-                <p className="text-xs text-neutral-500 mt-1">
-                  Lien vers le document justificatif ou référence du fichier
-                </p>
-              </div>
+
 
               {/* Commentaire */}
               <div>
