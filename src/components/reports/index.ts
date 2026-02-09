@@ -18,17 +18,9 @@ export { AxisRecommendations } from './AxisExco/AxisRecommendations';
 export { AxisSync } from './AxisExco/AxisSync';
 
 // ============================================================================
-// Weekly Report components
+// Weekly Report V2
 // ============================================================================
-export {
-  WeeklyReport,
-  WeeklySync,
-  WeeklyKPIs,
-  WeeklyActions,
-  WeeklyMilestones,
-  WeeklyAlerts,
-  WeeklyWeather,
-} from './WeeklyReport';
+export { WeeklyReport } from './WeeklyReport';
 
 // ============================================================================
 // Monthly Report components
