@@ -232,7 +232,7 @@ export function MonthlyReportPage() {
     const actions = activeActions.map(a => {
       const axeInfo = axeMap[a.axe] || { labelCourt: a.axe, color: C.gray500 };
       const user = a.responsableId ? usersById[a.responsableId] : undefined;
-      const ownerName = user ? getUserFullName(user) : 'Non assigné';
+      const ownerName = user ? getUserFullName(user) : (a.responsable || 'Non assigné');
       const status = mapActionStatus(a, today);
       const linkedJalon = a.jalonId ? (allJalons ?? []).find(j => j.id === a.jalonId) : undefined;
       return {
@@ -258,7 +258,7 @@ export function MonthlyReportPage() {
     const milestones = monthJalons.map(j => {
       const axeInfo = axeMap[j.axe] || { labelCourt: j.axe, color: C.gray500 };
       const user = j.responsableId ? usersById[j.responsableId] : undefined;
-      const ownerName = user ? getUserFullName(user) : 'Non assigné';
+      const ownerName = user ? getUserFullName(user) : (j.responsable || 'Non assigné');
       const linkedActionIds = activeActions.filter(a => a.jalonId === j.id).map(a => a.id as number);
       return {
         name: j.titre,
