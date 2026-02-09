@@ -194,8 +194,8 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
   }
 
   return (
-    <>
-      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0 rounded-lg border bg-white overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -226,6 +226,24 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
         </Table>
       </div>
 
+      {/* Summary footer - fixé en bas */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">
+        <span className="text-primary-600">
+          {risques.length} risque{risques.length > 1 ? 's' : ''} au total
+        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-error-600">
+            {risques.filter(r => r.score >= 12).length} critiques
+          </span>
+          <span className="text-warning-600">
+            {risques.filter(r => r.score >= 8 && r.score < 12).length} majeurs
+          </span>
+          <span className="text-success-600">
+            {risques.filter(r => r.status === 'closed' || r.status === 'mitigated').length} traités
+          </span>
+        </div>
+      </div>
+
       {/* Send Reminder Modal */}
       {selectedRisqueForSend && (
         <SendReminderModal
@@ -247,6 +265,6 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
           entity={selectedRisqueForShare}
         />
       )}
-    </>
+    </div>
   );
 }

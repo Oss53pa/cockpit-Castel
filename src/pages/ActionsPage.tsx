@@ -166,9 +166,9 @@ export function ActionsPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h2 className="text-xl font-bold text-primary-900">Plan d'actions</h2>
           <p className="text-sm text-primary-500">
@@ -236,10 +236,14 @@ export function ActionsPage() {
       </div>
 
       {/* Filters */}
-      <ActionFiltersBar />
+      <div className="flex-shrink-0 mt-4">
+        <ActionFiltersBar />
+      </div>
 
-      {/* Content based on view mode */}
-      {renderContent()}
+      {/* Content based on view mode - flex-1 prend l'espace restant */}
+      <div className="flex-1 min-h-0 mt-4">
+        {renderContent()}
+      </div>
 
       {/* Action Form Modal (édition) */}
       <ActionForm

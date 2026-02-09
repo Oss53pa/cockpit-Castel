@@ -178,9 +178,9 @@ export function RisquesPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h2 className="text-xl font-bold text-primary-900">Risques</h2>
           <p className="text-sm text-primary-500">
@@ -227,7 +227,7 @@ export function RisquesPage() {
       </div>
 
       {/* Filters and view toggle */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg border">
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-lg border flex-shrink-0 mt-4">
         <Select
           value={risqueFilters.categorie ?? ''}
           onChange={(e) =>
@@ -342,7 +342,8 @@ export function RisquesPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - flex-1 prend l'espace restant */}
+      <div className="flex-1 min-h-0 mt-4 overflow-auto">
       {viewMode === 'list' ? (
         <RisquesRegistre
           filters={risqueFilters}
@@ -480,6 +481,7 @@ export function RisquesPage() {
           </Card>
         </div>
       )}
+      </div>
 
       {/* Note de risque */}
       <Card padding="md" className="bg-primary-50 border-primary-200">

@@ -320,8 +320,8 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
   }
 
   return (
-    <>
-      <div className="rounded-lg border bg-white overflow-auto max-h-[70vh]">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0 rounded-lg border bg-white overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -354,11 +354,22 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
         </Table>
       </div>
 
-      {/* Summary footer */}
-      <div className="flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm">
+      {/* Summary footer - fixé en bas */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">
         <span className="text-primary-600">
           {actions.length} action{actions.length > 1 ? 's' : ''} au total
         </span>
+        <div className="flex items-center gap-4">
+          <span className="text-success-600">
+            {actions.filter(a => a.statut === 'termine').length} terminées
+          </span>
+          <span className="text-warning-600">
+            {actions.filter(a => a.statut === 'en_cours').length} en cours
+          </span>
+          <span className="text-error-600">
+            {actions.filter(a => a.statut === 'bloque').length} bloquées
+          </span>
+        </div>
       </div>
 
       {/* Send Reminder Modal */}
@@ -382,6 +393,6 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
           entity={selectedActionForShare}
         />
       )}
-    </>
+    </div>
   );
 }
