@@ -342,8 +342,8 @@ export function RisquesPage() {
         </div>
       </div>
 
-      {/* Content - flex-1 prend l'espace restant */}
-      <div className="flex-1 min-h-0 mt-4 overflow-auto">
+      {/* Content - flex-1 prend l'espace restant, scroll géré dans chaque composant */}
+      <div className="flex-1 min-h-0 mt-4">
       {viewMode === 'list' ? (
         <RisquesRegistre
           filters={risqueFilters}
@@ -351,11 +351,15 @@ export function RisquesPage() {
           onView={handleView}
         />
       ) : viewMode === 'top10' ? (
-        <RisquesTop10 />
+        <div className="h-full overflow-auto">
+          <RisquesTop10 />
+        </div>
       ) : viewMode === 'synthese' ? (
-        <RisquesSynthese />
+        <div className="h-full overflow-auto">
+          <RisquesSynthese />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-full overflow-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Matrice */}
           <MatriceCriticite onCellClick={handleCellClick} />
 
@@ -483,8 +487,8 @@ export function RisquesPage() {
       )}
       </div>
 
-      {/* Note de risque */}
-      <Card padding="md" className="bg-primary-50 border-primary-200">
+      {/* Note de risque - fixé en bas */}
+      <Card padding="md" className="flex-shrink-0 mt-2 bg-primary-50 border-primary-200">
         <h4 className="text-sm font-semibold text-primary-800 mb-2 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
           Note de risque
