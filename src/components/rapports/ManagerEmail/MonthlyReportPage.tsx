@@ -44,9 +44,7 @@ function mapPriority(p: string | undefined): string {
 /** Map Jalon statut → display status */
 function mapJalonStatus(j: Jalon, today: string): string {
   if (j.statut === 'atteint') return 'completed';
-  if (j.statut === 'depasse') return 'late';
-  if (j.statut === 'en_danger') return 'late';
-  if (j.statut === 'annule') return 'completed';
+  if (j.statut === 'depasse' || j.statut === 'en_danger') return 'late';
   if (j.statut === 'en_approche') return 'atrisk';
   // a_venir — check if date is past
   if (j.date_prevue && j.date_prevue < today) return 'late';
@@ -148,11 +146,9 @@ interface ActionData {
   dependencies: number[];
 }
 
-const TODAY_DAY = new Date().getDate();
-
 function ActionRow({ a, isLast, showOwner }: { a: ActionData; isLast: boolean; showOwner: boolean }) {
-  const deadlinePassed = a.deadlineDay <= TODAY_DAY;
-  const deadlineSoon = a.deadlineDay <= TODAY_DAY + 7 && !deadlinePassed;
+  const deadlinePassed = a.deadlineDay <= new Date().getDate();
+  const deadlineSoon = a.deadlineDay <= new Date().getDate() + 7 && !deadlinePassed;
 
   return (
     <Card style={{ marginBottom: isLast ? 0 : 6, borderLeft: `4px solid ${a.axeColor}`, padding: "12px 14px" }}>
@@ -219,29 +215,26 @@ export function MonthlyReportPage() {
     const monthLabel = `${MONTHS_FR[month].charAt(0).toUpperCase() + MONTHS_FR[month].slice(1)} ${year}`;
     const generated = `${daysPassed} ${MONTHS_FR[month]} ${year} à ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // Map users by id
     const usersById = Object.fromEntries(users.map(u => [u.id, u]));
-
-    // Filter actions for current month: date_fin_prevue in current month, or active (not done/cancelled)
     const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-    const monthActions = (allActions ?? []).filter(a => {
+    // Filter ALL actions (not just current month - include active ones too)
+    const activeActions = (allActions ?? []).filter(a => {
+      if (a.statut === 'annule') return false;
       // Include if deadline is in current month
       if (a.date_fin_prevue && a.date_fin_prevue >= monthStart && a.date_fin_prevue <= monthEnd) return true;
-      // Include if active and not terminated
-      if (a.statut !== 'termine' && a.statut !== 'annule' && a.date_fin_prevue && a.date_fin_prevue < monthEnd) return true;
+      // Include if active (not done) and deadline has passed (late)
+      if (a.statut !== 'termine' && a.date_fin_prevue && a.date_fin_prevue < monthStart) return true;
       return false;
     });
 
-    const actions: ActionData[] = monthActions.map(a => {
+    const actions = activeActions.map(a => {
       const axeInfo = axeMap[a.axe] || { labelCourt: a.axe, color: C.gray500 };
       const user = a.responsableId ? usersById[a.responsableId] : undefined;
       const ownerName = user ? getUserFullName(user) : 'Non assigné';
       const status = mapActionStatus(a, today);
-      // Find associated milestone
       const linkedJalon = a.jalonId ? (allJalons ?? []).find(j => j.id === a.jalonId) : undefined;
-
       return {
         id: a.id as number,
         title: a.titre,
@@ -261,28 +254,19 @@ export function MonthlyReportPage() {
     });
 
     // Milestones for current month
-    const monthJalons = (allJalons ?? []).filter(j => {
-      if (!j.date_prevue) return false;
-      return j.date_prevue >= monthStart && j.date_prevue <= monthEnd;
-    });
-
+    const monthJalons = (allJalons ?? []).filter(j => j.date_prevue && j.date_prevue >= monthStart && j.date_prevue <= monthEnd);
     const milestones = monthJalons.map(j => {
       const axeInfo = axeMap[j.axe] || { labelCourt: j.axe, color: C.gray500 };
       const user = j.responsableId ? usersById[j.responsableId] : undefined;
       const ownerName = user ? getUserFullName(user) : 'Non assigné';
-      const jalonStatus = mapJalonStatus(j, today);
-      // Find actions linked to this milestone
-      const linkedActionIds = monthActions
-        .filter(a => a.jalonId === j.id)
-        .map(a => a.id as number);
-
+      const linkedActionIds = activeActions.filter(a => a.jalonId === j.id).map(a => a.id as number);
       return {
         name: j.titre,
         axe: axeInfo.labelCourt,
         owner: ownerName,
         date: fmtShort(j.date_prevue),
         day: dayOf(j.date_prevue),
-        status: jalonStatus,
+        status: mapJalonStatus(j, today),
         actionIds: linkedActionIds,
       };
     });
@@ -331,8 +315,7 @@ export function MonthlyReportPage() {
   };
 
   const pctMonth = Math.round((d.daysPassed / d.daysInMonth) * 100);
-  const weekEnd = TODAY_DAY + 7;
-  const urgentThisWeek = filtered.filter(a => a.deadlineDay <= weekEnd && a.status !== "completed");
+  const urgentThisWeek = filtered.filter(a => a.deadlineDay <= new Date().getDate() + 7 && a.status !== "completed");
 
   return (
     <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
@@ -419,7 +402,7 @@ export function MonthlyReportPage() {
         <Sec title="Jalons du mois" icon="🎯" right={<span style={{ fontSize: 11, fontWeight: 600, color: C.gray500 }}>{d.milestones.length} jalons</span>}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
             {d.milestones.map((m, i) => {
-              const bc: Record<string, string> = { late: C.red, atrisk: C.orange, ontrack: C.green, completed: C.green };
+              const bc: Record<string, string> = { late: C.red, atrisk: C.orange, ontrack: C.green };
               return (
                 <Card key={i} style={{ borderTop: `3px solid ${bc[m.status]}`, padding: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
@@ -549,7 +532,7 @@ export function MonthlyReportPage() {
         </Sec>
 
         {/* Semaine en focus */}
-        <Sec title={`Focus cette semaine (${TODAY_DAY}-${Math.min(weekEnd, d.daysInMonth)} ${MONTHS_FR[new Date().getMonth()].slice(0, 4)}.)`} icon="🔥" accent={C.red}>
+        <Sec title={`Focus cette semaine (${new Date().getDate()}-${Math.min(new Date().getDate()+7, d.daysInMonth)} ${MONTHS_FR[new Date().getMonth()].slice(0,4)}.)`} icon="🔥" accent={C.red}>
           <Card style={{ background: C.orangeBg, border: `1px solid ${C.orange}30` }}>
             <div style={{ fontSize: 12, color: C.navyLight, lineHeight: 1.7 }}>
               <strong>Échéances immédiates :</strong>

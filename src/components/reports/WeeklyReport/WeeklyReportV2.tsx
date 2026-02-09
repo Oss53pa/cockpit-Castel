@@ -472,9 +472,6 @@ export function WeeklyReportV2() {
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
               }}
             >
               Envoyer
