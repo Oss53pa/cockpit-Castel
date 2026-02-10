@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Edit, Trash2, Eye, MoreVertical, Plus, Send, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Edit, Trash2, Eye, MoreVertical, Plus, Send, ExternalLink, X } from 'lucide-react';
 import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
@@ -15,6 +15,7 @@ import {
   Button,
   Progress,
   UserAvatar,
+  Checkbox,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -108,6 +109,8 @@ function ActionJalonRef({ action, config }: { action: Action; config?: ProjectCo
 function ActionRow({
   action,
   config,
+  selected,
+  onToggle,
   onEdit,
   onView,
   onSend,
@@ -115,6 +118,8 @@ function ActionRow({
 }: {
   action: Action;
   config?: ProjectConfig;
+  selected: boolean;
+  onToggle: (id: number) => void;
   onEdit: (action: Action) => void;
   onView: (action: Action) => void;
   onSend: (action: Action) => void;
@@ -170,7 +175,15 @@ function ActionRow({
   const isRecentUpdate = externalUpdateDate && (Date.now() - externalUpdateDate.getTime()) < 24 * 60 * 60 * 1000; // Last 24h
 
   return (
-    <TableRow className={isRecentUpdate ? 'bg-green-50' : ''}>
+    <TableRow className={cn(isRecentUpdate ? 'bg-green-50' : '', selected && 'bg-primary-50')}>
+      {canDelete && (
+        <TableCell className="w-10">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => action.id && onToggle(action.id)}
+          />
+        </TableCell>
+      )}
       <TableCell className="font-medium max-w-[200px]">
         <div className="flex items-center gap-2">
           <span className="truncate">{action.titre}</span>
@@ -278,10 +291,48 @@ function ActionRow({
 export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps) {
   const actions = useActions(filters);
   const projectConfig = useProjectConfig();
+  const { canDelete } = usePermissions();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedActionForSend, setSelectedActionForSend] = useState<Action | null>(null);
   const [shareExternalModalOpen, setShareExternalModalOpen] = useState(false);
   const [selectedActionForShare, setSelectedActionForShare] = useState<Action | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Reset selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const visibleIds = actions.map(a => a.id!).filter(Boolean);
+      if (prev.size === visibleIds.length) return new Set();
+      return new Set(visibleIds);
+    });
+  }, [actions]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Supprimer ${selectedIds.size} action${selectedIds.size > 1 ? 's' : ''} ?`)) return;
+    try {
+      for (const id of selectedIds) {
+        await deleteAction(id);
+      }
+    } catch (error) {
+      console.error('Erreur suppression en lot:', error);
+      alert('Erreur lors de la suppression en lot');
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds]);
 
   const handleSend = (action: Action) => {
     setSelectedActionForSend(action);
@@ -325,6 +376,14 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
         <Table>
           <TableHeader>
             <TableRow>
+              {canDelete && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={actions.length > 0 && selectedIds.size === actions.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+              )}
               <TableHead>Titre</TableHead>
               <TableHead>Phase</TableHead>
               <TableHead>Jalon</TableHead>
@@ -344,6 +403,8 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
                 key={action.id}
                 action={action}
                 config={projectConfig}
+                selected={selectedIds.has(action.id!)}
+                onToggle={toggleSelect}
                 onEdit={onEdit}
                 onView={onView}
                 onSend={handleSend}
@@ -353,6 +414,29 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
           </TableBody>
         </Table>
       </div>
+
+      {/* Bulk selection bar */}
+      {canDelete && selectedIds.size > 0 && (
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm mt-2">
+          <span className="text-primary-700 font-medium">
+            {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-4 w-4 mr-1" />
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              className="bg-error-600 text-white hover:bg-error-700"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Supprimer ({selectedIds.size})
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Summary footer - fixé en bas */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">

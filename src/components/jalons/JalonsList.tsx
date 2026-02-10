@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Flag, Edit, Trash2, Eye, MoreVertical, Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Flag, Edit, Trash2, Eye, MoreVertical, Send, ArrowUp, ArrowDown, AlertTriangle, CheckCircle2, ExternalLink, X } from 'lucide-react';
 import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
@@ -11,6 +11,7 @@ import {
   TableCell,
   Badge,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -72,6 +73,8 @@ function JalonActionsCount({ jalonId }: { jalonId?: number }) {
 function JalonRow({
   jalon,
   projectConfig,
+  selected,
+  onToggle,
   onEdit,
   onView,
   onSend,
@@ -79,6 +82,8 @@ function JalonRow({
 }: {
   jalon: Jalon;
   projectConfig?: ProjectConfig;
+  selected: boolean;
+  onToggle: (id: number) => void;
   onEdit: () => void;
   onView: () => void;
   onSend: () => void;
@@ -134,7 +139,15 @@ function JalonRow({
   };
 
   return (
-    <TableRow className="hover:bg-primary-50/50">
+    <TableRow className={cn('hover:bg-primary-50/50', selected && 'bg-primary-50')}>
+      {canDelete && (
+        <TableCell className="w-10">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => jalon.id && onToggle(jalon.id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <div className="flex items-center gap-3">
           <div className={cn('rounded-lg p-2', config.bgColor)}>
@@ -249,12 +262,50 @@ function JalonRow({
 export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
   const jalons = useJalons(filters);
   const projectConfig = useProjectConfig();
+  const { canDelete } = usePermissions();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedJalonForSend, setSelectedJalonForSend] = useState<Jalon | null>(null);
   const [shareExternalModalOpen, setShareExternalModalOpen] = useState(false);
   const [selectedJalonForShare, setSelectedJalonForShare] = useState<Jalon | null>(null);
   const [sortField, setSortField] = useState<SortField>('datePrevue');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Reset selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const visibleIds = jalons.map(j => j.id!).filter(Boolean);
+      if (prev.size === visibleIds.length) return new Set();
+      return new Set(visibleIds);
+    });
+  }, [jalons]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Supprimer ${selectedIds.size} jalon${selectedIds.size > 1 ? 's' : ''} ?`)) return;
+    try {
+      for (const id of selectedIds) {
+        await deleteJalon(id);
+      }
+    } catch (error) {
+      console.error('Erreur suppression en lot:', error);
+      alert('Erreur lors de la suppression en lot');
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds]);
 
   const handleSend = (jalon: Jalon) => {
     setSelectedJalonForSend(jalon);
@@ -331,6 +382,14 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
         <Table>
           <TableHeader>
             <TableRow className="bg-primary-50/50">
+              {canDelete && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={jalons.length > 0 && selectedIds.size === jalons.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+              )}
               <TableHead
                 className="cursor-pointer hover:bg-primary-100/50"
                 onClick={() => handleSort('titre')}
@@ -376,6 +435,8 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
                 key={jalon.id}
                 jalon={jalon}
                 projectConfig={projectConfig}
+                selected={selectedIds.has(jalon.id!)}
+                onToggle={toggleSelect}
                 onEdit={() => onEdit(jalon)}
                 onView={() => onView(jalon)}
                 onSend={() => handleSend(jalon)}
@@ -385,6 +446,29 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Bulk selection bar */}
+      {canDelete && selectedIds.size > 0 && (
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm mt-2">
+          <span className="text-primary-700 font-medium">
+            {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-4 w-4 mr-1" />
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              className="bg-error-600 text-white hover:bg-error-700"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Supprimer ({selectedIds.size})
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Summary footer - fixé en bas */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">

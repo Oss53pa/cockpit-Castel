@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Edit, Trash2, MoreVertical, Eye, Shield, Send, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Edit, Trash2, MoreVertical, Eye, Shield, Send, ExternalLink, X } from 'lucide-react';
 import { usePermissions } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
@@ -12,6 +12,7 @@ import {
   Badge,
   CriticiteBadge,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -31,12 +32,16 @@ interface RisquesRegistreProps {
 
 function RisqueRow({
   risque,
+  selected,
+  onToggle,
   onEdit,
   onView,
   onSend,
   onShareExternal,
 }: {
   risque: Risque;
+  selected: boolean;
+  onToggle: (id: number) => void;
   onEdit: () => void;
   onView: () => void;
   onSend: () => void;
@@ -57,7 +62,15 @@ function RisqueRow({
   };
 
   return (
-    <TableRow>
+    <TableRow className={cn(selected && 'bg-primary-50')}>
+      {canDelete && (
+        <TableCell className="w-10">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => risque.id && onToggle(risque.id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <div
           className={cn(
@@ -158,10 +171,48 @@ function RisqueRow({
 
 export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProps) {
   const risques = useRisques(filters);
+  const { canDelete } = usePermissions();
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedRisqueForSend, setSelectedRisqueForSend] = useState<Risque | null>(null);
   const [shareExternalModalOpen, setShareExternalModalOpen] = useState(false);
   const [selectedRisqueForShare, setSelectedRisqueForShare] = useState<Risque | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Reset selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      const visibleIds = risques.map(r => r.id!).filter(Boolean);
+      if (prev.size === visibleIds.length) return new Set();
+      return new Set(visibleIds);
+    });
+  }, [risques]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Supprimer ${selectedIds.size} risque${selectedIds.size > 1 ? 's' : ''} ?`)) return;
+    try {
+      for (const id of selectedIds) {
+        await deleteRisque(id);
+      }
+    } catch (error) {
+      console.error('Erreur suppression en lot:', error);
+      alert('Erreur lors de la suppression en lot');
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds]);
 
   const handleSend = (risque: Risque) => {
     setSelectedRisqueForSend(risque);
@@ -199,6 +250,14 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
         <Table>
           <TableHeader>
             <TableRow>
+              {canDelete && (
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={risques.length > 0 && selectedIds.size === risques.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+              )}
               <TableHead className="w-16">Score</TableHead>
               <TableHead>Risque</TableHead>
               <TableHead>Catégorie</TableHead>
@@ -216,6 +275,8 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
               <RisqueRow
                 key={risque.id}
                 risque={risque}
+                selected={selectedIds.has(risque.id!)}
+                onToggle={toggleSelect}
                 onEdit={() => onEdit(risque)}
                 onView={() => onView(risque)}
                 onSend={() => handleSend(risque)}
@@ -225,6 +286,29 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
           </TableBody>
         </Table>
       </div>
+
+      {/* Bulk selection bar */}
+      {canDelete && selectedIds.size > 0 && (
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 border border-primary-200 rounded-lg text-sm mt-2">
+          <span className="text-primary-700 font-medium">
+            {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-4 w-4 mr-1" />
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              className="bg-error-600 text-white hover:bg-error-700"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Supprimer ({selectedIds.size})
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Summary footer - fixé en bas */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-primary-50 rounded-lg text-sm mt-2">
