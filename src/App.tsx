@@ -19,6 +19,7 @@ import {
   ExternalUpdateRouter,
   SynchronisationPage,
   Proph3tPage,
+  ReportViewPage,
 } from '@/pages';
 import { MonthlyReportPage } from '@/components/rapports/ManagerEmail';
 import { useAuthStore } from '@/stores/authStore';
@@ -121,6 +122,9 @@ function AppContent() {
 
         {/* External Update Page - Standalone without layout (public) */}
         <Route path="/update/:type/:token" element={<ExternalUpdateRouter />} />
+
+        {/* Report View Page - Standalone without layout (public via email link) */}
+        <Route path="/report-view/:token" element={<ReportViewPage />} />
 
         {/* Home Page - Welcome screen (protected, without sidebar) */}
         <Route

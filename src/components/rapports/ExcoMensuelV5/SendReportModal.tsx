@@ -9,6 +9,7 @@ import { Copy, Check, Loader2, X, Mail, UserPlus, ChevronDown, Send, Eye, EyeOff
 import { Button } from '@/components/ui';
 import { useUsers, getUserFullName } from '@/hooks/useUsers';
 import { sendReportShareEmail, openEmailClientForReport, getReportShareTemplate } from '@/services/emailService';
+import { storeReportInFirebase } from '@/services/firebaseRealtimeSync';
 import { PROJET_CONFIG } from '@/data/constants';
 import type { User } from '@/types';
 import type { ExcoV5Data } from './hooks/useExcoV5Data';
@@ -137,9 +138,9 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
       sender_name: senderName,
       rapport_periode: reportPeriod,
       report_link: '#apercu',
-      total_actions: String(data?.allActions?.length || 0),
-      total_jalons: String(data?.allJalons?.length || 0),
-      total_risques: String(data?.allRisques?.length || 0),
+      total_actions: String(data?.kpis?.totalActions || data?.allActions?.length || 0),
+      total_jalons: String(data?.kpis?.jalonsTotal || data?.allJalons?.length || 0),
+      total_risques: String(data?.kpis?.totalRisques || data?.allRisques?.length || 0),
       avancement_global: String(Math.round(data?.avancementGlobal || 0)),
     };
 
@@ -168,40 +169,37 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
     try {
       const token = generateToken();
       const expiry = EXPIRY_OPTIONS[expiryIdx];
+      const expiresAt = new Date(Date.now() + expiry.hours * 3600_000).toISOString();
 
-      // Build a blob-based link (read-only HTML preview)
+      // Generate HTML and store in Firebase for external access
       const html = generateHtml();
-      const blob = new Blob([html], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
+      const data = getData?.();
+      const senderName = PROJET_CONFIG.presentateur.nom;
+      const reportPeriod = data?.moisCourant || presentationDate;
 
-      // For local use we produce a local blob URL with metadata.
       const link = `${window.location.origin}/report-view/${token}`;
 
-      // Store in sessionStorage so that the link can be resolved in the same session
-      sessionStorage.setItem(
-        `report-${token}`,
-        JSON.stringify({
-          html,
-          format,
-          date: presentationDate,
-          expiresAt: new Date(Date.now() + expiry.hours * 3600_000).toISOString(),
-          emails: selectedEmails.length > 0 ? selectedEmails : undefined,
-        }),
-      );
+      // Store in Firebase so recipients can access it
+      const stored = await storeReportInFirebase(token, html, {
+        title: `EXCO Mensuel — ${reportPeriod}`,
+        period: reportPeriod,
+        senderName,
+        expiresAt,
+      });
+
+      if (!stored) {
+        console.warn('Firebase storage failed, falling back to blob URL');
+      }
 
       // Send emails to selected recipients via the email service
       let sentCount = 0;
       if (selectedEmails.length > 0) {
-        const data = getData?.();
         const stats = {
-          totalActions: data?.allActions?.length || 0,
-          totalJalons: data?.allJalons?.length || 0,
-          totalRisques: data?.allRisques?.length || 0,
+          totalActions: data?.kpis?.totalActions || data?.allActions?.length || 0,
+          totalJalons: data?.kpis?.jalonsTotal || data?.allJalons?.length || 0,
+          totalRisques: data?.kpis?.totalRisques || data?.allRisques?.length || 0,
           avancementGlobal: Math.round(data?.avancementGlobal || 0),
         };
-
-        const senderName = PROJET_CONFIG.presentateur.nom;
-        const reportPeriod = data?.moisCourant || presentationDate;
 
         for (const recipient of selectedEmails) {
           // Find user name if available
@@ -212,7 +210,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
             recipientEmail: recipient,
             recipientName,
             senderName,
-            reportLink: blobUrl,
+            reportLink: link,
             reportPeriod,
             stats,
           };
@@ -232,7 +230,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
       setStep('success');
 
       // Also open preview in new tab
-      window.open(blobUrl, '_blank');
+      window.open(link, '_blank');
     } catch (err) {
       console.error('Erreur génération lien:', err);
     } finally {

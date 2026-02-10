@@ -888,3 +888,95 @@ export async function syncAllPendingUpdates(): Promise<{ synced: number; errors:
 
   return { synced, errors };
 }
+
+// ============================================================================
+// SHARED REPORTS (Stockage HTML rapport dans Firestore)
+// ============================================================================
+
+const COLLECTION_SHARED_REPORTS = 'sharedReports';
+
+/**
+ * Stocke le HTML d'un rapport dans Firestore pour partage externe
+ */
+export async function storeReportInFirebase(
+  token: string,
+  html: string,
+  metadata: {
+    title: string;
+    period: string;
+    senderName: string;
+    expiresAt: string;
+  }
+): Promise<boolean> {
+  if (!firestoreDb) {
+    const initialized = await initRealtimeSync();
+    if (!initialized || !firestoreDb) {
+      console.error('[Firebase] Impossible d\'initialiser Firestore pour le rapport');
+      return false;
+    }
+  }
+
+  try {
+    const docRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token);
+    await setDoc(docRef, {
+      html,
+      title: metadata.title,
+      period: metadata.period,
+      senderName: metadata.senderName,
+      expiresAt: metadata.expiresAt,
+      createdAt: serverTimestamp(),
+      viewCount: 0,
+    });
+    console.log('[Firebase] Rapport stocké:', token);
+    return true;
+  } catch (error) {
+    console.error('[Firebase] Erreur stockage rapport:', error);
+    return false;
+  }
+}
+
+/**
+ * Récupère le HTML d'un rapport partagé depuis Firestore
+ */
+export async function getReportFromFirebase(
+  token: string
+): Promise<{ html: string; title: string; period: string; expiresAt: string } | null> {
+  if (!firestoreDb) {
+    const initialized = await initRealtimeSync();
+    if (!initialized || !firestoreDb) {
+      console.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport');
+      return null;
+    }
+  }
+
+  try {
+    const docRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      console.warn('[Firebase] Rapport non trouvé:', token);
+      return null;
+    }
+
+    const data = docSnap.data();
+
+    // Vérifier l'expiration
+    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+      console.warn('[Firebase] Rapport expiré:', token);
+      return null;
+    }
+
+    // Incrémenter le compteur de vues
+    await updateDoc(docRef, { viewCount: (data.viewCount || 0) + 1 });
+
+    return {
+      html: data.html,
+      title: data.title,
+      period: data.period,
+      expiresAt: data.expiresAt,
+    };
+  } catch (error) {
+    console.error('[Firebase] Erreur lecture rapport:', error);
+    return null;
+  }
+}

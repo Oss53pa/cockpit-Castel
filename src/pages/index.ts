@@ -16,3 +16,4 @@ export * from './ExternalUpdateRouter';
 export * from './JournalPage';
 export * from './SynchronisationPage';
 export * from './Proph3tPage';
+export * from './ReportViewPage';
