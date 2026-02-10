@@ -359,13 +359,20 @@ export function useWeeklyReportData(): WeeklyReportData {
     const nwStartStr = nextWeekStart.toISOString().split('T')[0];
     const nwEndStr = nextWeekEnd.toISOString().split('T')[0];
 
+    // Actions dont l'échéance tombe la semaine prochaine,
+    // + actions critiques/hautes dont l'échéance est dans les 30 prochains jours
+    const plus30j = new Date(today);
+    plus30j.setDate(plus30j.getDate() + 30);
+    const plus30jStr = plus30j.toISOString().split('T')[0];
+
     const focusSemaineProchaine = allActions
       .filter(
         (a) =>
           a.statut !== 'termine' &&
+          a.date_fin_prevue &&
           ((a.date_fin_prevue >= todayStr && a.date_fin_prevue <= nwEndStr) ||
-            a.priorite === 'critique' ||
-            a.priorite === 'haute')
+            ((a.priorite === 'critique' || a.priorite === 'haute') &&
+              a.date_fin_prevue >= todayStr && a.date_fin_prevue <= plus30jStr))
       )
       .sort((a, b) => {
         const priOrd: Record<string, number> = { critique: 0, haute: 1, moyenne: 2, basse: 3 };
