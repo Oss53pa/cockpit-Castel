@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUsers } from '@/hooks';
 import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, NIVEAUX_IMPORTANCE, NIVEAU_IMPORTANCE_LABELS, type Jalon, type Axe, type MeteoJalon, type ProjectPhase, type NiveauImportance } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -41,6 +42,14 @@ interface Comment {
   auteur: string;
   date: string;
 }
+
+// Champs présents en DB mais pas (encore) sur l'interface Jalon
+type JalonWithExtras = Jalon & {
+  date_validation?: string | null;
+  notes_mise_a_jour?: string;
+  commentaires_externes?: string;
+  commentaires?: Comment[];
+};
 
 // Statuts jalon
 const STATUT_CONFIG = {
@@ -114,7 +123,7 @@ export function JalonFormContent({
   const users = useUsers();
   const [titre, setTitre] = useState(jalon?.titre || '');
   const [description, setDescription] = useState(jalon?.description || '');
-  const [dateDebutPrevue, setDateDebutPrevue] = useState((jalon as any)?.date_debut_prevue || '');
+  const [dateDebutPrevue, setDateDebutPrevue] = useState((jalon as JalonWithExtras)?.date_debut_prevue || '');
   const [datePrevue, setDatePrevue] = useState(jalon?.date_prevue || '');
   const [responsable, setResponsable] = useState(jalon?.responsable || '');
   const [responsableId, setResponsableId] = useState<number | undefined>(jalon?.responsableId);
@@ -123,26 +132,26 @@ export function JalonFormContent({
   const [niveauImportance, setNiveauImportance] = useState<NiveauImportance>(jalon?.niveau_importance || 'standard');
 
   // Champs éditables en interne ET externe
-  const [dateValidation, setDateValidation] = useState<string | null>((jalon as any)?.date_validation || null);
-  const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as any)?.notes_mise_a_jour || '');
+  const [dateValidation, setDateValidation] = useState<string | null>((jalon as JalonWithExtras)?.date_validation || null);
+  const [notesMiseAJour, setNotesMiseAJour] = useState((jalon as JalonWithExtras)?.notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(() => {
     if (!jalon) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
-    const externesStr = (jalon as any).commentaires_externes;
+    const externesStr = (jalon as JalonWithExtras).commentaires_externes;
     if (externesStr) {
       try {
         const parsed = JSON.parse(externesStr);
-        return parsed.map((c: any) => ({
+        return parsed.map((c: { id?: string; texte: string; auteur: string; date: string }) => ({
           id: c.id || crypto.randomUUID(),
           texte: c.texte,
           auteur: c.auteur,
           date: c.date,
         }));
       } catch (e) {
-        console.warn('Erreur parsing commentaires_externes jalon:', e);
+        logger.warn('Erreur parsing commentaires_externes jalon:', e);
       }
     }
-    return jalon.commentaires?.map((c: any) => ({
+    return jalon.commentaires?.map((c: { id?: string; texte: string; auteur: string; date: string }) => ({
       id: c.id || crypto.randomUUID(),
       texte: c.texte,
       auteur: c.auteur,

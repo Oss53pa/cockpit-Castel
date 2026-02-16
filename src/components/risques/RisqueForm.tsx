@@ -15,6 +15,7 @@ import {
 import { updateRisque, usePermissions } from '@/hooks';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
 import { type Risque } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface RisqueFormProps {
   risque?: Risque;
@@ -64,7 +65,7 @@ export function RisqueForm({ risque, open, onClose, onSuccess }: RisqueFormProps
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de sauvegarder le risque');
     } finally {
       setIsSubmitting(false);

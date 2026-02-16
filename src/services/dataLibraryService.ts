@@ -18,6 +18,7 @@ import {
 } from '@/types';
 import { THEME_COLORS, CHART_COLORS } from '@/data/dataLibrary';
 import type { ChartTemplate, TableTemplate } from '@/types/reportStudio';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -489,7 +490,7 @@ export async function fetchChartData(template: ChartTemplate): Promise<ChartData
         return null;
     }
   } catch (error) {
-    console.error('Erreur récupération données graphique:', error);
+    logger.error('Erreur récupération données graphique:', error);
     return null;
   }
 }
@@ -525,7 +526,7 @@ export async function fetchTableData(template: TableTemplate): Promise<TableData
         return null;
     }
   } catch (error) {
-    console.error('Erreur récupération données tableau:', error);
+    logger.error('Erreur récupération données tableau:', error);
     return null;
   }
 }

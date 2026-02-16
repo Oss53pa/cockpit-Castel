@@ -60,7 +60,7 @@ export function AlerteEmailHistoriqueList({ alerteId, limit = 50 }: AlerteEmailH
 
   // Requête pour récupérer l'historique
   const historique = useLiveQuery(async () => {
-    let query = db.alerteEmailHistorique.orderBy('envoyeAt').reverse();
+    const query = db.alerteEmailHistorique.orderBy('envoyeAt').reverse();
 
     if (alerteId) {
       return await db.alerteEmailHistorique

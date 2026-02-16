@@ -5,6 +5,7 @@
 // ============================================================================
 
 import type { ProjectState } from '../core/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -251,7 +252,7 @@ export class AutonomousScheduler {
       this.checkAndExecuteTasks();
     }, this.config.checkIntervalMs);
 
-    console.log('[AutonomousScheduler] Démarré');
+    logger.info('[AutonomousScheduler] Démarré');
   }
 
   public stop(): void {
@@ -263,7 +264,7 @@ export class AutonomousScheduler {
     }
 
     this.isRunning = false;
-    console.log('[AutonomousScheduler] Arrêté');
+    logger.info('[AutonomousScheduler] Arrêté');
   }
 
   public getStatus(): SchedulerStatus {
@@ -357,7 +358,7 @@ export class AutonomousScheduler {
 
     for (const task of tasksToRun) {
       this.executeTask(task).catch(err => {
-        console.error(`[Scheduler] Erreur tâche ${task.id}:`, err);
+        logger.error(`[Scheduler] Erreur tâche ${task.id}:`, err);
       });
     }
   }
@@ -373,7 +374,7 @@ export class AutonomousScheduler {
       if (executor) {
         data = await executor(task, state);
       } else {
-        console.log(`[Scheduler] Exécution: ${task.name}`);
+        logger.info(`[Scheduler] Exécution: ${task.name}`);
         data = { simulated: true };
       }
 
@@ -399,7 +400,7 @@ export class AutonomousScheduler {
       this.failedToday++;
 
       if (this.config.notifyOnFailure) {
-        console.error(`[Scheduler] Échec tâche ${task.name}:`, result.error);
+        logger.error(`[Scheduler] Échec tâche ${task.name}:`, result.error);
       }
     }
 
@@ -411,7 +412,7 @@ export class AutonomousScheduler {
       try {
         task.onComplete(result);
       } catch (e) {
-        console.error(`[Scheduler] Erreur callback ${task.id}:`, e);
+        logger.error(`[Scheduler] Erreur callback ${task.id}:`, e);
       }
     }
 

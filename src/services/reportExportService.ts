@@ -4,6 +4,7 @@
 
 import type { GeneratedReport, ExportOptions } from '@/types/reports.types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // GENERATION HTML
@@ -482,7 +483,7 @@ export function downloadReportPDF(report: GeneratedReport, options: ExportOption
       try {
         printWindow.print();
       } catch (error) {
-        console.error('Erreur impression:', error);
+        logger.error('Erreur impression:', error);
       }
     }, 500);
   };
@@ -504,5 +505,5 @@ export async function downloadReportPPTX(
     'Utilisez le EXCO Mensuel pour generer des presentations PowerPoint.'
   );
 
-  console.log('Rapport a exporter en PPTX:', report);
+  logger.info('Rapport a exporter en PPTX:', report);
 }

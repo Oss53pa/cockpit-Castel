@@ -9,6 +9,7 @@
  */
 
 import { db } from '@/db';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -163,7 +164,7 @@ export async function loginSharePoint(): Promise<SharePointAuthState> {
     return auth;
   } catch (_error: unknown) {
     const error = _error as Error;
-    console.error('Erreur login SharePoint:', error);
+    logger.error('Erreur login SharePoint:', error);
     throw new Error(`Échec de l'authentification: ${error.message}`);
   }
 }
@@ -173,7 +174,7 @@ export async function logoutSharePoint(): Promise<void> {
     const msal = await initMSAL();
     await msal.logoutPopup();
   } catch (error) {
-    console.error('Erreur logout SharePoint:', error);
+    logger.error('Erreur logout SharePoint:', error);
   }
   localStorage.removeItem(AUTH_KEY);
   msalInstance = null;
@@ -213,7 +214,7 @@ async function getAccessToken(): Promise<string> {
       return response.accessToken;
     }
   } catch (error) {
-    console.error('Erreur renouvellement token:', error);
+    logger.error('Erreur renouvellement token:', error);
   }
 
   throw new Error('Non authentifié. Veuillez vous connecter à SharePoint.');
@@ -594,7 +595,7 @@ export function startAutoSync(): void {
         await syncAllToSharePoint();
       }
     } catch (error) {
-      console.error('[SharePoint] Erreur auto-sync:', error);
+      logger.error('[SharePoint] Erreur auto-sync:', error);
     }
   }, config.syncInterval * 60 * 1000);
 }

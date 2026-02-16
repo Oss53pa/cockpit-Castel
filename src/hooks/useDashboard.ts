@@ -443,10 +443,10 @@ export function useCOPILTrends(siteId: number = 1): COPILTrends | null {
       // Previous values (from snapshot or estimate based on typical weekly progress)
       let prevAvancementProjet = Math.max(0, currentAvancementProjet - 2); // Assume ~2% weekly progress
       let prevAvancementMobilisation = Math.max(0, currentAvancementMobilisation - 2);
-      let prevBudgetRatio = Math.max(0, currentBudgetRatio - 3);
-      let prevRisquesCritiques = currentRisquesCritiques;
-      let prevJalonsRatio = Math.max(0, currentJalonsRatio - 2);
-      let prevAlertesNonTraitees = currentAlertesNonTraitees;
+      const prevBudgetRatio = Math.max(0, currentBudgetRatio - 3);
+      const prevRisquesCritiques = currentRisquesCritiques;
+      const prevJalonsRatio = Math.max(0, currentJalonsRatio - 2);
+      const prevAlertesNonTraitees = currentAlertesNonTraitees;
 
       if (previousSnapshot) {
         prevAvancementProjet = previousSnapshot.projectProgress ?? prevAvancementProjet;

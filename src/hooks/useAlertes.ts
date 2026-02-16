@@ -9,6 +9,7 @@ import {
 } from '@/services/alerteEmailService';
 import { SEUILS_SYNC_REPORT, SEUILS_RISQUES } from '@/data/constants';
 import { detecterConflitsDates } from '@/lib/dateCalculations';
+import { logger } from '@/lib/logger';
 
 export function useAlertes(filters?: AlerteFilters) {
   const alertes = useLiveQuery(async () => {
@@ -475,7 +476,18 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       }
     }
   } catch (e) {
-    console.warn('[Alertes] Erreur détection conflits dates:', e);
+    logger.warn('[Alertes] Erreur détection conflits dates:', e);
+  }
+
+  // ============================================================================
+  // ÉVALUATION AUTOMATIQUE DES RISQUES
+  // Matérialise les risques si les conditions sont remplies
+  // ============================================================================
+  try {
+    const { evaluateAllRisks } = await import('@/lib/riskEngine');
+    await evaluateAllRisks();
+  } catch (e) {
+    logger.warn('[Alertes] Erreur évaluation risques:', e);
   }
 
   // ============================================================================
@@ -597,7 +609,7 @@ export async function autoResolveAlertes(): Promise<number> {
         lu: true, // Marquer aussi comme lu
       });
       resolved++;
-      console.log(`[Auto-Resolve] Alerte #${alerte.id} résolue: ${resolutionMessage}`);
+      logger.info(`[Auto-Resolve] Alerte #${alerte.id} résolue: ${resolutionMessage}`);
     }
   }
 

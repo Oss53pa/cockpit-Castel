@@ -64,6 +64,7 @@ import { useNavigate } from 'react-router-dom';
 import { extractTextFromFile, AVAILABLE_MODELS, DEFAULT_MODEL } from '@/services/claudeService';
 import { getAutoDetectedModules, type IntegrationResult } from '@/services/iaIntegrationService';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
@@ -249,7 +250,7 @@ function DocumentPreview({ importId, mimeType, filename }: { importId: number; m
           setPreviewUrl(url);
         }
       } catch (error) {
-        console.error('Erreur chargement preview:', error);
+        logger.error('Erreur chargement preview:', error);
       } finally {
         setLoading(false);
       }
@@ -1361,7 +1362,7 @@ export function ImportIA() {
         modelVersion: selectedModel,
       });
     } catch (error) {
-      console.error('Erreur extraction IA:', error);
+      logger.error('Erreur extraction IA:', error);
       lastProcessedIdsRef.current.delete(importId);
       await updateIAImportStatus(importId, 'failed');
     }
@@ -1388,7 +1389,7 @@ export function ImportIA() {
         const result = await validateAndIntegrateIAImport(id, 1, modules);
         setIntegrationResult(result);
       } catch (error) {
-        console.error('Erreur validation:', error);
+        logger.error('Erreur validation:', error);
         setIntegrationResult({
           success: false,
           documentType: 'autre',

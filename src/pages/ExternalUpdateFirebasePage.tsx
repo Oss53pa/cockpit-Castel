@@ -38,6 +38,7 @@ import { BudgetFormContent, type BudgetFormSaveData } from '@/components/shared/
 import type { Action, Jalon, Risque, User } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 import { Wallet } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 // COCKPIT Fonts
 const cockpitFonts = `
@@ -115,7 +116,7 @@ export function ExternalUpdateFirebasePage() {
       setLinkData(data);
 
       // Set users from Firebase data (for external responsible selection)
-      console.log('[ExternalUpdate] data.users from Firebase:', data.users);
+      logger.info('[ExternalUpdate] data.users from Firebase:', data.users);
       if (data.users && data.users.length > 0) {
         const usersFromFirebase: User[] = data.users.map(u => ({
           id: u.id,
@@ -126,9 +127,9 @@ export function ExternalUpdateFirebasePage() {
           actif: true,
         }));
         setUsers(usersFromFirebase);
-        console.log('[ExternalUpdate] Users chargés depuis Firebase:', usersFromFirebase.length, usersFromFirebase);
+        logger.info('[ExternalUpdate] Users chargés depuis Firebase:', usersFromFirebase.length, usersFromFirebase);
       } else {
-        console.warn('[ExternalUpdate] Aucun utilisateur dans Firebase - le lien a été créé avant la mise à jour. Créez un nouveau lien.');
+        logger.warn('[ExternalUpdate] Aucun utilisateur dans Firebase - le lien a été créé avant la mise à jour. Créez un nouveau lien.');
       }
 
       // Mark as accessed
@@ -203,7 +204,7 @@ export function ExternalUpdateFirebasePage() {
 
       setLoading(false);
     } catch (e) {
-      console.error('Error loading data:', e);
+      logger.error('Error loading data:', e);
       setError('Erreur lors du chargement des données.');
       setLoading(false);
     }
@@ -215,7 +216,7 @@ export function ExternalUpdateFirebasePage() {
     setSaving(true);
 
     // DEBUG: Log des données du formulaire
-    console.log('[ExternalUpdate] FormData reçu:', JSON.stringify(formData, null, 2));
+    logger.info('[ExternalUpdate] FormData reçu:', JSON.stringify(formData, null, 2));
 
     try {
       const response: ExternalUpdateData['response'] = {
@@ -250,10 +251,10 @@ export function ExternalUpdateFirebasePage() {
           statut: l.fait ? 'valide' : 'en_attente',
         }));
 
-        console.log('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
-        console.log('[ExternalUpdate] Action - pointsAttention:', actionData.pointsAttention);
-        console.log('[ExternalUpdate] Action - decisionsAttendues:', actionData.decisionsAttendues);
-        console.log('[ExternalUpdate] Action - avancement:', actionData.avancement);
+        logger.info('[ExternalUpdate] Action - sousTaches:', actionData.sousTaches);
+        logger.info('[ExternalUpdate] Action - pointsAttention:', actionData.pointsAttention);
+        logger.info('[ExternalUpdate] Action - decisionsAttendues:', actionData.decisionsAttendues);
+        logger.info('[ExternalUpdate] Action - avancement:', actionData.avancement);
       }
 
       // Champs spécifiques aux jalons
@@ -264,7 +265,7 @@ export function ExternalUpdateFirebasePage() {
         response.changes.niveau_importance = jalonData.niveau_importance;
         response.changes.date_validation = jalonData.date_validation;
 
-        console.log('[ExternalUpdate] Jalon - dates:', jalonData.date_debut_prevue, jalonData.date_prevue, 'niveau_importance:', jalonData.niveau_importance);
+        logger.info('[ExternalUpdate] Jalon - dates:', jalonData.date_debut_prevue, jalonData.date_prevue, 'niveau_importance:', jalonData.niveau_importance);
       }
 
       // Champs spécifiques aux risques
@@ -275,7 +276,7 @@ export function ExternalUpdateFirebasePage() {
         response.changes.score = risqueData.score;
         response.changes.plan_mitigation = risqueData.plan_mitigation;
 
-        console.log('[ExternalUpdate] Risque - probabilite/impact/score:',
+        logger.info('[ExternalUpdate] Risque - probabilite/impact/score:',
           risqueData.probabilite, risqueData.impact, risqueData.score);
       }
 
@@ -289,12 +290,12 @@ export function ExternalUpdateFirebasePage() {
           response.changes.commentaires = budgetData.commentaires_externes;
         }
 
-        console.log('[ExternalUpdate] Budget - engage/consomme:',
+        logger.info('[ExternalUpdate] Budget - engage/consomme:',
           budgetData.montantEngage, budgetData.montantConsomme);
       }
 
       // DEBUG: Log de la réponse complète
-      console.log('[ExternalUpdate] Response à envoyer:', JSON.stringify(response, null, 2));
+      logger.info('[ExternalUpdate] Response à envoyer:', JSON.stringify(response, null, 2));
 
       // Submit to Firebase
       const submitSuccess = await submitExternalResponse(token, response);
@@ -306,7 +307,7 @@ export function ExternalUpdateFirebasePage() {
       setDialogOpen(false);
       setSuccess(true);
     } catch (e) {
-      console.error('Error saving:', e);
+      logger.error('Error saving:', e);
       setError('Erreur lors de la sauvegarde. Veuillez réessayer.');
     } finally {
       setSaving(false);

@@ -17,6 +17,7 @@ import {
   ToggleRight,
 } from 'lucide-react';
 import { useUsers } from '@/hooks';
+import { logger } from '@/lib/logger';
 
 interface EmailScheduleSettings {
   enabled: boolean;
@@ -55,7 +56,7 @@ export function EmailScheduleConfig() {
         const parsed = JSON.parse(saved);
         setSettings({ ...DEFAULT_SETTINGS, ...parsed });
       } catch (e) {
-        console.error('Erreur parsing settings:', e);
+        logger.error('Erreur parsing settings:', e);
       }
     }
   }, []);
@@ -77,7 +78,7 @@ export function EmailScheduleConfig() {
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+      logger.error('Erreur sauvegarde:', error);
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
@@ -93,7 +94,7 @@ export function EmailScheduleConfig() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
       alert('Email de test envoyé avec succès ! (simulation)');
     } catch (error) {
-      console.error('Erreur envoi test:', error);
+      logger.error('Erreur envoi test:', error);
       alert('Erreur lors de l\'envoi du test');
     } finally {
       setIsSendingTest(false);

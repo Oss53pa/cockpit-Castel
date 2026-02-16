@@ -27,6 +27,7 @@ import {
   type GoogleUser,
   type BackupMetadata,
 } from '@/services/googleDriveService';
+import { logger } from '@/lib/logger';
 
 export function GoogleDriveSync() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -52,7 +53,7 @@ export function GoogleDriveSync() {
           await loadBackups();
         }
       } catch (err) {
-        console.error('[GoogleDrive] Init error:', err);
+        logger.error('[GoogleDrive] Init error:', err);
         setError('Erreur lors de l\'initialisation de Google Drive');
       }
     };
@@ -69,7 +70,7 @@ export function GoogleDriveSync() {
       const list = await listBackups();
       setBackups(list);
     } catch (err) {
-      console.error('[GoogleDrive] List error:', err);
+      logger.error('[GoogleDrive] List error:', err);
       setError('Erreur lors du chargement des backups');
     } finally {
       setIsLoading(false);
@@ -89,7 +90,7 @@ export function GoogleDriveSync() {
       setSuccess('Connexion reussie!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('[GoogleDrive] Sign in error:', err);
+      logger.error('[GoogleDrive] Sign in error:', err);
       setError('Erreur lors de la connexion');
     } finally {
       setIsLoading(false);
@@ -115,7 +116,7 @@ export function GoogleDriveSync() {
       setSuccess('Backup cree avec succes!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('[GoogleDrive] Backup error:', err);
+      logger.error('[GoogleDrive] Backup error:', err);
       setError('Erreur lors de la creation du backup');
     } finally {
       setIsBackingUp(false);
@@ -139,7 +140,7 @@ export function GoogleDriveSync() {
         window.location.reload();
       }, 2000);
     } catch (err) {
-      console.error('[GoogleDrive] Restore error:', err);
+      logger.error('[GoogleDrive] Restore error:', err);
       setError('Erreur lors de la restauration');
     } finally {
       setIsRestoring(null);
@@ -158,7 +159,7 @@ export function GoogleDriveSync() {
       setSuccess('Backup supprime');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('[GoogleDrive] Delete error:', err);
+      logger.error('[GoogleDrive] Delete error:', err);
       setError('Erreur lors de la suppression');
     }
   };

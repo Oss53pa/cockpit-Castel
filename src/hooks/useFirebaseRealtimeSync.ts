@@ -20,6 +20,7 @@ import {
 } from '@/services/firebaseRealtimeSync';
 import { isFirebaseConfigured, getFirebaseConfig } from '@/services/firebaseConfigService';
 import { useToast } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
 
 interface UseFirebaseRealtimeSyncReturn {
   isConnected: boolean;
@@ -41,7 +42,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
   // Callback quand une mise à jour est reçue
   const handleUpdateReceived = useCallback(
     async (update: ExternalUpdateData) => {
-      console.log('Update received from Firebase:', update);
+      logger.info('Update received from Firebase:', update);
       setLastUpdate(update);
 
       // Synchroniser vers IndexedDB local
@@ -72,7 +73,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
     const config = getFirebaseConfig();
 
     if (!config.enabled || !isFirebaseConfigured()) {
-      console.log('Firebase not configured, skipping realtime sync');
+      logger.info('Firebase not configured, skipping realtime sync');
       setIsConnected(false);
       setIsListening(false);
       return;
@@ -88,7 +89,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
         const listening = startRealtimeListener({
           onUpdateReceived: handleUpdateReceived,
           onError: error => {
-            console.error('Realtime sync error:', error);
+            logger.error('Realtime sync error:', error);
             addToast({
               type: 'error',
               title: 'Erreur de synchronisation',
@@ -107,13 +108,13 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
         setIsListening(listening);
 
         if (listening) {
-          console.log('Firebase realtime listener started');
+          logger.info('Firebase realtime listener started');
         }
 
         // Synchroniser les mises à jour en attente
         const { synced, errors } = await syncAllPendingUpdates();
         if (synced > 0) {
-          console.log(`Synced ${synced} pending updates`);
+          logger.info(`Synced ${synced} pending updates`);
           addToast({
             type: 'info',
             title: 'Synchronisation',
@@ -124,7 +125,7 @@ export function useFirebaseRealtimeSync(): UseFirebaseRealtimeSyncReturn {
         setPendingCount(errors);
       }
     } catch (error) {
-      console.error('Error initializing Firebase realtime sync:', error);
+      logger.error('Error initializing Firebase realtime sync:', error);
       setIsConnected(false);
       setIsListening(false);
     }

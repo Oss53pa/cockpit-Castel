@@ -19,6 +19,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { type Action } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface ActionFormProps {
   action?: Action;
@@ -99,7 +100,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de sauvegarder l\'action');
     } finally {
       setIsSubmitting(false);

@@ -61,6 +61,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
+import { logger } from '@/lib/logger';
 
 interface DataLibraryModalProps {
   isOpen: boolean;
@@ -230,7 +231,7 @@ export function DataLibraryModal({
       onInsertChart(chartWithData);
       onClose();
     } catch (error) {
-      console.error('Error fetching chart data:', error);
+      logger.error('Error fetching chart data:', error);
       // Fallback to static data
       onInsertChart(chart);
       onClose();
@@ -247,7 +248,7 @@ export function DataLibraryModal({
       onInsertTable(tableWithData);
       onClose();
     } catch (error) {
-      console.error('Error fetching table data:', error);
+      logger.error('Error fetching table data:', error);
       // Fallback to static data
       onInsertTable(table);
       onClose();

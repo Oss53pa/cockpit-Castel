@@ -19,6 +19,7 @@ import {
 } from '@/components/ui';
 import type { PropagationRetard } from '@/types';
 import { appliquerPropagationRetard } from '@/hooks';
+import { logger } from '@/lib/logger';
 
 interface PropagationRetardModalProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function PropagationRetardModal({
       onApplied?.();
       onClose();
     } catch (error) {
-      console.error('Erreur lors de la propagation:', error);
+      logger.error('Erreur lors de la propagation:', error);
       alert('Erreur lors de la propagation du retard');
     } finally {
       setIsApplying(false);

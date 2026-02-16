@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/db';
 import { getAllUpdateLinks } from '@/services/emailService';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -90,7 +91,7 @@ export function getFirebaseConfig(): FirebaseConfig {
       return configCache;
     }
   } catch (e) {
-    console.error('Error loading Firebase config:', e);
+    logger.error('Error loading Firebase config:', e);
   }
 
   return DEFAULT_CONFIG;
@@ -107,7 +108,7 @@ export async function getFirebaseConfigAsync(): Promise<FirebaseConfig> {
       return configCache;
     }
   } catch (e) {
-    console.error('Error loading Firebase config from IndexedDB:', e);
+    logger.error('Error loading Firebase config from IndexedDB:', e);
   }
 
   // Fallback to localStorage
@@ -154,7 +155,7 @@ export async function saveFirebaseConfig(config: Partial<FirebaseConfig>): Promi
       await disconnectFirebase();
     }
   } catch (e) {
-    console.error('Error saving Firebase config:', e);
+    logger.error('Error saving Firebase config:', e);
     throw e;
   }
 }
@@ -202,7 +203,7 @@ export async function initializeFirebaseApp(): Promise<FirebaseApp | null> {
     console.info('Firebase initialized successfully');
     return firebaseApp;
   } catch (e) {
-    console.error('Error initializing Firebase:', e);
+    logger.error('Error initializing Firebase:', e);
     return null;
   }
 }
@@ -218,7 +219,7 @@ export async function disconnectFirebase(): Promise<void> {
       firestoreDb = null;
     }
   } catch (e) {
-    console.error('Error disconnecting Firebase:', e);
+    logger.error('Error disconnecting Firebase:', e);
   }
 }
 
@@ -277,7 +278,7 @@ export async function testFirebaseConnection(
 
     return { success: true, message: 'Connexion reussie!' };
   } catch (e: any) {
-    console.error('Firebase connection test failed:', e);
+    logger.error('Firebase connection test failed:', e);
 
     // Parse error for user-friendly message
     if (e.code === 'permission-denied') {
@@ -354,7 +355,7 @@ export async function syncUpdateLinksToFirebase(): Promise<{
 
     return { success: true, synced };
   } catch (e: any) {
-    console.error('Error syncing to Firebase:', e);
+    logger.error('Error syncing to Firebase:', e);
     return { success: false, synced: 0, error: e.message };
   }
 }
@@ -397,7 +398,7 @@ export async function syncSingleLinkToFirebase(link: {
 
     return true;
   } catch (e) {
-    console.error('Error syncing single link to Firebase:', e);
+    logger.error('Error syncing single link to Firebase:', e);
     return false;
   }
 }
@@ -420,7 +421,7 @@ export async function fetchResponsesFromFirebase(): Promise<any[]> {
       ...doc.data(),
     }));
   } catch (e) {
-    console.error('Error fetching responses from Firebase:', e);
+    logger.error('Error fetching responses from Firebase:', e);
     return [];
   }
 }
@@ -462,7 +463,7 @@ export async function getFirebaseSyncStats(): Promise<SyncStats> {
       lastSync: storedStats?.lastSync || null,
     };
   } catch (e) {
-    console.error('Error getting sync stats:', e);
+    logger.error('Error getting sync stats:', e);
     return {
       totalLinks: 0,
       syncedLinks: 0,

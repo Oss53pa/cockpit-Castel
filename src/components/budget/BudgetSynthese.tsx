@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Card, Progress, Button, useToast } from '@/components/ui';
 import { useBudgetSynthese, resetBudgetEngagements } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 export function BudgetSynthese() {
   const synthese = useBudgetSynthese();
@@ -20,7 +21,7 @@ export function BudgetSynthese() {
       const count = await resetBudgetEngagements();
       toast.success('Engagements réinitialisés', `${count} ligne(s) budgétaire(s) mise(s) à jour`);
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de réinitialiser les engagements');
     } finally {
       setIsResetting(false);

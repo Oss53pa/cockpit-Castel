@@ -1182,7 +1182,7 @@ export function SyncPertHierarchical({ projectId: _projectId }: SyncPertHierarch
               // Colors
               let bgColor = node.color + '20';
               let borderColor = node.color;
-              let textColor = node.color;
+              const textColor = node.color;
 
               if (node.progress >= 100) {
                 bgColor = '#DCFCE7';

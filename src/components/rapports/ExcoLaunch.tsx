@@ -99,6 +99,7 @@ import {
 } from '@/hooks';
 import { PROJET_CONFIG, THEME_COLORS } from '@/data/constants';
 import { BATIMENTS_CONFIG, TOTAL_GLA } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -1969,9 +1970,9 @@ export function ExcoLaunch() {
   const getJalonsForAxe = (axe: AxeType) => {
     const dbCode = axeToDbCode[axe];
     const filtered = (jalons || []).filter((j) => j.axe === dbCode);
-    console.log(`[Exco] getJalonsForAxe(${axe}) -> dbCode=${dbCode}, total jalons=${(jalons || []).length}, filtered=${filtered.length}`);
+    logger.info(`[Exco] getJalonsForAxe(${axe}) -> dbCode=${dbCode}, total jalons=${(jalons || []).length}, filtered=${filtered.length}`);
     if (filtered.length === 0 && (jalons || []).length > 0) {
-      console.log('[Exco] Sample jalon axes:', (jalons || []).slice(0, 5).map(j => j.axe));
+      logger.info('[Exco] Sample jalon axes:', (jalons || []).slice(0, 5).map(j => j.axe));
     }
     return filtered;
   };
@@ -3893,7 +3894,7 @@ export function ExcoLaunch() {
       await pptx.writeFile({ fileName });
 
     } catch (error) {
-      console.error('Erreur génération PPTX:', error);
+      logger.error('Erreur génération PPTX:', error);
       alert('Erreur lors de la génération du PowerPoint. Veuillez réessayer.');
     } finally {
       setGenerating(false);

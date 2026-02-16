@@ -7,6 +7,7 @@ import {
   countPendingUpdates,
   type ExternalUpdate,
 } from '@/services/firebase';
+import { logger } from '@/lib/logger';
 
 interface SyncResult {
   success: boolean;
@@ -27,7 +28,7 @@ export function useFirebaseSync() {
       const count = await countPendingUpdates();
       setPendingCount(count);
     } catch (error) {
-      console.error('Erreur lors du comptage des mises à jour:', error);
+      logger.error('Erreur lors du comptage des mises à jour:', error);
     }
   }, []);
 
@@ -106,7 +107,7 @@ export function useFirebaseSync() {
 
       return true;
     } catch (error) {
-      console.error('Erreur lors de la synchronisation:', error);
+      logger.error('Erreur lors de la synchronisation:', error);
       return false;
     }
   }, []);
@@ -133,7 +134,7 @@ export function useFirebaseSync() {
       setLastSync(new Date());
       await refreshPendingCount();
     } catch (error) {
-      console.error('Erreur lors de la synchronisation:', error);
+      logger.error('Erreur lors de la synchronisation:', error);
     } finally {
       setIsSyncing(false);
     }
@@ -152,7 +153,7 @@ export function useFirebaseSync() {
 
       // Notification si nouvelles mises à jour
       if (updates.length > 0) {
-        console.log(`${updates.length} mise(s) à jour en attente de synchronisation`);
+        logger.info(`${updates.length} mise(s) à jour en attente de synchronisation`);
       }
     });
 

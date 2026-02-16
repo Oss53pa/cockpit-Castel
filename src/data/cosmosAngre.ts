@@ -19,6 +19,7 @@ import type {
 import { getAlertDates, parseBuildingCodeFromId, type BuildingCode } from '@/lib/utils';
 // Import budget data - utilise l'exemple par défaut, peut être surchargé localement
 import { PROJECT_BUDGET, budgetData } from './budgetData.example';
+import { logger } from '@/lib/logger';
 
 // Bâtiments du projet COSMOS ANGRÉ (8 structures)
 const buildingsData: Building[] = [
@@ -8472,21 +8473,21 @@ export async function seedDatabase(): Promise<void> {
     // Vérifier et seeder les risques si absents - avec siteId
     const existingRisques = await db.risques.count();
     if (existingRisques === 0 && PRODUCTION_DATA.risques?.length > 0) {
-      console.log('[seedDatabase] Risques manquants, seed des risques...');
+      logger.info('[seedDatabase] Risques manquants, seed des risques...');
       // Récupérer le siteId par défaut
       const defaultSite = await db.sites.toCollection().first();
       const siteIdForRisques = defaultSite?.id || 1;
       const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId: siteIdForRisques }));
       await db.risques.bulkPut(risquesWithSiteId);
-      console.log(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés avec siteId=${siteIdForRisques}`);
+      logger.info(`[seedDatabase] ${PRODUCTION_DATA.risques.length} risques ajoutés avec siteId=${siteIdForRisques}`);
     }
 
     // Vérifier et seeder le budget si absent
     const existingBudget = await db.budget.count();
     if (existingBudget === 0 && PRODUCTION_DATA.budget?.length > 0) {
-      console.log('[seedDatabase] Budget manquant, seed du budget...');
+      logger.info('[seedDatabase] Budget manquant, seed du budget...');
       await db.budget.bulkPut(PRODUCTION_DATA.budget);
-      console.log(`[seedDatabase] ${PRODUCTION_DATA.budget.length} entrées budget ajoutées`);
+      logger.info(`[seedDatabase] ${PRODUCTION_DATA.budget.length} entrées budget ajoutées`);
     }
   }
 }
@@ -8555,7 +8556,7 @@ export async function migrateToV21(): Promise<{ success: boolean; message: strin
     return { success: true, message };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-    console.error('Erreur lors de la migration V2.1:', errorMessage);
+    logger.error('Erreur lors de la migration V2.1:', errorMessage);
     return { success: false, message: `Erreur: ${errorMessage}` };
   }
 }

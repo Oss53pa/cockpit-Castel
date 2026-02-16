@@ -4,6 +4,7 @@ import { createRisque } from '@/hooks/useRisques';
 import { createJalon } from '@/hooks/useJalons';
 import { saveIAIntegration, integrateIAImport } from '@/hooks/useImportIA';
 import type { IADocumentType, IATargetModule } from '@/types';
+import { logger } from '@/lib/logger';
 
 /**
  * Résultat d'une intégration IA dans les modules cibles
@@ -781,7 +782,7 @@ export async function integrateImport(
       records,
     };
   } catch (error) {
-    console.error('Erreur intégration IA:', error);
+    logger.error('Erreur intégration IA:', error);
     return {
       success: false,
       documentType,
@@ -815,7 +816,7 @@ export async function integrateImportMultiModule(
       const records = await integrateToModule(importId, module, extractedData, documentType);
       allRecords.push(...records);
     } catch (error) {
-      console.error(`Erreur intégration IA → ${module}:`, error);
+      logger.error(`Erreur intégration IA → ${module}:`, error);
       errors.push(`${module}: ${error instanceof Error ? error.message : 'Erreur'}`);
     }
   }

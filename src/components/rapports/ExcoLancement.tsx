@@ -83,6 +83,7 @@ import {
 // Types et utilitaires uniquement (pas de données)
 import { AXE_LABELS, AXE_SHORT_LABELS, JALON_STATUS_LABELS } from '@/types';
 import type { Action, Jalon, Risque } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Utilitaires de formatage
 function formatMontantFCFA(montant: number): string {
@@ -2877,7 +2878,7 @@ export function ExcoLancement() {
       await pptx.writeFile({ fileName: `EXCO-Lancement-${presentationDate}.pptx` });
 
     } catch (error) {
-      console.error('Erreur génération PPTX:', error);
+      logger.error('Erreur génération PPTX:', error);
     } finally {
       setGenerating(false);
     }

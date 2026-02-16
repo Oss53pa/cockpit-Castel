@@ -6,6 +6,7 @@ import { db } from '@/db';
 import type { Alerte, AlerteEmailHistorique, User } from '@/types';
 import { getEmailConfig, sendEmail } from './emailService';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -244,7 +245,7 @@ export async function sendAlerteEmail(options: AlerteEmailOptions): Promise<Aler
 
     return { success: result.success, historyId, error: result.error };
   } catch (error) {
-    console.error('Erreur envoi email alerte:', error);
+    logger.error('Erreur envoi email alerte:', error);
     return { success: false, error: String(error) };
   }
 }
@@ -281,7 +282,7 @@ export async function getAlerteResponsable(alerte: Alerte): Promise<User | null>
 
     return null;
   } catch (error) {
-    console.error('Erreur récupération responsable:', error);
+    logger.error('Erreur récupération responsable:', error);
     return null;
   }
 }
@@ -329,7 +330,7 @@ export async function envoyerAlertesAutomatiques(): Promise<{ envoyees: number; 
       }
     }
   } catch (error) {
-    console.error('Erreur envoi alertes automatiques:', error);
+    logger.error('Erreur envoi alertes automatiques:', error);
   }
 
   return { envoyees, erreurs };
@@ -375,7 +376,7 @@ export async function envoyerRelances(joursDepuisCreation: number = 3): Promise<
       }
     }
   } catch (error) {
-    console.error('Erreur envoi relances:', error);
+    logger.error('Erreur envoi relances:', error);
   }
 
   return { envoyees, erreurs };
@@ -462,7 +463,7 @@ export async function sendAlerteEmailSimple(
   type: 'initial' | 'relance' | 'escalade' = 'initial'
 ): Promise<boolean> {
   if (!alerte.responsableEmail || !alerte.responsableNom) {
-    console.warn('Alerte sans responsable email/nom:', alerte.id);
+    logger.warn('Alerte sans responsable email/nom:', alerte.id);
     return false;
   }
 
@@ -528,7 +529,7 @@ export async function getAlerteResponsableByEntity(
 
     return null;
   } catch (error) {
-    console.error('Erreur récupération responsable par entité:', error);
+    logger.error('Erreur récupération responsable par entité:', error);
     return null;
   }
 }

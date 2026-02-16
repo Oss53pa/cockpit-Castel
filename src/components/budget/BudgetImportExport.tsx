@@ -14,6 +14,7 @@ import { db } from '@/db';
 import { useSeedData } from '@/hooks/useSeedData';
 import type { BudgetItem } from '@/types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 interface BudgetImportExportProps {
   budgetType: 'mobilisation' | 'operationnel' | 'estimatif';
@@ -111,7 +112,7 @@ export function BudgetImportExport({ budgetType }: BudgetImportExportProps) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
+      logger.error('Export error:', err);
       toast.error('Erreur', 'Erreur lors de l\'export JSON');
     } finally {
       setIsExporting(false);
@@ -151,7 +152,7 @@ export function BudgetImportExport({ budgetType }: BudgetImportExportProps) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export CSV error:', err);
+      logger.error('Export CSV error:', err);
       toast.error('Erreur', 'Erreur lors de l\'export CSV');
     } finally {
       setIsExporting(false);
@@ -202,7 +203,7 @@ export function BudgetImportExport({ budgetType }: BudgetImportExportProps) {
         window.location.reload();
       }, 2000);
     } catch (err) {
-      console.error('Import error:', err);
+      logger.error('Import error:', err);
       toast.error('Erreur d\'import', err instanceof Error ? err.message : 'Erreur lors de l\'import');
     } finally {
       setIsImporting(false);

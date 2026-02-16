@@ -7,6 +7,7 @@ import { db } from '@/db';
 import type { Action, ActionSante, TypeLien } from '@/types';
 import { calculerPourcentageJalon, calculerStatutJalon } from '@/lib/calculations';
 import { computeEcheance, computeDureeJours } from '@/lib/dateCalculations';
+import { logger } from '@/lib/logger';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -67,7 +68,7 @@ export async function autoUpdateActionStatus(actionId: number): Promise<boolean>
 
     return updated;
   } catch (error) {
-    console.error(`[autoUpdateActionStatus] Erreur pour action ${actionId}:`, error);
+    logger.error(`[autoUpdateActionStatus] Erreur pour action ${actionId}:`, error);
     return false;
   }
 }
@@ -126,7 +127,7 @@ export async function autoUpdateJalonStatus(jalonId: number): Promise<boolean> {
 
     return false;
   } catch (error) {
-    console.error(`[autoUpdateJalonStatus] Erreur pour jalon ${jalonId}:`, error);
+    logger.error(`[autoUpdateJalonStatus] Erreur pour jalon ${jalonId}:`, error);
     return false;
   }
 }
@@ -159,7 +160,7 @@ export async function propagateDateChangeToSuccessors(
 ): Promise<number> {
   // Protection contre les boucles infinies
   if (depth >= MAX_RECURSION_DEPTH) {
-    console.warn(`[propagateDateChangeToSuccessors] Profondeur max atteinte pour action ${actionId}`);
+    logger.warn(`[propagateDateChangeToSuccessors] Profondeur max atteinte pour action ${actionId}`);
     return 0;
   }
 
@@ -249,7 +250,7 @@ export async function propagateDateChangeToSuccessors(
 
     return actionsUpdated;
   } catch (error) {
-    console.error(`[propagateDateChangeToSuccessors] Erreur pour action ${actionId}:`, error);
+    logger.error(`[propagateDateChangeToSuccessors] Erreur pour action ${actionId}:`, error);
     return 0;
   }
 }
@@ -316,9 +317,9 @@ export async function runDailyAutoCalculations(): Promise<{
       }
     }
 
-    console.log(`[AutoCalculation] Recalcul terminé: ${actionsUpdated} actions, ${jalonsUpdated} jalons mis à jour`);
+    logger.info(`[AutoCalculation] Recalcul terminé: ${actionsUpdated} actions, ${jalonsUpdated} jalons mis à jour`);
   } catch (error) {
-    console.error('[runDailyAutoCalculations] Erreur:', error);
+    logger.error('[runDailyAutoCalculations] Erreur:', error);
   }
 
   return { actionsUpdated, jalonsUpdated };

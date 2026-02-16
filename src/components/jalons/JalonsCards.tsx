@@ -16,6 +16,7 @@ import {
 import { useJalons, useActionsByJalon, deleteJalon } from '@/hooks';
 import { formatDate, getDaysUntil } from '@/lib/utils';
 import { AXE_LABELS, type Jalon, type JalonStatus, type JalonFilters } from '@/types';
+import { logger } from '@/lib/logger';
 
 const statusConfig: Record<JalonStatus, { color: string; bgColor: string; label: string }> = {
   a_venir: { color: 'text-primary-600', bgColor: 'bg-primary-100', label: 'À venir' },
@@ -57,7 +58,7 @@ function JalonCard({
       try {
         await deleteJalon(jalon.id);
       } catch (error) {
-        console.error('Erreur suppression jalon:', error);
+        logger.error('Erreur suppression jalon:', error);
         alert('Erreur lors de la suppression du jalon');
       }
     }

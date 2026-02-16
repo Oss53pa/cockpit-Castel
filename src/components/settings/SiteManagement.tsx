@@ -6,6 +6,7 @@ import { useSiteStore } from '@/stores/siteStore';
 import type { Site } from '@/types/site';
 import { cn } from '@/lib/utils';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 interface SiteFormData {
   code: string;
@@ -63,7 +64,7 @@ export function SiteManagement() {
   useEffect(() => {
     cleanupDuplicateSites().then((count) => {
       if (count > 0) {
-        console.log(`[SiteManagement] ${count} site(s) en double nettoyé(s)`);
+        logger.info(`[SiteManagement] ${count} site(s) en double nettoyé(s)`);
       }
     });
   }, []);
@@ -135,7 +136,7 @@ export function SiteManagement() {
       setEditingSite(null);
       setFormData(defaultFormData);
     } catch (error) {
-      console.error('Error saving site:', error);
+      logger.error('Error saving site:', error);
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { seedDatabaseV2, resetAndSeedDatabase, seedBudgetOnly, PROJECT_METADATA } from '@/data/seedDataV2';
+import { logger } from '@/lib/logger';
 
 interface SeedResult {
   usersCreated: number;
@@ -44,7 +45,7 @@ export function useSeedData(): UseSeedDataReturn {
       setResult(seedResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du seed');
-      console.error('Seed error:', err);
+      logger.error('Seed error:', err);
     } finally {
       setIsSeeding(false);
     }
@@ -60,7 +61,7 @@ export function useSeedData(): UseSeedDataReturn {
       setResult(seedResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du reset et seed');
-      console.error('Reset and seed error:', err);
+      logger.error('Reset and seed error:', err);
     } finally {
       setIsSeeding(false);
     }
@@ -76,7 +77,7 @@ export function useSeedData(): UseSeedDataReturn {
       setBudgetResult(budgetSeedResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du seed budget');
-      console.error('Budget seed error:', err);
+      logger.error('Budget seed error:', err);
     } finally {
       setIsSeeding(false);
     }

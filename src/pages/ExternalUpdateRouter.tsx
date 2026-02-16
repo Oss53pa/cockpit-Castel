@@ -13,6 +13,7 @@ import { ExternalUpdatePage } from './ExternalUpdatePage';
 import { ExternalUpdateFirebasePage } from './ExternalUpdateFirebasePage';
 import { isFirebaseConfigured, getFirebaseConfig } from '@/services/firebaseConfigService';
 import { getUpdateLinkFromFirebase, initRealtimeSync } from '@/services/firebaseRealtimeSync';
+import { logger } from '@/lib/logger';
 
 export function ExternalUpdateRouter() {
   const { token } = useParams<{ token: string }>();
@@ -29,7 +30,7 @@ export function ExternalUpdateRouter() {
       const config = getFirebaseConfig();
 
       if (!config.enabled || !isFirebaseConfigured()) {
-        console.log('Firebase not configured, using local page');
+        logger.info('Firebase not configured, using local page');
         setUseFirebase(false);
         setChecking(false);
         return;
@@ -39,7 +40,7 @@ export function ExternalUpdateRouter() {
       const initialized = await initRealtimeSync();
 
       if (!initialized) {
-        console.log('Firebase init failed, using local page');
+        logger.info('Firebase init failed, using local page');
         setUseFirebase(false);
         setChecking(false);
         return;
@@ -50,17 +51,17 @@ export function ExternalUpdateRouter() {
         const firebaseLink = await getUpdateLinkFromFirebase(token);
 
         if (firebaseLink) {
-          console.log('Link found in Firebase, using Firebase page');
+          logger.info('Link found in Firebase, using Firebase page');
           setUseFirebase(true);
         } else {
-          console.log('Link not in Firebase, using local page');
+          logger.info('Link not in Firebase, using local page');
           setUseFirebase(false);
         }
       }
 
       setChecking(false);
     } catch (e) {
-      console.error('Error checking Firebase:', e);
+      logger.error('Error checking Firebase:', e);
       setUseFirebase(false);
       setChecking(false);
     }

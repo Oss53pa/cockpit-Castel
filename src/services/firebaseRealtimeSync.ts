@@ -28,6 +28,7 @@ import { db } from '@/db';
 import { getFirebaseConfig, isFirebaseConfigured } from '@/services/firebaseConfigService';
 import type { Action, Jalon, Risque } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -232,7 +233,7 @@ let isListening = false;
  */
 export async function initRealtimeSync(): Promise<boolean> {
   if (!isFirebaseConfigured()) {
-    console.log('Firebase not configured, skipping realtime sync init');
+    logger.info('Firebase not configured, skipping realtime sync init');
     return false;
   }
 
@@ -264,10 +265,10 @@ export async function initRealtimeSync(): Promise<boolean> {
     }
 
     firestoreDb = getFirestore(firebaseApp);
-    console.log('Firebase realtime sync initialized');
+    logger.info('Firebase realtime sync initialized');
     return true;
   } catch (e) {
-    console.error('Error initializing Firebase realtime sync:', e);
+    logger.error('Error initializing Firebase realtime sync:', e);
     return false;
   }
 }
@@ -297,14 +298,14 @@ export async function createUpdateLinkInFirebase(
   expiresAt: string,
   users?: Array<{ id: number; nom: string; prenom: string }>
 ): Promise<boolean> {
-  console.log('[Firebase] Création du lien:', token, 'type:', entityType);
+  logger.info('[Firebase] Création du lien:', token, 'type:', entityType);
 
   if (!firestoreDb) {
-    console.log('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
+    logger.info('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
     const initialized = await initRealtimeSync();
 
     if (!initialized || !firestoreDb) {
-      console.warn('[Firebase] Échec init, tentative fallback...');
+      logger.warn('[Firebase] Échec init, tentative fallback...');
 
       // Fallback: essayer d'initialiser directement
       try {
@@ -324,9 +325,9 @@ export async function createUpdateLinkInFirebase(
         }
 
         firestoreDb = getFirestore(fallbackApp);
-        console.log('[Firebase] Fallback réussi pour création');
+        logger.info('[Firebase] Fallback réussi pour création');
       } catch (fallbackError) {
-        console.error('[Firebase] Échec du fallback:', fallbackError);
+        logger.error('[Firebase] Échec du fallback:', fallbackError);
         return false;
       }
     }
@@ -421,10 +422,10 @@ export async function createUpdateLinkInFirebase(
     };
 
     await setDoc(docRef, updateData);
-    console.log('[Firebase] Lien créé avec succès dans Firestore:', token);
+    logger.info('[Firebase] Lien créé avec succès dans Firestore:', token);
     return true;
   } catch (e) {
-    console.error('[Firebase] Erreur lors de la création du lien:', e);
+    logger.error('[Firebase] Erreur lors de la création du lien:', e);
     return false;
   }
 }
@@ -434,20 +435,20 @@ export async function createUpdateLinkInFirebase(
  * Utilise la config par défaut si nécessaire pour les appareils externes
  */
 export async function getUpdateLinkFromFirebase(token: string): Promise<ExternalUpdateData | null> {
-  console.log('[Firebase] Tentative de récupération du lien:', token);
+  logger.info('[Firebase] Tentative de récupération du lien:', token);
 
   // Forcer l'initialisation si pas encore fait
   if (!firestoreDb) {
-    console.log('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
+    logger.info('[Firebase] Firestore non initialisé, tentative d\'initialisation...');
     const initialized = await initRealtimeSync();
-    console.log('[Firebase] Résultat initialisation:', initialized);
+    logger.info('[Firebase] Résultat initialisation:', initialized);
 
     if (!initialized || !firestoreDb) {
-      console.error('[Firebase] Échec de l\'initialisation de Firestore');
+      logger.error('[Firebase] Échec de l\'initialisation de Firestore');
 
       // Fallback: essayer d'initialiser directement avec la config par défaut
       try {
-        console.log('[Firebase] Tentative de fallback avec config par défaut...');
+        logger.info('[Firebase] Tentative de fallback avec config par défaut...');
         const existingApps = getApps();
         const fallbackAppName = 'cockpit-fallback';
         let fallbackApp = existingApps.find(app => app.name === fallbackAppName);
@@ -465,26 +466,26 @@ export async function getUpdateLinkFromFirebase(token: string): Promise<External
         }
 
         firestoreDb = getFirestore(fallbackApp);
-        console.log('[Firebase] Fallback réussi, Firestore initialisé');
+        logger.info('[Firebase] Fallback réussi, Firestore initialisé');
       } catch (fallbackError) {
-        console.error('[Firebase] Échec du fallback:', fallbackError);
+        logger.error('[Firebase] Échec du fallback:', fallbackError);
         return null;
       }
     }
   }
 
   try {
-    console.log('[Firebase] Lecture du document:', COLLECTION_UPDATE_LINKS, '/', token);
+    logger.info('[Firebase] Lecture du document:', COLLECTION_UPDATE_LINKS, '/', token);
     const docRef = doc(firestoreDb, COLLECTION_UPDATE_LINKS, token);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.log('[Firebase] Document non trouvé pour le token:', token);
+      logger.info('[Firebase] Document non trouvé pour le token:', token);
       return null;
     }
 
     const data = docSnap.data() as ExternalUpdateData;
-    console.log('[Firebase] Document trouvé:', { token: data.token, entityType: data.entityType, entityId: data.entityId });
+    logger.info('[Firebase] Document trouvé:', { token: data.token, entityType: data.entityType, entityId: data.entityId });
 
     // Vérifier expiration
     if (new Date(data.expiresAt) < new Date() && !data.isExpired) {
@@ -494,7 +495,7 @@ export async function getUpdateLinkFromFirebase(token: string): Promise<External
 
     return data;
   } catch (e) {
-    console.error('[Firebase] Erreur lors de la récupération du lien:', e);
+    logger.error('[Firebase] Erreur lors de la récupération du lien:', e);
     return null;
   }
 }
@@ -515,7 +516,7 @@ export async function markLinkAccessedInFirebase(token: string): Promise<void> {
       });
     }
   } catch (e) {
-    console.error('Error marking link accessed:', e);
+    logger.error('Error marking link accessed:', e);
   }
 }
 
@@ -542,10 +543,10 @@ export async function submitExternalResponse(
       isSynced: false, // Marquer comme non synchronisé pour déclencher la sync
     });
 
-    console.log('External response submitted to Firebase:', token);
+    logger.info('External response submitted to Firebase:', token);
     return true;
   } catch (e) {
-    console.error('Error submitting external response:', e);
+    logger.error('Error submitting external response:', e);
     return false;
   }
 }
@@ -559,12 +560,12 @@ export async function submitExternalResponse(
  */
 export function startRealtimeListener(callbacks: RealtimeSyncCallbacks): boolean {
   if (!firestoreDb) {
-    console.warn('Firebase not initialized, cannot start listener');
+    logger.warn('Firebase not initialized, cannot start listener');
     return false;
   }
 
   if (isListening) {
-    console.log('Realtime listener already active');
+    logger.info('Realtime listener already active');
     return true;
   }
 
@@ -584,7 +585,7 @@ export function startRealtimeListener(callbacks: RealtimeSyncCallbacks): boolean
             const data = change.doc.data() as ExternalUpdateData;
             data.id = change.doc.id;
 
-            console.log('Received update from Firebase:', data.token);
+            logger.info('Received update from Firebase:', data.token);
 
             if (callbacks.onUpdateReceived) {
               callbacks.onUpdateReceived(data);
@@ -593,7 +594,7 @@ export function startRealtimeListener(callbacks: RealtimeSyncCallbacks): boolean
         });
       },
       (error) => {
-        console.error('Realtime listener error:', error);
+        logger.error('Realtime listener error:', error);
         if (callbacks.onError) {
           callbacks.onError(error);
         }
@@ -601,7 +602,7 @@ export function startRealtimeListener(callbacks: RealtimeSyncCallbacks): boolean
     );
 
     isListening = true;
-    console.log('Realtime listener started');
+    logger.info('Realtime listener started');
 
     if (callbacks.onConnectionChange) {
       callbacks.onConnectionChange(true);
@@ -609,7 +610,7 @@ export function startRealtimeListener(callbacks: RealtimeSyncCallbacks): boolean
 
     return true;
   } catch (e) {
-    console.error('Error starting realtime listener:', e);
+    logger.error('Error starting realtime listener:', e);
     return false;
   }
 }
@@ -623,7 +624,7 @@ export function stopRealtimeListener(): void {
     unsubscribeListener = null;
   }
   isListening = false;
-  console.log('Realtime listener stopped');
+  logger.info('Realtime listener stopped');
 }
 
 /**
@@ -642,7 +643,7 @@ export function isRealtimeListenerActive(): boolean {
  */
 export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boolean> {
   if (!update.response) {
-    console.warn('[SyncToLocal] No response to sync for:', update.token);
+    logger.warn('[SyncToLocal] No response to sync for:', update.token);
     return false;
   }
 
@@ -654,7 +655,7 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
       const { entityType, entityId, response } = update;
       const changes = response.changes;
 
-      console.log('[SyncToLocal] Synchronisation pour:', entityType, entityId);
+      logger.info('[SyncToLocal] Synchronisation pour:', entityType, entityId);
 
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
@@ -678,7 +679,7 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
           if (changes.date_debut_prevue !== undefined) updateData.date_debut_prevue = changes.date_debut_prevue;
           if (changes.date_fin_prevue !== undefined) updateData.date_fin_prevue = changes.date_fin_prevue;
         } else {
-          console.log('[SyncToLocal] Action verrouillée — dates ignorées');
+          logger.info('[SyncToLocal] Action verrouillée — dates ignorées');
         }
 
         // Merger les sous-tâches par ID au lieu de remplacer
@@ -756,7 +757,7 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
         if (changes.date_validation !== undefined && !isLocked) {
           updateData.date_validation = changes.date_validation;
         } else if (isLocked && (changes.date_debut_prevue || changes.date_prevue || changes.date_validation)) {
-          console.log('[SyncToLocal] Jalon verrouillé — dates ignorées');
+          logger.info('[SyncToLocal] Jalon verrouillé — dates ignorées');
         }
 
         await db.jalons.update(entityId, updateData);
@@ -810,10 +811,10 @@ export async function syncUpdateToLocal(update: ExternalUpdateData): Promise<boo
 
       await markUpdateAsSynced(update.token);
 
-      console.log('Update synced to local IndexedDB:', update.token);
+      logger.info('Update synced to local IndexedDB:', update.token);
       return true;
     } catch (e) {
-      console.error('Error syncing update to local:', e);
+      logger.error('Error syncing update to local:', e);
       return false;
     }
   });
@@ -832,7 +833,7 @@ async function markUpdateAsSynced(token: string): Promise<void> {
       syncedAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error('Error marking update as synced:', e);
+    logger.error('Error marking update as synced:', e);
   }
 }
 
@@ -864,7 +865,7 @@ export async function fetchPendingUpdates(): Promise<ExternalUpdateData[]> {
       ...doc.data(),
     } as ExternalUpdateData));
   } catch (e) {
-    console.error('Error fetching pending updates:', e);
+    logger.error('Error fetching pending updates:', e);
     return [];
   }
 }
@@ -917,7 +918,7 @@ export async function storeReportInFirebase(
   if (!firestoreDb) {
     const initialized = await initRealtimeSync();
     if (!initialized || !firestoreDb) {
-      console.error('[Firebase] Impossible d\'initialiser Firestore pour le rapport');
+      logger.error('[Firebase] Impossible d\'initialiser Firestore pour le rapport');
       return false;
     }
   }
@@ -959,13 +960,13 @@ export async function storeReportInFirebase(
         const chunkRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token, 'chunks', String(i));
         await setDoc(chunkRef, { data: chunk, index: i });
       }
-      console.log(`[Firebase] Rapport stocké en ${totalChunks} chunks:`, token);
+      logger.info(`[Firebase] Rapport stocké en ${totalChunks} chunks:`, token);
     }
 
-    console.log('[Firebase] Rapport stocké:', token);
+    logger.info('[Firebase] Rapport stocké:', token);
     return true;
   } catch (error) {
-    console.error('[Firebase] Erreur stockage rapport:', error);
+    logger.error('[Firebase] Erreur stockage rapport:', error);
     return false;
   }
 }
@@ -980,7 +981,7 @@ export async function getReportFromFirebase(
   if (!firestoreDb) {
     const initialized = await initRealtimeSync();
     if (!initialized || !firestoreDb) {
-      console.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport');
+      logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport');
       return null;
     }
   }
@@ -990,7 +991,7 @@ export async function getReportFromFirebase(
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.warn('[Firebase] Rapport non trouvé:', token);
+      logger.warn('[Firebase] Rapport non trouvé:', token);
       return null;
     }
 
@@ -998,7 +999,7 @@ export async function getReportFromFirebase(
 
     // Vérifier l'expiration
     if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
-      console.warn('[Firebase] Rapport expiré:', token);
+      logger.warn('[Firebase] Rapport expiré:', token);
       return null;
     }
 
@@ -1025,7 +1026,7 @@ export async function getReportFromFirebase(
     }
 
     if (!html) {
-      console.warn('[Firebase] Aucun HTML trouvé pour le rapport:', token);
+      logger.warn('[Firebase] Aucun HTML trouvé pour le rapport:', token);
       return null;
     }
 
@@ -1036,7 +1037,7 @@ export async function getReportFromFirebase(
       expiresAt: data.expiresAt,
     };
   } catch (error) {
-    console.error('[Firebase] Erreur lecture rapport:', error);
+    logger.error('[Firebase] Erreur lecture rapport:', error);
     return null;
   }
 }

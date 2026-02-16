@@ -13,6 +13,7 @@ import type {
 } from '../core/types';
 import { PatternStore, type Pattern, type PatternMatch } from './patternStore';
 import { FeedbackLoop, type Feedback, type FeedbackStats, type LearningInsight } from './feedbackLoop';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -481,7 +482,7 @@ export class ProjectMemory {
    */
   public import(data: MemoryExport): void {
     if (data.version !== '2.0') {
-      console.warn(`Version de mémoire ${data.version} peut nécessiter migration`);
+      logger.warn(`Version de mémoire ${data.version} peut nécessiter migration`);
     }
 
     this.snapshots = data.snapshots || [];

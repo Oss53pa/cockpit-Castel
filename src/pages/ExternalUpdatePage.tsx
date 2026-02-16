@@ -34,6 +34,7 @@ import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
 import { BudgetFormContent, type BudgetFormSaveData } from '@/components/shared/BudgetFormContent';
+import { logger } from '@/lib/logger';
 
 // Fonts
 const cockpitFonts = `
@@ -78,12 +79,12 @@ export function ExternalUpdatePage() {
     }
 
     try {
-      console.log('[ExternalUpdate] Chargement du lien:', token, 'type:', type);
+      logger.info('[ExternalUpdate] Chargement du lien:', token, 'type:', type);
       const updateLink = await getUpdateLink(token);
-      console.log('[ExternalUpdate] Résultat getUpdateLink:', updateLink ? 'trouvé' : 'non trouvé', updateLink);
+      logger.info('[ExternalUpdate] Résultat getUpdateLink:', updateLink ? 'trouvé' : 'non trouvé', updateLink);
 
       if (!updateLink) {
-        console.error('[ExternalUpdate] Lien non trouvé dans IndexedDB et Firebase');
+        logger.error('[ExternalUpdate] Lien non trouvé dans IndexedDB et Firebase');
         setError('Ce lien n\'existe pas ou a été supprimé.');
         setLoading(false);
         return;
@@ -160,7 +161,7 @@ export function ExternalUpdatePage() {
       setEntity(entityData);
       setLoading(false);
     } catch (e) {
-      console.error('Error loading data:', e);
+      logger.error('Error loading data:', e);
       setError('Erreur lors du chargement des données.');
       setLoading(false);
     }
@@ -303,7 +304,7 @@ export function ExternalUpdatePage() {
       setDialogOpen(false);
       setSuccess(true);
     } catch (e) {
-      console.error('Error saving:', e);
+      logger.error('Error saving:', e);
       setError('Erreur lors de la sauvegarde.');
     } finally {
       setSaving(false);

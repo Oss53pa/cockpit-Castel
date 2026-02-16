@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { db } from '@/db';
+import { logger } from '@/lib/logger';
 
 /**
  * Export all data from IndexedDB to a downloadable JSON file
@@ -39,11 +40,11 @@ export async function exportAllDataToJSON(): Promise<void> {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  console.log('Data exported successfully!');
-  console.log(`Actions: ${data.actions.length}`);
-  console.log(`Jalons: ${data.jalons.length}`);
-  console.log(`Risques: ${data.risques.length}`);
-  console.log(`Budget items: ${data.budget.length}`);
+  logger.info('Data exported successfully!');
+  logger.info(`Actions: ${data.actions.length}`);
+  logger.info(`Jalons: ${data.jalons.length}`);
+  logger.info(`Risques: ${data.risques.length}`);
+  logger.info(`Budget items: ${data.budget.length}`);
 }
 
 /**
@@ -97,7 +98,7 @@ export async function exportActionsForDataFiles(): Promise<void> {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  console.log('Actions exported successfully!');
+  logger.info('Actions exported successfully!');
 }
 
 /**
@@ -142,7 +143,7 @@ export async function exportRisquesForDataFiles(): Promise<void> {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  console.log('Risques exported successfully!');
+  logger.info('Risques exported successfully!');
 }
 
 // Make functions available globally for console use

@@ -6,6 +6,7 @@
 import { db } from '@/db';
 import { Proph3tEngine, type ProjectContext } from './proph3tEngine';
 import type { Action, Jalon, Risque, ProjectPhase } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -82,7 +83,7 @@ export function getProactiveConfig(): ProactiveConfig {
       return { ...DEFAULT_CONFIG, ...JSON.parse(stored) };
     }
   } catch (e) {
-    console.error('Erreur lecture config proactive:', e);
+    logger.error('Erreur lecture config proactive:', e);
   }
   return DEFAULT_CONFIG;
 }
@@ -93,7 +94,7 @@ export function saveProactiveConfig(config: Partial<ProactiveConfig>): void {
     const updated = { ...current, ...config };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Erreur sauvegarde config proactive:', e);
+    logger.error('Erreur sauvegarde config proactive:', e);
   }
 }
 
@@ -108,7 +109,7 @@ export function getStoredInsights(): ProactiveInsight[] {
       return JSON.parse(stored);
     }
   } catch (e) {
-    console.error('Erreur lecture insights:', e);
+    logger.error('Erreur lecture insights:', e);
   }
   return [];
 }
@@ -119,7 +120,7 @@ export function saveInsights(insights: ProactiveInsight[]): void {
     const toSave = insights.slice(0, 50);
     localStorage.setItem(INSIGHTS_KEY, JSON.stringify(toSave));
   } catch (e) {
-    console.error('Erreur sauvegarde insights:', e);
+    logger.error('Erreur sauvegarde insights:', e);
   }
 }
 
@@ -217,7 +218,7 @@ export async function runProactiveScan(): Promise<ProactiveInsight[]> {
 
     return newInsights.filter(i => !i.isDismissed);
   } catch (e) {
-    console.error('Erreur scan proactif:', e);
+    logger.error('Erreur scan proactif:', e);
     return [];
   }
 }
@@ -991,7 +992,7 @@ Sois direct et concis. Réponds UNIQUEMENT en JSON valide.`;
       }
     }
   } catch (e) {
-    console.warn('Enrichissement IA non disponible:', e);
+    logger.warn('Enrichissement IA non disponible:', e);
   }
 }
 

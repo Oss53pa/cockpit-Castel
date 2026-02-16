@@ -4,6 +4,7 @@ import type { Site } from '@/types/site';
 import { useSiteStore } from '@/stores/siteStore';
 import { useEffect } from 'react';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 export function useSites() {
   const sites = useLiveQuery(async () => {
@@ -110,7 +111,7 @@ export async function initializeDefaultSite(): Promise<void> {
       });
     }
   } catch (err) {
-    console.error('[initializeDefaultSite] Erreur:', err);
+    logger.error('[initializeDefaultSite] Erreur:', err);
   }
 }
 

@@ -40,6 +40,7 @@ import type {
   SyncAlert,
   SyncAction,
 } from '@/types/sync.types';
+import { logger } from '@/lib/logger';
 
 // Types pour les liens de mise à jour et notifications
 export interface UpdateLink {
@@ -1214,7 +1215,7 @@ export async function importDatabase(jsonData: string): Promise<void> {
       // sessionStorage plein — pas grave, le fichier a été téléchargé
     }
   } catch (backupErr) {
-    console.warn('[ImportDB] Erreur backup pré-import:', backupErr);
+    logger.warn('[ImportDB] Erreur backup pré-import:', backupErr);
   }
 
   await db.transaction('rw', db.tables, async () => {

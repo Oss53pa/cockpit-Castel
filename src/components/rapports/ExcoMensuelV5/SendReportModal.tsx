@@ -15,6 +15,7 @@ import { PROJET_CONFIG } from '@/data/constants';
 import type { User } from '@/types';
 import type { ExcoV5Data } from './hooks/useExcoV5Data';
 import { C } from './constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -208,7 +209,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
       }
 
       if (!stored) {
-        console.warn('Firebase storage failed — rapport accessible en local uniquement');
+        logger.warn('Firebase storage failed — rapport accessible en local uniquement');
       }
 
       // Send emails to selected recipients via the email service
@@ -254,7 +255,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
         try {
           await generateExcoPptx(data, presentationDate);
         } catch (e) {
-          console.error('Erreur export PPTX:', e);
+          logger.error('Erreur export PPTX:', e);
         }
       } else if (format === 'pdf') {
         // Open in print dialog for PDF save
@@ -269,7 +270,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
         window.open(link, '_blank');
       }
     } catch (err) {
-      console.error('Erreur génération lien:', err);
+      logger.error('Erreur génération lien:', err);
     } finally {
       setIsGenerating(false);
     }

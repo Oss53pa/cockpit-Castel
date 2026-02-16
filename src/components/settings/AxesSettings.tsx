@@ -29,6 +29,7 @@ import { Card, Badge, Button } from '@/components/ui';
 import { AXES, AXE_LABELS, AXE_SHORT_LABELS, AXE_CONFIG, type Axe } from '@/types';
 import { db } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { logger } from '@/lib/logger';
 
 // Icones mappees
 const AXE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -560,7 +561,7 @@ export function AxesSettings() {
       setCustomAxes(defaults);
       return defaults;
     } catch (error) {
-      console.error('Erreur chargement axes:', error);
+      logger.error('Erreur chargement axes:', error);
       const defaults = getDefaultAxes();
       setCustomAxes(defaults);
       return defaults;
@@ -590,7 +591,7 @@ export function AxesSettings() {
       }
       setCustomAxes(axes);
     } catch (error) {
-      console.error('Erreur sauvegarde axes:', error);
+      logger.error('Erreur sauvegarde axes:', error);
       alert('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);

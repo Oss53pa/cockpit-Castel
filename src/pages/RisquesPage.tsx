@@ -23,6 +23,7 @@ import {
   type Risque,
 } from '@/types';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 export function RisquesPage() {
   const { risqueFilters, setRisqueFilters } = useAppStore();
@@ -97,7 +98,7 @@ export function RisquesPage() {
       toast.success('Risque créé', `"${data.titre}" a été enregistré`);
       setCreateFormOpen(false);
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de créer le risque');
     } finally {
       setIsCreating(false);
@@ -153,7 +154,7 @@ export function RisquesPage() {
         toast.success(`Import réussi: ${result.data.length} risque(s) importé(s)`);
       }
     } catch (error) {
-      console.error('Erreur import Excel:', error);
+      logger.error('Erreur import Excel:', error);
       toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);

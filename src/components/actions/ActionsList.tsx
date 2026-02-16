@@ -37,6 +37,7 @@ import type { ProjectConfig } from '@/components/settings/ProjectSettings';
 import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
 import type { Action, ActionFilters } from '@/types';
 import { Flag } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface ActionsListProps {
   filters: ActionFilters;
@@ -132,7 +133,7 @@ function ActionRow({
       try {
         await deleteAction(action.id);
       } catch (error) {
-        console.error('Erreur suppression action:', error);
+        logger.error('Erreur suppression action:', error);
         alert('Erreur lors de la suppression de l\'action');
       }
     }
@@ -328,7 +329,7 @@ export function ActionsList({ filters, onEdit, onView, onAdd }: ActionsListProps
         await deleteAction(id);
       }
     } catch (error) {
-      console.error('Erreur suppression en lot:', error);
+      logger.error('Erreur suppression en lot:', error);
       alert('Erreur lors de la suppression en lot');
     }
     setSelectedIds(new Set());

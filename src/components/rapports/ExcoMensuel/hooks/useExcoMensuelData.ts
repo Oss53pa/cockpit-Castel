@@ -686,7 +686,7 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
     // Calculer le nombre total de mois
     const totalMonths = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
 
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     let monthIndex = 0;
 
     while (currentDate <= endDate) {

@@ -6,6 +6,7 @@
 import { db } from '@/db';
 import { REGISTRE_RISQUES_COSMOS_ANGRE, RESPONSABLES_RISQUES, type RisqueCosmosAngre } from './risquesCosmosAngre';
 import type { Risque, RisqueCategory, Axe } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // HELPERS
@@ -300,7 +301,7 @@ export async function migrateRisquesV2(siteId: number = 1): Promise<{
   }
 
   const existingCount = await db.risques.where('siteId').equals(siteId).count();
-  console.log(`[migrateRisquesV2] ${existingCount} risques existants, migration vers 68 risques corrigés...`);
+  logger.info(`[migrateRisquesV2] ${existingCount} risques existants, migration vers 68 risques corrigés...`);
 
   const deleted = await db.risques.where('siteId').equals(siteId).delete();
 
@@ -308,9 +309,9 @@ export async function migrateRisquesV2(siteId: number = 1): Promise<{
 
   localStorage.setItem(MIGRATION_RISQUES_V2_KEY, new Date().toISOString());
 
-  console.log(`[migrateRisquesV2] Migration terminée: ${deleted} supprimés, ${result.count} créés`);
+  logger.info(`[migrateRisquesV2] Migration terminée: ${deleted} supprimés, ${result.count} créés`);
   if (result.errors.length > 0) {
-    console.warn('[migrateRisquesV2] Erreurs:', result.errors);
+    logger.warn('[migrateRisquesV2] Erreurs:', result.errors);
   }
 
   return { skipped: false, deleted, created: result.count };

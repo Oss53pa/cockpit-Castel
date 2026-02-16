@@ -34,6 +34,7 @@ import {
   AXE_LABELS,
   type Axe,
 } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Schema minimal pour création rapide
 const quickAddSchema = z.object({
@@ -266,7 +267,7 @@ export function QuickAddAction({
       onSuccess?.(actionId);
       onClose();
     } catch (error) {
-      console.error('Erreur lors de la création rapide:', error);
+      logger.error('Erreur lors de la création rapide:', error);
       toast.error('Erreur', 'Impossible de creer l\'action');
     } finally {
       setIsSubmitting(false);

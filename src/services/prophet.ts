@@ -16,6 +16,7 @@
 import type { Action, Jalon, Risque, Alerte, User, Team, EVMIndicators, DashboardKPIs } from '../types';
 import { API_ENDPOINTS } from '../lib/apiEndpoints';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 export type AIProvider = 'openrouter' | 'anthropic' | 'local' | 'hybrid';
 
@@ -126,7 +127,7 @@ export function getConfig(): AIConfig {
       return { ...DEFAULT_CONFIG, ...JSON.parse(stored) };
     }
   } catch (e) {
-    console.error('Error loading Prophet config:', e);
+    logger.error('Error loading Prophet config:', e);
   }
   return DEFAULT_CONFIG;
 }
@@ -137,7 +138,7 @@ export function saveConfig(config: Partial<AIConfig>): void {
     const updated = { ...current, ...config };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Error saving Prophet config:', e);
+    logger.error('Error saving Prophet config:', e);
   }
 }
 
@@ -148,7 +149,7 @@ export function getHistory(): AIMessage[] {
       return JSON.parse(stored);
     }
   } catch (e) {
-    console.error('Error loading Prophet history:', e);
+    logger.error('Error loading Prophet history:', e);
   }
   return [];
 }
@@ -158,7 +159,7 @@ export function saveHistory(history: AIMessage[]): void {
     const trimmed = history.slice(-50);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
   } catch (e) {
-    console.error('Error saving Prophet history:', e);
+    logger.error('Error saving Prophet history:', e);
   }
 }
 
@@ -1785,7 +1786,7 @@ export async function chat(
 
     return response;
   } catch (error) {
-    console.error('Prophet chat error:', error);
+    logger.error('Prophet chat error:', error);
 
     // Fallback to local analysis if API fails
     if (config.provider !== 'local' && config.provider !== 'hybrid') {

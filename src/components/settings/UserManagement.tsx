@@ -26,6 +26,7 @@ import {
 import type { User as UserType, UserRole } from '@/types';
 import { USER_ROLES, USER_ROLE_LABELS } from '@/types';
 import { excelService } from '@/services/excelService';
+import { logger } from '@/lib/logger';
 
 interface UserFormData {
   nom: string;
@@ -168,7 +169,7 @@ export function UserManagement() {
         toast.success('Import reussi', `${result.data.length} utilisateur(s) importe(s)`);
       }
     } catch (error) {
-      console.error('Erreur import Excel:', error);
+      logger.error('Erreur import Excel:', error);
       toast.error('Erreur', 'Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);

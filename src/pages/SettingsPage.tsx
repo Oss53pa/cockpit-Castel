@@ -20,13 +20,14 @@ import { ParametresMetierSettings } from '@/components/settings/ParametresMetier
 import { GovernanceRules } from '@/components/settings/GovernanceRules';
 import { AlgorithmsSettings } from '@/components/settings/AlgorithmsSettings';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // Mot de passe admin via variable d'environnement (optionnel - si vide = pas de protection admin)
 const SETTINGS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD?.trim();
 
 // Warning si pas de protection admin configurée
 if (!SETTINGS_PASSWORD && import.meta.env.PROD) {
-  console.warn('[SÉCURITÉ] VITE_ADMIN_PASSWORD non configuré - page Paramètres non protégée');
+  logger.warn('[SÉCURITÉ] VITE_ADMIN_PASSWORD non configuré - page Paramètres non protégée');
 }
 
 export function SettingsPage() {
@@ -95,7 +96,7 @@ export function SettingsPage() {
         const count = await resetBudgetEngagements();
         alert(`✅ ${count} lignes budgétaires mises à jour.\n\nEngagé = 0\nRéalisé = 0`);
       } catch (error) {
-        console.error('Reset budget error:', error);
+        logger.error('Reset budget error:', error);
         alert('Erreur lors de la réinitialisation du budget');
       }
     }
@@ -126,7 +127,7 @@ export function SettingsPage() {
         alert(message);
         window.location.reload();
       } catch (error) {
-        console.error('Reset error:', error);
+        logger.error('Reset error:', error);
         alert('Erreur lors de la réinitialisation');
       } finally {
         setResetting(false);

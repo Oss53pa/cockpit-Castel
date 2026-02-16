@@ -23,6 +23,7 @@ import {
   type Jalon,
   type Axe,
 } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Préfixes ID
 const AXE_PREFIXES: Record<string, string> = {
@@ -76,7 +77,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
         try {
           commentaires = JSON.parse(data.commentaires_externes);
         } catch {
-          console.warn('Format commentaires invalide, conservation des existants');
+          logger.warn('Format commentaires invalide, conservation des existants');
         }
       }
 
@@ -105,7 +106,7 @@ export function JalonForm({ jalon, open, onClose, onSuccess }: JalonFormProps) {
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de sauvegarder le jalon');
     } finally {
       setIsSubmitting(false);

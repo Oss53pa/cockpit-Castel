@@ -1,5 +1,6 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, query, where, getDocs, orderBy, onSnapshot, Unsubscribe, Firestore } from 'firebase/firestore';
+import { logger } from '@/lib/logger';
 
 // Configuration Firebase via variables d'environnement
 const firebaseConfig = {
@@ -23,8 +24,8 @@ if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig);
   firestore = getFirestore(app);
 } else {
-  console.warn('[Firebase] Configuration incomplète - Firebase désactivé');
-  console.warn('[Firebase] Configurez les variables VITE_FIREBASE_* dans .env');
+  logger.warn('[Firebase] Configuration incomplète - Firebase désactivé');
+  logger.warn('[Firebase] Configurez les variables VITE_FIREBASE_* dans .env');
 }
 
 // Collections Firestore
@@ -67,7 +68,7 @@ export interface FirebaseUpdateLink {
  */
 export async function createFirebaseUpdateLink(link: FirebaseUpdateLink): Promise<void> {
   if (!isFirebaseConfigured || !firestore) {
-    console.warn('[Firebase] createFirebaseUpdateLink ignoré - Firebase non configuré');
+    logger.warn('[Firebase] createFirebaseUpdateLink ignoré - Firebase non configuré');
     return;
   }
   const docRef = doc(firestore, UPDATE_LINKS_COLLECTION, link.token);
@@ -200,7 +201,7 @@ export interface ExternalUpdate {
  */
 export async function saveExternalUpdate(update: ExternalUpdate): Promise<string> {
   if (!isFirebaseConfigured || !firestore) {
-    console.warn('[Firebase] saveExternalUpdate ignoré - Firebase non configuré');
+    logger.warn('[Firebase] saveExternalUpdate ignoré - Firebase non configuré');
     return '';
   }
 
@@ -314,7 +315,7 @@ function getFirestoreOrThrow(): Firestore {
  */
 function isFirebaseReady(): boolean {
   if (!isFirebaseConfigured || !firestore) {
-    console.warn('[Firebase] Opération ignorée - Firebase non configuré');
+    logger.warn('[Firebase] Opération ignorée - Firebase non configuré');
     return false;
   }
   return true;

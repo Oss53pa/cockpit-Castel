@@ -11,6 +11,7 @@
 
 import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team } from '@/types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -122,7 +123,7 @@ export function getProph3tConfig(): Proph3tConfig {
       return { ...DEFAULT_CONFIG, ...JSON.parse(stored) };
     }
   } catch (e) {
-    console.error('Erreur lecture config Proph3t:', e);
+    logger.error('Erreur lecture config Proph3t:', e);
   }
   return DEFAULT_CONFIG;
 }
@@ -133,7 +134,7 @@ export function saveProph3tConfig(config: Partial<Proph3tConfig>): void {
     const updated = { ...current, ...config };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Erreur sauvegarde config Proph3t:', e);
+    logger.error('Erreur sauvegarde config Proph3t:', e);
   }
 }
 
@@ -278,7 +279,7 @@ async function withRetry<T>(
       }
 
       if (attempt < maxRetries) {
-        console.warn(`[PROPH3T] Tentative ${attempt + 1}/${maxRetries + 1} échouée, retry dans ${delayMs}ms...`);
+        logger.warn(`[PROPH3T] Tentative ${attempt + 1}/${maxRetries + 1} échouée, retry dans ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
       }
     }
@@ -350,7 +351,7 @@ export async function callAI(
       processingTime: Date.now() - startTime,
     };
   } catch (error) {
-    console.error(`Erreur ${config.provider}:`, error);
+    logger.error(`Erreur ${config.provider}:`, error);
 
     // Fallback vers algorithme local
     if (config.provider !== 'local') {
@@ -384,12 +385,12 @@ async function callHybrid(
   let aiPromise: Promise<string> | null = null;
   if (config.openrouterApiKey) {
     aiPromise = callOpenRouter(messages, config).catch(e => {
-      console.warn('OpenRouter non disponible en mode hybride:', e);
+      logger.warn('OpenRouter non disponible en mode hybride:', e);
       return null;
     });
   } else if (config.anthropicApiKey) {
     aiPromise = callAnthropic(messages, systemPrompt, config).catch(e => {
-      console.warn('Anthropic non disponible en mode hybride:', e);
+      logger.warn('Anthropic non disponible en mode hybride:', e);
       return null;
     });
   }

@@ -22,6 +22,7 @@ import {
   getUpdateLinkFromFirebase,
   markLinkAccessedInFirebase,
 } from './firebaseRealtimeSync';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // TYPES
@@ -125,7 +126,7 @@ export function getEmailConfig(): EmailConfig {
       return configCache;
     }
   } catch (e) {
-    console.error('Error loading email config:', e);
+    logger.error('Error loading email config:', e);
   }
   return DEFAULT_CONFIG;
 }
@@ -158,7 +159,7 @@ export async function getEmailConfigAsync(): Promise<EmailConfig> {
     }
     return configCache;
   } catch (e) {
-    console.error('Error loading email config from IndexedDB:', e);
+    logger.error('Error loading email config from IndexedDB:', e);
     // Fallback vers localStorage pour migration
     return getEmailConfig();
   }
@@ -220,7 +221,7 @@ export async function saveEmailConfigAsync(config: Partial<EmailConfig>): Promis
     // Supprimer l'ancienne config localStorage si elle existe (migration)
     localStorage.removeItem(CONFIG_KEY);
   } catch (e) {
-    console.error('Error saving email config to IndexedDB:', e);
+    logger.error('Error saving email config to IndexedDB:', e);
     throw e;
   }
 }
@@ -231,7 +232,7 @@ export async function saveEmailConfigAsync(config: Partial<EmailConfig>): Promis
  */
 export function saveEmailConfig(config: Partial<EmailConfig>): void {
   // Lancer la sauvegarde async en arriere-plan
-  saveEmailConfigAsync(config).catch(console.error);
+  saveEmailConfigAsync(config).catch((err) => logger.error('Erreur sauvegarde config email:', err));
 
   // Mettre a jour le cache immediatement pour la reactivite UI
   const current = getEmailConfig();
@@ -264,11 +265,11 @@ export async function migrateEmailConfig(): Promise<boolean> {
     if (oldConfig) {
       const parsed = JSON.parse(oldConfig);
       await saveEmailConfigAsync(parsed);
-      console.info('Configuration email migree vers IndexedDB');
+      logger.info('Configuration email migree vers IndexedDB');
       return true;
     }
   } catch (e) {
-    console.error('Erreur migration config email:', e);
+    logger.error('Erreur migration config email:', e);
   }
   return false;
 }
@@ -325,17 +326,17 @@ export async function createUpdateLink(
   // Toujours sauvegarder dans Firebase pour la synchronisation temps réel (appareils externes)
   if (entity) {
     try {
-      console.log('[EmailService] Sauvegarde du lien dans Firebase:', link.token);
+      logger.info('[EmailService] Sauvegarde du lien dans Firebase:', link.token);
 
       // Récupérer la liste des utilisateurs pour l'inclure dans Firebase (pour sélection externe)
       const allUsers = await db.users.toArray();
-      console.log('[EmailService] Utilisateurs trouvés dans IndexedDB:', allUsers.length);
+      logger.info('[EmailService] Utilisateurs trouvés dans IndexedDB:', allUsers.length);
       const usersForFirebase = allUsers.map(u => ({
         id: u.id!,
         nom: u.nom,
         prenom: u.prenom,
       }));
-      console.log('[EmailService] Utilisateurs à sauvegarder dans Firebase:', usersForFirebase);
+      logger.info('[EmailService] Utilisateurs à sauvegarder dans Firebase:', usersForFirebase);
 
       const firebaseSaved = await createRealtimeLink(
         link.token,
@@ -348,15 +349,15 @@ export async function createUpdateLink(
         usersForFirebase // Passer les utilisateurs à Firebase
       );
       if (firebaseSaved) {
-        console.log('[EmailService] Lien sauvegardé dans Firebase avec succès:', link.token);
+        logger.info('[EmailService] Lien sauvegardé dans Firebase avec succès:', link.token);
       } else {
-        console.warn('[EmailService] Échec de la sauvegarde Firebase, le lien sera uniquement local');
+        logger.warn('[EmailService] Échec de la sauvegarde Firebase, le lien sera uniquement local');
       }
     } catch (error) {
-      console.error('[EmailService] Erreur Firebase (fallback sur IndexedDB):', error);
+      logger.error('[EmailService] Erreur Firebase (fallback sur IndexedDB):', error);
     }
   } else {
-    console.warn('[EmailService] Pas de données entité, impossible de sauvegarder dans Firebase');
+    logger.warn('[EmailService] Pas de données entité, impossible de sauvegarder dans Firebase');
   }
 
   return { ...link, id };
@@ -389,11 +390,11 @@ export async function getUpdateLink(token: string): Promise<(UpdateLink & { enti
   // Si pas trouvé localement, essayer Firebase (pour les appareils externes)
   // Toujours essayer Firebase même si la config n'est pas explicitement définie
   // car DEFAULT_CONFIG est utilisé automatiquement
-  console.log('[EmailService] Lien non trouvé localement, tentative Firebase...');
+  logger.info('[EmailService] Lien non trouvé localement, tentative Firebase...');
 
   try {
     const firebaseLink = await getUpdateLinkFromFirebase(token);
-    console.log('[EmailService] Résultat Firebase:', firebaseLink ? 'trouvé' : 'non trouvé');
+    logger.info('[EmailService] Résultat Firebase:', firebaseLink ? 'trouvé' : 'non trouvé');
 
     if (firebaseLink) {
       // Convertir le format Firebase vers le format UpdateLink
@@ -431,10 +432,10 @@ export async function getUpdateLink(token: string): Promise<(UpdateLink & { enti
       };
     }
   } catch (error) {
-    console.error('[EmailService] Erreur lors de la récupération du lien depuis Firebase:', error);
+    logger.error('[EmailService] Erreur lors de la récupération du lien depuis Firebase:', error);
   }
 
-  console.log('[EmailService] Lien non trouvé ni localement ni dans Firebase');
+  logger.info('[EmailService] Lien non trouvé ni localement ni dans Firebase');
   return null;
 }
 
@@ -462,7 +463,7 @@ export async function markLinkAccessed(token: string): Promise<void> {
     try {
       await markLinkAccessedInFirebase(token);
     } catch (error) {
-      console.error('Erreur Firebase markLinkAccessed:', error);
+      logger.error('Erreur Firebase markLinkAccessed:', error);
     }
   }
 }
@@ -1456,7 +1457,7 @@ async function simulateSendEmail(params: SendEmailParams): Promise<EmailResult> 
         messageId: `emailjs_${response.status}_${Date.now()}`,
       };
     } catch (error) {
-      console.error('EmailJS error:', error);
+      logger.error('EmailJS error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erreur EmailJS inconnue',
@@ -1774,7 +1775,7 @@ export async function sendEmail(params: SimpleEmailParams): Promise<EmailResult>
         messageId: `emailjs_${response.status}_${Date.now()}`,
       };
     } catch (error) {
-      console.error('EmailJS error:', error);
+      logger.error('EmailJS error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erreur EmailJS inconnue',
@@ -1831,7 +1832,7 @@ export function loadMonthlyReportSettings(): MonthlyReportSettings | null {
       return JSON.parse(saved);
     }
   } catch (e) {
-    console.error('Erreur chargement settings rapport mensuel:', e);
+    logger.error('Erreur chargement settings rapport mensuel:', e);
   }
   return null;
 }
@@ -1861,7 +1862,7 @@ export function saveMonthlyReportToHistory(record: Omit<MonthlyReportSendRecord,
     const trimmed = history.slice(0, 100);
     localStorage.setItem(MONTHLY_REPORT_HISTORY_KEY, JSON.stringify(trimmed));
   } catch (e) {
-    console.error('Erreur sauvegarde historique rapport mensuel:', e);
+    logger.error('Erreur sauvegarde historique rapport mensuel:', e);
   }
 }
 
@@ -1873,7 +1874,7 @@ export function getMonthlyReportHistory(): MonthlyReportSendRecord[] {
     const saved = localStorage.getItem(MONTHLY_REPORT_HISTORY_KEY);
     return saved ? JSON.parse(saved) : [];
   } catch (e) {
-    console.error('Erreur lecture historique rapport mensuel:', e);
+    logger.error('Erreur lecture historique rapport mensuel:', e);
     return [];
   }
 }

@@ -48,6 +48,7 @@ import { useUsers } from '@/hooks';
 import type { Exco } from '@/types/exco';
 import type { StudioReport } from '@/types/reportStudio';
 import { REPORT_TYPE_LABELS } from '@/types/reportStudio';
+import { logger } from '@/lib/logger';
 
 // Type unifié pour le dialog d'envoi
 interface SendReportDialogProps {
@@ -91,7 +92,7 @@ function SendReportDialog({ open, onClose, report, onSend }: SendReportDialogPro
       await onSend(recipients, format, message);
       onClose();
     } catch (error) {
-      console.error('Erreur envoi:', error);
+      logger.error('Erreur envoi:', error);
       alert('Erreur lors de l\'envoi du rapport');
     } finally {
       setSending(false);
@@ -382,7 +383,7 @@ export function Journal({ onOpenExco, onOpenReport }: JournalProps) {
   const handleSendReport = async (recipients: string[], format: string, message: string) => {
     if (!selectedReport) return;
 
-    console.log('Envoi rapport:', {
+    logger.info('Envoi rapport:', {
       report: selectedReport.titre,
       recipients,
       format,

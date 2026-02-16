@@ -5,6 +5,7 @@
 // Date : 09 Février 2026 | Soft Opening : 16/10/2026
 
 import type { User, Jalon, Action, Axe, ProjectPhase, BuildingCode } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // MÉTADONNÉES DU PROJET
@@ -782,7 +783,7 @@ export async function seedDatabaseV2(): Promise<{
         const jalonId = jalonCode ? jalonMap.get(jalonCode) || null : null;
         const responsableId = userMap.get(action.responsable) || 1;
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const { _jalonCode, ...actionData } = actionWithCode;
 
         await db.actions.add({
@@ -996,6 +997,18 @@ export async function seedBudgetOnly(): Promise<{ budgetCreated: number; budgetS
   // ========================================================================
   await migrateActionsBuildingCode();
 
+  // ========================================================================
+  // AUTO-LIAISON RISQUES ↔ ACTIONS
+  // Lier automatiquement les risques aux actions par correspondance sémantique
+  // ========================================================================
+  try {
+    const { linkAllRisksToActions } = await import('@/lib/riskActionLinker');
+    const linkResult = await linkAllRisksToActions();
+    logger.info(`[seedDatabaseV2] Auto-liaison: ${linkResult.risquesLinked} risques liés, ${linkResult.totalLinks} liens`);
+  } catch (e) {
+    logger.warn('[seedDatabaseV2] Erreur auto-liaison risques:', e);
+  }
+
   return result;
 }
 
@@ -1088,7 +1101,7 @@ export async function migrateActionsBuildingCode(): Promise<number> {
     }
   }
 
-  console.log(`[Migration] ${updated} actions mises à jour avec buildingCode`);
+  logger.info(`[Migration] ${updated} actions mises à jour avec buildingCode`);
   return updated;
 }
 
@@ -1108,7 +1121,7 @@ export async function migrateActionsFromProductionData(): Promise<{ updated: num
     const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
 
     if (!PRODUCTION_DATA?.actions?.length) {
-      console.log('[Migration] Pas de données PRODUCTION_DATA disponibles');
+      logger.info('[Migration] Pas de données PRODUCTION_DATA disponibles');
       return { updated: 0, skipped: 0 };
     }
 
@@ -1165,9 +1178,9 @@ export async function migrateActionsFromProductionData(): Promise<{ updated: num
       }
     }
 
-    console.log(`[Migration] ${updated} actions mises à jour depuis PRODUCTION_DATA, ${skipped} ignorées`);
+    logger.info(`[Migration] ${updated} actions mises à jour depuis PRODUCTION_DATA, ${skipped} ignorées`);
   } catch (error) {
-    console.error('[Migration] Erreur lors de la migration depuis PRODUCTION_DATA:', error);
+    logger.error('[Migration] Erreur lors de la migration depuis PRODUCTION_DATA:', error);
   }
 
   return { updated, skipped };
@@ -1195,7 +1208,7 @@ export async function syncAvancementFromProductionData(): Promise<{ updated: num
     const { PRODUCTION_DATA } = await import('./cosmosAngreProductionData');
 
     if (!PRODUCTION_DATA?.actions?.length) {
-      console.log('[SyncAvancement] Pas de données PRODUCTION_DATA disponibles');
+      logger.info('[SyncAvancement] Pas de données PRODUCTION_DATA disponibles');
       return { updated: 0, skipped: 0, matched: 0 };
     }
 
@@ -1269,9 +1282,9 @@ export async function syncAvancementFromProductionData(): Promise<{ updated: num
       }
     }
 
-    console.log(`[SyncAvancement] ${matched} actions trouvées, ${updated} mises à jour, ${skipped} non trouvées`);
+    logger.info(`[SyncAvancement] ${matched} actions trouvées, ${updated} mises à jour, ${skipped} non trouvées`);
   } catch (error) {
-    console.error('[SyncAvancement] Erreur:', error);
+    logger.error('[SyncAvancement] Erreur:', error);
   }
 
   return { updated, skipped, matched };
@@ -1310,14 +1323,14 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split('T')[0];
 
-    console.log('[RecalculateAvancement] Date actuelle:', todayStr);
+    logger.info('[RecalculateAvancement] Date actuelle:', todayStr);
 
     const dbActions = await db.actions.toArray();
-    console.log('[RecalculateAvancement] Total actions en DB:', dbActions.length);
+    logger.info('[RecalculateAvancement] Total actions en DB:', dbActions.length);
 
     // Debug: afficher les 3 premières actions
     if (dbActions.length > 0) {
-      console.log('[RecalculateAvancement] Exemple action:', {
+      logger.info('[RecalculateAvancement] Exemple action:', {
         id: dbActions[0].id_action,
         titre: dbActions[0].titre,
         axe: dbActions[0].axe,
@@ -1405,9 +1418,9 @@ export async function recalculateAllAvancement(): Promise<{ updated: number; ski
       }
     }
 
-    console.log(`[RecalculateAvancement] ${updated} actions mises à jour, ${skipped} ignorées`);
+    logger.info(`[RecalculateAvancement] ${updated} actions mises à jour, ${skipped} ignorées`);
   } catch (error) {
-    console.error('[RecalculateAvancement] Erreur:', error);
+    logger.error('[RecalculateAvancement] Erreur:', error);
   }
 
   return { updated, skipped };
@@ -1438,7 +1451,7 @@ export async function cleanResetJalonsActions(): Promise<{
   actionsCreated: number;
   actionsPreserved: number;
 }> {
-  console.log('[cleanResetJalonsActions] Début du reset propre avec préservation par TITRE...');
+  logger.info('[cleanResetJalonsActions] Début du reset propre avec préservation par TITRE...');
 
   const result = {
     jalonsCreated: 0,
@@ -1492,7 +1505,7 @@ export async function cleanResetJalonsActions(): Promise<{
       });
     }
   }
-  console.log(`[cleanResetJalonsActions] ${savedActionDataByTitle.size} actions sauvegardées par titre`);
+  logger.info(`[cleanResetJalonsActions] ${savedActionDataByTitle.size} actions sauvegardées par titre`);
 
   // 2. Sauvegarder les données utilisateur des jalons existants par TITRE NORMALISÉ
   const existingJalons = await db.jalons.toArray();
@@ -1517,7 +1530,7 @@ export async function cleanResetJalonsActions(): Promise<{
     // 3. EFFACER tous les jalons et actions existants
     await db.jalons.clear();
     await db.actions.clear();
-    console.log('[cleanResetJalonsActions] Tables jalons et actions vidées');
+    logger.info('[cleanResetJalonsActions] Tables jalons et actions vidées');
 
     // 4. Insérer les jalons de ALL_JALONS avec restauration des données utilisateur
     for (const jalon of ALL_JALONS) {
@@ -1536,7 +1549,7 @@ export async function cleanResetJalonsActions(): Promise<{
       } as Jalon);
       result.jalonsCreated++;
     }
-    console.log(`[cleanResetJalonsActions] ${result.jalonsCreated} jalons créés`);
+    logger.info(`[cleanResetJalonsActions] ${result.jalonsCreated} jalons créés`);
 
     // 5. Récupérer les jalons pour le mapping jalonId
     const jalons = await db.jalons.toArray();
@@ -1549,7 +1562,7 @@ export async function cleanResetJalonsActions(): Promise<{
       const jalonId = jalonCode ? jalonMap.get(jalonCode) || null : null;
       const defaultResponsableId = userMap.get(action.responsable) || 1;
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { _jalonCode, ...actionData } = actionWithCode;
 
       // Chercher les données sauvegardées par TITRE NORMALISÉ
@@ -1579,13 +1592,13 @@ export async function cleanResetJalonsActions(): Promise<{
         result.actionsPreserved++;
       }
     }
-    console.log(`[cleanResetJalonsActions] ${result.actionsCreated} actions créées, ${result.actionsPreserved} avec données préservées`);
+    logger.info(`[cleanResetJalonsActions] ${result.actionsCreated} actions créées, ${result.actionsPreserved} avec données préservées`);
   });
 
   // Marquer la migration comme effectuée
   localStorage.setItem(MIGRATION_V40_KEY, 'true');
 
-  console.log('[cleanResetJalonsActions] Reset terminé:', result);
+  logger.info('[cleanResetJalonsActions] Reset terminé:', result);
   return result;
 }
 
@@ -1611,11 +1624,11 @@ export async function migrateV31toV40(): Promise<{
 }> {
   // Vérifier si déjà exécutée
   if (localStorage.getItem(MIGRATION_V40_KEY) === 'true') {
-    console.log('[migrateV31toV40] Migration déjà effectuée, skip.');
+    logger.info('[migrateV31toV40] Migration déjà effectuée, skip.');
     return { jalonsUpdated: 0, jalonsCreated: 0, jalonsDeleted: 0, actionsUpdated: 0, actionsCreated: 0, actionsDeleted: 0 };
   }
 
-  console.log('[migrateV31toV40] Démarrage migration v3.1 → v4.0 (v2 — match par titre)...');
+  logger.info('[migrateV31toV40] Démarrage migration v3.1 → v4.0 (v2 — match par titre)...');
 
   // Normaliser un titre pour comparaison
   const norm = (t: string | undefined): string =>
@@ -1680,7 +1693,7 @@ export async function migrateV31toV40(): Promise<{
         }
       }
 
-      console.log('[migrateV31toV40] Nettoyage doublons:', result.actionsDeleted, 'actions,', result.jalonsDeleted, 'jalons supprimés');
+      logger.info('[migrateV31toV40] Nettoyage doublons:', result.actionsDeleted, 'actions,', result.jalonsDeleted, 'jalons supprimés');
 
       // =====================================================================
       // 1. Préparer les maps (après nettoyage)
@@ -1858,7 +1871,7 @@ export async function migrateV31toV40(): Promise<{
           const jalonId = jalonCode ? jalonIdMap.get(jalonCode) || null : null;
           const responsableId = userIdMap.get(actionWithCode.responsable) || 1;
 
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+           
           const { _jalonCode: _jc, ...actionData } = actionWithCode;
 
           await db.actions.add({
@@ -1906,9 +1919,9 @@ export async function migrateV31toV40(): Promise<{
     // Marquer la migration comme effectuée
     localStorage.setItem(MIGRATION_V40_KEY, 'true');
 
-    console.log('[migrateV31toV40] Migration terminée:', result);
+    logger.info('[migrateV31toV40] Migration terminée:', result);
   } catch (error) {
-    console.error('[migrateV31toV40] Erreur:', error);
+    logger.error('[migrateV31toV40] Erreur:', error);
   }
 
   return result;

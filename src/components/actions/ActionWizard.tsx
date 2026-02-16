@@ -17,6 +17,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { ActionFormContent, type ActionFormSaveData } from '@/components/shared/ActionFormContent';
 import { type Axe } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Préfixes par axe
 const AXE_PREFIXES: Record<string, string> = {
@@ -223,7 +224,7 @@ export function ActionWizard({
       onSuccess?.(actionId);
       onClose();
     } catch (error) {
-      console.error('Erreur lors de la création:', error);
+      logger.error('Erreur lors de la création:', error);
       toast.error('Erreur', 'Impossible de créer l\'action');
     } finally {
       setIsSubmitting(false);

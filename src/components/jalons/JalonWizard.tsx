@@ -37,6 +37,7 @@ import {
   AXE_LABELS,
   type Axe,
 } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // SPÉCIFICATIONS v2.0 - Formulaire Jalon
@@ -292,7 +293,7 @@ export function JalonWizard({
       onSuccess?.(jalonId);
       onClose();
     } catch (error) {
-      console.error('Erreur lors de la création:', error);
+      logger.error('Erreur lors de la création:', error);
       toast.error('Erreur', 'Impossible de creer le jalon');
     } finally {
       setIsSubmitting(false);

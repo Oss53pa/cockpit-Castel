@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { db } from '@/db';
+import { logger } from '@/lib/logger';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
@@ -120,7 +121,7 @@ export async function initializeGoogleAuth(): Promise<void> {
     scope: SCOPES,
     callback: (response) => {
       if (response.error) {
-        console.error('[GoogleDrive] Auth error:', response.error);
+        logger.error('[GoogleDrive] Auth error:', response.error);
         return;
       }
       accessToken = response.access_token;
@@ -185,7 +186,7 @@ export function signIn(): Promise<GoogleUser> {
 export function signOut(): void {
   if (accessToken) {
     google.accounts.oauth2.revoke(accessToken, () => {
-      console.log('[GoogleDrive] Token révoqué');
+      logger.info('[GoogleDrive] Token révoqué');
     });
   }
 
@@ -374,7 +375,7 @@ export async function createBackup(): Promise<string> {
   }
 
   const result = await response.json();
-  console.log('[GoogleDrive] Backup créé:', result.name);
+  logger.info('[GoogleDrive] Backup créé:', result.name);
 
   return result.id;
 }
@@ -445,7 +446,7 @@ export async function restoreBackup(fileId: string): Promise<BackupData> {
     }
   );
 
-  console.log('[GoogleDrive] Backup restauré:', backupData.metadata);
+  logger.info('[GoogleDrive] Backup restauré:', backupData.metadata);
   return backupData;
 }
 
@@ -461,7 +462,7 @@ export async function deleteBackup(fileId: string): Promise<void> {
     fileId,
   });
 
-  console.log('[GoogleDrive] Backup supprimé:', fileId);
+  logger.info('[GoogleDrive] Backup supprimé:', fileId);
 }
 
 // ============================================================================

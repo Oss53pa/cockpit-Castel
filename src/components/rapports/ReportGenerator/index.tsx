@@ -50,6 +50,7 @@ import { PROJET_CONFIG, SEUILS_RISQUES, SEUILS_UI, SEUILS_SANTE_AXE } from '@/da
 import { useExcoV5Data } from '@/components/rapports/ExcoMensuelV5/hooks/useExcoV5Data';
 import { createExco } from '@/hooks/useExcos';
 import { mapGeneratedReportToExco } from '@/lib/mapReportToExco';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES LOCAUX
@@ -331,7 +332,7 @@ export function ReportGenerator({
       setExpandedSections(new Set(sections.map(s => s.id)));
 
     } catch (error) {
-      console.error('Erreur generation rapport:', error);
+      logger.error('Erreur generation rapport:', error);
     } finally {
       setIsGenerating(false);
     }
@@ -428,7 +429,7 @@ export function ReportGenerator({
         ],
       });
     } catch (error) {
-      console.error('Erreur export:', error);
+      logger.error('Erreur export:', error);
     } finally {
       setIsExporting(false);
     }
@@ -801,7 +802,7 @@ export function ReportGenerator({
                       await createExco(excoRecord);
                       setSavedToExco(true);
                     } catch (err) {
-                      console.error('Erreur sauvegarde EXCO:', err);
+                      logger.error('Erreur sauvegarde EXCO:', err);
                       alert('Erreur lors de la sauvegarde');
                     } finally {
                       setSavingToExco(false);

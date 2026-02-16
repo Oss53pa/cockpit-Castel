@@ -29,6 +29,7 @@ import { RetroPlanningView } from '@/components/proph3t/RetroPlanningView';
 import { NotificationCenter } from '@/components/proph3t/NotificationCenter';
 
 import { useProph3tDashboard } from '@/hooks/useProph3tDashboard';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // HELPERS
@@ -132,9 +133,9 @@ export function Proph3tPage() {
           <div className="flex items-center gap-3">
             <NotificationCenter
               notifications={data.notifications}
-              onMarkAsRead={(id) => console.log('Mark read:', id)}
-              onMarkAllAsRead={() => console.log('Mark all read')}
-              onDismiss={(id) => console.log('Dismiss:', id)}
+              onMarkAsRead={(id) => logger.info('Mark read:', id)}
+              onMarkAllAsRead={() => logger.info('Mark all read')}
+              onDismiss={(id) => logger.info('Dismiss:', id)}
             />
             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-500 rounded-full text-[10px]">
               <Zap className="w-3 h-3" />
@@ -525,9 +526,9 @@ function AlertsTab({ data }: { data: ReturnType<typeof useProph3tDashboard> }) {
     <AlertPanel
       alerts={data.alerts}
       summary={data.alertSummary}
-      onAcknowledge={(id) => console.log('Acknowledge:', id)}
-      onResolve={(id) => console.log('Resolve:', id)}
-      onEscalate={(id, reason) => console.log('Escalate:', id, reason)}
+      onAcknowledge={(id) => logger.info('Acknowledge:', id)}
+      onResolve={(id) => logger.info('Resolve:', id)}
+      onEscalate={(id, reason) => logger.info('Escalate:', id, reason)}
     />
   );
 }

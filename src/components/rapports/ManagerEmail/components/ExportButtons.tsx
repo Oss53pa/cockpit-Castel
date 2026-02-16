@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { FileText, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
 import type { Action, Jalon } from '@/types';
 import { AXE_LABELS } from '../hooks/useMonthlyReport';
+import { logger } from '@/lib/logger';
 
 interface ExportButtonsProps {
   periodeLabel: string;
@@ -151,7 +152,7 @@ export function ExportButtons({
       const fileName = `rapport-mensuel-${periodeLabel.toLowerCase().replace(' ', '-')}.pdf`;
       doc.save(fileName);
     } catch (error) {
-      console.error('Erreur export PDF:', error);
+      logger.error('Erreur export PDF:', error);
       alert('Erreur lors de l\'export PDF. Veuillez réessayer.');
     } finally {
       setIsExportingPdf(false);
@@ -236,7 +237,7 @@ export function ExportButtons({
       const fileName = `rapport-mensuel-${periodeLabel.toLowerCase().replace(' ', '-')}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     } catch (error) {
-      console.error('Erreur export Excel:', error);
+      logger.error('Erreur export Excel:', error);
       alert('Erreur lors de l\'export Excel. Veuillez réessayer.');
     } finally {
       setIsExportingExcel(false);

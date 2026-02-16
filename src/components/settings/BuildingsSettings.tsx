@@ -35,6 +35,7 @@ import {
   TOTAL_GLA,
 } from '@/types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // CALCUL AUTOMATIQUE - Avancement et Statut des bâtiments
@@ -844,7 +845,7 @@ export function BuildingsSettings() {
           setBuildings(DEFAULT_BUILDINGS);
         }
       } catch (error) {
-        console.error('Error loading buildings:', error);
+        logger.error('Error loading buildings:', error);
         setBuildings(DEFAULT_BUILDINGS);
       } finally {
         setLoading(false);
@@ -866,7 +867,7 @@ export function BuildingsSettings() {
       }
       setBuildings(newBuildings);
     } catch (error) {
-      console.error('Error saving buildings:', error);
+      logger.error('Error saving buildings:', error);
       alert('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
@@ -918,7 +919,7 @@ export function BuildingsSettings() {
 
       await saveBuildings(updatedBuildings);
     } catch (error) {
-      console.error('Error syncing progress:', error);
+      logger.error('Error syncing progress:', error);
       alert('Erreur lors de la synchronisation');
     } finally {
       setSaving(false);
@@ -940,7 +941,7 @@ export function BuildingsSettings() {
       }
       pendingBuildingsRef.current = null;
     } catch (error) {
-      console.error('Error saving building update:', error);
+      logger.error('Error saving building update:', error);
     }
   }, []);
 

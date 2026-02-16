@@ -35,7 +35,7 @@ export function GanttSlide({ data, designSettings, periode }: GanttSlideProps) {
 
     // Générer les mois pour l'axe horizontal
     const months: { label: string; startPercent: number; width: number }[] = [];
-    let currentMonth = new Date(startDate);
+    const currentMonth = new Date(startDate);
     while (currentMonth <= endDate) {
       const monthStart = new Date(Math.max(currentMonth.getTime(), startDate.getTime()));
       const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);

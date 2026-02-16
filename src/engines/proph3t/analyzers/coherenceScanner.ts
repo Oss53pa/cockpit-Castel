@@ -6,6 +6,7 @@
 
 import type { ProjectState, ConfidenceScore } from '../core/types';
 import { getConfidenceLevel } from '../core/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -401,7 +402,7 @@ export class CoherenceScanner {
         allIssues.push(...issues);
         checksExecuted++;
       } catch (error) {
-        console.warn(`Erreur check ${check.id}:`, error);
+        logger.warn(`Erreur check ${check.id}:`, error);
       }
     }
 
@@ -447,7 +448,7 @@ export class CoherenceScanner {
     try {
       return check.check(state);
     } catch (error) {
-      console.warn(`Erreur check ${checkId}:`, error);
+      logger.warn(`Erreur check ${checkId}:`, error);
       return [];
     }
   }
@@ -495,7 +496,7 @@ export class CoherenceScanner {
         await issue.fixAction();
         fixed++;
       } catch (error) {
-        console.warn(`Auto-fix échoué pour ${issue.id}:`, error);
+        logger.warn(`Auto-fix échoué pour ${issue.id}:`, error);
         failed++;
       }
     }

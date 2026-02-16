@@ -23,6 +23,7 @@ import {
 import { useRisques, useUser, deleteRisque, getRisqueCriticiteColor } from '@/hooks';
 import { RISQUE_CATEGORY_LABELS, getRisqueStatusLabel, type Risque, type RisqueFilters } from '@/types';
 import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
+import { logger } from '@/lib/logger';
 
 interface RisquesRegistreProps {
   filters: RisqueFilters;
@@ -55,7 +56,7 @@ function RisqueRow({
       try {
         await deleteRisque(risque.id);
       } catch (error) {
-        console.error('Erreur suppression risque:', error);
+        logger.error('Erreur suppression risque:', error);
         alert('Erreur lors de la suppression du risque');
       }
     }
@@ -208,7 +209,7 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
         await deleteRisque(id);
       }
     } catch (error) {
-      console.error('Erreur suppression en lot:', error);
+      logger.error('Erreur suppression en lot:', error);
       alert('Erreur lors de la suppression en lot');
     }
     setSelectedIds(new Set());

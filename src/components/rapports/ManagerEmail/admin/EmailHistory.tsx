@@ -15,6 +15,7 @@ import {
   Trash2,
   RefreshCw,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface EmailSendRecord {
   id: string;
@@ -48,7 +49,7 @@ export function EmailHistory() {
           setHistory([]);
         }
       } catch (e) {
-        console.error('Erreur chargement historique:', e);
+        logger.error('Erreur chargement historique:', e);
         setHistory([]);
       } finally {
         setIsLoading(false);

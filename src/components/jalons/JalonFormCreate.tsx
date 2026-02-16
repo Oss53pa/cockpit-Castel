@@ -14,6 +14,7 @@ import {
 import { useUsers, useJalons, createJalon } from '@/hooks';
 import { JalonFormContent, type JalonFormSaveData } from '@/components/shared/JalonFormContent';
 import { type Jalon, type Axe } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Préfixes ID
 const AXE_PREFIXES: Record<string, string> = {
@@ -117,7 +118,7 @@ export function JalonFormCreate({ open, onClose, onSuccess }: JalonFormCreatePro
       onSuccess();
       onClose();
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.error('Erreur:', error);
       toast.error('Erreur', 'Impossible de créer le jalon');
     } finally {
       setIsSubmitting(false);

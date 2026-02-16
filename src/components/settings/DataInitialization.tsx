@@ -12,6 +12,7 @@ import { seedDatabase } from '@/data/cosmosAngre';
 import { cleanupAllBudgetDuplicates } from '@/hooks/useBudgetExploitation';
 import { PROJET_CONFIG } from '@/data/constants';
 import { migrateV31toV40, MIGRATION_V40_KEY, cleanResetJalonsActions } from '@/data/seedDataV2';
+import { logger } from '@/lib/logger';
 
 interface DatabaseStats {
   users: number;
@@ -47,7 +48,7 @@ export function DataInitialization() {
       const dbStats = await getDatabaseStats();
       setStats(dbStats);
     } catch (err) {
-      console.error('Erreur chargement stats:', err);
+      logger.error('Erreur chargement stats:', err);
     } finally {
       setLoadingStats(false);
     }
@@ -70,7 +71,7 @@ export function DataInitialization() {
         alert('Données réinitialisées avec succès ! La page va se recharger.');
         window.location.reload();
       } catch (err) {
-        console.error('Erreur reseed:', err);
+        logger.error('Erreur reseed:', err);
         alert('Erreur lors de la réinitialisation');
       } finally {
         setForceReseeding(false);
@@ -96,7 +97,7 @@ export function DataInitialization() {
         alert('Toutes les données ont été supprimées. La page va se recharger.');
         window.location.reload();
       } catch (err) {
-        console.error('Erreur suppression:', err);
+        logger.error('Erreur suppression:', err);
         alert('Erreur lors de la suppression');
       }
     }
@@ -123,7 +124,7 @@ export function DataInitialization() {
       if (existingUsers === 0 && PRODUCTION_DATA.users?.length > 0) {
         await db.users.bulkAdd(PRODUCTION_DATA.users);
         usersAdded = PRODUCTION_DATA.users.length;
-        console.log(`[RepairData] ${usersAdded} utilisateurs ajoutés`);
+        logger.info(`[RepairData] ${usersAdded} utilisateurs ajoutés`);
       }
 
       // Vérifier et ajouter les jalons manquants (AVEC siteId)
@@ -132,7 +133,7 @@ export function DataInitialization() {
         const jalonsWithSiteId = PRODUCTION_DATA.jalons.map(j => ({ ...j, siteId }));
         await db.jalons.bulkAdd(jalonsWithSiteId);
         jalonsAdded = PRODUCTION_DATA.jalons.length;
-        console.log(`[RepairData] ${jalonsAdded} jalons ajoutés avec siteId=${siteId}`);
+        logger.info(`[RepairData] ${jalonsAdded} jalons ajoutés avec siteId=${siteId}`);
       }
 
       // Vérifier et ajouter les actions manquantes (AVEC siteId)
@@ -141,7 +142,7 @@ export function DataInitialization() {
         const actionsWithSiteId = PRODUCTION_DATA.actions.map(a => ({ ...a, siteId }));
         await db.actions.bulkAdd(actionsWithSiteId);
         actionsAdded = PRODUCTION_DATA.actions.length;
-        console.log(`[RepairData] ${actionsAdded} actions ajoutées avec siteId=${siteId}`);
+        logger.info(`[RepairData] ${actionsAdded} actions ajoutées avec siteId=${siteId}`);
       }
 
       // Vérifier et ajouter les risques manquants (AVEC siteId)
@@ -150,7 +151,7 @@ export function DataInitialization() {
         const risquesWithSiteId = PRODUCTION_DATA.risques.map(r => ({ ...r, siteId }));
         await db.risques.bulkAdd(risquesWithSiteId);
         risquesAdded = PRODUCTION_DATA.risques.length;
-        console.log(`[RepairData] ${risquesAdded} risques ajoutés avec siteId=${siteId}`);
+        logger.info(`[RepairData] ${risquesAdded} risques ajoutés avec siteId=${siteId}`);
       }
 
       // Vérifier et ajouter le budget manquant (AVEC siteId)
@@ -159,7 +160,7 @@ export function DataInitialization() {
         const budgetWithSiteId = PRODUCTION_DATA.budget.map(b => ({ ...b, siteId }));
         await db.budget.bulkAdd(budgetWithSiteId);
         budgetAdded = PRODUCTION_DATA.budget.length;
-        console.log(`[RepairData] ${budgetAdded} entrées budget ajoutées avec siteId=${siteId}`);
+        logger.info(`[RepairData] ${budgetAdded} entrées budget ajoutées avec siteId=${siteId}`);
       }
 
       setRepairResult({ risques: risquesAdded, budget: budgetAdded });
@@ -172,7 +173,7 @@ export function DataInitialization() {
         alert('Aucune donnée manquante détectée. Toutes les données sont déjà présentes.');
       }
     } catch (err) {
-      console.error('Erreur réparation:', err);
+      logger.error('Erreur réparation:', err);
       alert('Erreur lors de la réparation des données');
     } finally {
       setRepairingData(false);
@@ -195,7 +196,7 @@ export function DataInitialization() {
         alert('Aucun doublon détecté dans les budgets.');
       }
     } catch (err) {
-      console.error('Erreur nettoyage doublons:', err);
+      logger.error('Erreur nettoyage doublons:', err);
       alert('Erreur lors du nettoyage des doublons');
     } finally {
       setCleaningDuplicates(false);
@@ -220,7 +221,7 @@ export function DataInitialization() {
         alert('La migration v4.0 est déjà appliquée. Aucune modification nécessaire.');
       }
     } catch (err) {
-      console.error('Erreur migration v4.0:', err);
+      logger.error('Erreur migration v4.0:', err);
       alert('Erreur lors de la migration v4.0');
     } finally {
       setApplyingMigration(false);
@@ -245,7 +246,7 @@ export function DataInitialization() {
       await loadStats();
       alert(`Reset propre terminé !\n- ${result.jalonsCreated} jalons créés\n- ${result.actionsCreated} actions créées\n- ${result.actionsPreserved} actions avec données préservées (statut, avancement, notes...)\n\nLes doublons ont été supprimés.`);
     } catch (err) {
-      console.error('Erreur clean reset:', err);
+      logger.error('Erreur clean reset:', err);
       alert('Erreur lors du reset propre');
     } finally {
       setCleanResetting(false);

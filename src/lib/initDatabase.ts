@@ -9,6 +9,7 @@ import { seedDatabaseV2, PROJECT_METADATA, migrateActionsBuildingCode, migrateAc
 import { migrateToPhaseReferences } from '@/lib/dateCalculations';
 import { getProjectConfig } from '@/components/settings/ProjectSettings';
 import { migrateRisquesV2 } from '@/data/seedRisques';
+import { logger } from '@/lib/logger';
 
 let isInitialized = false;
 let initPromise: Promise<void> | null = null;
@@ -35,13 +36,13 @@ async function migrateToPhaseReferencesIfNeeded(): Promise<void> {
   const needsMigration = await needsPhaseReferenceMigration();
 
   if (needsMigration) {
-    console.log('[initDatabase] Migration vers les références de phase...');
+    logger.info('[initDatabase] Migration vers les références de phase...');
     try {
       const config = await getProjectConfig();
       const result = await migrateToPhaseReferences(config);
-      console.log('[initDatabase] Migration terminée:', result.jalons, 'jalons et', result.actions, 'actions convertis');
+      logger.info('[initDatabase] Migration terminée:', result.jalons, 'jalons et', result.actions, 'actions convertis');
     } catch (error) {
-      console.error('[initDatabase] Erreur lors de la migration des phases:', error);
+      logger.error('[initDatabase] Erreur lors de la migration des phases:', error);
     }
   }
 }
@@ -87,12 +88,12 @@ export async function initializeDatabase(): Promise<{
       const empty = await isDatabaseEmpty();
 
       if (empty) {
-        console.log('[initDatabase] Base de données vide, seed des données v2.0...');
+        logger.info('[initDatabase] Base de données vide, seed des données v2.0...');
         const result = await seedDatabaseV2();
-        console.log('[initDatabase] Seed terminé:', result);
+        logger.info('[initDatabase] Seed terminé:', result);
         // Migration pour ajouter buildingCode aux actions de construction
         const migratedCount = await migrateActionsBuildingCode();
-        console.log('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
+        logger.info('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
 
         // Migration vers les références de phase (dates relatives au Soft Opening)
         await migrateToPhaseReferencesIfNeeded();
@@ -100,29 +101,29 @@ export async function initializeDatabase(): Promise<{
         // Migration v3.1 → v4.0 (Soft Opening 16/10/2026)
         const v40Result = await migrateV31toV40();
         if (v40Result.jalonsCreated > 0 || v40Result.actionsCreated > 0) {
-          console.log('[initDatabase] Migration v4.0:', v40Result);
+          logger.info('[initDatabase] Migration v4.0:', v40Result);
         }
 
         // Migration risques v2.0 (68 risques corrigés)
         const risquesV2Result = await migrateRisquesV2();
         if (!risquesV2Result.skipped) {
-          console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
+          logger.info('[initDatabase] Migration risques v2.0:', risquesV2Result);
         }
 
         // Migration: corriger responsableId (hardcodé à 1 dans createAction)
         const respFixResult = await migrateFixResponsableIds();
         if (respFixResult.actionsFixed > 0 || respFixResult.jalonsFixed > 0) {
-          console.log('[initDatabase] Fix responsableIds:', respFixResult);
+          logger.info('[initDatabase] Fix responsableIds:', respFixResult);
         }
 
         isInitialized = true;
         return { wasEmpty: true, seeded: true, result };
       } else {
-        console.log('[initDatabase] Base de données déjà initialisée');
+        logger.info('[initDatabase] Base de données déjà initialisée');
         // Toujours exécuter la migration pour mettre à jour les données existantes
         const migratedCount = await migrateActionsBuildingCode();
         if (migratedCount > 0) {
-          console.log('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
+          logger.info('[initDatabase] Migration buildingCode:', migratedCount, 'actions mises à jour');
         }
 
         // Migration vers les références de phase (dates relatives au Soft Opening)
@@ -131,32 +132,32 @@ export async function initializeDatabase(): Promise<{
         // Migration: synchroniser responsable et avancement depuis PRODUCTION_DATA
         const prodDataMigration = await migrateActionsFromProductionData();
         if (prodDataMigration.updated > 0) {
-          console.log('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
+          logger.info('[initDatabase] Migration PRODUCTION_DATA:', prodDataMigration.updated, 'actions mises à jour');
         }
 
         // Migration v3.1 → v4.0 (Soft Opening 16/10/2026)
         const v40Result = await migrateV31toV40();
         if (v40Result.jalonsCreated > 0 || v40Result.actionsCreated > 0 || v40Result.jalonsUpdated > 0) {
-          console.log('[initDatabase] Migration v4.0:', v40Result);
+          logger.info('[initDatabase] Migration v4.0:', v40Result);
         }
 
         // Migration risques v2.0 (68 risques corrigés)
         const risquesV2Result = await migrateRisquesV2();
         if (!risquesV2Result.skipped) {
-          console.log('[initDatabase] Migration risques v2.0:', risquesV2Result);
+          logger.info('[initDatabase] Migration risques v2.0:', risquesV2Result);
         }
 
         // Migration: corriger responsableId (hardcodé à 1 dans createAction)
         const respFixResult2 = await migrateFixResponsableIds();
         if (respFixResult2.actionsFixed > 0 || respFixResult2.jalonsFixed > 0) {
-          console.log('[initDatabase] Fix responsableIds:', respFixResult2);
+          logger.info('[initDatabase] Fix responsableIds:', respFixResult2);
         }
 
         isInitialized = true;
         return { wasEmpty: false, seeded: false };
       }
     } catch (error) {
-      console.error('[initDatabase] Erreur lors de l\'initialisation:', error);
+      logger.error('[initDatabase] Erreur lors de l\'initialisation:', error);
       throw error;
     }
   })();
@@ -180,7 +181,7 @@ export async function forceReseed(): Promise<{
   jalonsCreated: number;
   actionsCreated: number;
 }> {
-  console.log('[initDatabase] Force reseed des données de production...');
+  logger.info('[initDatabase] Force reseed des données de production...');
 
   // Reset initialization state
   isInitialized = false;
@@ -224,24 +225,24 @@ export async function forceReseed(): Promise<{
       createdAt: now,
       updatedAt: now,
     });
-    console.log('[initDatabase] Site COSMOS créé');
+    logger.info('[initDatabase] Site COSMOS créé');
   }
 
   // Charger les données v4.0 (utilisateurs, jalons, actions, budget)
   const result = await seedDatabaseV2();
-  console.log('[initDatabase] Seed V2 terminé:', result);
+  logger.info('[initDatabase] Seed V2 terminé:', result);
 
   // Charger les 68 risques corrigés v2.0
   const { seedRisquesCosmosAngre } = await import('@/data/seedRisques');
   const risquesResult = await seedRisquesCosmosAngre(1, false);
-  console.log('[initDatabase] Risques v2.0 ajoutés:', risquesResult.count);
+  logger.info('[initDatabase] Risques v2.0 ajoutés:', risquesResult.count);
   localStorage.setItem('migration_risques_v2_done', new Date().toISOString());
 
   // Migration v3.1 → v4.0 (mises à jour des jalons/actions restructurés)
   const v40Result = await migrateV31toV40();
-  console.log('[initDatabase] Migration v4.0:', v40Result);
+  logger.info('[initDatabase] Migration v4.0:', v40Result);
 
-  console.log('[initDatabase] Force reseed terminé');
+  logger.info('[initDatabase] Force reseed terminé');
   return result;
 }
 

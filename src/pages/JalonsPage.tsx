@@ -13,6 +13,7 @@ import {
   JalonForm,
 } from '@/components/jalons';
 import { AXES, AXE_LABELS, JALON_STATUSES, JALON_STATUS_LABELS, BUILDING_CODES, BUILDING_CODE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Jalon } from '@/types';
+import { logger } from '@/lib/logger';
 
 type ViewMode = 'list' | 'cards' | 'kanban' | 'gantt' | 'pert';
 
@@ -97,7 +98,7 @@ export function JalonsPage() {
         toast.success(`Import réussi: ${result.data.length} jalon(s) importé(s)`);
       }
     } catch (error) {
-      console.error('Erreur import Excel:', error);
+      logger.error('Erreur import Excel:', error);
       toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);

@@ -28,6 +28,7 @@ import { initializeDatabase } from '@/lib/initDatabase';
 import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite, useFirebaseRealtimeSync, useAutoRecalculate } from '@/hooks';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
 import { ToastProvider } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,7 +83,7 @@ function AppContent() {
           await migrateEmailConfig();
           await initDefaultTemplates();
         } catch (err) {
-          console.error('[App] Erreur init:', err);
+          logger.error('[App] Erreur init:', err);
         }
       }, 100);
     }
@@ -178,7 +179,7 @@ function FirebaseRealtimeSyncInitializer() {
   // Les notifications sont gérées par le hook via useToast
   useEffect(() => {
     if (isConnected && isListening) {
-      console.log('Firebase realtime sync active');
+      logger.info('Firebase realtime sync active');
     }
   }, [isConnected, isListening]);
 

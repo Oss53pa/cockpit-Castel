@@ -21,6 +21,7 @@ import {
   migrateToPhaseReferences,
   type RecalculationPreview,
 } from '@/lib/dateCalculations';
+import { logger } from '@/lib/logger';
 
 // Types pour la configuration du projet
 export interface ProjectConfig {
@@ -126,7 +127,7 @@ export function ProjectSettings() {
         const savedConfig = await getProjectConfig();
         setConfig(savedConfig);
       } catch (error) {
-        console.error('Error loading project config:', error);
+        logger.error('Error loading project config:', error);
       } finally {
         setLoading(false);
       }
@@ -170,7 +171,7 @@ export function ProjectSettings() {
       await saveProjectConfig(config);
       setMessage({ type: 'success', text: 'Configuration sauvegardee avec succes' });
     } catch (error) {
-      console.error('Error saving config:', error);
+      logger.error('Error saving config:', error);
       setMessage({ type: 'error', text: 'Erreur lors de la sauvegarde' });
     } finally {
       setSaving(false);
@@ -185,7 +186,7 @@ export function ProjectSettings() {
       setPreview(result);
       setShowPreviewModal(true);
     } catch (error) {
-      console.error('Error previewing recalculation:', error);
+      logger.error('Error previewing recalculation:', error);
       setMessage({ type: 'error', text: 'Erreur lors de l\'apercu du recalcul' });
     } finally {
       setRecalculating(false);
@@ -211,7 +212,7 @@ export function ProjectSettings() {
       const actionsCount = await db.actions.count();
       setStats({ jalons: jalonsCount, actions: actionsCount });
     } catch (error) {
-      console.error('Error applying recalculation:', error);
+      logger.error('Error applying recalculation:', error);
       setMessage({ type: 'error', text: 'Erreur lors du recalcul des dates' });
     } finally {
       setRecalculating(false);
@@ -229,7 +230,7 @@ export function ProjectSettings() {
         text: `Migration réussie: ${result.jalons} jalon(s) et ${result.actions} action(s) convertis en délais relatifs au Soft Opening`,
       });
     } catch (error) {
-      console.error('Error migrating:', error);
+      logger.error('Error migrating:', error);
       setMessage({ type: 'error', text: 'Erreur lors de la migration' });
     } finally {
       setMigrating(false);

@@ -70,6 +70,7 @@ import { BudgetEditModal } from './BudgetEditModal';
 import { SendReminderModal, ShareExternalModal } from '@/components/shared';
 import { useBudgetExploitation, resetBudgetExploitationEngagements } from '@/hooks/useBudgetExploitation';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { logger } from '@/lib/logger';
 
 // Types pour le budget mobilisation
 interface PosteBudgetaire {
@@ -1335,7 +1336,7 @@ export function BudgetMobilisation() {
       const count = await resetBudgetExploitationEngagements('mobilisation');
       alert(`✅ ${count} ligne(s) budgétaire(s) mise(s) à jour.\n\nEngagé = 0\nConsommé = 0`);
     } catch (error) {
-      console.error('Reset engagements error:', error);
+      logger.error('Reset engagements error:', error);
       alert('❌ Erreur lors de la réinitialisation des engagements');
     } finally {
       setIsResettingEngagements(false);

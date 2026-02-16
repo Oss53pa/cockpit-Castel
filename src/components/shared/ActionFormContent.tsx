@@ -42,10 +42,36 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Action, type Axe, type ProjectPhase } from '@/types';
 import { calculerPourcentageAction } from '@/lib/calculations';
+import { logger } from '@/lib/logger';
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function updateItemAt<T>(items: T[], index: number, updates: Partial<T>): T[] {
+  const result = [...items];
+  result[index] = { ...result[index], ...updates };
+  return result;
+}
+
+function removeItemAt<T>(items: T[], index: number): T[] {
+  return items.filter((_, i) => i !== index);
+}
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+// Champs présents en DB mais pas (encore) sur l'interface Action
+type ActionWithExtras = Action & {
+  sous_taches?: SousTache[];
+  points_attention?: PointAttention[];
+  decisions_attendues?: DecisionAttendue[];
+  notes_mise_a_jour?: string;
+  commentaires_externes?: string;
+  commentaires?: Note[];
+  liens_documents?: string;
+};
 
 interface SousTache {
   id: string;
@@ -229,7 +255,7 @@ export function ActionFormContent({
   // État du formulaire
   const [avancement, setAvancement] = useState(action?.avancement ?? 0);
   const [isBloque, setIsBloque] = useState((action?.statut as StatutAction) === 'bloque');
-  const [sousTaches, setSousTaches] = useState<SousTache[]>((action as any)?.sous_taches || []);
+  const [sousTaches, setSousTaches] = useState<SousTache[]>((action as ActionWithExtras)?.sous_taches || []);
   const [preuves, setPreuves] = useState<Preuve[]>(action?.documents?.map(d => ({
     id: d.id || crypto.randomUUID(),
     type: d.type?.includes('lien') ? 'lien' as const : 'fichier' as const,
@@ -240,18 +266,18 @@ export function ActionFormContent({
   const [notes, setNotes] = useState<Note[]>(() => {
     if (!action) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
-    const externesStr = (action as any).commentaires_externes;
+    const externesStr = (action as ActionWithExtras).commentaires_externes;
     if (externesStr) {
       try {
         const parsed = JSON.parse(externesStr);
-        return parsed.map((c: any) => ({
+        return parsed.map((c: { id?: string; texte: string; auteur: string; date: string }) => ({
           id: c.id || crypto.randomUUID(),
           texte: c.texte,
           auteur: c.auteur,
           date: c.date,
         }));
       } catch (e) {
-        console.warn('Erreur parsing commentaires_externes:', e);
+        logger.warn('Erreur parsing commentaires_externes:', e);
       }
     }
     return action.commentaires?.map(c => ({
@@ -266,15 +292,15 @@ export function ActionFormContent({
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [newLinkLabel, setNewLinkLabel] = useState('');
   const [pointsAttention, setPointsAttention] = useState<PointAttention[]>(
-    (action as any)?.points_attention || []
+    (action as ActionWithExtras)?.points_attention || []
   );
   const [decisionsAttendues, setDecisionsAttendues] = useState<DecisionAttendue[]>(
-    (action as any)?.decisions_attendues || []
+    (action as ActionWithExtras)?.decisions_attendues || []
   );
   const [livrables, setLivrables] = useState<LivrableItem[]>(
     action?.livrables?.map(l => ({ id: l.id, nom: l.nom, fait: l.statut === 'valide' })) || []
   );
-  const [notesMiseAJour, setNotesMiseAJour] = useState((action as any)?.notes_mise_a_jour || '');
+  const [notesMiseAJour, setNotesMiseAJour] = useState((action as ActionWithExtras)?.notes_mise_a_jour || '');
 
   // Calcul automatique du statut basé sur l'avancement
   const statut: StatutAction = isBloque
@@ -379,14 +405,12 @@ export function ActionFormContent({
     setSousTaches([...sousTaches, { id: crypto.randomUUID(), libelle: '', responsableId: null, echeance: null, fait: false, avancement: 0 }]);
   };
 
-  const handleUpdateSousTache = (index: number, field: keyof SousTache, value: any) => {
-    const updated = [...sousTaches];
-    updated[index] = { ...updated[index], [field]: value };
-    setSousTaches(updated);
+  const handleUpdateSousTache = (index: number, field: keyof SousTache, value: SousTache[keyof SousTache]) => {
+    setSousTaches(updateItemAt(sousTaches, index, { [field]: value }));
   };
 
   const handleRemoveSousTache = (index: number) => {
-    setSousTaches(sousTaches.filter((_, i) => i !== index));
+    setSousTaches(removeItemAt(sousTaches, index));
   };
 
   const handleSousTacheAvancementChange = (index: number, newAvancement: number) => {
@@ -468,21 +492,17 @@ export function ActionFormContent({
     }]);
   };
 
-  const handleUpdatePointAttention = (index: number, field: keyof PointAttention, value: any) => {
-    const updated = [...pointsAttention];
-    updated[index] = { ...updated[index], [field]: value };
-    // Si on change le responsableId, mettre à jour le nom aussi
+  const handleUpdatePointAttention = (index: number, field: keyof PointAttention, value: PointAttention[keyof PointAttention]) => {
+    const updates: Partial<PointAttention> = { [field]: value };
     if (field === 'responsableId' && value) {
       const user = users.find(u => u.id === value);
-      if (user) {
-        updated[index].responsableNom = `${user.prenom} ${user.nom}`;
-      }
+      if (user) updates.responsableNom = `${user.prenom} ${user.nom}`;
     }
-    setPointsAttention(updated);
+    setPointsAttention(updateItemAt(pointsAttention, index, updates));
   };
 
   const handleRemovePointAttention = (index: number) => {
-    setPointsAttention(pointsAttention.filter((_, i) => i !== index));
+    setPointsAttention(removeItemAt(pointsAttention, index));
   };
 
   // Handlers décisions attendues
@@ -494,14 +514,12 @@ export function ActionFormContent({
     }]);
   };
 
-  const handleUpdateDecisionAttendue = (index: number, field: keyof DecisionAttendue, value: any) => {
-    const updated = [...decisionsAttendues];
-    updated[index] = { ...updated[index], [field]: value };
-    setDecisionsAttendues(updated);
+  const handleUpdateDecisionAttendue = (index: number, field: keyof DecisionAttendue, value: DecisionAttendue[keyof DecisionAttendue]) => {
+    setDecisionsAttendues(updateItemAt(decisionsAttendues, index, { [field]: value }));
   };
 
   const handleRemoveDecisionAttendue = (index: number) => {
-    setDecisionsAttendues(decisionsAttendues.filter((_, i) => i !== index));
+    setDecisionsAttendues(removeItemAt(decisionsAttendues, index));
   };
 
   // Handlers livrables
@@ -510,19 +528,15 @@ export function ActionFormContent({
   };
 
   const handleToggleLivrable = (index: number) => {
-    const updated = [...livrables];
-    updated[index] = { ...updated[index], fait: !updated[index].fait };
-    setLivrables(updated);
+    setLivrables(updateItemAt(livrables, index, { fait: !livrables[index].fait }));
   };
 
   const handleUpdateLivrableNom = (index: number, nom: string) => {
-    const updated = [...livrables];
-    updated[index] = { ...updated[index], nom };
-    setLivrables(updated);
+    setLivrables(updateItemAt(livrables, index, { nom }));
   };
 
   const handleRemoveLivrable = (index: number) => {
-    setLivrables(livrables.filter((_, i) => i !== index));
+    setLivrables(removeItemAt(livrables, index));
   };
 
   // Sauvegarde

@@ -22,6 +22,7 @@ import {
   type ActionFilters,
   type ActionStatus,
 } from '@/types';
+import { logger } from '@/lib/logger';
 
 const statusColors: Record<ActionStatus, { bg: string; text: string }> = {
   a_planifier: { bg: 'bg-gray-100', text: 'text-gray-700' },
@@ -68,7 +69,7 @@ function ActionCard({
       try {
         await deleteAction(action.id);
       } catch (error) {
-        console.error('Erreur suppression action:', error);
+        logger.error('Erreur suppression action:', error);
         alert('Erreur lors de la suppression de l\'action');
       }
     }

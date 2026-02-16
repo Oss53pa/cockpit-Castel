@@ -5,6 +5,7 @@
 // ============================================================================
 
 import type { Prediction, Anomaly, PrescriptiveAction } from '../core/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -172,7 +173,7 @@ export class AlertManager {
           }
         }
       } catch (error) {
-        console.warn(`Erreur évaluation règle ${rule.id}:`, error);
+        logger.warn(`Erreur évaluation règle ${rule.id}:`, error);
       }
     }
 

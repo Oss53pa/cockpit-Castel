@@ -17,6 +17,7 @@ import {
 } from '@/components/actions';
 import type { Action, ActionViewMode } from '@/types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 const viewModes: { id: ActionViewMode; label: string; icon: typeof List }[] = [
   { id: 'list', label: 'Liste', icon: List },
@@ -97,7 +98,7 @@ export function ActionsPage() {
         toast.success(`Import réussi: ${result.data.length} action(s) importée(s)`);
       }
     } catch (error) {
-      console.error('Erreur import Excel:', error);
+      logger.error('Erreur import Excel:', error);
       toast.error('Erreur lors de l\'import du fichier Excel');
     } finally {
       setImporting(false);

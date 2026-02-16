@@ -17,6 +17,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import type { jsPDF } from 'jspdf';
+import { logger } from '@/lib/logger';
 
 // Type for jsPDF with autotable plugin
 interface JsPDFWithAutoTable extends jsPDF {
@@ -1326,7 +1327,7 @@ export function EnhancedReportExport() {
       doc.save(`rapport-${siteName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
 
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      logger.error('Error generating PDF:', error);
       alert('Erreur lors de la generation du PDF');
     } finally {
       setGenerating(null);
@@ -1532,7 +1533,7 @@ export function EnhancedReportExport() {
 
       XLSX.writeFile(wb, `export-${siteName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
-      console.error('Error generating Excel:', error);
+      logger.error('Error generating Excel:', error);
       alert('Erreur lors de la generation Excel');
     } finally {
       setGenerating(null);

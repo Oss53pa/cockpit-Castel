@@ -24,6 +24,7 @@ import { useUser } from '@/hooks';
 import type { Action, Jalon, Risque } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 interface ShareExternalModalProps {
   isOpen: boolean;
@@ -118,7 +119,7 @@ export function ShareExternalModal({
       setGeneratedToken(token);
       setStep('preview');
     } catch (error) {
-      console.error('Erreur génération:', error);
+      logger.error('Erreur génération:', error);
       alert('Erreur lors de la génération de la page');
     } finally {
       setIsGenerating(false);

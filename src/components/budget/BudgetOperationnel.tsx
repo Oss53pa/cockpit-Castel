@@ -126,6 +126,7 @@ import {
   type BudgetExploitationAnnee,
   type CategorieExploitation,
 } from '@/data/budgetExploitationCosmosAngre';
+import { logger } from '@/lib/logger';
 
 // Format montant en FCFA
 function formatMontant(value: number): string {
@@ -1976,7 +1977,7 @@ export function BudgetOperationnel() {
       const count = await resetBudgetEngagements();
       alert(`✅ ${count} ligne(s) budgétaire(s) mise(s) à jour.\n\nEngagé = 0\nRéalisé = 0`);
     } catch (error) {
-      console.error('Reset engagements error:', error);
+      logger.error('Reset engagements error:', error);
       alert('❌ Erreur lors de la réinitialisation des engagements');
     } finally {
       setIsResettingEngagements(false);

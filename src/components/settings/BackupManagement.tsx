@@ -20,6 +20,7 @@ import {
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 import { exportDatabase, importDatabase, db } from '@/db';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // IndexedDB pour stocker les FileSystemDirectoryHandle (qui ne peuvent pas être sérialisés dans localStorage)
 const HANDLES_DB_NAME = 'cockpit-backup-handles';
@@ -215,7 +216,7 @@ export function BackupManagement() {
 
         setHandlesRestored(true);
       } catch (error) {
-        console.error('Erreur lors de la restauration des handles:', error);
+        logger.error('Erreur lors de la restauration des handles:', error);
         setHandlesRestored(true);
       }
     }
@@ -323,7 +324,7 @@ export function BackupManagement() {
 
       showStatus('success', 'Sauvegarde téléchargée avec succès');
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       showStatus('error', 'Erreur lors de la sauvegarde');
     } finally {
       setIsExporting(false);
@@ -403,7 +404,7 @@ export function BackupManagement() {
 
       showStatus('success', `Sauvegarde enregistrée dans "${handle.name}/${filename}"`);
     } catch (error) {
-      console.error('Save error:', error);
+      logger.error('Save error:', error);
       showStatus('error', 'Erreur lors de la sauvegarde. Reconfigurez le dossier.');
       // Supprimer le handle invalide d'IndexedDB
       await deleteHandle(type).catch(() => {});
@@ -448,7 +449,7 @@ export function BackupManagement() {
         showStatus('success', 'Données restaurées avec succès ! La page va se recharger.');
         setTimeout(() => window.location.reload(), 1500);
       } catch (error) {
-        console.error('Restore error:', error);
+        logger.error('Restore error:', error);
         showStatus('error', 'Erreur lors de la restauration. Vérifiez le fichier.');
       } finally {
         setIsRestoring(false);

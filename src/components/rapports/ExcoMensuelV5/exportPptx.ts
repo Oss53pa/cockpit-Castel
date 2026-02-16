@@ -6,6 +6,7 @@
 import type { ExcoV5Data } from './hooks/useExcoV5Data';
 import { AXES_V5, METEO_CONFIG, type MeteoLevel } from './constants';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // DESIGN TOKENS
@@ -339,7 +340,7 @@ export async function generateExcoPptx(data: ExcoV5Data, presentationDate: strin
   try {
     await pptx.writeFile({ fileName: `EXCO-Mensuel-${presentationDate}.pptx` });
   } catch (error) {
-    console.error('Erreur export PPTX:', error);
+    logger.error('Erreur export PPTX:', error);
     throw new Error('Impossible de générer le fichier PPTX');
   }
 }

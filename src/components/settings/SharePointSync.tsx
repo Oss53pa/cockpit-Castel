@@ -45,6 +45,7 @@ import {
   type SharePointSyncResult,
 } from '@/services/sharePointService';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 export function SharePointSync() {
   const [config, setConfig] = useState<SharePointConfig>(getSharePointConfig());
@@ -98,7 +99,7 @@ export function SharePointSync() {
       await logoutSharePoint();
       setAuth({ isAuthenticated: false });
     } catch (_error: unknown) {
-      console.error('Erreur logout:', _error);
+      logger.error('Erreur logout:', _error);
     } finally {
       setIsLoading(false);
     }

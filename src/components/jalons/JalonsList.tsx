@@ -34,6 +34,7 @@ import { detectPhaseForDate, resolveJalonEcheance, computeDateFromPhase } from '
 import { detectPhaseForJalon } from '@/lib/phaseAutoDetect';
 import type { ProjectConfig } from '@/components/settings/ProjectSettings';
 import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
+import { logger } from '@/lib/logger';
 
 const statusConfig: Record<JalonStatus, { color: string; bgColor: string; icon: typeof Flag }> = {
   a_venir: { color: 'text-primary-600', bgColor: 'bg-primary-100', icon: Flag },
@@ -132,7 +133,7 @@ function JalonRow({
       try {
         await deleteJalon(jalon.id);
       } catch (error) {
-        console.error('Erreur suppression jalon:', error);
+        logger.error('Erreur suppression jalon:', error);
         alert('Erreur lors de la suppression du jalon');
       }
     }
@@ -301,7 +302,7 @@ export function JalonsList({ filters, onEdit, onView }: JalonsListProps) {
         await deleteJalon(id);
       }
     } catch (error) {
-      console.error('Erreur suppression en lot:', error);
+      logger.error('Erreur suppression en lot:', error);
       alert('Erreur lors de la suppression en lot');
     }
     setSelectedIds(new Set());

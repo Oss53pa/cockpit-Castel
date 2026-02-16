@@ -50,6 +50,7 @@ import {
   exportReport,
 } from '@/hooks/useReports';
 import { useUsers } from '@/hooks';
+import { logger } from '@/lib/logger';
 
 interface ReportStudioProps {
   reportId: number;
@@ -146,7 +147,7 @@ export function ReportStudio({
         userName,
       });
     } catch (error) {
-      console.error('Failed to save report:', error);
+      logger.error('Failed to save report:', error);
     } finally {
       store.setSaving(false);
     }
@@ -171,7 +172,7 @@ export function ReportStudio({
         userName,
       });
     } catch (error) {
-      console.error('Failed to export report:', error);
+      logger.error('Failed to export report:', error);
     } finally {
       store.setExporting(false);
       store.closeModal('export');
@@ -193,7 +194,7 @@ export function ReportStudio({
       });
       store.selectSection(newSectionId);
     } catch (error) {
-      console.error('Error adding section:', error);
+      logger.error('Error adding section:', error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

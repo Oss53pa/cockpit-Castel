@@ -19,6 +19,7 @@ import type {
   SyncActionType,
   SyncPriority,
 } from '@/types/sync.types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // MAIN HOOK
@@ -118,7 +119,7 @@ export function useSync(siteId: number, projectId: string): UseSyncReturn {
     refreshSync()
       .then(() => setInitialized(true))
       .catch((error) => {
-        console.error('[useSync] Error during initialization:', error);
+        logger.error('[useSync] Error during initialization:', error);
         setInitialized(true); // Still mark as initialized to prevent infinite retries
       });
   }, [refreshSync]);
@@ -271,7 +272,7 @@ export function useSyncStatus(siteId: number) {
       syncServiceV2.calculateSyncStatusV2(siteId)
         .then(setStatus)
         .catch((error) => {
-          console.error('[useSyncStatus] Error calculating sync status:', error);
+          logger.error('[useSyncStatus] Error calculating sync status:', error);
           setStatus(null);
         });
     }

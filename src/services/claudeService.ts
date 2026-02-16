@@ -7,6 +7,7 @@
 
 import type { IADocumentType } from '@/types';
 import { API_ENDPOINTS } from '@/lib/apiEndpoints';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Interfaces riches pour l'extraction
@@ -111,7 +112,7 @@ export function getClaudeConfig(): ClaudeConfig | null {
       }
     }
   } catch (e) {
-    console.error('Erreur lecture config Claude:', e);
+    logger.error('Erreur lecture config Claude:', e);
   }
   return null;
 }
@@ -129,7 +130,7 @@ export function saveClaudeConfig(config: Partial<ClaudeConfig>): void {
     const updated = { ...current, ...config };
     localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Erreur sauvegarde config Claude:', e);
+    logger.error('Erreur sauvegarde config Claude:', e);
   }
 }
 
@@ -215,7 +216,7 @@ export async function extractWithClaude(
   const config = getClaudeConfig();
 
   if (!config?.apiKey) {
-    console.warn('API Claude non configuree, utilisation du mode simulation');
+    logger.warn('API Claude non configuree, utilisation du mode simulation');
     return simulateFallbackExtraction(documentContent);
   }
 
@@ -270,7 +271,7 @@ export async function extractWithClaude(
       extractedData: result.extractedData || {},
     };
   } catch (error) {
-    console.error('Erreur extraction Claude:', error);
+    logger.error('Erreur extraction Claude:', error);
     return simulateFallbackExtraction(documentContent);
   }
 }
@@ -1379,7 +1380,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
       return lines.join('\n') || `[PDF: ${file.name}] - Aucun texte extractible`;
     } catch (e) {
-      console.error('Erreur extraction PDF:', e);
+      logger.error('Erreur extraction PDF:', e);
       return `[PDF: ${file.name}] - Erreur lors de l'extraction`;
     }
   }
@@ -1392,7 +1393,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
       const result = await mammoth.extractRawText({ arrayBuffer: buffer });
       return result.value || `[Word: ${file.name}] - Aucun texte extractible`;
     } catch (e) {
-      console.error('Erreur extraction Word:', e);
+      logger.error('Erreur extraction Word:', e);
       return `[Word: ${file.name}] - Erreur lors de l'extraction`;
     }
   }
@@ -1419,7 +1420,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
       return lines.join('\n') || `[Excel: ${file.name}] - Aucun contenu extractible`;
     } catch (e) {
-      console.error('Erreur extraction Excel:', e);
+      logger.error('Erreur extraction Excel:', e);
       return `[Excel: ${file.name}] - Erreur lors de l'extraction`;
     }
   }
@@ -1458,7 +1459,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
       return lines.join('\n') || `[PowerPoint: ${file.name}] - Aucun texte extractible`;
     } catch (e) {
-      console.error('Erreur extraction PowerPoint:', e);
+      logger.error('Erreur extraction PowerPoint:', e);
       return `[PowerPoint: ${file.name}] - Erreur lors de l'extraction`;
     }
   }

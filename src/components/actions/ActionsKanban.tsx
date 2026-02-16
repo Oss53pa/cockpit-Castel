@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Badge, PriorityBadge, UserAvatar, Button } from '@/components/ui';
 import { useActions, updateActionStatus, useUser } from '@/hooks';
 import { type Action, type ActionStatus, type ActionFilters } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface ActionsKanbanProps {
   filters: ActionFilters;
@@ -152,7 +153,7 @@ export function ActionsKanban({ filters, onView, onAdd }: ActionsKanbanProps) {
     try {
       await updateActionStatus(actionId, newStatus);
     } catch (error) {
-      console.error('Erreur changement statut:', error);
+      logger.error('Erreur changement statut:', error);
     }
   };
 

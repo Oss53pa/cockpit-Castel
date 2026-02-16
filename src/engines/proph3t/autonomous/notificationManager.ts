@@ -6,6 +6,7 @@
 
 import type { Prediction, Anomaly } from '../core/types';
 import type { Alert, AlertLevel } from '../reporters/alertManager';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -138,7 +139,7 @@ export class NotificationManager {
 
         return response.ok;
       } catch (error) {
-        console.error('[NotificationManager] Webhook error:', error);
+        logger.error('[NotificationManager] Webhook error:', error);
         return false;
       }
     });
@@ -356,7 +357,7 @@ export class NotificationManager {
     const handler = this.channelHandlers.get(notification.channel);
 
     if (!handler) {
-      console.warn(`[NotificationManager] Pas de handler pour canal ${notification.channel}`);
+      logger.warn(`[NotificationManager] Pas de handler pour canal ${notification.channel}`);
       notification.status = 'failed';
       this.failedToday++;
       return false;
@@ -378,7 +379,7 @@ export class NotificationManager {
 
       return success;
     } catch (error) {
-      console.error(`[NotificationManager] Erreur envoi:`, error);
+      logger.error(`[NotificationManager] Erreur envoi:`, error);
       notification.status = 'failed';
       this.failedToday++;
       return false;

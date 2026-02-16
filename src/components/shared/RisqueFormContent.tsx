@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUsers } from '@/hooks';
 import { type Risque } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -102,6 +103,11 @@ interface Comment {
   auteur: string;
   date: string;
 }
+
+// Champs présents en DB mais pas (encore) sur l'interface Risque
+type RisqueWithExtras = Risque & {
+  commentaires?: Comment[];
+};
 
 // Calcul criticité
 function calculerCriticite(probabilite: Probabilite, impact: Impact): Criticite {
@@ -223,25 +229,25 @@ export function RisqueFormContent({
     typeof risque?.impact === 'number' ? getImpactFromNum(risque.impact) : 'MOYEN'
   );
   const [planMitigation, setPlanMitigation] = useState(risque?.plan_mitigation || '');
-  const [notesMiseAJour, setNotesMiseAJour] = useState((risque as any)?.notes_mise_a_jour || '');
+  const [notesMiseAJour, setNotesMiseAJour] = useState((risque as RisqueWithExtras)?.notes_mise_a_jour || '');
   const [comments, setComments] = useState<Comment[]>(() => {
     if (!risque) return [];
     // Priorité: commentaires_externes (sync Firebase) > commentaires existants
-    const externesStr = (risque as any).commentaires_externes;
+    const externesStr = (risque as RisqueWithExtras).commentaires_externes;
     if (externesStr) {
       try {
         const parsed = JSON.parse(externesStr);
-        return parsed.map((c: any) => ({
+        return parsed.map((c: { id?: string; texte: string; auteur: string; date: string }) => ({
           id: c.id || crypto.randomUUID(),
           texte: c.texte,
           auteur: c.auteur,
           date: c.date,
         }));
       } catch (e) {
-        console.warn('Erreur parsing commentaires_externes risque:', e);
+        logger.warn('Erreur parsing commentaires_externes risque:', e);
       }
     }
-    return (risque as any).commentaires?.map((c: any) => ({
+    return (risque as RisqueWithExtras).commentaires?.map((c: { id?: string; texte: string; auteur: string; date: string }) => ({
       id: c.id || crypto.randomUUID(),
       texte: c.texte,
       auteur: c.auteur,

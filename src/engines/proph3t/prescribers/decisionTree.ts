@@ -11,6 +11,7 @@ import type {
   ConfidenceScore,
 } from '../core/types';
 import { getConfidenceLevel } from '../core/constants';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -403,7 +404,7 @@ export class DecisionTree {
         return this.traverse(node.falseNode, context, path, nextConfidence);
       }
     } catch (error) {
-      console.warn(`Decision tree condition error at ${node.id}:`, error);
+      logger.warn(`Decision tree condition error at ${node.id}:`, error);
     }
 
     return { leaf: null, path, confidence: 0 };

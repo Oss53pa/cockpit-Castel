@@ -125,6 +125,7 @@ import {
   YAxis,
 } from 'recharts';
 import { PROJET_CONFIG } from '@/data/constants';
+import { logger } from '@/lib/logger';
 
 const rapportTypes = [
   {
@@ -366,7 +367,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
     try {
       await generateExcoPptx(data, presentationDate);
     } catch (error) {
-      console.error('Erreur export PPTX:', error);
+      logger.error('Erreur export PPTX:', error);
       alert('Erreur lors de l\'export PPTX');
     }
   }, [presentationDate]);
@@ -666,7 +667,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
 
       doc.save(`rapport-${type}-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      logger.error('Error generating PDF:', error);
       alert('Erreur lors de la génération du PDF');
     } finally {
       setGenerating(null);
@@ -697,7 +698,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
 
       XLSX.writeFile(wb, `export-${type}-${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (error) {
-      console.error('Error exporting Excel:', error);
+      logger.error('Error exporting Excel:', error);
       alert('Erreur lors de l\'export Excel');
     } finally {
       setGenerating(null);
@@ -1655,7 +1656,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
                         await createExco(excoRecord);
                         alert('EXCO sauvegardé dans le Journal !');
                       } catch (err) {
-                        console.error('Erreur sauvegarde EXCO:', err);
+                        logger.error('Erreur sauvegarde EXCO:', err);
                         alert('Erreur lors de la sauvegarde');
                       } finally {
                         setSavingExco(false);

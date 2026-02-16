@@ -96,6 +96,7 @@ import { ExcoMensuel } from './ExcoMensuel';
 import type { ExcoTemplateType, ExcoDesignSettings } from '@/types/exco';
 import { PROJET_CONFIG } from '@/data/constants';
 import { BATIMENTS_CONFIG, TOTAL_GLA } from '@/types';
+import { logger } from '@/lib/logger';
 
 // Types
 type ProjectWeather = 'green' | 'yellow' | 'orange' | 'red';
@@ -5280,7 +5281,7 @@ export function Exco() {
       const fileName = `Exco_CosmosAngre_${new Date(presentationDate).toISOString().split('T')[0]}.pptx`;
       await pptx.writeFile({ fileName });
     } catch (error) {
-      console.error('Error generating PowerPoint:', error);
+      logger.error('Error generating PowerPoint:', error);
       alert('Erreur lors de la génération du PowerPoint. Veuillez réessayer.');
     } finally {
       setGenerating(false);

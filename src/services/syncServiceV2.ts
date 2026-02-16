@@ -22,6 +22,7 @@ import type {
 } from '@/types/sync.types';
 import type { Axe, ProjectPhase, Action, Jalon } from '@/types';
 import { AXE_LABELS, AXE_SHORT_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, MOBILISATION_AXES } from '@/types';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // CONFIGURATION DES CATÉGORIES BASÉE SUR LES AXES RÉELS
@@ -370,9 +371,9 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
   const allSiteActions = await db.actions.toArray();
 
   // Debug: log pour voir ce qu'on a
-  console.log('[SyncService] Total actions:', allSiteActions.length);
-  console.log('[SyncService] Axes présents:', [...new Set(allSiteActions.map(a => a.axe))]);
-  console.log('[SyncService] BuildingCodes présents:', [...new Set(allSiteActions.map(a => a.buildingCode).filter(Boolean))]);
+  logger.info('[SyncService] Total actions:', allSiteActions.length);
+  logger.info('[SyncService] Axes présents:', [...new Set(allSiteActions.map(a => a.axe))]);
+  logger.info('[SyncService] BuildingCodes présents:', [...new Set(allSiteActions.map(a => a.buildingCode).filter(Boolean))]);
 
   // Filtrer les actions du Centre Commercial uniquement
   // Priorité: buildingCode === 'CC', sinon id_action contient CON-1, sinon titre contient "Centre Commercial"
@@ -399,7 +400,7 @@ export async function getConstructionCategoryDetails(siteId: number): Promise<Ca
     ccActions = allSiteActions.filter(a => a.axe === 'axe7_construction');
   }
 
-  console.log('[SyncService] Actions CC filtrées:', ccActions.length);
+  logger.info('[SyncService] Actions CC filtrées:', ccActions.length);
 
   const allConstructionActions = ccActions;
 
