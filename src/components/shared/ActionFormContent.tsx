@@ -38,6 +38,7 @@ import {
   Badge,
   PercentInput,
 } from '@/components/ui';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AXES, AXE_LABELS, PROJECT_PHASES, PROJECT_PHASE_LABELS, type Action, type Axe, type ProjectPhase } from '@/types';
 import { calculerPourcentageAction } from '@/lib/calculations';
@@ -1076,24 +1077,32 @@ export function ActionFormContent({
                     <div className="space-y-3">
                       {/* Checkbox Transmis */}
                       <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <div
+                          className="flex items-center gap-2 cursor-pointer"
+                          onClick={() => {
+                            if (!isEditing) return;
+                            const newVal = !pa.transmis;
+                            handleUpdatePointAttention(index, 'transmis', newVal);
+                            if (newVal) {
+                              handleUpdatePointAttention(index, 'dateTransmission', new Date().toISOString());
+                            }
+                          }}
+                        >
+                          <Checkbox
                             checked={pa.transmis || false}
-                            onChange={(e) => {
-                              handleUpdatePointAttention(index, 'transmis', e.target.checked);
-                              if (e.target.checked) {
+                            disabled={!isEditing}
+                            onCheckedChange={(checked) => {
+                              handleUpdatePointAttention(index, 'transmis', checked);
+                              if (checked) {
                                 handleUpdatePointAttention(index, 'dateTransmission', new Date().toISOString());
                               }
                             }}
-                            disabled={!isEditing}
-                            className="w-4 h-4 rounded border-green-300 text-green-600 focus:ring-green-500"
                           />
                           <span className={`text-sm font-medium ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>
                             <CheckCircle className="w-4 h-4 inline mr-1" />
-                            Transmis
+                            Clôturé
                           </span>
-                        </label>
+                        </div>
                         {pa.transmis && pa.dateTransmission && (
                           <span className="text-xs text-green-600">
                             le {new Date(pa.dateTransmission).toLocaleDateString('fr-FR')}
@@ -1199,26 +1208,34 @@ export function ActionFormContent({
                     className={`p-3 border rounded-lg ${da.transmis ? 'bg-green-50 border-green-200' : 'bg-purple-50 border-purple-200'}`}
                   >
                     <div className="space-y-3">
-                      {/* Checkbox Transmis */}
+                      {/* Checkbox Clôturé */}
                       <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <div
+                          className="flex items-center gap-2 cursor-pointer"
+                          onClick={() => {
+                            if (!isEditing) return;
+                            const newVal = !da.transmis;
+                            handleUpdateDecisionAttendue(index, 'transmis', newVal);
+                            if (newVal) {
+                              handleUpdateDecisionAttendue(index, 'dateTransmission', new Date().toISOString());
+                            }
+                          }}
+                        >
+                          <Checkbox
                             checked={da.transmis || false}
-                            onChange={(e) => {
-                              handleUpdateDecisionAttendue(index, 'transmis', e.target.checked);
-                              if (e.target.checked) {
+                            disabled={!isEditing}
+                            onCheckedChange={(checked) => {
+                              handleUpdateDecisionAttendue(index, 'transmis', checked);
+                              if (checked) {
                                 handleUpdateDecisionAttendue(index, 'dateTransmission', new Date().toISOString());
                               }
                             }}
-                            disabled={!isEditing}
-                            className="w-4 h-4 rounded border-green-300 text-green-600 focus:ring-green-500"
                           />
                           <span className={`text-sm font-medium ${da.transmis ? 'text-green-700' : 'text-purple-700'}`}>
                             <CheckCircle className="w-4 h-4 inline mr-1" />
-                            Transmis
+                            Clôturé
                           </span>
-                        </label>
+                        </div>
                         {da.transmis && da.dateTransmission && (
                           <span className="text-xs text-green-600">
                             le {new Date(da.dateTransmission).toLocaleDateString('fr-FR')}
