@@ -10,6 +10,7 @@ import { Button } from '@/components/ui';
 import { useUsers, getUserFullName } from '@/hooks/useUsers';
 import { sendReportShareEmail, openEmailClientForReport, getReportShareTemplate } from '@/services/emailService';
 import { storeReportInFirebase } from '@/services/firebaseRealtimeSync';
+import { generateExcoPptx } from './exportPptx';
 import { PROJET_CONFIG } from '@/data/constants';
 import type { User } from '@/types';
 import type { ExcoV5Data } from './hooks/useExcoV5Data';
@@ -187,8 +188,27 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
         expiresAt,
       });
 
+      // Always store locally as fallback for same-browser access
+      try {
+        const localReports = JSON.parse(localStorage.getItem('shared_reports') || '{}');
+        localReports[token] = {
+          html,
+          title: `EXCO Mensuel — ${reportPeriod}`,
+          period: reportPeriod,
+          expiresAt,
+        };
+        // Keep only last 5 reports to avoid localStorage bloat
+        const keys = Object.keys(localReports);
+        if (keys.length > 5) {
+          delete localReports[keys[0]];
+        }
+        localStorage.setItem('shared_reports', JSON.stringify(localReports));
+      } catch {
+        // localStorage might be full — non-blocking
+      }
+
       if (!stored) {
-        console.warn('Firebase storage failed, falling back to blob URL');
+        console.warn('Firebase storage failed — rapport accessible en local uniquement');
       }
 
       // Send emails to selected recipients via the email service
@@ -229,8 +249,25 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
       setGeneratedLink(link);
       setStep('success');
 
-      // Also open preview in new tab
-      window.open(link, '_blank');
+      // Format-specific local download for the sender
+      if (format === 'pptx' && data) {
+        try {
+          await generateExcoPptx(data, presentationDate);
+        } catch (e) {
+          console.error('Erreur export PPTX:', e);
+        }
+      } else if (format === 'pdf') {
+        // Open in print dialog for PDF save
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.onload = () => setTimeout(() => { try { printWindow.print(); } catch {} }, 500);
+        }
+      } else {
+        // HTML: open preview in new tab
+        window.open(link, '_blank');
+      }
     } catch (err) {
       console.error('Erreur génération lien:', err);
     } finally {
@@ -587,10 +624,11 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
                 <Check size={24} color={C.green} />
               </div>
               <div style={{ fontSize: 16, fontWeight: 600, color: C.navy }}>
-                Lien généré avec succès
+                {format === 'pptx' ? 'PPTX téléchargé + lien généré' : format === 'pdf' ? 'PDF ouvert + lien généré' : 'Lien généré avec succès'}
               </div>
               <div style={{ fontSize: 12, color: C.gray500 }}>
-                Lecture seule — expire dans {EXPIRY_OPTIONS[expiryIdx].label}
+                {format !== 'html' && 'Le fichier a été téléchargé localement. '}
+                Lien en ligne expire dans {EXPIRY_OPTIONS[expiryIdx].label}
               </div>
 
               {/* Email sent feedback */}

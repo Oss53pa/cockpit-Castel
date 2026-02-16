@@ -893,10 +893,16 @@ export async function syncAllPendingUpdates(): Promise<{ synced: number; errors:
 // SHARED REPORTS (Stockage HTML rapport dans Firestore)
 // ============================================================================
 
-const COLLECTION_SHARED_REPORTS = 'sharedReports';
+// Use the same collection as updateLinks to reuse existing Firestore rules
+const COLLECTION_SHARED_REPORTS = 'updateLinks';
+
+// Max size per Firestore document field (~900KB to stay safe under 1MB limit)
+const MAX_CHUNK_SIZE = 900_000;
 
 /**
- * Stocke le HTML d'un rapport dans Firestore pour partage externe
+ * Stocke le HTML d'un rapport dans Firebase.
+ * Si le HTML est petit (< 900KB), il est stocké inline dans Firestore.
+ * Si le HTML est gros, il est découpé en chunks dans des sous-documents.
  */
 export async function storeReportInFirebase(
   token: string,
@@ -917,16 +923,45 @@ export async function storeReportInFirebase(
   }
 
   try {
+    const htmlBytes = new Blob([html]).size;
     const docRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token);
-    await setDoc(docRef, {
-      html,
-      title: metadata.title,
-      period: metadata.period,
-      senderName: metadata.senderName,
-      expiresAt: metadata.expiresAt,
-      createdAt: serverTimestamp(),
-      viewCount: 0,
-    });
+
+    if (htmlBytes <= MAX_CHUNK_SIZE) {
+      // Small enough — store inline
+      await setDoc(docRef, {
+        type: 'report',
+        html,
+        title: metadata.title,
+        period: metadata.period,
+        senderName: metadata.senderName,
+        expiresAt: metadata.expiresAt,
+        createdAt: serverTimestamp(),
+        viewCount: 0,
+      });
+    } else {
+      // Too big — split into chunks stored in sub-collection
+      const totalChunks = Math.ceil(html.length / MAX_CHUNK_SIZE);
+      await setDoc(docRef, {
+        type: 'report',
+        title: metadata.title,
+        period: metadata.period,
+        senderName: metadata.senderName,
+        expiresAt: metadata.expiresAt,
+        createdAt: serverTimestamp(),
+        viewCount: 0,
+        chunked: true,
+        totalChunks,
+      });
+
+      // Store each chunk as a sub-document
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = html.slice(i * MAX_CHUNK_SIZE, (i + 1) * MAX_CHUNK_SIZE);
+        const chunkRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token, 'chunks', String(i));
+        await setDoc(chunkRef, { data: chunk, index: i });
+      }
+      console.log(`[Firebase] Rapport stocké en ${totalChunks} chunks:`, token);
+    }
+
     console.log('[Firebase] Rapport stocké:', token);
     return true;
   } catch (error) {
@@ -936,7 +971,8 @@ export async function storeReportInFirebase(
 }
 
 /**
- * Récupère le HTML d'un rapport partagé depuis Firestore
+ * Récupère le HTML d'un rapport partagé depuis Firebase.
+ * Supporte à la fois le HTML inline et le HTML chunked.
  */
 export async function getReportFromFirebase(
   token: string
@@ -966,11 +1002,35 @@ export async function getReportFromFirebase(
       return null;
     }
 
-    // Incrémenter le compteur de vues
-    await updateDoc(docRef, { viewCount: (data.viewCount || 0) + 1 });
+    // Incrémenter le compteur de vues (non-blocking)
+    try {
+      await updateDoc(docRef, { viewCount: (data.viewCount || 0) + 1 });
+    } catch {
+      // ignore
+    }
+
+    // Retrieve HTML
+    let html: string | null = null;
+
+    if (data.chunked && data.totalChunks) {
+      // Reassemble from chunks
+      const chunksCol = collection(firestoreDb, COLLECTION_SHARED_REPORTS, token, 'chunks');
+      const chunksSnap = await getDocs(chunksCol);
+      const chunks: { index: number; data: string }[] = [];
+      chunksSnap.forEach(d => chunks.push(d.data() as { index: number; data: string }));
+      chunks.sort((a, b) => a.index - b.index);
+      html = chunks.map(c => c.data).join('');
+    } else if (data.html) {
+      html = data.html;
+    }
+
+    if (!html) {
+      console.warn('[Firebase] Aucun HTML trouvé pour le rapport:', token);
+      return null;
+    }
 
     return {
-      html: data.html,
+      html,
       title: data.title,
       period: data.period,
       expiresAt: data.expiresAt,

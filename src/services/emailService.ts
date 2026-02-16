@@ -1587,12 +1587,13 @@ export async function sendReportShareEmail(params: ReportShareParams): Promise<E
     subject = subject.replace(regex, value);
   }
 
-  // Send email
+  // Send email — pass replacements as extra template params for EmailJS
   const emailResult = await simulateSendEmailForReport({
     to: params.recipientEmail,
     toName: params.recipientName,
     subject,
     html,
+    extraTemplateParams: replacements,
   });
 
   // Create notification
@@ -1617,6 +1618,7 @@ async function simulateSendEmailForReport(params: {
   toName: string;
   subject: string;
   html: string;
+  extraTemplateParams?: Record<string, string>;
 }): Promise<EmailResult> {
   const config = getEmailConfig();
 
@@ -1638,7 +1640,7 @@ async function simulateSendEmailForReport(params: {
   // EmailJS - Envoi reel cote client
   if (config.provider === 'emailjs' && config.emailjsServiceId && config.emailjsTemplateId && config.emailjsPublicKey) {
     try {
-      const templateParams = {
+      const templateParams: Record<string, string> = {
         to_email: params.to,
         to_name: params.toName,
         from_name: config.fromName,
@@ -1646,6 +1648,9 @@ async function simulateSendEmailForReport(params: {
         subject: params.subject,
         message_html: params.html,
         reply_to: config.replyTo || config.fromEmail,
+        // Pass extra replacement values so the EmailJS template
+        // can use them directly (e.g. {{total_actions}}, {{recipient_name}})
+        ...params.extraTemplateParams,
       };
 
       const response = await emailjs.send(
