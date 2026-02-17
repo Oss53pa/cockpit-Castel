@@ -370,7 +370,7 @@ export function WeeklyReportV2() {
     if (!reportRef.current) return '';
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Rapport Hebdomadaire - ${data.projectName} - S${data.weekNumber}</title>
-<style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:24px;background:#f8f9fa;}
+<style>@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&display=swap');body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:24px;background:#f8f9fa;}
 @media print{body{padding:0;background:#fff;}}</style>
 </head><body>${reportRef.current.innerHTML}</body></html>`;
   }, [data.projectName, data.weekNumber]);
@@ -412,7 +412,7 @@ export function WeeklyReportV2() {
       style={{
         maxWidth: 900,
         margin: '0 auto',
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontFamily: "'Exo 2', Inter, system-ui, sans-serif",
         color: C.navy,
         background: C.offWhite,
         padding: 24,

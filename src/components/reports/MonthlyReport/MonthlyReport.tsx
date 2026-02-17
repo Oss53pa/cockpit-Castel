@@ -126,7 +126,7 @@ export function MonthlyReport() {
 
   if (!d) {
     return (
-      <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: C.navy }}>
+      <div style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: C.navy }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
           <div style={{ fontSize: 16, fontWeight: 600 }}>Chargement du rapport mensuel...</div>
@@ -141,7 +141,7 @@ export function MonthlyReport() {
   const nextMonthName = d.nextMonthLabel.replace(' (à venir)', '');
 
   return (
-    <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
+    <div ref={reportRef} style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 50%, ${C.navyMid} 100%)`, color: C.white, padding: "28px 32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

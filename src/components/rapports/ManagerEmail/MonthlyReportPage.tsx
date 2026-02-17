@@ -281,7 +281,7 @@ export function MonthlyReportPage() {
     if (!reportRef.current) return '';
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Rapport d'Actions - Cosmos Angré - ${d.month}</title>
-<style>body{font-family:'Inter',-apple-system,sans-serif;margin:0;padding:0;background:#f8f9fa;}
+<style>@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700&display=swap');body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;background:#f8f9fa;}
 @media print{body{background:#fff;}}</style>
 </head><body>${reportRef.current.innerHTML}</body></html>`;
   }, [d.month]);
@@ -318,7 +318,7 @@ export function MonthlyReportPage() {
   const urgentThisWeek = filtered.filter(a => a.deadlineDay <= new Date().getDate() + 7 && a.status !== "completed");
 
   return (
-    <div ref={reportRef} style={{ fontFamily: "'Inter', -apple-system, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
+    <div ref={reportRef} style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyMid} 100%)`, color: C.white, padding: "22px 28px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
