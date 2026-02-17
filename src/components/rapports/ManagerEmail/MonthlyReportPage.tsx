@@ -562,6 +562,7 @@ export function MonthlyReportPage() {
         onClose={() => setShowSendModal(false)}
         presentationDate={presentationDate}
         generateHtml={generateReportHtml}
+        reportTitle="Rappel Actions"
       />
     </div>
   );

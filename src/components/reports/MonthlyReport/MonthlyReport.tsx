@@ -514,6 +514,7 @@ export function MonthlyReport() {
         onClose={() => setShowSendModal(false)}
         presentationDate={d.month}
         generateHtml={generateReportHtml}
+        reportTitle="Rapport Mensuel"
       />
     </div>
   );

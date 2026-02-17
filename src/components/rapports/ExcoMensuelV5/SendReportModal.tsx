@@ -29,6 +29,8 @@ interface SendReportModalProps {
   generateHtml: () => string;
   /** Get aggregated data for email stats */
   getData?: () => ExcoV5Data | undefined;
+  /** Report title override — defaults to "EXCO Mensuel" */
+  reportTitle?: string;
 }
 
 type ExpiryOption = { label: string; hours: number };
@@ -57,7 +59,7 @@ function generateToken(): string {
 // COMPONENT
 // ============================================================================
 
-export function SendReportModal({ isOpen, onClose, presentationDate, generateHtml, getData }: SendReportModalProps) {
+export function SendReportModal({ isOpen, onClose, presentationDate, generateHtml, getData, reportTitle }: SendReportModalProps) {
   const users = useUsers();
   const [step, setStep] = useState<'config' | 'success'>('config');
   const [format, setFormat] = useState<FormatChoice>('html');
@@ -183,7 +185,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
 
       // Store in Firebase so recipients can access it
       const stored = await storeReportInFirebase(token, html, {
-        title: `EXCO Mensuel — ${reportPeriod}`,
+        title: `${reportTitle || 'EXCO Mensuel'} — ${reportPeriod}`,
         period: reportPeriod,
         senderName,
         expiresAt,
@@ -194,7 +196,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
         const localReports = JSON.parse(localStorage.getItem('shared_reports') || '{}');
         localReports[token] = {
           html,
-          title: `EXCO Mensuel — ${reportPeriod}`,
+          title: `${reportTitle || 'EXCO Mensuel'} — ${reportPeriod}`,
           period: reportPeriod,
           expiresAt,
         };

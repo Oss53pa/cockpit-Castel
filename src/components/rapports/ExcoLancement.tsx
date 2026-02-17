@@ -3150,6 +3150,7 @@ export function ExcoLancement() {
         onClose={() => setShowSendModal(false)}
         presentationDate={presentationDate}
         generateHtml={generateHtmlContent}
+        reportTitle="EXCO Lancement"
       />
     </div>
   );

@@ -1384,6 +1384,7 @@ export function WeeklyReportV2() {
       onClose={() => setShowSendModal(false)}
       presentationDate={presentationDate}
       generateHtml={generateReportHtml}
+      reportTitle={`Rapport Hebdomadaire S${data.weekNumber}`}
       getData={() => ({
         avancementGlobal: data.avancementGlobal,
         kpis: data.kpis,
