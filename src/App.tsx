@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout';
+
 import { ProphetChat } from '@/components/prophet';
 import {
   LoginPage,
@@ -20,6 +21,7 @@ import {
   SynchronisationPage,
   Proph3tPage,
   ReportViewPage,
+  PerformancePage,
 } from '@/pages';
 import { MonthlyReportPage } from '@/components/rapports/ManagerEmail';
 import { useAuthStore } from '@/stores/authStore';
@@ -134,6 +136,16 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Performance Module (protected, standalone) */}
+        <Route
+          path="/performance"
+          element={
+            <ProtectedRoute>
+              <PerformancePage />
             </ProtectedRoute>
           }
         />

@@ -365,6 +365,7 @@ export function WeeklyReportV2() {
   const data = useWeeklyReportData();
   const reportRef = useRef<HTMLDivElement>(null);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [focusView, setFocusView] = useState<'focus' | 'echeance' | 'priorite' | 'responsable'>('focus');
   const presentationDate = new Date().toISOString().split('T')[0];
 
   const generateReportHtml = useCallback(() => {
@@ -846,171 +847,251 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 10. FOCUS S+1 */}
+      {/* 8. FOCUS & ACTIONS (avec onglets) */}
       {/* ================================================================ */}
-      <WSection title="Focus semaine prochaine" number={8}>
-        {data.focusSemaineProchaine.length === 0 ? (
-          <WCard>
-            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action prioritaire identifiée pour la semaine prochaine.</div>
-          </WCard>
-        ) : (
-          <WCard style={{ padding: '12px 16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {data.focusSemaineProchaine.map((a, i) => (
-                <div
-                  key={a.id ?? i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '6px 0',
-                    borderBottom: i < data.focusSemaineProchaine.length - 1 ? `1px solid ${C.gray100}` : 'none',
-                  }}
-                >
-                  <span
+      <WSection title="Actions & Focus" number={8}>
+        {/* Onglets de filtre */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {([
+            { key: 'focus', label: 'Focus S+1' },
+            { key: 'echeance', label: 'Par échéance' },
+            { key: 'priorite', label: 'Par priorité' },
+            { key: 'responsable', label: 'Par responsable' },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFocusView(tab.key)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: focusView === tab.key ? `2px solid ${C.navy}` : `1px solid ${C.gray300}`,
+                background: focusView === tab.key ? C.navy : C.white,
+                color: focusView === tab.key ? C.white : C.gray500,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ---- Vue Focus S+1 ---- */}
+        {focusView === 'focus' && (
+          data.focusSemaineProchaine.length === 0 ? (
+            <WCard>
+              <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action prioritaire identifiée pour la semaine prochaine.</div>
+            </WCard>
+          ) : (
+            <WCard style={{ padding: '12px 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {data.focusSemaineProchaine.map((a, i) => (
+                  <div
+                    key={a.id ?? i}
                     style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: '50%',
-                      background: C.navy,
-                      color: C.white,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      flexShrink: 0,
+                      gap: 10,
+                      padding: '6px 0',
+                      borderBottom: i < data.focusSemaineProchaine.length - 1 ? `1px solid ${C.gray100}` : 'none',
                     }}
                   >
-                    {i + 1}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>{a.titre}</span>
-                    <span style={{ fontSize: 11, color: C.gray400, marginLeft: 8 }}>
-                      {AXES_V5.find((ax) => ax.dbCode === a.axe)?.labelCourt ?? ''}
-                    </span>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: 10,
-                      background: prioriteColor(a.priorite) + '22',
-                      color: prioriteColor(a.priorite),
-                    }}
-                  >
-                    {a.priorite}
-                  </span>
-                  <span style={{ fontSize: 11, color: C.gray400, minWidth: 70, textAlign: 'right' }}>
-                    {formatDate(a.date_fin_prevue)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </WCard>
-        )}
-      </WSection>
-
-      {/* ================================================================ */}
-      {/* 9. VUE PAR ÉCHÉANCE */}
-      {/* ================================================================ */}
-      <WSection title="Actions par échéance" number={9}>
-        {data.actionsByEcheance.length === 0 ? (
-          <WCard>
-            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
-          </WCard>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {data.actionsByEcheance.map((group) => (
-              <WCard key={group.label} style={{ padding: '12px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: group.label === 'En retard' ? C.red : C.navy,
-                      background: group.label === 'En retard' ? C.redBg : C.gray50,
-                      padding: '3px 10px',
-                      borderRadius: 12,
-                    }}
-                  >
-                    {group.label}
-                  </span>
-                  <span style={{ fontSize: 11, color: C.gray400 }}>
-                    {group.actions.length} action{group.actions.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {group.actions.slice(0, 8).map((a, i) => (
-                    <div
-                      key={a.id ?? i}
+                    <span
                       style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        background: C.navy,
+                        color: C.white,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 8,
-                        padding: '4px 0',
-                        borderBottom: i < Math.min(group.actions.length, 8) - 1 ? `1px solid ${C.gray100}` : 'none',
-                        fontSize: 12,
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        flexShrink: 0,
                       }}
                     >
-                      <WStatusDot color={prioriteColor(a.priorite)} />
-                      <span style={{ flex: 1, fontWeight: 500, color: C.navy }}>{a.titre}</span>
-                      <span style={{ fontSize: 11, color: C.gray400, minWidth: 60, textAlign: 'right' }}>
-                        {formatDate(a.date_fin_prevue)}
-                      </span>
-                      <span style={{ fontSize: 11, color: C.gray400, minWidth: 80, textAlign: 'right' }}>
-                        {a.responsable || '—'}
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.navy }}>{a.titre}</span>
+                      <span style={{ fontSize: 11, color: C.gray400, marginLeft: 8 }}>
+                        {AXES_V5.find((ax) => ax.dbCode === a.axe)?.labelCourt ?? ''}
                       </span>
                     </div>
-                  ))}
-                  {group.actions.length > 8 && (
-                    <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
-                      + {group.actions.length - 8} autre{group.actions.length - 8 > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </WCard>
-            ))}
-          </div>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: prioriteColor(a.priorite) + '22',
+                        color: prioriteColor(a.priorite),
+                      }}
+                    >
+                      {a.priorite}
+                    </span>
+                    <span style={{ fontSize: 11, color: C.gray400, minWidth: 70, textAlign: 'right' }}>
+                      {formatDate(a.date_fin_prevue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </WCard>
+          )
         )}
-      </WSection>
 
-      {/* ================================================================ */}
-      {/* 10. VUE PAR PRIORITÉ */}
-      {/* ================================================================ */}
-      <WSection title="Actions par priorité" number={10}>
-        {data.actionsByPriorite.length === 0 ? (
-          <WCard>
-            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
-          </WCard>
-        ) : (
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {data.actionsByPriorite.map((group) => {
-              const prioColorMap: Record<string, string> = {
-                Critique: C.red,
-                Haute: C.orange,
-                Moyenne: C.gold,
-                Basse: C.gray400,
-              };
-              const groupColor = prioColorMap[group.label] ?? C.gray400;
-              return (
-                <WCard
-                  key={group.label}
-                  style={{
-                    flex: '1 1 200px',
-                    borderTop: `3px solid ${groupColor}`,
-                    padding: '14px 16px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: groupColor }}>{group.label}</span>
+        {/* ---- Vue par échéance ---- */}
+        {focusView === 'echeance' && (
+          data.actionsByEcheance.length === 0 ? (
+            <WCard>
+              <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+            </WCard>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {data.actionsByEcheance.map((group) => (
+                <WCard key={group.label} style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        background: groupColor + '22',
-                        color: groupColor,
+                        color: group.label === 'En retard' ? C.red : C.navy,
+                        background: group.label === 'En retard' ? C.redBg : C.gray50,
+                        padding: '3px 10px',
+                        borderRadius: 12,
+                      }}
+                    >
+                      {group.label}
+                    </span>
+                    <span style={{ fontSize: 11, color: C.gray400 }}>
+                      {group.actions.length} action{group.actions.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {group.actions.slice(0, 8).map((a, i) => (
+                      <div
+                        key={a.id ?? i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '4px 0',
+                          borderBottom: i < Math.min(group.actions.length, 8) - 1 ? `1px solid ${C.gray100}` : 'none',
+                          fontSize: 12,
+                        }}
+                      >
+                        <WStatusDot color={prioriteColor(a.priorite)} />
+                        <span style={{ flex: 1, fontWeight: 500, color: C.navy }}>{a.titre}</span>
+                        <span style={{ fontSize: 11, color: C.gray400, minWidth: 60, textAlign: 'right' }}>
+                          {formatDate(a.date_fin_prevue)}
+                        </span>
+                        <span style={{ fontSize: 11, color: C.gray400, minWidth: 80, textAlign: 'right' }}>
+                          {a.responsable || '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {group.actions.length > 8 && (
+                      <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
+                        + {group.actions.length - 8} autre{group.actions.length - 8 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                </WCard>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* ---- Vue par priorité ---- */}
+        {focusView === 'priorite' && (
+          data.actionsByPriorite.length === 0 ? (
+            <WCard>
+              <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+            </WCard>
+          ) : (
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {data.actionsByPriorite.map((group) => {
+                const prioColorMap: Record<string, string> = {
+                  Critique: C.red,
+                  Haute: C.orange,
+                  Moyenne: C.gold,
+                  Basse: C.gray400,
+                };
+                const groupColor = prioColorMap[group.label] ?? C.gray400;
+                return (
+                  <WCard
+                    key={group.label}
+                    style={{
+                      flex: '1 1 200px',
+                      borderTop: `3px solid ${groupColor}`,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: groupColor }}>{group.label}</span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: groupColor + '22',
+                          color: groupColor,
+                          padding: '2px 8px',
+                          borderRadius: 10,
+                        }}
+                      >
+                        {group.actions.length}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {group.actions.slice(0, 6).map((a, i) => (
+                        <div
+                          key={a.id ?? i}
+                          style={{
+                            padding: '4px 0',
+                            borderBottom: i < Math.min(group.actions.length, 6) - 1 ? `1px solid ${C.gray100}` : 'none',
+                            fontSize: 12,
+                          }}
+                        >
+                          <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
+                          <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
+                            {formatDate(a.date_fin_prevue)} — {a.responsable || 'Non assigné'}
+                          </div>
+                        </div>
+                      ))}
+                      {group.actions.length > 6 && (
+                        <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
+                          + {group.actions.length - 6} autre{group.actions.length - 6 > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </WCard>
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* ---- Vue par responsable ---- */}
+        {focusView === 'responsable' && (
+          data.actionsByResponsable.length === 0 ? (
+            <WCard>
+              <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+            </WCard>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
+              {data.actionsByResponsable.map((group) => (
+                <WCard key={group.label} style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{group.label}</span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: C.navy + '15',
+                        color: C.navy,
                         padding: '2px 8px',
                         borderRadius: 10,
                       }}
@@ -1023,14 +1104,20 @@ export function WeeklyReportV2() {
                       <div
                         key={a.id ?? i}
                         style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                           padding: '4px 0',
                           borderBottom: i < Math.min(group.actions.length, 6) - 1 ? `1px solid ${C.gray100}` : 'none',
                           fontSize: 12,
                         }}
                       >
-                        <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
-                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
-                          {formatDate(a.date_fin_prevue)} — {a.responsable || 'Non assigné'}
+                        <WStatusDot color={prioriteColor(a.priorite)} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
+                          <div style={{ fontSize: 11, color: C.gray400, marginTop: 1 }}>
+                            {formatDate(a.date_fin_prevue)} — {a.priorite}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1041,77 +1128,16 @@ export function WeeklyReportV2() {
                     )}
                   </div>
                 </WCard>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </WSection>
 
       {/* ================================================================ */}
-      {/* 11. VUE PAR RESPONSABLE */}
+      {/* 9. PROJECTION */}
       {/* ================================================================ */}
-      <WSection title="Actions par responsable" number={11}>
-        {data.actionsByResponsable.length === 0 ? (
-          <WCard>
-            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
-          </WCard>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
-            {data.actionsByResponsable.map((group) => (
-              <WCard key={group.label} style={{ padding: '14px 16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{group.label}</span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      background: C.navy + '15',
-                      color: C.navy,
-                      padding: '2px 8px',
-                      borderRadius: 10,
-                    }}
-                  >
-                    {group.actions.length}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {group.actions.slice(0, 6).map((a, i) => (
-                    <div
-                      key={a.id ?? i}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '4px 0',
-                        borderBottom: i < Math.min(group.actions.length, 6) - 1 ? `1px solid ${C.gray100}` : 'none',
-                        fontSize: 12,
-                      }}
-                    >
-                      <WStatusDot color={prioriteColor(a.priorite)} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
-                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 1 }}>
-                          {formatDate(a.date_fin_prevue)} — {a.priorite}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {group.actions.length > 6 && (
-                    <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
-                      + {group.actions.length - 6} autre{group.actions.length - 6 > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-              </WCard>
-            ))}
-          </div>
-        )}
-      </WSection>
-
-      {/* ================================================================ */}
-      {/* 12. PROJECTION */}
-      {/* ================================================================ */}
-      <WSection title="Projection" number={12}>
+      <WSection title="Projection" number={9}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>RATIO PROGRESSION</div>
@@ -1151,10 +1177,10 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 13. PROPH3T IA */}
+      {/* 10. PROPH3T IA */}
       {/* ================================================================ */}
       {data.confidenceScore && (
-        <WSection title="PROPH3T — Score de Confiance" number={13}>
+        <WSection title="PROPH3T — Score de Confiance" number={10}>
           <WCard
             style={{
               borderLeft: `4px solid ${
@@ -1223,9 +1249,9 @@ export function WeeklyReportV2() {
       )}
 
       {/* ================================================================ */}
-      {/* 14. NOTES */}
+      {/* 11. NOTES */}
       {/* ================================================================ */}
-      <WSection title="Notes & commentaires" number={14}>
+      <WSection title="Notes & commentaires" number={11}>
         <WCard>
           <textarea
             value={data.notes}

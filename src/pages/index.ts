@@ -17,3 +17,4 @@ export * from './JournalPage';
 export * from './SynchronisationPage';
 export * from './Proph3tPage';
 export * from './ReportViewPage';
+export * from './PerformancePage';

@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   FileText,
   ArrowRight,
+  TrendingUp,
   Sparkles,
   Brain,
 } from 'lucide-react';
@@ -131,6 +132,7 @@ export function HomePage() {
             { icon: Calendar, label: 'Jalons', path: '/jalons' },
             { icon: AlertTriangle, label: 'Risques', path: '/risques' },
             { icon: FileText, label: 'Rapports', path: '/rapports' },
+            { icon: TrendingUp, label: 'Performance', path: '/performance' },
           ].map((link) => (
             <button
               key={link.path}
