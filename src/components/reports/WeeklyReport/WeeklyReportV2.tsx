@@ -477,6 +477,7 @@ export function WeeklyReportV2() {
   };
 
   return (
+    <>
     <div
       ref={reportRef}
       style={{
@@ -1376,13 +1377,21 @@ export function WeeklyReportV2() {
         {' '}— Document confidentiel — {data.projectName}
       </div>
 
-      {/* Send Report Modal */}
-      <SendReportModal
-        isOpen={showSendModal}
-        onClose={() => setShowSendModal(false)}
-        presentationDate={presentationDate}
-        generateHtml={generateReportHtml}
-      />
     </div>
+    {/* Send Report Modal — HORS du reportRef pour ne pas être capturé dans le HTML partagé */}
+    <SendReportModal
+      isOpen={showSendModal}
+      onClose={() => setShowSendModal(false)}
+      presentationDate={presentationDate}
+      generateHtml={generateReportHtml}
+      getData={() => ({
+        avancementGlobal: data.avancementGlobal,
+        kpis: data.kpis,
+        allActions: data.allActions,
+        allJalons: data.allJalons,
+        allRisques: data.allRisques,
+      } as never)}
+    />
+    </>
   );
 }
