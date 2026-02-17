@@ -181,6 +181,13 @@ export const DEFAULT_PROJET_CONFIG = {
 export const PROJET_CONFIG = DEFAULT_PROJET_CONFIG;
 
 // ============================================================================
+// DATE DE RÉFÉRENCE UNIQUE — OUVERTURE
+// Utiliser cette date pour : vélocité, projection, "Prévu" par axe, countdown
+// PROJET_CONFIG.dateFin (2027-02-28) = uniquement pour la phase stabilisation
+// ============================================================================
+export const DATE_REFERENCE_OUVERTURE = DEFAULT_PROJET_CONFIG.jalonsClés.softOpening;
+
+// ============================================================================
 // SEUILS DE PERFORMANCE - CALCUL MÉTÉO AUTOMATIQUE (DEFAULT)
 // ============================================================================
 
@@ -220,7 +227,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'RH',
     color: '#EF4444',
     numero: 1,
-    poids: 20
+    poids: 10
   },
   commercialisation: {
     code: 'axe2_commercial',
@@ -228,7 +235,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'COM',
     color: '#3B82F6',
     numero: 2,
-    poids: 25
+    poids: 20
   },
   technique: {
     code: 'axe3_technique',
@@ -236,7 +243,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'TECH',
     color: '#8B5CF6',
     numero: 3,
-    poids: 20
+    poids: 10
   },
   budget: {
     code: 'axe4_budget',
@@ -244,7 +251,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'BUD',
     color: '#F59E0B',
     numero: 4,
-    poids: 15
+    poids: 10
   },
   marketing: {
     code: 'axe5_marketing',
@@ -252,7 +259,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'MKT',
     color: '#EC4899',
     numero: 5,
-    poids: 15
+    poids: 10
   },
   exploitation: {
     code: 'axe6_exploitation',
@@ -261,6 +268,14 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     color: '#10B981',
     numero: 6,
     poids: 5
+  },
+  construction: {
+    code: 'axe7_construction',
+    label: 'Construction',
+    labelCourt: 'CON',
+    color: '#F97316',
+    numero: 7,
+    poids: 35
   },
   divers: {
     code: 'axe8_divers',
@@ -338,9 +353,9 @@ export const THEME_COLORS = {
 // ============================================================================
 
 export const DEFAULT_SEUILS_RISQUES = {
-  critique: 12,
-  majeur: 8,
-  modere: 4,
+  critique: 16,
+  majeur: 10,
+  modere: 5,
 } as const;
 
 /** @deprecated Utiliser useParametreMetier('seuils_risques') */
@@ -462,8 +477,9 @@ export const SEUILS_METEO_DASHBOARD = DEFAULT_SEUILS_METEO_DASHBOARD;
 // ============================================================================
 
 export const DEFAULT_SEUILS_CONFIDENCE = {
-  penaliteRisqueCritique: 20,
-  penaliteRisqueMajeur: 10,
+  penaliteRisqueCritique: 15,
+  penaliteRisqueMajeur: 5,
+  maxPenalite: 60,
 } as const;
 
 /** @deprecated Utiliser useParametreMetier('seuils_confidence') */

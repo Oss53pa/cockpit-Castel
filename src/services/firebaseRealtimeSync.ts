@@ -1041,3 +1041,116 @@ export async function getReportFromFirebase(
     return null;
   }
 }
+
+// ============================================================================
+// SHARED REPORT SNAPSHOTS (données complètes pour /reports/share/:shareId)
+// ============================================================================
+
+const COLLECTION_SHARED_SNAPSHOTS = 'shared-reports';
+
+export interface SharedReportSnapshot {
+  reportTitle: string;
+  reportType: string;
+  author: string;
+  createdAt: string;
+  expiresAt: string | null;
+  period: string;
+  executiveSummary?: string;
+  comments?: Array<{ section: string; content: string; author: string; date: string }>;
+  // Snapshot complet des données projet au moment du partage
+  snapshot: {
+    actions: Array<{ statut: string; axe?: string; titre?: string }>;
+    jalons: Array<{ titre: string; statut: string; date_prevue?: string; avancement_prealables?: number }>;
+    risques: Array<{ titre: string; categorie?: string; score?: number; status?: string }>;
+    budget: { prevu: number; engage: number; realise: number };
+    kpis: {
+      jalonsAtteints: number;
+      jalonsTotal: number;
+      actionsTerminees: number;
+      totalActions: number;
+      totalRisques: number;
+      budgetTotal: number;
+      budgetConsomme: number;
+      tauxOccupation: number;
+      equipeTaille: number;
+      projectName: string;
+    };
+  };
+}
+
+/**
+ * Stocke un snapshot complet de rapport dans Firebase pour accès externe.
+ * Collection: shared-reports/{shareId}
+ */
+export async function storeSharedReportSnapshot(
+  shareId: string,
+  data: SharedReportSnapshot
+): Promise<boolean> {
+  if (!firestoreDb) {
+    const initialized = await initRealtimeSync();
+    if (!initialized || !firestoreDb) {
+      logger.error('[Firebase] Impossible d\'initialiser Firestore pour le snapshot');
+      return false;
+    }
+  }
+
+  try {
+    const docRef = doc(firestoreDb, COLLECTION_SHARED_SNAPSHOTS, shareId);
+    await setDoc(docRef, {
+      ...data,
+      createdAt: serverTimestamp(),
+      viewCount: 0,
+    });
+    logger.info('[Firebase] Snapshot rapport partagé stocké:', shareId);
+    return true;
+  } catch (error) {
+    logger.error('[Firebase] Erreur stockage snapshot:', error);
+    return false;
+  }
+}
+
+/**
+ * Récupère un snapshot de rapport partagé depuis Firebase.
+ * Vérifie l'expiration et incrémente le compteur de vues.
+ */
+export async function getSharedReportSnapshot(
+  shareId: string
+): Promise<SharedReportSnapshot | null> {
+  if (!firestoreDb) {
+    const initialized = await initRealtimeSync();
+    if (!initialized || !firestoreDb) {
+      logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le snapshot');
+      return null;
+    }
+  }
+
+  try {
+    const docRef = doc(firestoreDb, COLLECTION_SHARED_SNAPSHOTS, shareId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      logger.warn('[Firebase] Snapshot rapport non trouvé:', shareId);
+      return null;
+    }
+
+    const data = docSnap.data() as SharedReportSnapshot & { viewCount?: number };
+
+    // Vérifier l'expiration
+    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+      logger.warn('[Firebase] Snapshot rapport expiré:', shareId);
+      return null;
+    }
+
+    // Incrémenter le compteur de vues (non-blocking)
+    try {
+      await updateDoc(docRef, { viewCount: (data.viewCount || 0) + 1 });
+    } catch {
+      // ignore
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('[Firebase] Erreur lecture snapshot:', error);
+    return null;
+  }
+}

@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { AvancementAxe, MeteoProjet, Axe } from '@/types';
-import { PROJET_CONFIG, SEUILS_SYNC_REPORT, AXES_CONFIG_FULL, SEUILS_METEO_DASHBOARD, SEUILS_METEO_AXE_DASHBOARD } from '@/data/constants';
+import { PROJET_CONFIG, DATE_REFERENCE_OUVERTURE, SEUILS_SYNC_REPORT, AXES_CONFIG_FULL, SEUILS_METEO_DASHBOARD, SEUILS_METEO_AXE_DASHBOARD } from '@/data/constants';
 
 // ============================================================================
 // TYPES POUR TENDANCES
@@ -112,9 +112,9 @@ export function useAvancementParAxe(): AvancementAxe[] {
       db.sites.filter(s => !!s.actif).toArray(),
     ]);
 
-    // Dates du projet depuis la configuration centralisée
+    // Date de référence : softOpening (ouverture), pas dateFin (fin stabilisation)
     const projectStart = new Date(PROJET_CONFIG.dateDebut);
-    const projectEnd = new Date(PROJET_CONFIG.dateFin);
+    const projectEnd = new Date(DATE_REFERENCE_OUVERTURE);
 
     const axes: Axe[] = Object.values(AXES_CONFIG_FULL).map(a => a.code) as Axe[];
 
@@ -129,7 +129,7 @@ export function useAvancementParAxe(): AvancementAxe[] {
             axeActions.length
           : 0;
 
-      // Calculate trend (simplified: compare to target progress)
+      // Tendance = écart vs progression théorique (up = en avance, down = en retard)
       const today = new Date();
       const totalDays =
         (projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
@@ -146,7 +146,7 @@ export function useAvancementParAxe(): AvancementAxe[] {
       return {
         axe,
         avancement,
-        prevu: Math.min(expectedProgress, 100),
+        prevu: Math.round(Math.min(expectedProgress, 100) * 10) / 10,
         tendance,
         actionsTotal: axeActions.length,
         actionsTerminees,
@@ -186,9 +186,9 @@ export function useMeteoProjet(): MeteoProjet {
       db.sites.filter(s => !!s.actif).toArray(),
     ]);
 
-    // === 1. Calculer la météo par axe ===
+    // === 1. Calculer la météo par axe (référence : date ouverture) ===
     const projectStart = new Date(PROJET_CONFIG.dateDebut);
-    const projectEnd = new Date(PROJET_CONFIG.dateFin);
+    const projectEnd = new Date(DATE_REFERENCE_OUVERTURE);
     const today = new Date();
     const totalDays = (projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);
     const elapsedDays = (today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24);

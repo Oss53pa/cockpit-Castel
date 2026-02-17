@@ -24,13 +24,6 @@ import {
   Shield,
 } from 'lucide-react';
 import {
-  useDashboardKPIs,
-  useActions,
-  useJalons,
-  useBudgetSynthese,
-  useRisques,
-} from '@/hooks';
-import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -44,6 +37,7 @@ import {
   Area,
 } from 'recharts';
 import { PROJET_CONFIG } from '@/data/constants';
+import { getSharedReportSnapshot, type SharedReportSnapshot } from '@/services/firebaseRealtimeSync';
 
 const COLORS = {
   primary: '#1C3163',
@@ -55,77 +49,82 @@ const COLORS = {
   gray: '#6b7280',
 };
 
-// Type pour les données de rapport partagé
-interface SharedReportData {
-  id: string;
-  title: string;
-  type: string;
-  author: string;
-  createdAt: string;
-  period: string;
-  executiveSummary?: string;
-  comments: {
-    section: string;
-    author: string;
-    date: string;
-    content: string;
-  }[];
+// Fallback: charger les métadonnées depuis localStorage (même navigateur uniquement)
+function loadFromLocalStorage(shareId: string): SharedReportSnapshot | null {
+  try {
+    const storedData = localStorage.getItem(`shared-report-${shareId}`);
+    if (!storedData) return null;
+    const parsed = JSON.parse(storedData);
+    return {
+      reportTitle: parsed.reportTitle || 'Rapport',
+      reportType: parsed.reportType || 'RAPPORT_MENSUEL',
+      author: parsed.author || 'Utilisateur',
+      createdAt: parsed.createdAt || new Date().toISOString(),
+      expiresAt: null,
+      period: parsed.period || new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+      executiveSummary: parsed.executiveSummary,
+      comments: parsed.comments || [],
+      snapshot: parsed.snapshot || {
+        actions: [],
+        jalons: [],
+        risques: [],
+        budget: { prevu: 0, engage: 0, realise: 0 },
+        kpis: {
+          jalonsAtteints: 0, jalonsTotal: 0, actionsTerminees: 0, totalActions: 0,
+          totalRisques: 0, budgetTotal: 0, budgetConsomme: 0, tauxOccupation: 0,
+          equipeTaille: 0, projectName: '',
+        },
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
-// Fonction pour charger les données du rapport depuis localStorage uniquement (pas de données mock)
-function loadReportData(shareId: string): SharedReportData | null {
-  const storedData = localStorage.getItem(`shared-report-${shareId}`);
-  if (storedData) {
-    try {
-      const parsed = JSON.parse(storedData);
-      return {
-        id: shareId,
-        title: parsed.reportTitle || 'Rapport',
-        type: parsed.reportType || 'RAPPORT_MENSUEL',
-        author: parsed.author || 'Utilisateur',
-        createdAt: parsed.createdAt || new Date().toISOString(),
-        period: parsed.period || new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
-        executiveSummary: parsed.executiveSummary,
-        comments: parsed.comments || [],
-      };
-    } catch {
-      // Ignorer les erreurs de parsing
-    }
-  }
-
-  // Pas de données mock - retourner null si pas trouvé
-  return null;
+// Helper safe pour division
+function safeDivide(a: number, b: number, fallback = 'N/A'): string {
+  if (!b || b === 0) return fallback;
+  return `${Math.round((a / b) * 100)}`;
 }
 
 export function SharedReportPage() {
   const { shareId } = useParams<{ shareId: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reportMeta, setReportMeta] = useState<SharedReportData | null>(null);
-
-  const kpis = useDashboardKPIs();
-  const actions = useActions();
-  const jalons = useJalons();
-  const budget = useBudgetSynthese();
-  const risques = useRisques();
+  const [data, setData] = useState<SharedReportSnapshot | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (shareId) {
-        const data = loadReportData(shareId);
-        if (data) {
-          setReportMeta(data);
-          setIsLoading(false);
+    if (!shareId) {
+      setError('Lien invalide');
+      setIsLoading(false);
+      return;
+    }
+
+    // 1. Essayer Firebase en priorité (fonctionne pour les externes)
+    getSharedReportSnapshot(shareId)
+      .then((result) => {
+        if (result) {
+          setData(result);
         } else {
-          setError('Rapport non trouvé ou lien expiré');
-          setIsLoading(false);
+          // 2. Fallback localStorage (même navigateur uniquement)
+          const local = loadFromLocalStorage(shareId);
+          if (local) {
+            setData(local);
+          } else {
+            setError('Ce rapport n\'est plus disponible ou le lien a expiré.');
+          }
         }
-      } else {
-        setError('Lien invalide');
-        setIsLoading(false);
-      }
-    }, 800);
-    return () => clearTimeout(timer);
+      })
+      .catch(() => {
+        // Firebase en erreur → essayer localStorage
+        const local = loadFromLocalStorage(shareId);
+        if (local) {
+          setData(local);
+        } else {
+          setError('Impossible de charger le rapport. Vérifiez votre connexion.');
+        }
+      })
+      .finally(() => setIsLoading(false));
   }, [shareId]);
 
   if (isLoading) {
@@ -133,18 +132,18 @@ export function SharedReportPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1C3163] mx-auto"></div>
-          <p className="mt-3 text-gray-600 text-sm">Chargement...</p>
+          <p className="mt-3 text-gray-600 text-sm">Chargement du rapport...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !reportMeta) {
+  if (error || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-sm">
           <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <AlertTriangle className="h-6 w-6 text-primary-600" />
+            <AlertTriangle className="h-6 w-6 text-red-600" />
           </div>
           <h1 className="text-lg font-bold text-gray-900 mb-2">Rapport non disponible</h1>
           <p className="text-sm text-gray-600">{error || 'Lien invalide ou expiré.'}</p>
@@ -153,14 +152,24 @@ export function SharedReportPage() {
     );
   }
 
-  // Calculs
+  // Extraire les données du snapshot avec guards
+  const snap = data.snapshot || { actions: [], jalons: [], risques: [], budget: { prevu: 0, engage: 0, realise: 0 }, kpis: { jalonsAtteints: 0, jalonsTotal: 0, actionsTerminees: 0, totalActions: 0, totalRisques: 0, budgetTotal: 0, budgetConsomme: 0, tauxOccupation: 0, equipeTaille: 0, projectName: '' } };
+  const actions = snap.actions || [];
+  const jalonsData = snap.jalons || [];
+  const risquesData = snap.risques || [];
+  const budgetData = snap.budget || { prevu: 0, engage: 0, realise: 0 };
+  const kpis = snap.kpis || { jalonsAtteints: 0, jalonsTotal: 0, actionsTerminees: 0, totalActions: 0, totalRisques: 0, budgetTotal: 0, budgetConsomme: 0, tauxOccupation: 0, equipeTaille: 0, projectName: '' };
+
+  // Calculs sécurisés depuis le snapshot
   const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
   const actionsEnCours = actions.filter(a => a.statut === 'en_cours').length;
   const actionsAFaire = actions.filter(a => a.statut === 'a_faire').length;
   const actionsBloquees = actions.filter(a => a.statut === 'bloque').length;
-  const avancementGlobal = 68;
-  const budgetConsomme = Math.round((budget.realise / budget.prevu) * 100);
-  const risquesCritiques = risques.filter(r => (r.score || 0) > 15).length;
+  const totalActions = actions.length || kpis.totalActions || 0;
+  const avancementGlobal = totalActions > 0 ? Math.round((actionsTerminees / totalActions) * 100) : 0;
+  const budgetConsommeStr = safeDivide(budgetData.realise, budgetData.prevu);
+  const budgetConsommeNum = budgetData.prevu > 0 ? Math.round((budgetData.realise / budgetData.prevu) * 100) : 0;
+  const risquesCritiques = risquesData.filter(r => (r.score || 0) > 15).length;
 
   const actionsParStatut = [
     { name: 'Terminées', value: actionsTerminees, color: COLORS.success },
@@ -178,16 +187,16 @@ export function SharedReportPage() {
     { axe: 'AXE 6', nom: 'Relations Stakeholders', avancement: 65 },
   ];
 
-  const jalonsList = jalons.slice(0, 7).map(j => ({
-    nom: j.titre,
+  const jalonsList = jalonsData.slice(0, 7).map(j => ({
+    nom: j.titre || 'Sans titre',
     statut: j.statut === 'atteint' ? 'atteint' : j.statut === 'en_approche' || j.statut === 'en_danger' ? 'en_cours' : 'planifie',
     avancement: j.avancement_prealables || 0,
     date: j.date_prevue ? new Date(j.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '-',
   }));
 
-  const topRisques = risques.slice(0, 5).map(r => ({
-    titre: r.titre,
-    categorie: r.categorie,
+  const topRisques = risquesData.slice(0, 5).map(r => ({
+    titre: r.titre || 'Sans titre',
+    categorie: r.categorie || '',
     score: r.score || 0,
     statut: r.status,
   }));
@@ -211,7 +220,7 @@ export function SharedReportPage() {
 
   // Récupérer le commentaire pour une section
   const getComment = (section: string) => {
-    return reportMeta.comments?.find(c => c.section === section);
+    return data.comments?.find(c => c.section === section);
   };
 
   // Composant pour afficher un commentaire
@@ -247,7 +256,7 @@ export function SharedReportPage() {
     { mois: 'Oct', avancement: 50 },
     { mois: 'Nov', avancement: 58 },
     { mois: 'Déc', avancement: 63 },
-    { mois: 'Jan', avancement: 68 },
+    { mois: 'Jan', avancement: avancementGlobal || 68 },
   ];
 
   return (
@@ -270,15 +279,15 @@ export function SharedReportPage() {
                 <span className="text-white/50">•</span>
                 <span className="text-white/70">Projet Handover</span>
               </div>
-              <h1 className="text-3xl font-bold mb-2">{reportMeta.title}</h1>
+              <h1 className="text-3xl font-bold mb-2">{data.reportTitle || 'Rapport'}</h1>
               <div className="flex items-center gap-4 text-sm text-white/70">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {reportMeta.period}
+                  {data.period}
                 </span>
                 <span className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  {reportMeta.author}
+                  {data.author}
                 </span>
               </div>
             </div>
@@ -317,7 +326,7 @@ export function SharedReportPage() {
                 <p className="text-xs text-white/60 uppercase">Actions</p>
                 <CheckCircle className="h-4 w-4 text-primary-400" />
               </div>
-              <p className="text-3xl font-bold mt-1">{actionsTerminees}<span className="text-lg text-white/50">/{actions.length}</span></p>
+              <p className="text-3xl font-bold mt-1">{actionsTerminees}<span className="text-lg text-white/50">/{totalActions}</span></p>
               <p className="text-xs text-white/60 mt-1">{actionsEnCours} en cours</p>
             </div>
             <div className="bg-white/10 backdrop-blur rounded-lg p-4">
@@ -333,7 +342,7 @@ export function SharedReportPage() {
                 <p className="text-xs text-white/60 uppercase">Budget</p>
                 <DollarSign className="h-4 w-4 text-primary-400" />
               </div>
-              <p className="text-3xl font-bold mt-1">{budgetConsomme}%</p>
+              <p className="text-3xl font-bold mt-1">{budgetConsommeStr}%</p>
               <p className="text-xs text-white/60 mt-1">consommé</p>
             </div>
           </div>
@@ -342,21 +351,21 @@ export function SharedReportPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Synthèse Executive */}
-        {reportMeta.executiveSummary && (
+        {data.executiveSummary && (
           <section className="mb-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-[#1C3163] rounded-lg flex items-center justify-center">
                 <FileText className="h-5 w-5 text-[#D4AF37]" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Synthèse Executive</h2>
+                <h2 className="text-xl font-bold text-gray-900">Synthese Executive</h2>
                 <p className="text-sm text-gray-500">Vue d'ensemble du projet</p>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                {parseMarkdown(reportMeta.executiveSummary)}
+                {parseMarkdown(data.executiveSummary)}
               </div>
             </div>
           </section>
@@ -370,14 +379,14 @@ export function SharedReportPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Avancement du Projet</h2>
-              <p className="text-sm text-gray-500">Progression par axe stratégique</p>
+              <p className="text-sm text-gray-500">Progression par axe strategique</p>
             </div>
           </div>
 
           <div className="grid lg:grid-cols-5 gap-6">
             {/* Graphique tendance */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Évolution sur 6 mois</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Evolution sur 6 mois</h3>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={tendanceData}>
@@ -398,7 +407,7 @@ export function SharedReportPage() {
 
             {/* Barres par axe */}
             <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Par axe stratégique</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Par axe strategique</h3>
               <div className="space-y-3">
                 {avancementParAxe.map((item, index) => (
                   <div key={index}>
@@ -437,80 +446,86 @@ export function SharedReportPage() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Répartition */}
-            <div className="bg-white rounded-xl shadow-sm border p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Répartition par statut</h3>
-              <div className="h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={actionsParStatut}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {actionsParStatut.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+          {totalActions === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border p-8 text-center text-gray-500">
+              <p>Aucune donnee d'actions disponible dans ce rapport.</p>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Répartition */}
+              <div className="bg-white rounded-xl shadow-sm border p-5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Repartition par statut</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={actionsParStatut}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={60}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {actionsParStatut.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  {actionsParStatut.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <span className="text-gray-600">{item.name}</span>
+                      <span className="font-bold ml-auto">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                {actionsParStatut.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-gray-600">{item.name}</span>
-                    <span className="font-bold ml-auto">{item.value}</span>
+
+              {/* Métriques clés */}
+              <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="text-sm font-medium text-green-100">Terminees</span>
                   </div>
-                ))}
+                  <p className="text-4xl font-bold">{actionsTerminees}</p>
+                  <p className="text-sm text-green-100 mt-1">{totalActions > 0 ? Math.round((actionsTerminees / totalActions) * 100) : 0}% du total</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-5 w-5" />
+                    <span className="text-sm font-medium text-blue-100">En cours</span>
+                  </div>
+                  <p className="text-4xl font-bold">{actionsEnCours}</p>
+                  <p className="text-sm text-blue-100 mt-1">Actions actives</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-5 text-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Flag className="h-5 w-5" />
+                    <span className="text-sm font-medium text-gray-200">A faire</span>
+                  </div>
+                  <p className="text-4xl font-bold">{actionsAFaire}</p>
+                  <p className="text-sm text-gray-200 mt-1">Planifiees</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-5 text-white">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="text-sm font-medium text-red-100">Bloquees</span>
+                  </div>
+                  <p className="text-4xl font-bold">{actionsBloquees}</p>
+                  <p className="text-sm text-red-100 mt-1">Attention requise</p>
+                </div>
               </div>
             </div>
-
-            {/* Métriques clés */}
-            <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-5 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm font-medium text-green-100">Terminées</span>
-                </div>
-                <p className="text-4xl font-bold">{actionsTerminees}</p>
-                <p className="text-sm text-green-100 mt-1">{Math.round((actionsTerminees / actions.length) * 100)}% du total</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-5 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <Clock className="h-5 w-5" />
-                  <span className="text-sm font-medium text-blue-100">En cours</span>
-                </div>
-                <p className="text-4xl font-bold">{actionsEnCours}</p>
-                <p className="text-sm text-blue-100 mt-1">Actions actives</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl p-5 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <Flag className="h-5 w-5" />
-                  <span className="text-sm font-medium text-gray-200">À faire</span>
-                </div>
-                <p className="text-4xl font-bold">{actionsAFaire}</p>
-                <p className="text-sm text-gray-200 mt-1">Planifiées</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-5 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="text-sm font-medium text-red-100">Bloquées</span>
-                </div>
-                <p className="text-4xl font-bold">{actionsBloquees}</p>
-                <p className="text-sm text-red-100 mt-1">Attention requise</p>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Commentaire Actions */}
           <CommentBlock section="actions" className="mt-4" />
@@ -526,43 +541,47 @@ export function SharedReportPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Jalons</h2>
-                <p className="text-sm text-gray-500">Étapes clés du projet</p>
+                <p className="text-sm text-gray-500">Etapes cles du projet</p>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-              {jalonsList.map((jalon, index) => (
-                <div key={index} className={`flex items-center gap-3 p-4 ${index !== jalonsList.length - 1 ? 'border-b' : ''}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    jalon.statut === 'atteint' ? 'bg-green-100' :
-                    jalon.statut === 'en_cours' ? 'bg-blue-100' : 'bg-gray-100'
-                  }`}>
-                    {jalon.statut === 'atteint' ? (
-                      <CheckCircle className="h-5 w-5 text-primary-600" />
-                    ) : jalon.statut === 'en_cours' ? (
-                      <Clock className="h-5 w-5 text-primary-600" />
-                    ) : (
-                      <Target className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900">{jalon.nom}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            jalon.statut === 'atteint' ? 'bg-green-500' :
-                            jalon.statut === 'en_cours' ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}
-                          style={{ width: `${jalon.avancement}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs font-medium text-gray-500">{jalon.avancement}%</span>
+              {jalonsList.length === 0 ? (
+                <div className="p-6 text-center text-gray-500 text-sm">Aucun jalon disponible.</div>
+              ) : (
+                jalonsList.map((jalon, index) => (
+                  <div key={index} className={`flex items-center gap-3 p-4 ${index !== jalonsList.length - 1 ? 'border-b' : ''}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      jalon.statut === 'atteint' ? 'bg-green-100' :
+                      jalon.statut === 'en_cours' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      {jalon.statut === 'atteint' ? (
+                        <CheckCircle className="h-5 w-5 text-primary-600" />
+                      ) : jalon.statut === 'en_cours' ? (
+                        <Clock className="h-5 w-5 text-primary-600" />
+                      ) : (
+                        <Target className="h-5 w-5 text-gray-400" />
+                      )}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">{jalon.nom}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              jalon.statut === 'atteint' ? 'bg-green-500' :
+                              jalon.statut === 'en_cours' ? 'bg-blue-500' : 'bg-gray-300'
+                            }`}
+                            style={{ width: `${jalon.avancement}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">{jalon.avancement}%</span>
+                      </div>
+                    </div>
+                    <span className="text-sm text-gray-400">{jalon.date}</span>
                   </div>
-                  <span className="text-sm text-gray-400">{jalon.date}</span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
@@ -574,37 +593,41 @@ export function SharedReportPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Risques Majeurs</h2>
-                <p className="text-sm text-gray-500">{risquesCritiques} risques critiques identifiés</p>
+                <p className="text-sm text-gray-500">{risquesCritiques} risques critiques identifies</p>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-              {topRisques.map((risque, index) => (
-                <div key={index} className={`p-4 ${index !== topRisques.length - 1 ? 'border-b' : ''}`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`w-1.5 h-full min-h-[40px] rounded-full ${
-                      risque.score > 15 ? 'bg-red-500' :
-                      risque.score > 10 ? 'bg-amber-500' :
-                      risque.score > 5 ? 'bg-blue-500' : 'bg-green-500'
-                    }`}></div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{risque.titre}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{risque.categorie}</p>
-                        </div>
-                        <div className={`text-sm font-bold px-2 py-1 rounded ${
-                          risque.score > 15 ? 'bg-red-100 text-red-700' :
-                          risque.score > 10 ? 'bg-amber-100 text-amber-700' :
-                          risque.score > 5 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                        }`}>
-                          Score: {risque.score}
+              {topRisques.length === 0 ? (
+                <div className="p-6 text-center text-gray-500 text-sm">Aucun risque enregistre.</div>
+              ) : (
+                topRisques.map((risque, index) => (
+                  <div key={index} className={`p-4 ${index !== topRisques.length - 1 ? 'border-b' : ''}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-1.5 h-full min-h-[40px] rounded-full ${
+                        risque.score > 15 ? 'bg-red-500' :
+                        risque.score > 10 ? 'bg-amber-500' :
+                        risque.score > 5 ? 'bg-blue-500' : 'bg-green-500'
+                      }`}></div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">{risque.titre}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{risque.categorie}</p>
+                          </div>
+                          <div className={`text-sm font-bold px-2 py-1 rounded ${
+                            risque.score > 15 ? 'bg-red-100 text-red-700' :
+                            risque.score > 10 ? 'bg-amber-100 text-amber-700' :
+                            risque.score > 5 ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            Score: {risque.score}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Commentaire Risques */}
@@ -619,54 +642,60 @@ export function SharedReportPage() {
               <DollarSign className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Suivi Budgétaire</h2>
-              <p className="text-sm text-gray-500">État d'exécution du budget projet</p>
+              <h2 className="text-xl font-bold text-gray-900">Suivi Budgetaire</h2>
+              <p className="text-sm text-gray-500">Etat d'execution du budget projet</p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-4 bg-[#1C3163] rounded-lg text-white">
-                <p className="text-xs text-white/70 uppercase mb-1">Budget Total</p>
-                <p className="text-2xl font-bold">{(budget.prevu / 1000000).toFixed(1)} M</p>
-                <p className="text-xs text-white/50">FCFA</p>
-              </div>
-              <div className="text-center p-4 bg-green-600 rounded-lg text-white">
-                <p className="text-xs text-white/70 uppercase mb-1">Engagé</p>
-                <p className="text-2xl font-bold">{(budget.engage / 1000000).toFixed(1)} M</p>
-                <p className="text-xs text-white/50">FCFA</p>
-              </div>
-              <div className="text-center p-4 bg-blue-600 rounded-lg text-white">
-                <p className="text-xs text-white/70 uppercase mb-1">Réalisé</p>
-                <p className="text-2xl font-bold">{(budget.realise / 1000000).toFixed(1)} M</p>
-                <p className="text-xs text-white/50">FCFA</p>
-              </div>
-              <div className="text-center p-4 bg-amber-500 rounded-lg text-white">
-                <p className="text-xs text-white/70 uppercase mb-1">Disponible</p>
-                <p className="text-2xl font-bold">{((budget.prevu - budget.realise) / 1000000).toFixed(1)} M</p>
-                <p className="text-xs text-white/50">FCFA</p>
-              </div>
+          {budgetData.prevu === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border p-8 text-center text-gray-500">
+              <p>Aucune donnee budgetaire disponible.</p>
             </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 bg-[#1C3163] rounded-lg text-white">
+                  <p className="text-xs text-white/70 uppercase mb-1">Budget Total</p>
+                  <p className="text-2xl font-bold">{(budgetData.prevu / 1000000).toFixed(1)} M</p>
+                  <p className="text-xs text-white/50">FCFA</p>
+                </div>
+                <div className="text-center p-4 bg-green-600 rounded-lg text-white">
+                  <p className="text-xs text-white/70 uppercase mb-1">Engage</p>
+                  <p className="text-2xl font-bold">{(budgetData.engage / 1000000).toFixed(1)} M</p>
+                  <p className="text-xs text-white/50">FCFA</p>
+                </div>
+                <div className="text-center p-4 bg-blue-600 rounded-lg text-white">
+                  <p className="text-xs text-white/70 uppercase mb-1">Realise</p>
+                  <p className="text-2xl font-bold">{(budgetData.realise / 1000000).toFixed(1)} M</p>
+                  <p className="text-xs text-white/50">FCFA</p>
+                </div>
+                <div className="text-center p-4 bg-amber-500 rounded-lg text-white">
+                  <p className="text-xs text-white/70 uppercase mb-1">Disponible</p>
+                  <p className="text-2xl font-bold">{((budgetData.prevu - budgetData.realise) / 1000000).toFixed(1)} M</p>
+                  <p className="text-xs text-white/50">FCFA</p>
+                </div>
+              </div>
 
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { poste: 'Études', budget: 150, realise: 145 },
-                  { poste: 'Travaux', budget: 450, realise: 320 },
-                  { poste: 'Équipements', budget: 200, realise: 180 },
-                  { poste: 'Formation', budget: 80, realise: 45 },
-                  { poste: 'Conseil', budget: 120, realise: 95 },
-                  { poste: 'Divers', budget: 50, realise: 30 },
-                ]} layout="vertical">
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="poste" type="category" tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip formatter={(value) => `${value} M FCFA`} />
-                  <Bar dataKey="budget" name="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="realise" name="Réalisé" fill="#1C3163" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { poste: 'Etudes', budget: 150, realise: 145 },
+                    { poste: 'Travaux', budget: 450, realise: 320 },
+                    { poste: 'Equipements', budget: 200, realise: 180 },
+                    { poste: 'Formation', budget: 80, realise: 45 },
+                    { poste: 'Conseil', budget: 120, realise: 95 },
+                    { poste: 'Divers', budget: 50, realise: 30 },
+                  ]} layout="vertical">
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="poste" type="category" tick={{ fontSize: 11 }} width={80} />
+                    <Tooltip formatter={(value) => `${value} M FCFA`} />
+                    <Bar dataKey="budget" name="Budget" fill="#e5e7eb" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="realise" name="Realise" fill="#1C3163" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Commentaire Budget */}
           <CommentBlock section="budget" className="mt-4" />
@@ -680,7 +709,7 @@ export function SharedReportPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">Conclusions & Recommandations</h2>
-              <p className="text-sm text-gray-500">Points clés à retenir</p>
+              <p className="text-sm text-gray-500">Points cles a retenir</p>
             </div>
           </div>
 
@@ -699,15 +728,15 @@ export function SharedReportPage() {
                 </li>
                 <li className="flex items-start gap-2 text-sm text-green-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Jalon J3 "Formation" en avance à <strong>85%</strong> de complétion</span>
+                  <span>Jalon J3 "Formation" en avance a <strong>85%</strong> de completion</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-green-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Budget maîtrisé avec <strong>{budgetConsomme}%</strong> de consommation</span>
+                  <span>Budget maitrise avec <strong>{budgetConsommeNum}%</strong> de consommation</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-green-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Équipe projet stable et fortement engagée</span>
+                  <span>Equipe projet stable et fortement engagee</span>
                 </li>
               </ul>
             </div>
@@ -722,11 +751,11 @@ export function SharedReportPage() {
               <ul className="space-y-2">
                 <li className="flex items-start gap-2 text-sm text-amber-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Migration SI à surveiller - <strong>risque de retard</strong> identifié</span>
+                  <span>Migration SI a surveiller - <strong>risque de retard</strong> identifie</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-amber-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span><strong>{risquesCritiques} risques critiques</strong> nécessitent une attention immédiate</span>
+                  <span><strong>{risquesCritiques} risques critiques</strong> necessitent une attention immediate</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-amber-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
@@ -734,7 +763,7 @@ export function SharedReportPage() {
                 </li>
                 <li className="flex items-start gap-2 text-sm text-amber-700">
                   <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span><strong>{actionsBloquees} actions bloquées</strong> à débloquer en priorité</span>
+                  <span><strong>{actionsBloquees} actions bloquees</strong> a debloquer en priorite</span>
                 </li>
               </ul>
             </div>
@@ -746,12 +775,12 @@ export function SharedReportPage() {
               <Quote className="h-8 w-8 text-[#D4AF37] shrink-0" />
               <div>
                 <p className="text-lg font-medium leading-relaxed">
-                  "Le projet Handover Cosmos Angré maintient une trajectoire positive.
-                  Les prochaines semaines seront déterminantes pour sécuriser le jalon J4 (Mise en place SI)
-                  et débloquer les actions en attente."
+                  "Le projet Handover Cosmos Angre maintient une trajectoire positive.
+                  Les prochaines semaines seront determinantes pour securiser le jalon J4 (Mise en place SI)
+                  et debloquer les actions en attente."
                 </p>
                 <p className="mt-3 text-sm text-white/70">
-                  — {reportMeta.author}, Directeur de Projet
+                  — {data.author}, Directeur de Projet
                 </p>
               </div>
             </div>
@@ -768,7 +797,7 @@ export function SharedReportPage() {
               <span>Projet Handover</span>
             </div>
             <div className="text-right">
-              <p>Généré le {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+              <p>Genere le {data.createdAt ? new Date(data.createdAt).toLocaleDateString('fr-FR') : '-'}</p>
               <p className="text-xs text-gray-400 mt-1">Document confidentiel - Diffusion restreinte</p>
             </div>
           </div>

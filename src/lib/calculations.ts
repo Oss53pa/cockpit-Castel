@@ -264,15 +264,22 @@ export function getMeteoLabel(meteo: MeteoProjet): string {
 // ============================================================================
 
 export function calculateRiskScore(
-  probabilite: 1 | 2 | 3 | 4,
-  impact: 1 | 2 | 3 | 4
+  probabilite: 1 | 2 | 3 | 4 | 5,
+  impact: 1 | 2 | 3 | 4 | 5
 ): number {
   return probabilite * impact;
 }
 
+/**
+ * Niveau de risque basé sur la matrice 5×5 (max score = 25)
+ * - critique : >= 16  (ex: P4×I4, P5×I4, P4×I5, P5×I5)
+ * - high     : >= 10  (ex: P2×I5, P5×I2, P3×I4)
+ * - medium   : >= 5   (ex: P1×I5, P5×I1, P2×I3)
+ * - low      : < 5    (ex: P1×I4, P2×I2)
+ */
 export function getRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
-  if (score >= 12) return 'critical';
-  if (score >= 9) return 'high';
+  if (score >= 16) return 'critical';
+  if (score >= 10) return 'high';
   if (score >= 5) return 'medium';
   return 'low';
 }

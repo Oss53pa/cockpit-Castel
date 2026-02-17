@@ -62,6 +62,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   useDashboardKPIs,
   useActions,
+  useJalons,
   useBudgetSynthese,
   useRisques,
   useReports,
@@ -97,6 +98,7 @@ import { DEFAULT_EXPORT_OPTIONS } from '@/types/reports.types';
 import { createExco } from '@/hooks/useExcos';
 import { mapV5DataToExco } from '@/lib/mapReportToExco';
 import { sendReportShareEmail, openEmailClientForReport } from '@/services/emailService';
+import { storeSharedReportSnapshot } from '@/services/firebaseRealtimeSync';
 // Données du site récupérées via useCurrentSite()
 import type { ReportType, ReportStatus, ChartCategory, TableCategory } from '@/types/reportStudio';
 import {
@@ -429,6 +431,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
 
   const kpis = useDashboardKPIs();
   const actions = useActions();
+  const jalons = useJalons();
   const budget = useBudgetSynthese();
   const risques = useRisques();
   const currentSite = useCurrentSite();
@@ -1518,6 +1521,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
               // Créer un partage HTML et rediriger vers l'onglet partage
               const shareId = Math.random().toString(36).substring(2, 10);
               const now = new Date().toISOString();
+              const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
               const newShare: SharedHtmlReport = {
                 id: `share-${Date.now()}`,
                 reportId: Date.now(),
@@ -1525,13 +1529,46 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
                 reportType: 'RAPPORT_MENSUEL',
                 shareLink: `${window.location.origin}/reports/share/${shareId}`,
                 createdAt: now,
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                expiresAt,
                 viewCount: 0,
                 isActive: true,
                 sharedBy: 'Utilisateur',
                 recipients: report.destinataires.map(d => d.email).filter(e => e),
               };
               setSharedReports(prev => [newShare, ...prev]);
+
+              // Stocker snapshot dans Firebase pour accès externe
+              const periodText = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+              storeSharedReportSnapshot(shareId, {
+                reportTitle: report.titre,
+                reportType: 'RAPPORT_MENSUEL',
+                author: 'Utilisateur',
+                createdAt: now,
+                expiresAt,
+                period: periodText,
+                snapshot: {
+                  actions: (actions || []).map(a => ({ statut: a.statut, axe: a.axe, titre: a.titre })),
+                  jalons: (jalons || []).slice(0, 20).map(j => ({
+                    titre: j.titre, statut: j.statut, date_prevue: j.date_prevue, avancement_prealables: j.avancement_prealables,
+                  })),
+                  risques: (risques || []).map(r => ({ titre: r.titre, categorie: r.categorie, score: r.score, status: r.status })),
+                  budget: { prevu: budget?.prevu || 0, engage: budget?.engage || 0, realise: budget?.realise || 0 },
+                  kpis: {
+                    jalonsAtteints: kpis?.jalonsAtteints || 0, jalonsTotal: kpis?.jalonsTotal || 0,
+                    actionsTerminees: kpis?.actionsTerminees || 0, totalActions: kpis?.totalActions || actions?.length || 0,
+                    totalRisques: kpis?.totalRisques || risques?.length || 0, budgetTotal: kpis?.budgetTotal || budget?.prevu || 0,
+                    budgetConsomme: kpis?.budgetConsomme || budget?.realise || 0, tauxOccupation: kpis?.tauxOccupation || 0,
+                    equipeTaille: kpis?.equipeTaille || 0, projectName: kpis?.projectName || '',
+                  },
+                },
+              }).catch(() => { /* Non-blocking */ });
+
+              // Aussi en localStorage (fallback interne)
+              localStorage.setItem(`shared-report-${shareId}`, JSON.stringify({
+                reportTitle: report.titre, reportType: 'RAPPORT_MENSUEL',
+                author: 'Utilisateur', createdAt: now, period: periodText,
+              }));
+
               setViewMode('html_reports');
             }}
           />
@@ -2184,17 +2221,71 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
                       comments: comments.length > 0 ? comments : undefined,
                     };
 
-                    // Stocker les commentaires dans localStorage pour la page partagée
+                    // Stocker les commentaires dans localStorage pour la page partagée (fallback interne)
+                    const periodText = sharePeriod?.displayText || new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
                     const shareData = {
                       reportTitle: report.title,
                       reportType: report.type,
                       author: 'Utilisateur',
                       createdAt: now,
-                      period: sharePeriod?.displayText || new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+                      period: periodText,
                       executiveSummary: reportComments.executiveSummary.trim() || undefined,
                       comments: comments,
                     };
                     localStorage.setItem(`shared-report-${shareId}`, JSON.stringify(shareData));
+
+                    // Stocker le snapshot complet dans Firebase pour accès externe
+                    const snapshotData = {
+                      reportTitle: report.title,
+                      reportType: report.type,
+                      author: 'Utilisateur',
+                      createdAt: now,
+                      expiresAt: shareSettings.expirationDays > 0
+                        ? new Date(Date.now() + shareSettings.expirationDays * 24 * 60 * 60 * 1000).toISOString()
+                        : null,
+                      period: periodText,
+                      executiveSummary: reportComments.executiveSummary.trim() || undefined,
+                      comments: comments.length > 0 ? comments : undefined,
+                      snapshot: {
+                        actions: (actions || []).map(a => ({
+                          statut: a.statut,
+                          axe: a.axe,
+                          titre: a.titre,
+                        })),
+                        jalons: (jalons || []).slice(0, 20).map(j => ({
+                          titre: j.titre,
+                          statut: j.statut,
+                          date_prevue: j.date_prevue,
+                          avancement_prealables: j.avancement_prealables,
+                        })),
+                        risques: (risques || []).map(r => ({
+                          titre: r.titre,
+                          categorie: r.categorie,
+                          score: r.score,
+                          status: r.status,
+                        })),
+                        budget: {
+                          prevu: budget?.prevu || 0,
+                          engage: budget?.engage || 0,
+                          realise: budget?.realise || 0,
+                        },
+                        kpis: {
+                          jalonsAtteints: kpis?.jalonsAtteints || 0,
+                          jalonsTotal: kpis?.jalonsTotal || 0,
+                          actionsTerminees: kpis?.actionsTerminees || 0,
+                          totalActions: kpis?.totalActions || actions?.length || 0,
+                          totalRisques: kpis?.totalRisques || risques?.length || 0,
+                          budgetTotal: kpis?.budgetTotal || budget?.prevu || 0,
+                          budgetConsomme: kpis?.budgetConsomme || budget?.realise || 0,
+                          tauxOccupation: kpis?.tauxOccupation || 0,
+                          equipeTaille: kpis?.equipeTaille || 0,
+                          projectName: kpis?.projectName || '',
+                        },
+                      },
+                    };
+                    storeSharedReportSnapshot(shareId, snapshotData).catch(() => {
+                      // Non-blocking: le localStorage reste en fallback
+                    });
 
                     setSharedReports((prev) => [newShare, ...prev]);
 
