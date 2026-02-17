@@ -358,7 +358,7 @@ export class MeetingPrepEngine {
 
     // Point sur les risques élevés (selon type de réunion)
     if (meetingType === 'exco' || meetingType === 'comite_pilotage') {
-      const highRisks = risques.filter((r: Risque) => r.criticite && r.criticite >= 12);
+      const highRisks = risques.filter((r: Risque) => r.criticite && r.criticite >= 16);
       if (highRisks.length > 0) {
         points.push({
           id: 'tp-risques',

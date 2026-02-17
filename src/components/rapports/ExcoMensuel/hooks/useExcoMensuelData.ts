@@ -477,7 +477,7 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
     });
 
     // Risques critiques → Alertes
-    const risquesCritiques = risquesDb.filter(r => (r.score_actuel || r.score_initial || r.score || 0) >= 12);
+    const risquesCritiques = risquesDb.filter(r => (r.score_actuel || r.score_initial || r.score || 0) >= 16);
     risquesCritiques.slice(0, 3).forEach((r, idx) => {
       alertes.push({
         id: `alert_${idx}`,
@@ -517,9 +517,9 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
         scoreEvolution: 0, // TODO: calculer avec historique
         probabilite: r.probabilite || 2,
         impact: r.impact || 2,
-        niveau: (r.score_actuel || r.score || 0) >= 12 ? 'critique' :
-          (r.score_actuel || r.score || 0) >= 8 ? 'majeur' :
-          (r.score_actuel || r.score || 0) >= 4 ? 'modere' : 'faible',
+        niveau: (r.score_actuel || r.score || 0) >= 16 ? 'critique' :
+          (r.score_actuel || r.score || 0) >= 10 ? 'majeur' :
+          (r.score_actuel || r.score || 0) >= 5 ? 'modere' : 'faible',
         axe: dbCodeToAxe[getRisqueAxeCode(r)] || 'general',
         proprietaire: r.proprietaire || 'Non assigné',
         mitigationPrincipale: r.action_mitigation || 'À définir',
@@ -568,9 +568,9 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
     // Comptage par niveau
     const risquesOuverts = risquesDb.filter(r => r.statut !== 'ferme');
     const critiques = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= SEUILS_RISQUES.critique).length;
-    const majeurs = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 8 && (r.score_actuel || r.score || 0) < 12).length;
-    const moderes = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 4 && (r.score_actuel || r.score || 0) < 8).length;
-    const faibles = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) < 4).length;
+    const majeurs = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 10 && (r.score_actuel || r.score || 0) < 16).length;
+    const moderes = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) >= 5 && (r.score_actuel || r.score || 0) < 10).length;
+    const faibles = risquesOuverts.filter(r => (r.score_actuel || r.score || 0) < 5).length;
 
     return {
       nouveaux,

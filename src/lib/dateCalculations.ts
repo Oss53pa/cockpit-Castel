@@ -888,7 +888,7 @@ export async function detecterConflitsDates(): Promise<ConflitDate[]> {
     if (!dateFinA) continue;
 
     for (const dep of action.successeurs) {
-      const succ = actions.find(a => a.id_action === dep.id_action);
+      const succ = actions.find(a => a.id_action === dep.id);
       if (!succ || !succ.date_debut_prevue || !action.id) continue;
 
       if (new Date(dateFinA).getTime() > new Date(succ.date_debut_prevue).getTime()) {

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRisques } from '@/hooks';
+import { SEUILS_RISQUES } from '@/data/constants';
 import type { Risque, ActionMitigation } from '@/types';
 
 // Type adapté pour l'affichage des fiches risques
@@ -69,17 +70,17 @@ function convertToFicheRisque(risque: Risque): FicheRisque {
   };
 }
 
-// Couleurs par score
+// Couleurs par score (seuils depuis constants.ts)
 function getScoreColor(score: number): string {
-  if (score >= 15) return 'bg-red-500';
-  if (score >= 10) return 'bg-orange-500';
-  if (score >= 5) return 'bg-yellow-500';
+  if (score >= SEUILS_RISQUES.critique) return 'bg-red-500';
+  if (score >= SEUILS_RISQUES.majeur) return 'bg-orange-500';
+  if (score >= SEUILS_RISQUES.modere) return 'bg-yellow-500';
   return 'bg-green-500';
 }
 
 function _getScoreBadgeVariant(score: number): 'destructive' | 'default' | 'secondary' {
-  if (score >= 15) return 'destructive';
-  if (score >= 10) return 'default';
+  if (score >= SEUILS_RISQUES.critique) return 'destructive';
+  if (score >= SEUILS_RISQUES.majeur) return 'default';
   return 'secondary';
 }
 
@@ -128,9 +129,9 @@ function RisqueMatrix({ probabilite, impact }: { probabilite: number; impact: nu
               key={`${p}-${i}`}
               className={cn(
                 'w-6 h-6 rounded-sm transition-all',
-                score >= 15 ? 'bg-red-200' : score >= 10 ? 'bg-orange-200' : score >= 5 ? 'bg-yellow-200' : 'bg-green-200',
+                score >= SEUILS_RISQUES.critique ? 'bg-red-200' : score >= SEUILS_RISQUES.majeur ? 'bg-orange-200' : score >= SEUILS_RISQUES.modere ? 'bg-yellow-200' : 'bg-green-200',
                 isActive && 'ring-2 ring-primary ring-offset-1',
-                isActive && (score >= 15 ? 'bg-red-500' : score >= 10 ? 'bg-orange-500' : score >= 5 ? 'bg-yellow-500' : 'bg-green-500')
+                isActive && (score >= SEUILS_RISQUES.critique ? 'bg-red-500' : score >= SEUILS_RISQUES.majeur ? 'bg-orange-500' : score >= SEUILS_RISQUES.modere ? 'bg-yellow-500' : 'bg-green-500')
               )}
               title={`P:${p} × I:${i} = ${score}`}
             />
@@ -427,10 +428,10 @@ export function FichesRisquesTop10() {
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="gap-1">
             <AlertTriangle className="h-3 w-3" />
-            {fichesRisques.filter((f) => f.score >= 15).length} critiques
+            {fichesRisques.filter((f) => f.score >= SEUILS_RISQUES.critique).length} critiques
           </Badge>
           <Badge variant="default" className="gap-1">
-            {fichesRisques.filter((f) => f.score >= 10 && f.score < 15).length} élevés
+            {fichesRisques.filter((f) => f.score >= SEUILS_RISQUES.majeur && f.score < SEUILS_RISQUES.critique).length} élevés
           </Badge>
         </div>
       </div>

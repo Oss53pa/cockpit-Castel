@@ -215,13 +215,13 @@ export function TableauBordAxesSlide({ data, designSettings, periode }: TableauB
             <div className="flex items-center gap-2">
               <span>Tendance:</span>
               <span className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-500" /> Hausse
+                <TrendingUp className="h-3 w-3 text-green-500" /> En avance
               </span>
               <span className="flex items-center gap-1">
-                <Minus className="h-3 w-3 text-gray-400" /> Stable
+                <Minus className="h-3 w-3 text-gray-400" /> Dans les temps
               </span>
               <span className="flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-red-500" /> Baisse
+                <TrendingDown className="h-3 w-3 text-red-500" /> En retard
               </span>
             </div>
           </div>

@@ -64,7 +64,7 @@ export function AxeSlide({ data, axeId, printMode }: Props) {
 
     return data.allActions
       .filter(a => a.axe === axeCfg.dbCode && a.statut !== 'termine' && a.date_fin_prevue <= finM1Str)
-      .sort((a, b) => a.date_fin_prevue.localeCompare(b.date_fin_prevue))
+      .sort((a, b) => (a.date_fin_prevue || '').localeCompare(b.date_fin_prevue || ''))
       .slice(0, 10);
   }, [data.allActions, axeCfg.dbCode]);
 

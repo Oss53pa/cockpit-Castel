@@ -11,17 +11,17 @@ function getMitigation(risk: Record<string, unknown>): string | null {
 }
 
 function getSeverityConfig(score: number) {
-  if (score >= 12) return { label: 'CRITIQUE', color: C.red, bg: C.redBg };
-  if (score >= 8) return { label: 'MAJEUR', color: C.orange, bg: C.orangeBg };
-  if (score >= 4) return { label: 'MODÉRÉ', color: C.yellow, bg: C.yellowBg };
+  if (score >= 16) return { label: 'CRITIQUE', color: C.red, bg: C.redBg };
+  if (score >= 10) return { label: 'MAJEUR', color: C.orange, bg: C.orangeBg };
+  if (score >= 5) return { label: 'MODÉRÉ', color: C.yellow, bg: C.yellowBg };
   return { label: 'FAIBLE', color: C.green, bg: C.greenBg };
 }
 
 const SEVERITY_CATS = [
-  { label: 'Critiques', threshold: '≥12', filter: (s: number) => s >= 12, color: C.red, bg: C.redBg },
-  { label: 'Majeurs', threshold: '8-11', filter: (s: number) => s >= 8 && s < 12, color: C.orange, bg: C.orangeBg },
-  { label: 'Modérés', threshold: '4-7', filter: (s: number) => s >= 4 && s < 8, color: C.green, bg: C.greenBg },
-  { label: 'Faibles', threshold: '<4', filter: (s: number) => s < 4, color: C.blue, bg: C.blueBg },
+  { label: 'Critiques', threshold: '≥16', filter: (s: number) => s >= 16, color: C.red, bg: C.redBg },
+  { label: 'Majeurs', threshold: '10-15', filter: (s: number) => s >= 10 && s < 16, color: C.orange, bg: C.orangeBg },
+  { label: 'Modérés', threshold: '5-9', filter: (s: number) => s >= 5 && s < 10, color: C.green, bg: C.greenBg },
+  { label: 'Faibles', threshold: '<5', filter: (s: number) => s < 5, color: C.blue, bg: C.blueBg },
 ];
 
 export function RisksSlide({ data, printMode }: Props) {

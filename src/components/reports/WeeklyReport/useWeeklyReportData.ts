@@ -20,7 +20,7 @@ import {
   useComparaisonAxes,
   useAvancementParAxe,
 } from '@/hooks/useDashboard';
-import { PROJET_CONFIG, AXES_CONFIG_FULL } from '@/data/constants';
+import { PROJET_CONFIG, DATE_REFERENCE_OUVERTURE } from '@/data/constants';
 import { AXES_V5, METEO_CONFIG } from '@/components/rapports/ExcoMensuelV5/constants';
 import type { MeteoLevel } from '@/components/rapports/ExcoMensuelV5/constants';
 import type { Action, Jalon, Risque, Axe } from '@/types';
@@ -62,10 +62,11 @@ export interface TopRisque {
 }
 
 export interface WeeklyProjection {
-  velocite: number;
-  finEstimee: string;
+  ratioProgression: number;
+  finEstimee: string | null;
   cible: string;
   retardJours: number;
+  projectionDisponible: boolean;
 }
 
 export interface WeeklyReportData {
@@ -210,7 +211,7 @@ export function useWeeklyReportData(): WeeklyReportData {
     const meteoLabel = METEO_CONFIG[meteo]?.label ?? 'Inconnu';
     const nbRetards = actionsEnRetard.length;
     const nbRisques = allRisques.filter(
-      (r) => r.status !== 'closed' && r.status !== 'ferme' && (r.score ?? 0) >= 8
+      (r) => r.status !== 'closed' && r.status !== 'ferme' && (r.score ?? 0) >= 10
     ).length;
     const weatherSummary =
       `Statut projet : ${meteoLabel}. ${nbRetards} action${nbRetards > 1 ? 's' : ''} en retard, ` +
@@ -356,11 +357,9 @@ export function useWeeklyReportData(): WeeklyReportData {
     nextWeekStart.setDate(nextWeekStart.getDate() + (8 - nextWeekStart.getDay())); // Next Monday
     const nextWeekEnd = new Date(nextWeekStart);
     nextWeekEnd.setDate(nextWeekEnd.getDate() + 4); // Friday
-    const nwStartStr = nextWeekStart.toISOString().split('T')[0];
     const nwEndStr = nextWeekEnd.toISOString().split('T')[0];
 
-    // Actions dont l'échéance tombe la semaine prochaine,
-    // + actions critiques/hautes dont l'échéance est dans les 30 prochains jours
+    // Actions : retards (prioritaires) + échéances semaine prochaine + critiques/hautes à 30j
     const plus30j = new Date(today);
     plus30j.setDate(plus30j.getDate() + 30);
     const plus30jStr = plus30j.toISOString().split('T')[0];
@@ -369,56 +368,78 @@ export function useWeeklyReportData(): WeeklyReportData {
       .filter(
         (a) =>
           a.statut !== 'termine' &&
+          a.statut !== 'annule' &&
           a.date_fin_prevue &&
-          ((a.date_fin_prevue >= todayStr && a.date_fin_prevue <= nwEndStr) ||
+          (
+            // Actions en retard (date dépassée)
+            a.date_fin_prevue < todayStr ||
+            // Actions dont l'échéance tombe cette semaine ou la prochaine
+            (a.date_fin_prevue >= todayStr && a.date_fin_prevue <= nwEndStr) ||
+            // Actions critiques/hautes dans les 30 prochains jours
             ((a.priorite === 'critique' || a.priorite === 'haute') &&
-              a.date_fin_prevue >= todayStr && a.date_fin_prevue <= plus30jStr))
+              a.date_fin_prevue >= todayStr && a.date_fin_prevue <= plus30jStr)
+          )
       )
       .sort((a, b) => {
+        // Trier : retards d'abord, puis par priorité, puis par date
+        const aRetard = a.date_fin_prevue < todayStr ? 0 : 1;
+        const bRetard = b.date_fin_prevue < todayStr ? 0 : 1;
+        if (aRetard !== bRetard) return aRetard - bRetard;
         const priOrd: Record<string, number> = { critique: 0, haute: 1, moyenne: 2, basse: 3 };
-        return (priOrd[a.priorite] ?? 4) - (priOrd[b.priorite] ?? 4);
+        const priDiff = (priOrd[a.priorite] ?? 4) - (priOrd[b.priorite] ?? 4);
+        if (priDiff !== 0) return priDiff;
+        return a.date_fin_prevue.localeCompare(b.date_fin_prevue);
       })
-      .slice(0, 8);
+      .slice(0, 10);
 
     // === Projection ===
     const projectStart = new Date(PROJET_CONFIG.dateDebut);
     const projectEnd = new Date(openingDate);
     const totalDays = (projectEnd.getTime() - projectStart.getTime()) / 86400000;
     const elapsedDays = Math.max(1, (today.getTime() - projectStart.getTime()) / 86400000);
-    const velocite = avancementGlobal / (elapsedDays / totalDays) * 100;
-    // Estimated end: if current velocity persists
-    const daysNeeded = avancementGlobal > 0 ? (100 / avancementGlobal) * elapsedDays : totalDays * 2;
-    const finEstimee = new Date(projectStart.getTime() + daysNeeded * 86400000);
-    const retardJours = Math.max(
-      0,
-      Math.ceil((finEstimee.getTime() - projectEnd.getTime()) / 86400000)
-    );
+    const progressRatio = totalDays > 0 ? elapsedDays / totalDays : 0;
+    const expectedProgress = progressRatio * 100;
+
+    // Ratio de progression = avancement réel / avancement théorique (en %)
+    const ratioProgression = expectedProgress > 0
+      ? Math.round((avancementGlobal / expectedProgress) * 100 * 10) / 10
+      : 0;
+
+    // Garde-fou : projection fiable seulement si assez de données
+    const projectionDisponible = progressRatio >= 0.15 && avancementGlobal >= 3;
+
+    let finEstimee: string | null = null;
+    let retardJours = 0;
+
+    if (projectionDisponible && avancementGlobal > 0) {
+      const daysNeeded = (100 / avancementGlobal) * elapsedDays;
+      const finEstimeeDate = new Date(projectStart.getTime() + daysNeeded * 86400000);
+      finEstimee = finEstimeeDate.toISOString().split('T')[0];
+      retardJours = Math.max(
+        0,
+        Math.ceil((finEstimeeDate.getTime() - projectEnd.getTime()) / 86400000)
+      );
+    }
 
     const projection: WeeklyProjection = {
-      velocite: Math.round(velocite * 10) / 10,
-      finEstimee: finEstimee.toISOString().split('T')[0],
+      ratioProgression,
+      finEstimee,
       cible: openingDate,
       retardJours,
+      projectionDisponible,
     };
 
     // === Trend history (ideal vs real) ===
-    const projectStartTime = projectStart.getTime();
-    const projectEndTime = projectEnd.getTime();
+    // Seul le point actuel est fiable — pas de données historiques disponibles
+    // Les semaines passées ne sont PAS interpolées (l'historique réel nécessite des snapshots)
     const currentWeek = getWeekNumber(today);
-    const trendHistory: { semaine: number; reel: number; ideal: number }[] = [];
-    // Generate from week 1 to current week
-    const startWeek = getWeekNumber(projectStart);
-    for (let w = startWeek; w <= currentWeek; w++) {
-      const weekProgress = ((w - startWeek) / Math.max(1, currentWeek - startWeek));
-      const idealProgress = Math.min(100, weekProgress * 100);
-      // Real progress approximation: linearly scale current avancement
-      const reelProgress = w === currentWeek ? avancementGlobal : avancementGlobal * weekProgress;
-      trendHistory.push({
-        semaine: w,
-        reel: Math.round(reelProgress * 10) / 10,
-        ideal: Math.round(idealProgress * 10) / 10,
-      });
-    }
+    const trendHistory: { semaine: number; reel: number; ideal: number }[] = [
+      {
+        semaine: currentWeek,
+        reel: Math.round(avancementGlobal * 10) / 10,
+        ideal: Math.round(expectedProgress * 10) / 10,
+      },
+    ];
 
     return {
       projectName,
@@ -470,7 +491,7 @@ export function useWeeklyReportData(): WeeklyReportData {
     prochainsMilestones: derived?.prochainsMilestones ?? [],
     topRisques: derived?.topRisques ?? [],
     focusSemaineProchaine: derived?.focusSemaineProchaine ?? [],
-    projection: derived?.projection ?? { velocite: 0, finEstimee: '', cible: '', retardJours: 0 },
+    projection: derived?.projection ?? { ratioProgression: 0, finEstimee: null, cible: '', retardJours: 0, projectionDisponible: false },
     trendHistory: derived?.trendHistory ?? [],
     confidenceScore,
     notes,

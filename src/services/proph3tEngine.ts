@@ -10,7 +10,7 @@
  */
 
 import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team } from '@/types';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_RISQUES, SEUILS, AXES_POIDS } from '@/data/constants';
 import { logger } from '@/lib/logger';
 
 // ============================================================================
@@ -431,7 +431,23 @@ ${aiResult}`;
 // ALGORITHME LOCAL AVANCE
 // ============================================================================
 
+function calcWeightedAvancement(actions: Action[]): number {
+  if (actions.length === 0) return 0;
+  const axeWeightMap: Record<string, number> = AXES_POIDS;
+  const axeGroups: Record<string, { sum: number; count: number; poids: number }> = {};
+  for (const a of actions) {
+    if (!axeGroups[a.axe]) axeGroups[a.axe] = { sum: 0, count: 0, poids: axeWeightMap[a.axe] ?? 0 };
+    axeGroups[a.axe].sum += a.avancement || 0;
+    axeGroups[a.axe].count++;
+  }
+  const entries = Object.values(axeGroups);
+  const totalPoids = entries.reduce((s, e) => s + e.poids, 0);
+  if (totalPoids === 0) return Math.round(actions.reduce((s, a) => s + (a.avancement || 0), 0) / actions.length);
+  return Math.round(entries.reduce((s, e) => s + (e.sum / e.count) * (e.poids / totalPoids), 0));
+}
+
 function buildContextSummary(ctx: ProjectContext): string {
+  const avancementPondere = calcWeightedAvancement(ctx.actions);
   const stats = {
     actions: {
       total: ctx.actions.length,
@@ -450,12 +466,12 @@ function buildContextSummary(ctx: ProjectContext): string {
     },
     risques: {
       total: ctx.risques.length,
-      critiques: ctx.risques.filter(r => (r.score || 0) >= 12).length,
-      eleves: ctx.risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length,
+      critiques: ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length,
+      eleves: ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique).length,
     },
     budget: {
-      prevu: ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0),
-      realise: ctx.budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0),
+      prevu: ctx.budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0),
+      realise: ctx.budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0),
     },
     alertes: {
       nonTraitees: ctx.alertes.filter(a => !a.traitee).length,
@@ -472,15 +488,15 @@ ACTIONS (${stats.actions.total}):
 - En cours: ${stats.actions.en_cours}
 - Bloquées: ${stats.actions.bloque}
 - En retard: ${stats.actions.en_retard}
-- Avancement moyen: ${ctx.actions.length > 0 ? Math.round(ctx.actions.reduce((s, a) => s + (a.avancement || 0), 0) / ctx.actions.length) : 0}%
+- Avancement moyen pondéré: ${avancementPondere}%
 
 JALONS (${stats.jalons.total}):
 - Atteints: ${stats.jalons.atteint}
 - En danger: ${stats.jalons.en_danger}
 
 RISQUES (${stats.risques.total}):
-- Critiques (score ≥12): ${stats.risques.critiques}
-- Élevés (score 8-11): ${stats.risques.eleves}
+- Critiques (score ≥${SEUILS_RISQUES.critique}): ${stats.risques.critiques}
+- Élevés (score ${SEUILS_RISQUES.majeur}-${SEUILS_RISQUES.critique - 1}): ${stats.risques.eleves}
 
 BUDGET:
 - Prévu: ${stats.budget.prevu.toLocaleString('fr-FR')} FCFA
@@ -490,6 +506,11 @@ BUDGET:
 ALERTES:
 - Non traitées: ${stats.alertes.nonTraitees}
 - Critiques: ${stats.alertes.critiques}
+
+SYNCHRONISATION:
+- Avancement global pondéré: ${avancementPondere}%
+- Jalons atteints: ${Math.round((stats.jalons.atteint / (stats.jalons.total || 1)) * 100)}%
+- Score sync (écart avancement/jalons): ${Math.round(Math.max(0, 100 - Math.abs(avancementPondere - (stats.jalons.atteint / (stats.jalons.total || 1)) * 100) * 2))}%
 `;
 }
 
@@ -574,8 +595,8 @@ function calculateEVMLocal(ctx: ProjectContext): EVMMetrics {
     plannedPercent = 50;
   }
 
-  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
-  const budgetRealise = ctx.budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0);
+  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+  const budgetRealise = ctx.budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
 
   const pv = budgetPrevu * (plannedPercent / 100);
   const ev = budgetPrevu * (completedWeight / totalWeight);
@@ -604,7 +625,7 @@ function analyzeHealthLocal(ctx: ProjectContext): string {
     if (a.statut === 'termine') return false;
     return a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date();
   }).length;
-  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12).length;
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length;
   const untreatedAlerts = ctx.alertes.filter(a => !a.traitee && a.criticite === 'critical').length;
 
   const planningScore = Math.max(0, 100 - (overdue * 10) - (blocked * 15));
@@ -613,7 +634,7 @@ function analyzeHealthLocal(ctx: ProjectContext): string {
   const alertScore = Math.max(0, 100 - (untreatedAlerts * 20));
 
   const healthScore = Math.round((planningScore + budgetScore + riskScore + alertScore) / 4);
-  const status = healthScore >= 70 ? 'vert' : healthScore >= 40 ? 'jaune' : 'rouge';
+  const status = healthScore >= SEUILS.confiance.bon ? 'vert' : healthScore >= SEUILS.confiance.moyen ? 'jaune' : 'rouge';
   const statusIndicator = status === 'vert' ? '[VERT]' : status === 'jaune' ? '[JAUNE]' : '[ROUGE]';
 
   return `# ${statusIndicator} Analyse de Sante du Projet
@@ -623,10 +644,10 @@ function analyzeHealthLocal(ctx: ProjectContext): string {
 ### Detail par Dimension
 | Dimension | Score | Statut |
 |-----------|-------|--------|
-| Planning | ${planningScore}% | ${planningScore >= 70 ? 'OK' : planningScore >= 40 ? 'ATTENTION' : 'CRITIQUE'} |
-| Budget | ${budgetScore.toFixed(0)}% | ${budgetScore >= 70 ? 'OK' : budgetScore >= 40 ? 'ATTENTION' : 'CRITIQUE'} |
-| Risques | ${riskScore}% | ${riskScore >= 70 ? 'OK' : riskScore >= 40 ? 'ATTENTION' : 'CRITIQUE'} |
-| Alertes | ${alertScore}% | ${alertScore >= 70 ? 'OK' : alertScore >= 40 ? 'ATTENTION' : 'CRITIQUE'} |
+| Planning | ${planningScore}% | ${planningScore >= SEUILS.confiance.bon ? 'OK' : planningScore >= SEUILS.confiance.moyen ? 'ATTENTION' : 'CRITIQUE'} |
+| Budget | ${budgetScore.toFixed(0)}% | ${budgetScore >= SEUILS.confiance.bon ? 'OK' : budgetScore >= SEUILS.confiance.moyen ? 'ATTENTION' : 'CRITIQUE'} |
+| Risques | ${riskScore}% | ${riskScore >= SEUILS.confiance.bon ? 'OK' : riskScore >= SEUILS.confiance.moyen ? 'ATTENTION' : 'CRITIQUE'} |
+| Alertes | ${alertScore}% | ${alertScore >= SEUILS.confiance.bon ? 'OK' : alertScore >= SEUILS.confiance.moyen ? 'ATTENTION' : 'CRITIQUE'} |
 
 ### Indicateurs EVM
 - **SPI** (Performance Planning): ${evm.spi.toFixed(2)} ${evm.spi >= 1 ? 'OK' : 'ATTENTION'}
@@ -646,7 +667,7 @@ function analyzeProblemsLocal(ctx: ProjectContext): string {
     if (a.statut === 'termine') return false;
     return a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date();
   });
-  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12);
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique);
   const criticalAlerts = ctx.alertes.filter(a => !a.traitee && a.criticite === 'critical');
 
   let report = `# Analyse des Problemes\n\n`;
@@ -696,8 +717,8 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
     return `# Analyse des Risques\n\nAucun risque enregistre. Pensez a identifier les risques potentiels!`;
   }
 
-  const critical = ctx.risques.filter(r => (r.score || 0) >= 12);
-  const high = ctx.risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
+  const critical = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique);
+  const high = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique);
   const medium = ctx.risques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
   const low = ctx.risques.filter(r => (r.score || 0) < 4);
 
@@ -706,8 +727,8 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
 
   report += `## Repartition\n\n`;
   report += `| Niveau | Nombre | % |\n|--------|--------|---|\n`;
-  report += `| Critique (>=12) | ${critical.length} | ${Math.round(critical.length / ctx.risques.length * 100)}% |\n`;
-  report += `| Eleve (8-11) | ${high.length} | ${Math.round(high.length / ctx.risques.length * 100)}% |\n`;
+  report += `| Critique (>=${SEUILS_RISQUES.critique}) | ${critical.length} | ${Math.round(critical.length / ctx.risques.length * 100)}% |\n`;
+  report += `| Eleve (${SEUILS_RISQUES.majeur}-${SEUILS_RISQUES.critique - 1}) | ${high.length} | ${Math.round(high.length / ctx.risques.length * 100)}% |\n`;
   report += `| Modere (4-7) | ${medium.length} | ${Math.round(medium.length / ctx.risques.length * 100)}% |\n`;
   report += `| Faible (<4) | ${low.length} | ${Math.round(low.length / ctx.risques.length * 100)}% |\n\n`;
 
@@ -727,9 +748,9 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
 
 function analyzeBudgetLocal(ctx: ProjectContext): string {
   const evm = calculateEVMLocal(ctx);
-  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
-  const budgetRealise = ctx.budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0);
-  const budgetEngage = ctx.budget.reduce((sum, b) => sum + (b.montant_engage || 0), 0);
+  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+  const budgetRealise = ctx.budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
+  const budgetEngage = ctx.budget.reduce((sum, b) => sum + (b.montantEngage || 0), 0);
 
   let report = `# Analyse Budgetaire\n\n`;
 
@@ -742,8 +763,8 @@ function analyzeBudgetLocal(ctx: ProjectContext): string {
 
   report += `## Indicateurs EVM\n\n`;
   report += `| Indicateur | Valeur | Interpretation |\n|------------|--------|----------------|\n`;
-  report += `| CPI | ${evm.cpi.toFixed(2)} | ${evm.cpi >= 1 ? 'Efficient' : evm.cpi >= 0.9 ? 'Acceptable' : 'Depassement'} |\n`;
-  report += `| SPI | ${evm.spi.toFixed(2)} | ${evm.spi >= 1 ? 'Dans les temps' : evm.spi >= 0.9 ? 'Acceptable' : 'Retard'} |\n`;
+  report += `| CPI | ${evm.cpi.toFixed(2)} | ${evm.cpi >= SEUILS.evm.bon ? 'Efficient' : evm.cpi >= SEUILS.evm.attention ? 'Acceptable' : 'Depassement'} |\n`;
+  report += `| SPI | ${evm.spi.toFixed(2)} | ${evm.spi >= SEUILS.evm.bon ? 'Dans les temps' : evm.spi >= SEUILS.evm.attention ? 'Acceptable' : 'Retard'} |\n`;
   report += `| EAC | ${Math.round(evm.eac).toLocaleString('fr-FR')} | Estimation finale |\n`;
   report += `| VAC | ${Math.round(evm.vac).toLocaleString('fr-FR')} | ${evm.vac >= 0 ? 'Economie' : 'Depassement'} prevue |\n\n`;
 
@@ -762,7 +783,7 @@ function generateReportLocal(ctx: ProjectContext): string {
   // Score de sante
   const blocked = ctx.actions.filter(a => a.statut === 'bloque').length;
   const overdue = ctx.actions.filter(a => a.statut !== 'termine' && a.date_fin_prevue && new Date(a.date_fin_prevue) < new Date()).length;
-  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12).length;
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length;
   const healthScore = Math.max(0, 100 - (blocked * 15) - (overdue * 10) - (criticalRisks * 20));
   const statusLabel = healthScore >= 70 ? '[VERT]' : healthScore >= 40 ? '[JAUNE]' : '[ROUGE]';
 
@@ -814,7 +835,7 @@ function generateRecommendationsLocal(ctx: ProjectContext): string {
   }
 
   // Risques critiques
-  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12);
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique);
   if (criticalRisks.length > 0) {
     recommendations.push({
       priority: 1,
@@ -944,7 +965,7 @@ function generatePredictionsLocal(ctx: ProjectContext): string {
   }
 
   // Prevision budgetaire
-  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
+  const budgetPrevu = ctx.budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
   report += `## Estimation Budgetaire Finale\n\n`;
   report += `| Scénario | Montant (FCFA) | Écart |\n|----------|----------------|-------|\n`;
   report += `| Optimiste | ${Math.round(evm.eac * 0.95).toLocaleString('fr-FR')} | ${Math.round((evm.eac * 0.95 - budgetPrevu) / budgetPrevu * 100)}% |\n`;
@@ -1017,12 +1038,12 @@ function generateHonestReport(ctx: ProjectContext): HonestReportData {
   const milestonesAtRisk = ctx.jalons.filter(j => j.statut === 'en_danger').length;
   const milestonesOverdue = ctx.jalons.filter(j => j.statut === 'depasse').length;
 
-  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= 12).length;
-  const highRisks = ctx.risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length;
+  const criticalRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length;
+  const highRisks = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique).length;
   const openRisks = ctx.risques.filter(r => r.statut !== 'ferme').length;
 
-  const budgetPlanned = ctx.budget.reduce((sum, b) => sum + (b.montant_prevu || 0), 0);
-  const budgetSpent = ctx.budget.reduce((sum, b) => sum + (b.montant_realise || 0), 0);
+  const budgetPlanned = ctx.budget.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+  const budgetSpent = ctx.budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
   const budgetVariance = budgetSpent - budgetPlanned;
 
   const untreatedAlerts = ctx.alertes.filter(a => !a.traitee).length;
@@ -1118,7 +1139,7 @@ function generateHonestReport(ctx: ProjectContext): HonestReportData {
         open: openRisks,
         critical: criticalRisks,
         high: highRisks,
-        criticalList: ctx.risques.filter(r => (r.score || 0) >= 12 && r.statut !== 'ferme').map(r => ({ id: r.id, titre: r.titre, score: r.score })),
+        criticalList: ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique && r.statut !== 'ferme').map(r => ({ id: r.id, titre: r.titre, score: r.score })),
       },
     },
     {
@@ -1250,6 +1271,13 @@ Si le projet va mal, tu dois le dire clairement. Si des actions sont bloquées, 
 - Structure tes réponses clairement
 - N'utilise pas de formules de politesse excessives
 - Va droit au but
+
+## Référentiel de seuils (constants.ts):
+- Risques (grille 5×5, score max=25): faible <${SEUILS_RISQUES.modere}, modéré ≥${SEUILS_RISQUES.modere}, majeur ≥${SEUILS_RISQUES.majeur}, critique ≥${SEUILS_RISQUES.critique}
+- Budget en FCFA. La date cible d'ouverture (Soft Opening) est le ${PROJET_CONFIG.jalonsClés.softOpening}.
+- EVM: SPI/CPI ≥${SEUILS.evm.bon} = OK, ≥${SEUILS.evm.attention} = attention, <${SEUILS.evm.critique} = critique
+- Alertes temporelles: J-${SEUILS.alertes.j30}, J-${SEUILS.alertes.j15}, J-${SEUILS.alertes.j7}, J-${SEUILS.alertes.j3}, J-${SEUILS.alertes.j1}
+- 8 axes de projet (construction = 30% du poids, divers = 0%)
 
 Rappel: La vérité est toujours préférable à une fausse assurance. Ton rôle est d'aider à prendre les bonnes décisions, pas de rassurer.`;
 

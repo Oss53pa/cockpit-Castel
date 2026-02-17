@@ -5,6 +5,7 @@
 // ============================================================================
 
 import type { RisqueCategory } from '@/types';
+import { SEUILS_RISQUES } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -56,9 +57,9 @@ export const MATRICE_CRITICITE = {
 };
 
 export const getNiveauRisque = (score: number): RisqueNiveau => {
-  if (score >= 12) return 'critique';
-  if (score >= 8) return 'majeur';
-  if (score >= 4) return 'modere';
+  if (score >= SEUILS_RISQUES.critique) return 'critique';
+  if (score >= SEUILS_RISQUES.majeur) return 'majeur';
+  if (score >= SEUILS_RISQUES.modere) return 'modere';
   return 'faible';
 };
 

@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import { Proph3tEngine, type ProjectContext } from '@/services/proph3tEngine';
+import { SEUILS_RISQUES } from '@/data/constants';
 import type { Action, Jalon, Risque, BudgetItem, Alerte, User, Team } from '@/types';
 
 // ============================================================================
@@ -181,11 +182,13 @@ export function useProph3tHealth(): HealthData | null {
   const actionsData = useLiveQuery(() => db.actions.toArray());
   const jalonsData = useLiveQuery(() => db.jalons.toArray());
   const budgetData = useLiveQuery(() => db.budget.toArray());
+  const sitesData = useLiveQuery(() => db.sites.filter(s => !!s.actif).toArray());
 
   return useMemo(() => {
     const actions = actionsData ?? [];
     const jalons = jalonsData ?? [];
     const budget = budgetData ?? [];
+    const sites = sitesData ?? [];
 
     // Attendre que les données soient chargées
     if (actions.length === 0 && jalons.length === 0) return null;
@@ -209,16 +212,26 @@ export function useProph3tHealth(): HealthData | null {
       ? Math.round((budgetConsomme / budgetTotal) * 100)
       : 0;
 
-    // 4. Occupation RÉEL (basé sur actions commerciales)
+    // 4. Occupation RÉELLE (BEFA signés / boutiques cibles)
     const commercialActions = actions.filter((a) => a.axe === 'axe2_commercial');
-    const occupationScore = commercialActions.length > 0
-      ? Math.round(commercialActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / commercialActions.length)
-      : 0;
+    const boutiquesMax = sites[0]?.boutiquesMax || 0;
+    const befaSignes = commercialActions.filter(a => a.statut === 'termine').length;
+    const occupationScore = boutiquesMax > 0
+      ? Math.round(Math.min(100, (befaSignes / boutiquesMax) * 100))
+      : commercialActions.length > 0
+        ? Math.round(commercialActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / commercialActions.length)
+        : 0;
 
-    // 5. Vélocité - % d'actions terminées RÉEL
-    const actionsTerminees = actions.filter(a => a.statut === 'termine').length;
-    const velocityScore = actions.length > 0
-      ? Math.round((actionsTerminees / actions.length) * 100)
+    // 5. Vélocité - % d'actions terminées RÉEL (exclure actions durée ≤ 1 jour)
+    const actionsAvecDuree = actions.filter(a => {
+      if (!a.date_debut_prevue || !a.date_fin_prevue) return true; // garder si pas de dates
+      const debut = new Date(a.date_debut_prevue).getTime();
+      const fin = new Date(a.date_fin_prevue).getTime();
+      return (fin - debut) > 24 * 60 * 60 * 1000; // exclure durée ≤ 1 jour
+    });
+    const actionsTerminees = actionsAvecDuree.filter(a => a.statut === 'termine').length;
+    const velocityScore = actionsAvecDuree.length > 0
+      ? Math.round((actionsTerminees / actionsAvecDuree.length) * 100)
       : 0;
 
     // 6. Sync - proxy : écart entre avancement et jalons (0 = parfait, 100 = désynchronisé → inversé)
@@ -275,7 +288,7 @@ export function useProph3tHealth(): HealthData | null {
       cpi,
       issues,
     };
-  }, [actionsData, jalonsData, budgetData]);
+  }, [actionsData, jalonsData, budgetData, sitesData]);
 }
 
 // ============================================================================
@@ -317,7 +330,7 @@ export function useProph3tRecommendations(): Recommendation[] {
     }
 
     // Risques critiques
-    const criticalRisks = context.risques.filter(r => (r.score || 0) >= 12);
+    const criticalRisks = context.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique);
     if (criticalRisks.length > 0) {
       recommendations.push({
         priority: 1,

@@ -79,8 +79,8 @@ export class BurnRateCalculator {
   calculateBurnRate(budgetItems: BudgetItem[], startDate: Date, endDate: Date = new Date()): BurnRateMetrics {
     const dataPoints = this.buildBurnDataPoints(budgetItems, startDate, endDate);
 
-    const totalBudget = budgetItems.reduce((sum, b) => sum + (b.montant_budgete || 0), 0);
-    const totalSpent = budgetItems.reduce((sum, b) => sum + (b.montant_engage || 0), 0);
+    const totalBudget = budgetItems.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
+    const totalSpent = budgetItems.reduce((sum, b) => sum + (b.montantEngage || 0), 0);
 
     if (dataPoints.length === 0) {
       return {
@@ -114,10 +114,10 @@ export class BurnRateCalculator {
 
   private buildBurnDataPoints(budgetItems: BudgetItem[], startDate: Date, endDate: Date): BurnRateDataPoint[] {
     const dataPoints: BurnRateDataPoint[] = [];
-    const totalBudget = budgetItems.reduce((sum, b) => sum + (b.montant_budgete || 0), 0);
+    const totalBudget = budgetItems.reduce((sum, b) => sum + (b.montantPrevu || 0), 0);
 
     // Pour simplifier, on utilise le montant engagé réparti linéairement
-    const totalSpent = budgetItems.reduce((sum, b) => sum + (b.montant_engage || 0), 0);
+    const totalSpent = budgetItems.reduce((sum, b) => sum + (b.montantEngage || 0), 0);
     const daysDiff = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
 
     // Créer des points hebdomadaires
@@ -257,8 +257,8 @@ export class BurnRateCalculator {
     const results: CategoryBurn[] = [];
 
     for (const [category, items] of categories) {
-      const spent = items.reduce((sum, i) => sum + (i.montant_engage || 0), 0);
-      const budget = items.reduce((sum, i) => sum + (i.montant_budgete || 0), 0);
+      const spent = items.reduce((sum, i) => sum + (i.montantEngage || 0), 0);
+      const budget = items.reduce((sum, i) => sum + (i.montantPrevu || 0), 0);
       const percentConsumed = budget > 0 ? (spent / budget) * 100 : 0;
 
       // Calculer le burn rate par catégorie

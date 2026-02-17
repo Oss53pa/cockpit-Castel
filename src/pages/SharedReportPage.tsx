@@ -36,8 +36,8 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { PROJET_CONFIG } from '@/data/constants';
-import { getSharedReportSnapshot, type SharedReportSnapshot } from '@/services/firebaseRealtimeSync';
+import { PROJET_CONFIG, AXES_POIDS, FIREBASE_TTL } from '@/data/constants';
+import { getSharedReportSnapshot, type SharedReportSnapshot, type FetchResult } from '@/services/firebaseRealtimeSync';
 
 const COLORS = {
   primary: '#1C3163',
@@ -103,15 +103,25 @@ export function SharedReportPage() {
     // 1. Essayer Firebase en priorité (fonctionne pour les externes)
     getSharedReportSnapshot(shareId)
       .then((result) => {
-        if (result) {
-          setData(result);
-        } else {
-          // 2. Fallback localStorage (même navigateur uniquement)
+        if (result.status === 'ok') {
+          setData(result.data);
+        } else if (result.status === 'expired') {
+          setError(`Ce rapport a expiré (disponible ${FIREBASE_TTL.SHARED_REPORTS} jours après création). Contactez l'administrateur pour un nouveau lien.`);
+        } else if (result.status === 'not_found') {
+          // Fallback localStorage (même navigateur uniquement)
           const local = loadFromLocalStorage(shareId);
           if (local) {
             setData(local);
           } else {
-            setError('Ce rapport n\'est plus disponible ou le lien a expiré.');
+            setError('Ce rapport n\'existe pas ou a été supprimé.');
+          }
+        } else {
+          // status === 'error'
+          const local = loadFromLocalStorage(shareId);
+          if (local) {
+            setData(local);
+          } else {
+            setError('Impossible de charger le rapport. Vérifiez votre connexion.');
           }
         }
       })
@@ -139,13 +149,18 @@ export function SharedReportPage() {
   }
 
   if (error || !data) {
+    const isExpired = error?.includes('expiré');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-sm">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <AlertTriangle className="h-6 w-6 text-red-600" />
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${isExpired ? 'bg-amber-100' : 'bg-red-100'}`}>
+            {isExpired
+              ? <Clock className="h-6 w-6 text-amber-600" />
+              : <AlertTriangle className="h-6 w-6 text-red-600" />}
           </div>
-          <h1 className="text-lg font-bold text-gray-900 mb-2">Rapport non disponible</h1>
+          <h1 className="text-lg font-bold text-gray-900 mb-2">
+            {isExpired ? 'Rapport expiré' : 'Rapport non disponible'}
+          </h1>
           <p className="text-sm text-gray-600">{error || 'Lien invalide ou expiré.'}</p>
         </div>
       </div>
@@ -166,10 +181,32 @@ export function SharedReportPage() {
   const actionsAFaire = actions.filter(a => a.statut === 'a_faire').length;
   const actionsBloquees = actions.filter(a => a.statut === 'bloque').length;
   const totalActions = actions.length || kpis.totalActions || 0;
-  const avancementGlobal = totalActions > 0 ? Math.round((actionsTerminees / totalActions) * 100) : 0;
+  // Avancement pondéré par axe (cohérent avec useDashboard)
+  const avancementGlobal = (() => {
+    if (actions.length === 0) return 0;
+    // Si les actions ont un champ avancement (snapshots v2+), utiliser calcul pondéré
+    const hasAvancement = actions.some(a => a.avancement != null);
+    if (!hasAvancement) {
+      // Fallback pour anciens snapshots sans avancement: taux de complétion
+      return Math.round((actionsTerminees / totalActions) * 100);
+    }
+    const axeWeightMap: Record<string, number> = AXES_POIDS;
+    const axeGroups: Record<string, { sum: number; count: number; poids: number }> = {};
+    for (const a of actions) {
+      if (!a.axe) continue;
+      if (!axeGroups[a.axe]) axeGroups[a.axe] = { sum: 0, count: 0, poids: axeWeightMap[a.axe] ?? 0 };
+      axeGroups[a.axe].sum += a.avancement || 0;
+      axeGroups[a.axe].count++;
+    }
+    const entries = Object.values(axeGroups);
+    const totalPoids = entries.reduce((s, e) => s + e.poids, 0);
+    if (totalPoids === 0) return Math.round(actions.reduce((s, a) => s + (a.avancement || 0), 0) / actions.length);
+    return Math.round(entries.reduce((s, e) => s + (e.sum / e.count) * (e.poids / totalPoids), 0));
+  })();
   const budgetConsommeStr = safeDivide(budgetData.realise, budgetData.prevu);
   const budgetConsommeNum = budgetData.prevu > 0 ? Math.round((budgetData.realise / budgetData.prevu) * 100) : 0;
-  const risquesCritiques = risquesData.filter(r => (r.score || 0) > 15).length;
+  const risquesCritiques = risquesData.filter(r => (r.score || 0) >= 16).length;
+  const isOldSnapshot = !(data as Record<string, unknown>).dataVersion;
 
   const actionsParStatut = [
     { name: 'Terminées', value: actionsTerminees, color: COLORS.success },
@@ -267,6 +304,13 @@ export function SharedReportPage() {
           body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         }
       `}</style>
+
+      {/* Avertissement ancien snapshot (pré-correction Phase 1-4) */}
+      {isOldSnapshot && (
+        <div className="bg-amber-50 border-b border-amber-200 py-2 px-4 text-center text-sm text-amber-800 no-print">
+          Ce rapport a été généré avant les corrections de données. Pour un rapport à jour, veuillez en générer un nouveau.
+        </div>
+      )}
 
       {/* Header Magazine Style */}
       <header className="bg-gradient-to-r from-[#1C3163] to-[#2a4a8a] text-white">

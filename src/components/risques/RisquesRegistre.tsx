@@ -22,6 +22,7 @@ import {
 } from '@/components/ui';
 import { useRisques, useUser, deleteRisque, getRisqueCriticiteColor } from '@/hooks';
 import { RISQUE_CATEGORY_LABELS, getRisqueStatusLabel, type Risque, type RisqueFilters } from '@/types';
+import { SEUILS_RISQUES } from '@/data/constants';
 import { SendReminderModal, ShareExternalModal, ModificationCell } from '@/components/shared';
 import { logger } from '@/lib/logger';
 
@@ -318,10 +319,10 @@ export function RisquesRegistre({ filters, onEdit, onView }: RisquesRegistreProp
         </span>
         <div className="flex items-center gap-4">
           <span className="text-error-600">
-            {risques.filter(r => r.score >= 12).length} critiques
+            {risques.filter(r => r.score >= SEUILS_RISQUES.critique).length} critiques
           </span>
           <span className="text-warning-600">
-            {risques.filter(r => r.score >= 8 && r.score < 12).length} majeurs
+            {risques.filter(r => r.score >= SEUILS_RISQUES.majeur && r.score < SEUILS_RISQUES.critique).length} majeurs
           </span>
           <span className="text-success-600">
             {risques.filter(r => r.status === 'closed' || r.status === 'mitigated').length} traités

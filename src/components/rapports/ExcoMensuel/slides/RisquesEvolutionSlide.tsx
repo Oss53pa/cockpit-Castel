@@ -124,7 +124,7 @@ export function RisquesEvolutionSlide({ data, designSettings, periode }: Risques
               ) : (
                 data.nouveaux.map((risque) => {
                   const axeConfig = AXES_MENSUEL_CONFIG[risque.axe];
-                  const niveau = risque.score >= 12 ? 'critique' : risque.score >= 8 ? 'majeur' : risque.score >= 4 ? 'modere' : 'faible';
+                  const niveau = risque.score >= 16 ? 'critique' : risque.score >= 10 ? 'majeur' : risque.score >= 5 ? 'modere' : 'faible';
                   return (
                     <div
                       key={risque.id}

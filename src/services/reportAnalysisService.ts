@@ -275,24 +275,26 @@ export function analyzeBudget(
     });
   }
 
-  // Estimation à l'achèvement (EAC vs BAC)
-  const eacVariance = ((evmIndicators.EAC - evmIndicators.BAC) / evmIndicators.BAC) * 100;
-  if (eacVariance > 15) {
-    analyses.push({
-      type: 'critical',
-      title: 'Cout final estime en forte hausse',
-      message: `L'EAC (${evmIndicators.EAC.toLocaleString('fr-FR')} FCFA) depasse le BAC de ${Math.round(eacVariance)}%.`,
-      recommendation: 'Revoir le perimetre du projet ou debloquer un budget supplementaire.',
-      priority: 1,
-    });
-  } else if (eacVariance > 5) {
-    analyses.push({
-      type: 'warning',
-      title: 'Cout final estime en hausse',
-      message: `L'EAC depasse le BAC initial de ${Math.round(eacVariance)}%.`,
-      recommendation: 'Controler strictement les depenses restantes.',
-      priority: 2,
-    });
+  // Estimation à l'achèvement (EAC vs BAC) — garde CPI=0
+  if (evmIndicators.EAC !== null && evmIndicators.BAC > 0) {
+    const eacVariance = ((evmIndicators.EAC - evmIndicators.BAC) / evmIndicators.BAC) * 100;
+    if (eacVariance > 15) {
+      analyses.push({
+        type: 'critical',
+        title: 'Cout final estime en forte hausse',
+        message: `L'EAC (${evmIndicators.EAC.toLocaleString('fr-FR')} FCFA) depasse le BAC de ${Math.round(eacVariance)}%.`,
+        recommendation: 'Revoir le perimetre du projet ou debloquer un budget supplementaire.',
+        priority: 1,
+      });
+    } else if (eacVariance > 5) {
+      analyses.push({
+        type: 'warning',
+        title: 'Cout final estime en hausse',
+        message: `L'EAC depasse le BAC initial de ${Math.round(eacVariance)}%.`,
+        recommendation: 'Controler strictement les depenses restantes.',
+        priority: 2,
+      });
+    }
   }
 
   // Budget sous-consommé
@@ -315,8 +317,8 @@ export function analyzeBudget(
 export function analyzeRisques(risques: Risque[]): AnalysisItem[] {
   const analyses: AnalysisItem[] = [];
 
-  // Risques critiques (score >= 12)
-  const criticalRisks = risques.filter(r => r.score >= 12 && r.status !== 'closed');
+  // Risques critiques (score >= 16, matrice 5×5)
+  const criticalRisks = risques.filter(r => r.score >= 16 && r.status !== 'closed');
   if (criticalRisks.length > 0) {
     analyses.push({
       type: 'critical',
@@ -327,8 +329,8 @@ export function analyzeRisques(risques: Risque[]): AnalysisItem[] {
     });
   }
 
-  // Risques élevés (score 8-11)
-  const highRisks = risques.filter(r => r.score >= 8 && r.score < 12 && r.status !== 'closed');
+  // Risques élevés (score 10-15)
+  const highRisks = risques.filter(r => r.score >= 10 && r.score < 16 && r.status !== 'closed');
   if (highRisks.length > 0) {
     analyses.push({
       type: 'warning',
@@ -340,7 +342,7 @@ export function analyzeRisques(risques: Risque[]): AnalysisItem[] {
   }
 
   // Risques sans plan de mitigation
-  const risksWithoutPlan = risques.filter(r => !r.planMitigation && r.status !== 'closed' && r.score >= 4);
+  const risksWithoutPlan = risques.filter(r => !r.planMitigation && r.status !== 'closed' && r.score >= 5);
   if (risksWithoutPlan.length > 0) {
     analyses.push({
       type: 'warning',

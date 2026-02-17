@@ -351,9 +351,9 @@ export interface EVMIndicators {
   CPI: number;  // Cost Performance Index
   SV: number;   // Schedule Variance
   CV: number;   // Cost Variance
-  EAC: number;  // Estimate at Completion
-  ETC: number;  // Estimate to Complete
-  VAC: number;  // Variance at Completion
+  EAC: number | null;  // Estimate at Completion (null si CPI=0)
+  ETC: number | null;  // Estimate to Complete (null si EAC=null)
+  VAC: number | null;  // Variance at Completion (null si EAC=null)
 }
 
 /**

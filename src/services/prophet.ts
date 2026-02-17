@@ -477,7 +477,7 @@ function analyzeTrends(ctx: ProjectContext): Record<string, TrendData> {
   };
 
   // Tendance risques
-  const criticalRisks = ctx.risques.filter(r => r.score >= 12).length;
+  const criticalRisks = ctx.risques.filter(r => r.score >= 16).length;
   const totalRisks = ctx.risques.length || 1;
   const riskRatio = (criticalRisks / totalRisks) * 100;
 
@@ -669,13 +669,13 @@ function generateSmartRecommendations(ctx: ProjectContext): RecommendationItem[]
   }
 
   // 2. Recommandations sur les risques critiques
-  const criticalRisks = ctx.risques.filter(r => r.score >= 12);
+  const criticalRisks = ctx.risques.filter(r => r.score >= 16);
   if (criticalRisks.length > 0) {
     recommendations.push({
       priority: 1,
       category: 'Risques',
       title: `Mitiger ${criticalRisks.length} risque(s) critique(s)`,
-      description: 'Des risques avec un score >= 12 nécessitent une attention immédiate.',
+      description: 'Des risques avec un score >= 16 nécessitent une attention immédiate.',
       impact: 'critique',
       effort: 'eleve',
       actions: [
@@ -858,7 +858,7 @@ function analyzeProblems(ctx: ProjectContext): string {
   }
 
   // Risques critiques
-  const criticalRisks = ctx.risques.filter(r => r.score >= 12);
+  const criticalRisks = ctx.risques.filter(r => r.score >= 16);
   if (criticalRisks.length > 0) {
     report += `## Risques Critiques (${criticalRisks.length})\n\n`;
     criticalRisks.forEach(r => {
@@ -907,10 +907,10 @@ function analyzeRisks(ctx: ProjectContext): string {
     return "# Analyse des Risques\n\nAucun risque enregistre dans le systeme. Pensez a identifier les risques potentiels!";
   }
 
-  const critical = ctx.risques.filter(r => r.score >= 12);
-  const high = ctx.risques.filter(r => r.score >= 8 && r.score < 12);
-  const medium = ctx.risques.filter(r => r.score >= 4 && r.score < 8);
-  const low = ctx.risques.filter(r => r.score < 4);
+  const critical = ctx.risques.filter(r => r.score >= 16);
+  const high = ctx.risques.filter(r => r.score >= 10 && r.score < 16);
+  const medium = ctx.risques.filter(r => r.score >= 5 && r.score < 10);
+  const low = ctx.risques.filter(r => r.score < 5);
 
   let report = `# Analyse Complete des Risques\n\n`;
   report += `*${ctx.risques.length} risques analyses le ${new Date().toLocaleString('fr-FR')}*\n\n`;
@@ -918,10 +918,10 @@ function analyzeRisks(ctx: ProjectContext): string {
   // Matrice des risques
   report += `## Repartition\n\n`;
   report += `| Niveau | Nombre | % | Indicateur |\n|--------|--------|---|------------|\n`;
-  report += `| Critique (>=12) | ${critical.length} | ${Math.round(critical.length / ctx.risques.length * 100)}% | ${critical.length > 0 ? 'ACTION URGENTE' : 'OK'} |\n`;
-  report += `| Eleve (8-11) | ${high.length} | ${Math.round(high.length / ctx.risques.length * 100)}% | ${high.length > 2 ? 'A surveiller' : 'OK'} |\n`;
-  report += `| Modere (4-7) | ${medium.length} | ${Math.round(medium.length / ctx.risques.length * 100)}% | OK |\n`;
-  report += `| Faible (<4) | ${low.length} | ${Math.round(low.length / ctx.risques.length * 100)}% | OK |\n\n`;
+  report += `| Critique (>=16) | ${critical.length} | ${Math.round(critical.length / ctx.risques.length * 100)}% | ${critical.length > 0 ? 'ACTION URGENTE' : 'OK'} |\n`;
+  report += `| Eleve (10-15) | ${high.length} | ${Math.round(high.length / ctx.risques.length * 100)}% | ${high.length > 2 ? 'A surveiller' : 'OK'} |\n`;
+  report += `| Modere (5-9) | ${medium.length} | ${Math.round(medium.length / ctx.risques.length * 100)}% | OK |\n`;
+  report += `| Faible (<5) | ${low.length} | ${Math.round(low.length / ctx.risques.length * 100)}% | OK |\n\n`;
 
   // Score de risque global
   const avgScore = ctx.risques.reduce((sum, r) => sum + r.score, 0) / ctx.risques.length;
@@ -985,7 +985,7 @@ function generateReportSummary(ctx: ProjectContext): string {
   report += `| Jalons Atteints | ${jalonRate}% (${completedJalons}/${ctx.jalons.length}) | - | ${getStatusLabel(jalonRate, 70, 40)} |\n`;
   report += `| SPI (Performance Planning) | ${evm.spi.toFixed(2)} | - | ${evm.spi >= 1 ? 'OK' : evm.spi >= 0.9 ? 'ATTENTION' : 'CRITIQUE'} |\n`;
   report += `| CPI (Performance Couts) | ${evm.cpi.toFixed(2)} | ${getTrendArrow(trends.budget.direction === 'up' ? 'down' : 'up')} | ${evm.cpi >= 1 ? 'OK' : evm.cpi >= 0.9 ? 'ATTENTION' : 'CRITIQUE'} |\n`;
-  report += `| Risques Critiques | ${ctx.risques.filter(r => r.score >= 12).length} | ${getTrendArrow(trends.risques.direction)} | ${ctx.risques.filter(r => r.score >= 12).length === 0 ? 'OK' : 'CRITIQUE'} |\n`;
+  report += `| Risques Critiques | ${ctx.risques.filter(r => r.score >= 16).length} | ${getTrendArrow(trends.risques.direction)} | ${ctx.risques.filter(r => r.score >= 16).length === 0 ? 'OK' : 'CRITIQUE'} |\n`;
   report += `| Alertes Actives | ${ctx.alertes.filter(a => !a.traitee).length} | - | ${ctx.alertes.filter(a => !a.traitee).length < 5 ? 'OK' : 'ATTENTION'} |\n\n`;
 
   // Budget
@@ -1004,8 +1004,8 @@ function generateReportSummary(ctx: ProjectContext): string {
   if (ctx.jalons.filter(j => j.statut === 'en_danger').length > 0) {
     issues.push(`- [DANGER] ${ctx.jalons.filter(j => j.statut === 'en_danger').length} jalon(s) en danger`);
   }
-  if (ctx.risques.filter(r => r.score >= 12).length > 0) {
-    issues.push(`- [CRITIQUE] ${ctx.risques.filter(r => r.score >= 12).length} risque(s) critique(s)`);
+  if (ctx.risques.filter(r => r.score >= 16).length > 0) {
+    issues.push(`- [CRITIQUE] ${ctx.risques.filter(r => r.score >= 16).length} risque(s) critique(s)`);
   }
   if (evm.spi < 0.9) {
     issues.push(`- [PLANNING] Retard de planning significatif (SPI: ${evm.spi.toFixed(2)})`);
@@ -1421,7 +1421,7 @@ function generateProjectOverview(ctx: ProjectContext): string {
   report += `| Metrique | Valeur |\n|----------|--------|\n`;
   report += `| Actions | ${ctx.actions.length} (${ctx.actions.filter(a => a.statut === 'termine').length} terminees) |\n`;
   report += `| Jalons | ${ctx.jalons.length} (${ctx.jalons.filter(j => j.statut === 'atteint').length} atteints) |\n`;
-  report += `| Risques | ${ctx.risques.length} (${ctx.risques.filter(r => r.score >= 12).length} critiques) |\n`;
+  report += `| Risques | ${ctx.risques.length} (${ctx.risques.filter(r => r.score >= 16).length} critiques) |\n`;
   report += `| Alertes | ${ctx.alertes.filter(a => !a.traitee).length} actives |\n`;
   report += `| Equipe | ${ctx.users.length} membres |\n\n`;
 
@@ -1499,7 +1499,7 @@ function calculateHealthScore(ctx: ProjectContext, evm: EVMMetrics): number {
   const blockedRatio = ctx.actions.filter(a => a.statut === 'bloque').length / (ctx.actions.length || 1);
   score -= blockedRatio * 30;
 
-  const criticalRisksRatio = ctx.risques.filter(r => r.score >= 12).length / (ctx.risques.length || 1);
+  const criticalRisksRatio = ctx.risques.filter(r => r.score >= 16).length / (ctx.risques.length || 1);
   score -= criticalRisksRatio * 20;
 
   if (evm.spi < 1) score -= (1 - evm.spi) * 20;
@@ -1599,7 +1599,7 @@ function buildSystemPrompt(context: ProjectContext): string {
   const evm = calculateEVM(context);
   const actionsEnCours = context.actions.filter(a => a.statut === 'en_cours').length;
   const actionsBloquees = context.actions.filter(a => a.statut === 'bloque').length;
-  const risquesCritiques = context.risques.filter(r => r.score >= 12).length;
+  const risquesCritiques = context.risques.filter(r => r.score >= 16).length;
   const alertesActives = context.alertes.filter(a => !a.traitee).length;
   const jalonsEnDanger = context.jalons.filter(j => j.statut === 'en_danger').length;
 
@@ -1634,7 +1634,7 @@ ${context.actions
 
 RISQUES CRITIQUES:
 ${context.risques
-  .filter(r => r.score >= 12)
+  .filter(r => r.score >= 16)
   .slice(0, 5)
   .map(r => `- ${r.titre} (Score: ${r.score}, ${r.categorie})`)
   .join('\n') || 'Aucun'}

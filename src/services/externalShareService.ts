@@ -694,7 +694,7 @@ export class ExternalShareService {
     const prob = risque.probabilite_actuelle || risque.probabilite || 1;
     const imp = risque.impact_actuel || risque.impact || 1;
     const score = risque.score_actuel || risque.score || (prob * imp);
-    const scoreClass = score >= 12 ? 'critical' : score >= 8 ? 'high' : score >= 4 ? 'medium' : 'low';
+    const scoreClass = score >= 16 ? 'critical' : score >= 10 ? 'high' : score >= 5 ? 'medium' : 'low';
 
     return `
       <div class="risk-details">

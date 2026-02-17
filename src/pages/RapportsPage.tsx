@@ -126,7 +126,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, FIREBASE_TTL } from '@/data/constants';
 import { logger } from '@/lib/logger';
 
 const rapportTypes = [
@@ -410,7 +410,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
     };
   });
   const [shareSettings, setShareSettings] = useState({
-    expirationDays: 30,
+    expirationDays: FIREBASE_TTL.SHARED_REPORTS,
     recipients: '',
     notifyByEmail: true,
   });
@@ -1521,7 +1521,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
               // Créer un partage HTML et rediriger vers l'onglet partage
               const shareId = Math.random().toString(36).substring(2, 10);
               const now = new Date().toISOString();
-              const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+              const expiresAt = new Date(Date.now() + FIREBASE_TTL.SHARED_REPORTS * 24 * 60 * 60 * 1000).toISOString();
               const newShare: SharedHtmlReport = {
                 id: `share-${Date.now()}`,
                 reportId: Date.now(),
@@ -1547,7 +1547,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
                 expiresAt,
                 period: periodText,
                 snapshot: {
-                  actions: (actions || []).map(a => ({ statut: a.statut, axe: a.axe, titre: a.titre })),
+                  actions: (actions || []).map(a => ({ statut: a.statut, axe: a.axe, titre: a.titre, avancement: a.avancement })),
                   jalons: (jalons || []).slice(0, 20).map(j => ({
                     titre: j.titre, statut: j.statut, date_prevue: j.date_prevue, avancement_prealables: j.avancement_prealables,
                   })),
@@ -2327,7 +2327,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
 
                     setShowShareModal(false);
                     setSelectedReportForShare(null);
-                    setShareSettings({ expirationDays: 30, recipients: '', notifyByEmail: true });
+                    setShareSettings({ expirationDays: FIREBASE_TTL.SHARED_REPORTS, recipients: '', notifyByEmail: true });
                     setShowCommentsSection(false);
                     setReportComments({
                       executiveSummary: '',

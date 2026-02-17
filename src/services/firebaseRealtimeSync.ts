@@ -9,6 +9,9 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   getFirestore,
   collection,
   doc,
@@ -16,10 +19,12 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   type Firestore,
   type Unsubscribe,
@@ -28,15 +33,24 @@ import { db } from '@/db';
 import { getFirebaseConfig, isFirebaseConfigured } from '@/services/firebaseConfigService';
 import type { Action, Jalon, Risque } from '@/types';
 import type { LigneBudgetExploitation } from '@/types/budgetExploitation.types';
+import { PROJET_CONFIG, FIREBASE_TTL } from '@/data/constants';
 import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
+/** Résultat typé pour les lectures Firebase — distingue expiré / non trouvé / erreur */
+export type FetchResult<T> =
+  | { status: 'ok'; data: T }
+  | { status: 'expired'; expiresAt: string }
+  | { status: 'not_found' }
+  | { status: 'error'; message: string };
+
 export interface ExternalUpdateData {
   id?: string;
   token: string;
+  siteId?: string; // Discriminant multi-site (projects/{siteId}/...)
   entityType: 'action' | 'jalon' | 'risque' | 'budget';
   entityId: number;
 
@@ -113,6 +127,9 @@ export interface ExternalUpdateData {
     montantEngage?: number;
     montantConsomme?: number;
     note?: string;
+
+    // Global
+    ccProgress?: number; // Avancement global du centre commercial (%)
   };
 
   // Destinataire
@@ -264,7 +281,15 @@ export async function initRealtimeSync(): Promise<boolean> {
       );
     }
 
-    firestoreDb = getFirestore(firebaseApp);
+    try {
+      firestoreDb = initializeFirestore(firebaseApp, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      });
+      logger.info('[Firebase] Persistence offline activée (realtime)');
+    } catch {
+      // initializeFirestore ne peut être appelé qu'une fois par app — fallback
+      firestoreDb = getFirestore(firebaseApp);
+    }
     logger.info('Firebase realtime sync initialized');
     return true;
   } catch (e) {
@@ -406,12 +431,27 @@ export async function createUpdateLinkInFirebase(
       entitySnapshot.description = budget.description;
     }
 
+    // Calculer ccProgress (avancement global du centre commercial)
+    let ccProgress: number | undefined;
+    try {
+      const allActions = await db.actions.toArray();
+      if (allActions.length > 0) {
+        ccProgress = Math.round(allActions.reduce((s, a) => s + (a.avancement || 0), 0) / allActions.length);
+      }
+    } catch {
+      // Non-blocking — ccProgress reste undefined
+    }
+
     const updateData: ExternalUpdateData = {
       token,
+      siteId: PROJET_CONFIG.projectId, // Discriminant multi-site
       entityType,
       entityId,
-      entitySnapshot,
-      users, // Liste des utilisateurs pour sélection en externe
+      entitySnapshot: {
+        ...entitySnapshot,
+        ...(ccProgress !== undefined && { ccProgress }),
+      },
+      users,
       recipientEmail,
       recipientName,
       createdAt: new Date().toISOString(),
@@ -926,16 +966,20 @@ export async function storeReportInFirebase(
   try {
     const htmlBytes = new Blob([html]).size;
     const docRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token);
+    // Utiliser le TTL par défaut si expiresAt n'est pas fourni
+    const expiresAt = metadata.expiresAt || new Date(Date.now() + FIREBASE_TTL.UPDATE_LINKS * 24 * 60 * 60 * 1000).toISOString();
 
     if (htmlBytes <= MAX_CHUNK_SIZE) {
       // Small enough — store inline
       await setDoc(docRef, {
         type: 'report',
+        siteId: PROJET_CONFIG.projectId,
+        dataVersion: 2,
         html,
         title: metadata.title,
         period: metadata.period,
         senderName: metadata.senderName,
-        expiresAt: metadata.expiresAt,
+        expiresAt,
         createdAt: serverTimestamp(),
         viewCount: 0,
       });
@@ -944,10 +988,12 @@ export async function storeReportInFirebase(
       const totalChunks = Math.ceil(html.length / MAX_CHUNK_SIZE);
       await setDoc(docRef, {
         type: 'report',
+        siteId: PROJET_CONFIG.projectId,
+        dataVersion: 2,
         title: metadata.title,
         period: metadata.period,
         senderName: metadata.senderName,
-        expiresAt: metadata.expiresAt,
+        expiresAt,
         createdAt: serverTimestamp(),
         viewCount: 0,
         chunked: true,
@@ -971,18 +1017,26 @@ export async function storeReportInFirebase(
   }
 }
 
+interface ReportData {
+  html: string;
+  title: string;
+  period: string;
+  expiresAt: string;
+}
+
 /**
  * Récupère le HTML d'un rapport partagé depuis Firebase.
  * Supporte à la fois le HTML inline et le HTML chunked.
+ * Retourne un FetchResult pour distinguer expiré / non trouvé / erreur.
  */
 export async function getReportFromFirebase(
   token: string
-): Promise<{ html: string; title: string; period: string; expiresAt: string } | null> {
+): Promise<FetchResult<ReportData>> {
   if (!firestoreDb) {
     const initialized = await initRealtimeSync();
     if (!initialized || !firestoreDb) {
       logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport');
-      return null;
+      return { status: 'error', message: 'Impossible d\'initialiser Firebase' };
     }
   }
 
@@ -992,7 +1046,7 @@ export async function getReportFromFirebase(
 
     if (!docSnap.exists()) {
       logger.warn('[Firebase] Rapport non trouvé:', token);
-      return null;
+      return { status: 'not_found' };
     }
 
     const data = docSnap.data();
@@ -1000,7 +1054,7 @@ export async function getReportFromFirebase(
     // Vérifier l'expiration
     if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
       logger.warn('[Firebase] Rapport expiré:', token);
-      return null;
+      return { status: 'expired', expiresAt: data.expiresAt };
     }
 
     // Incrémenter le compteur de vues (non-blocking)
@@ -1027,18 +1081,21 @@ export async function getReportFromFirebase(
 
     if (!html) {
       logger.warn('[Firebase] Aucun HTML trouvé pour le rapport:', token);
-      return null;
+      return { status: 'not_found' };
     }
 
     return {
-      html,
-      title: data.title,
-      period: data.period,
-      expiresAt: data.expiresAt,
+      status: 'ok',
+      data: {
+        html,
+        title: data.title,
+        period: data.period,
+        expiresAt: data.expiresAt,
+      },
     };
   } catch (error) {
     logger.error('[Firebase] Erreur lecture rapport:', error);
-    return null;
+    return { status: 'error', message: String(error) };
   }
 }
 
@@ -1059,7 +1116,7 @@ export interface SharedReportSnapshot {
   comments?: Array<{ section: string; content: string; author: string; date: string }>;
   // Snapshot complet des données projet au moment du partage
   snapshot: {
-    actions: Array<{ statut: string; axe?: string; titre?: string }>;
+    actions: Array<{ statut: string; axe?: string; titre?: string; avancement?: number }>;
     jalons: Array<{ titre: string; statut: string; date_prevue?: string; avancement_prealables?: number }>;
     risques: Array<{ titre: string; categorie?: string; score?: number; status?: string }>;
     budget: { prevu: number; engage: number; realise: number };
@@ -1096,8 +1153,12 @@ export async function storeSharedReportSnapshot(
 
   try {
     const docRef = doc(firestoreDb, COLLECTION_SHARED_SNAPSHOTS, shareId);
+    // Assurer un expiresAt par défaut si non fourni
+    const expiresAt = data.expiresAt || new Date(Date.now() + FIREBASE_TTL.SHARED_REPORTS * 24 * 60 * 60 * 1000).toISOString();
     await setDoc(docRef, {
       ...data,
+      expiresAt,
+      dataVersion: 2, // P5: version post-correction (Phase 1-4)
       createdAt: serverTimestamp(),
       viewCount: 0,
     });
@@ -1112,15 +1173,16 @@ export async function storeSharedReportSnapshot(
 /**
  * Récupère un snapshot de rapport partagé depuis Firebase.
  * Vérifie l'expiration et incrémente le compteur de vues.
+ * Retourne un FetchResult pour distinguer expiré / non trouvé / erreur.
  */
 export async function getSharedReportSnapshot(
   shareId: string
-): Promise<SharedReportSnapshot | null> {
+): Promise<FetchResult<SharedReportSnapshot>> {
   if (!firestoreDb) {
     const initialized = await initRealtimeSync();
     if (!initialized || !firestoreDb) {
       logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le snapshot');
-      return null;
+      return { status: 'error', message: 'Impossible d\'initialiser Firebase' };
     }
   }
 
@@ -1130,7 +1192,7 @@ export async function getSharedReportSnapshot(
 
     if (!docSnap.exists()) {
       logger.warn('[Firebase] Snapshot rapport non trouvé:', shareId);
-      return null;
+      return { status: 'not_found' };
     }
 
     const data = docSnap.data() as SharedReportSnapshot & { viewCount?: number };
@@ -1138,7 +1200,7 @@ export async function getSharedReportSnapshot(
     // Vérifier l'expiration
     if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
       logger.warn('[Firebase] Snapshot rapport expiré:', shareId);
-      return null;
+      return { status: 'expired', expiresAt: data.expiresAt };
     }
 
     // Incrémenter le compteur de vues (non-blocking)
@@ -1148,9 +1210,9 @@ export async function getSharedReportSnapshot(
       // ignore
     }
 
-    return data;
+    return { status: 'ok', data };
   } catch (error) {
     logger.error('[Firebase] Erreur lecture snapshot:', error);
-    return null;
+    return { status: 'error', message: String(error) };
   }
 }

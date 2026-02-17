@@ -669,9 +669,9 @@ export function Exco() {
       a.date_fin_prevue && a.date_fin_prevue < today && a.statut !== 'termine'
     ).length;
 
-    // Risques critiques (score >= 12 et non fermés)
+    // Risques critiques (score >= 16 et non fermés)
     const risquesCritiques = risques.filter(r =>
-      (r.score_actuel || r.score_initial || r.score || 0) >= 12 && r.status !== 'closed'
+      (r.score_actuel || r.score_initial || r.score || 0) >= 16 && r.status !== 'closed'
     ).length;
 
     // Calcul de la météo automatique
@@ -876,11 +876,11 @@ export function Exco() {
 
       // Calculate météo for axis based on progress, delays, and risks
       const jalonsAtteints = axeJalons.filter((j) => j.statut === 'atteint').length;
-      const risquesCritiques = axeRisques.filter((r) => (r.score_actuel || r.score_initial || 0) >= 12).length;
+      const risquesCritiques = axeRisques.filter((r) => (r.score_actuel || r.score_initial || 0) >= 16).length;
 
       // Météo calculation: weighted score
       // - 40% avancement vs expected, 30% actions en retard, 30% risques critiques
-      const progressScore = totalProgress >= 80 ? 100 : totalProgress >= 60 ? 75 : totalProgress >= 40 ? 50 : 25;
+      const progressScore = totalProgress >= 100 ? 100 : totalProgress >= 60 ? 75 : totalProgress >= 50 ? 50 : 25;
       const delayScore = actionsEnRetard === 0 ? 100 : actionsEnRetard <= 2 ? 75 : actionsEnRetard <= 5 ? 50 : 25;
       const riskScore = risquesCritiques === 0 ? 100 : risquesCritiques === 1 ? 75 : risquesCritiques <= 3 ? 50 : 25;
       const globalScore = progressScore * 0.4 + delayScore * 0.3 + riskScore * 0.3;
@@ -888,7 +888,7 @@ export function Exco() {
       let meteo: AxeMeteo = 'sunny';
       if (globalScore < 40) meteo = 'stormy';
       else if (globalScore < 60) meteo = 'rainy';
-      else if (globalScore < 80) meteo = 'cloudy';
+      else if (globalScore < 100) meteo = 'cloudy';
 
       data[axe] = {
         actions: axeActions.length,
@@ -1184,9 +1184,9 @@ export function Exco() {
     const headerBg = headerStyle === 'full' ? primaryColor : headerStyle === 'minimal' ? `${primaryColor}15` : 'transparent';
     const headerTextColor = headerStyle === 'full' ? '#ffffff' : primaryColor;
 
-    // Risques critiques (score >= 12)
-    const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12);
-    const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
+    // Risques critiques (score >= 16)
+    const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 16);
+    const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16);
 
     // Jalons par statut
     const jalonsAtteints = axeJalons.filter(j => j.statut === 'atteint');
@@ -1691,9 +1691,9 @@ export function Exco() {
 
     // Section Risques
     if (sectionType === 'risques') {
-      const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12);
-      const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
-      const risquesMoyens = axeRisques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
+      const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 16);
+      const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16);
+      const risquesMoyens = axeRisques.filter(r => (r.score || 0) >= 5 && (r.score || 0) < 10);
 
       return (
         <div style={baseStyles} className="h-full flex flex-col">
@@ -1726,7 +1726,7 @@ export function Exco() {
             <div className="space-y-1.5">
               {axeRisques.slice(0, 4).map((risque, idx) => {
                 const score = risque.score || 0;
-                const scoreColor = score >= 12 ? '#E11D48' : score >= 8 ? '#D97706' : score >= 4 ? '#94A3B8' : '#059669';
+                const scoreColor = score >= 16 ? '#E11D48' : score >= 10 ? '#D97706' : score >= 5 ? '#94A3B8' : '#059669';
                 return (
                   <div key={idx} className="p-2 bg-gray-50 rounded-lg border-l-3" style={{ borderLeftColor: scoreColor }}>
                     <div className="flex items-start justify-between gap-2">
@@ -1914,7 +1914,7 @@ export function Exco() {
       const budgetPct = data.budgetPrevu > 0 ? Math.round((data.budgetRealise / data.budgetPrevu) * 100) : 0;
       const ecart = data.budgetPrevu - data.budgetRealise;
       const isOverBudget = ecart < 0;
-      const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12).length;
+      const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 16).length;
 
       return (
         <div style={baseStyles} className="h-full flex flex-col">
@@ -1969,7 +1969,7 @@ export function Exco() {
                 <div className="space-y-1">
                   {axeRisques.slice(0, 5).map((risque, idx) => {
                     const score = risque.score || 0;
-                    const scoreColor = score >= 12 ? '#E11D48' : score >= 8 ? '#D97706' : score >= 4 ? '#94A3B8' : '#059669';
+                    const scoreColor = score >= 16 ? '#E11D48' : score >= 10 ? '#D97706' : score >= 5 ? '#94A3B8' : '#059669';
                     return (
                       <div key={idx} className="p-1.5 bg-white rounded border-l-2 text-[9px]" style={{ borderLeftColor: scoreColor }}>
                         <div className="flex items-center justify-between">
@@ -2206,7 +2206,7 @@ export function Exco() {
           return date >= nowPreview && date <= in30DaysPreview;
         }).sort((a, b) => new Date(a.date_prevue!).getTime() - new Date(b.date_prevue!).getTime()).slice(0, 5);
         const blockedCountPreview = actions.filter(a => a.statut === 'bloque').length;
-        const criticalRisksCountPreview = risques.filter(r => r.score >= 12 && r.status !== 'closed').length;
+        const criticalRisksCountPreview = risques.filter(r => r.score >= 16 && r.status !== 'closed').length;
 
         return (
           <div style={baseStyles} className="h-full flex flex-col">
@@ -2234,7 +2234,7 @@ export function Exco() {
                   <div className="space-y-1">
                     {top5RisquesPreview.map((r, _i) => (
                       <div key={r.id} className="flex items-center gap-2 text-[10px]">
-                        <span className={`font-bold ${r.score >= 12 ? 'text-red-600' : r.score >= 8 ? 'text-yellow-600' : 'text-blue-600'}`}>
+                        <span className={`font-bold ${r.score >= 16 ? 'text-red-600' : r.score >= 10 ? 'text-yellow-600' : 'text-blue-600'}`}>
                           {r.score}
                         </span>
                         <span className="text-gray-700 truncate">{r.titre}</span>
@@ -2336,7 +2336,7 @@ export function Exco() {
                   const axeRisques4 = getRisquesForAxe(axe);
                   const axeJalons4 = getJalonsForAxe(axe);
                   const jalonsAtteints4 = axeJalons4.filter(j => j.statut === 'atteint').length;
-                  const risquesCritiques4 = axeRisques4.filter(r => (r.score || 0) >= 12).length;
+                  const risquesCritiques4 = axeRisques4.filter(r => (r.score || 0) >= 16).length;
 
                   return (
                     <div key={axe} className="bg-gray-50 rounded-lg p-2">
@@ -2758,9 +2758,9 @@ export function Exco() {
 
       case '12': {
         // Risques - avec détails complets
-        const criticalRisques12 = risques.filter(r => (r.score || 0) >= 12);
-        const highRisques12 = risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
-        const mediumRisques12 = risques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
+        const criticalRisques12 = risques.filter(r => (r.score || 0) >= 16);
+        const highRisques12 = risques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16);
+        const mediumRisques12 = risques.filter(r => (r.score || 0) >= 5 && (r.score || 0) < 10);
 
         return (
           <div style={baseStyles} className="h-full flex flex-col">
@@ -3339,7 +3339,7 @@ export function Exco() {
           { label: 'Budget consommé', target: 35, current: kpiValues.budgetConsumed, unit: '%', trend: 'stable' },
           { label: 'Jalons atteints', target: 12, current: kpiValues.milestonesAchieved, unit: '', trend: 'up' },
           { label: 'Actions terminées', target: 50, current: actions.filter(a => a.statut === 'termine').length || 32, unit: '', trend: 'up' },
-          { label: 'Risques critiques', target: 0, current: risques.filter(r => (r.score || 0) >= 12).length || 3, unit: '', trend: 'down', inverse: true },
+          { label: 'Risques critiques', target: 0, current: risques.filter(r => (r.score || 0) >= 16).length || 3, unit: '', trend: 'down', inverse: true },
           { label: 'Équipe mobilisée', target: 25, current: kpiValues.teamRecruited, unit: '', trend: 'up' },
         ];
 
@@ -3431,8 +3431,8 @@ export function Exco() {
         // Faits Marquants de la Période - avec données réelles
         const criticalDecisions19 = decisionPoints.filter(d => d.urgency === 'critical');
         const highDecisions19 = decisionPoints.filter(d => d.urgency === 'high');
-        const criticalRisques19 = risques.filter(r => (r.score || 0) >= 12);
-        const highRisques19 = risques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
+        const criticalRisques19 = risques.filter(r => (r.score || 0) >= 16);
+        const highRisques19 = risques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16);
         const blockedActions19 = actions.filter(a => a.statut === 'bloque' || a.sante === 'rouge');
         const completedActions19 = actions.filter(a => a.statut === 'termine');
         const achievedJalons19 = jalons.filter(j => j.statut === 'atteint');
@@ -3599,9 +3599,9 @@ export function Exco() {
         const CPI = evmIndicators.CPI;
         const SV = evmIndicators.SV;
         const CV = evmIndicators.CV;
-        const EAC = evmIndicators.EAC;
-        const ETC = evmIndicators.ETC;
-        const VAC = evmIndicators.VAC;
+        const EAC = evmIndicators.EAC ?? 0;
+        const ETC = evmIndicators.ETC ?? 0;
+        const VAC = evmIndicators.VAC ?? 0;
         const TCPI = evmData.BAC > 0 && evmData.AC > 0 ? (evmData.BAC - evmData.EV) / (evmData.BAC - evmData.AC) : 1;
 
         const formatCurrency = (val: number) => {
@@ -3729,9 +3729,9 @@ export function Exco() {
 
         const getCellColor = (row: number, col: number) => {
           const score = (4 - row) * (col + 1);
-          if (score >= 12) return { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' };
-          if (score >= 8) return { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' };
-          if (score >= 4) return { bg: '#FEF9C3', border: '#EAB308', text: '#854D0E' };
+          if (score >= 16) return { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' };
+          if (score >= 10) return { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' };
+          if (score >= 5) return { bg: '#FEF9C3', border: '#EAB308', text: '#854D0E' };
           return { bg: '#DCFCE7', border: '#22C55E', text: '#166534' };
         };
 
@@ -3802,7 +3802,7 @@ export function Exco() {
                   <div className="space-y-1">
                     {topRisques.slice(0, 5).map((r, idx) => {
                       const score = r.score || 0;
-                      const color = score >= 12 ? '#EF4444' : score >= 8 ? '#F97316' : '#F59E0B';
+                      const color = score >= 16 ? '#EF4444' : score >= 10 ? '#F97316' : '#F59E0B';
                       return (
                         <div key={idx} className="p-2 rounded bg-gray-50 border-l-3" style={{ borderLeftColor: color }}>
                           <div className="text-[10px] font-medium text-gray-800 line-clamp-2">{r.titre}</div>
@@ -4899,7 +4899,7 @@ export function Exco() {
             slide.addText('Top 5 Risques', { x: 2.7, y: 1.1, w: 3, h: 0.3, fontSize: 10, fontFace: fontFamily, color: '333333', bold: true });
             const top5Risques = risques.filter(r => r.status !== 'closed').sort((a, b) => b.score - a.score).slice(0, 5);
             top5Risques.forEach((r, i) => {
-              const scoreColor = r.score >= 12 ? 'DC2626' : r.score >= 8 ? 'F59E0B' : '3B82F6';
+              const scoreColor = r.score >= 16 ? 'DC2626' : r.score >= 10 ? 'F59E0B' : '3B82F6';
               slide.addText(`${r.score}`, { x: 2.7, y: 1.4 + i * 0.35, w: 0.4, h: 0.3, fontSize: 10, fontFace: fontFamily, color: scoreColor, bold: true, align: 'center' });
               slide.addText(r.titre.substring(0, 30), { x: 3.1, y: 1.4 + i * 0.35, w: 2.6, h: 0.3, fontSize: 8, fontFace: fontFamily, color: '333333' });
             });
@@ -4930,7 +4930,7 @@ export function Exco() {
             // Alertes
             slide.addText('Alertes', { x: 2.7, y: 3.2, w: 3, h: 0.3, fontSize: 10, fontFace: fontFamily, color: '333333', bold: true });
             const blockedCount = actions.filter(a => a.statut === 'bloque').length;
-            const criticalRisksCount = risques.filter(r => r.score >= 12 && r.status !== 'closed').length;
+            const criticalRisksCount = risques.filter(r => r.score >= 16 && r.status !== 'closed').length;
             slide.addText(`${blockedCount} actions bloquées`, { x: 2.7, y: 3.5, w: 2.5, h: 0.25, fontSize: 9, fontFace: fontFamily, color: blockedCount > 0 ? 'DC2626' : '666666' });
             slide.addText(`${criticalRisksCount} risques critiques`, { x: 2.7, y: 3.75, w: 2.5, h: 0.25, fontSize: 9, fontFace: fontFamily, color: criticalRisksCount > 0 ? 'DC2626' : '666666' });
 

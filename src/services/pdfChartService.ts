@@ -333,8 +333,8 @@ export function drawRiskMatrix(
   // Couleurs de la matrice (vert -> jaune -> rouge)
   const getColor = (row: number, col: number): [number, number, number] => {
     const score = (5 - row) * (col + 1);
-    if (score >= 12) return [254, 202, 202]; // rouge clair
-    if (score >= 6) return [254, 240, 138]; // jaune clair
+    if (score >= 16) return [254, 202, 202]; // rouge clair
+    if (score >= 10) return [254, 240, 138]; // jaune clair
     return [187, 247, 208]; // vert clair
   };
 

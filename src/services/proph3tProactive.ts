@@ -7,6 +7,7 @@ import { db } from '@/db';
 import { Proph3tEngine, type ProjectContext } from './proph3tEngine';
 import type { Action, Jalon, Risque, ProjectPhase } from '@/types';
 import { logger } from '@/lib/logger';
+import { SEUILS_RISQUES } from '@/data/constants';
 
 // ============================================================================
 // TYPES
@@ -65,7 +66,7 @@ const DEFAULT_CONFIG: ProactiveConfig = {
   autoSuggest: true,
   deadlineWarningDays: 7,
   deadlineCriticalDays: 3,
-  riskScoreCritical: 12,
+  riskScoreCritical: SEUILS_RISQUES.critique,
   budgetOverrunWarning: 10,
   velocityAnalysis: true, // Activé par défaut
   phaseSyncAnalysis: true, // Activé par défaut

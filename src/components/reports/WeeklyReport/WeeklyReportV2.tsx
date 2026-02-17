@@ -215,10 +215,10 @@ function WMeteoBadge({ level }: { level: MeteoLevel }) {
   );
 }
 
-/** Trend badge */
+/** Trend badge — indique l'écart vs progression théorique (pas une variation temporelle) */
 function WTrendBadge({ trend }: { trend: 'up' | 'down' | 'stable' }) {
   const color = trend === 'up' ? C.green : trend === 'down' ? C.red : C.gray400;
-  const label = trend === 'up' ? '▲ Hausse' : trend === 'down' ? '▼ Baisse' : '— Stable';
+  const label = trend === 'up' ? '▲ En avance' : trend === 'down' ? '▼ En retard' : '— Dans les temps';
   return (
     <span style={{ fontSize: 11, fontWeight: 600, color }}>{label}</span>
   );
@@ -244,13 +244,13 @@ function WStatusDot({ color }: { color: string }) {
 function WRiskBadge({ score }: { score: number }) {
   let bg = C.greenBg;
   let color = C.green;
-  if (score >= 12) {
+  if (score >= 16) {
     bg = C.redBg;
     color = C.red;
-  } else if (score >= 8) {
+  } else if (score >= 10) {
     bg = C.orangeBg;
     color = C.orange;
-  } else if (score >= 4) {
+  } else if (score >= 5) {
     bg = '#fffde7';
     color = '#f9a825';
   }
@@ -913,13 +913,15 @@ export function WeeklyReportV2() {
       <WSection title="Projection" number={data.pendingDecisions.length > 0 ? 9 : 8}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>VÉLOCITÉ</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: C.navy }}>{f2(data.projection.velocite)}%</div>
+            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>RATIO PROGRESSION</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: C.navy }}>{f2(data.projection.ratioProgression)}%</div>
           </WCard>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>FIN ESTIMÉE</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: data.projection.retardJours > 0 ? C.red : C.green }}>
-              {formatDate(data.projection.finEstimee)}
+            <div style={{ fontSize: 18, fontWeight: 700, color: !data.projection.projectionDisponible ? C.gray400 : data.projection.retardJours > 0 ? C.red : C.green }}>
+              {data.projection.projectionDisponible && data.projection.finEstimee
+                ? formatDate(data.projection.finEstimee)
+                : 'Trop tôt pour projeter'}
             </div>
           </WCard>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
@@ -934,10 +936,14 @@ export function WeeklyReportV2() {
               style={{
                 fontSize: 24,
                 fontWeight: 800,
-                color: data.projection.retardJours > 0 ? C.red : C.green,
+                color: !data.projection.projectionDisponible ? C.gray400 : data.projection.retardJours > 0 ? C.red : C.green,
               }}
             >
-              {data.projection.retardJours > 0 ? `+${data.projection.retardJours}j` : 'À l\'heure'}
+              {!data.projection.projectionDisponible
+                ? '—'
+                : data.projection.retardJours > 0
+                  ? `+${data.projection.retardJours}j`
+                  : 'A l\'heure'}
             </div>
           </WCard>
         </div>

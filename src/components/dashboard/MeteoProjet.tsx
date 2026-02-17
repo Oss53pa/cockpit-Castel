@@ -5,7 +5,7 @@ import { useMeteoProjet, useAvancementParAxe } from '@/hooks';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { MeteoProjet as MeteoType, Axe, Jalon } from '@/types';
-import { AXE_SHORT_LABELS, AXE_CONFIG } from '@/types';
+import { AXE_SHORT_LABELS, AXE_CONFIG, AXES } from '@/types';
 import { SEUILS_METEO_AXE_DASHBOARD } from '@/data/constants';
 
 const meteoConfig: Record<
@@ -68,14 +68,10 @@ function useJalonsProblematiquesParAxe(): JalonProblematique[] {
   const data = useLiveQuery(async () => {
     const jalons = await db.jalons.toArray();
 
-    const axes: Axe[] = [
-      'axe1_rh',
-      'axe2_commercial',
-      'axe3_technique',
-      'axe4_budget',
-      'axe5_marketing',
-      'axe6_exploitation',
-    ];
+    const axes: Axe[] = AXES.filter(axe => {
+      const config = AXE_CONFIG[axe];
+      return config && config.poids > 0;
+    });
 
     return axes.map(axe => {
       const jalonsAxe = jalons.filter(j => j.axe === axe);

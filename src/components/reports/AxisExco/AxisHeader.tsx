@@ -76,7 +76,7 @@ export function AxisHeader({
 
     // Risques
     const risquesCritiques = risques.filter(r =>
-      (r.score || (r.probabilite || 0) * (r.impact || 0)) >= 12 && r.status !== 'ferme'
+      (r.score || (r.probabilite || 0) * (r.impact || 0)) >= 16 && r.status !== 'ferme'
     ).length;
 
     // Score de santé (0-100)

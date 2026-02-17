@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { seedDatabase } from '@/data/cosmosAngre';
 import { initializeDatabase } from '@/lib/initDatabase';
 import { generateAlertesAutomatiques, cleanupDuplicateAlertes, initializeDefaultSite, useFirebaseRealtimeSync, useAutoRecalculate } from '@/hooks';
+import { useFirebaseCleanup } from '@/hooks/useFirebaseCleanup';
 import { migrateEmailConfig, initDefaultTemplates } from '@/services/emailService';
 import { ToastProvider } from '@/components/ui/toast';
 import { logger } from '@/lib/logger';
@@ -174,6 +175,9 @@ function AppContent() {
 // Composant pour initialiser la synchronisation Firebase temps réel
 function FirebaseRealtimeSyncInitializer() {
   const { isConnected, isListening } = useFirebaseRealtimeSync();
+
+  // Nettoyage automatique des documents expirés (1x / 24h)
+  useFirebaseCleanup();
 
   // Ce composant n'affiche rien, il initialise juste le hook
   // Les notifications sont gérées par le hook via useToast

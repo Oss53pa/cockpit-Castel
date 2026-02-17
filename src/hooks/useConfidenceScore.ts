@@ -210,16 +210,17 @@ function calculateRiskScore(risques: { score?: number; status?: string }[]): num
   const activeRisks = risques.filter(r => r.status !== 'closed' && r.status !== 'ferme');
   if (activeRisks.length === 0) return 100;
 
-  // Risques critiques (score >= 12)
-  const criticalRisks = activeRisks.filter(r => (r.score ?? 0) >= 12).length;
-  // Risques majeurs (score 8-11)
+  // Seuils alignés sur matrice 5×5 (SEUILS_RISQUES: critique >= 16, majeur >= 10)
+  const criticalRisks = activeRisks.filter(r => (r.score ?? 0) >= 16).length;
+  // Risques majeurs (score 10-15)
   const majorRisks = activeRisks.filter(r => {
     const s = r.score ?? 0;
-    return s >= 8 && s < 12;
+    return s >= 10 && s < 16;
   }).length;
 
-  // Pénalité: par risque critique et par risque majeur
-  const penalty = criticalRisks * SEUILS_CONFIDENCE.penaliteRisqueCritique + majorRisks * SEUILS_CONFIDENCE.penaliteRisqueMajeur;
+  // Pénalité plafonnée pour éviter la saturation immédiate à 0
+  const rawPenalty = criticalRisks * SEUILS_CONFIDENCE.penaliteRisqueCritique + majorRisks * SEUILS_CONFIDENCE.penaliteRisqueMajeur;
+  const penalty = Math.min(rawPenalty, SEUILS_CONFIDENCE.maxPenalite);
   return Math.max(0, 100 - penalty);
 }
 

@@ -1373,7 +1373,7 @@ export async function sendReminderEmail(
     replacements.risque_score = String(entity.score || 0);
     replacements.risque_probabilite = String(entity.probabilite || 0);
     replacements.risque_impact = String(entity.impact || 0);
-    replacements.risque_score_class = entity.score >= 12 ? 'score-high' : entity.score >= 6 ? 'score-medium' : 'score-low';
+    replacements.risque_score_class = entity.score >= 16 ? 'score-high' : entity.score >= 10 ? 'score-medium' : 'score-low';
   } else if (entityType === 'budget') {
     const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n || 0);
     replacements.budget_libelle = entity.poste || entity.titre || '';

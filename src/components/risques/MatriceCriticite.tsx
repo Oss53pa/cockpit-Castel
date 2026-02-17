@@ -3,25 +3,27 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui';
 import { useRisques } from '@/hooks';
 import { buildRiskMatrix } from '@/lib/calculations';
+import { SEUILS_RISQUES } from '@/data/constants';
 import type { Risque } from '@/types';
 
 interface MatriceCriticiteProps {
   onCellClick?: (probabilite: number, impact: number, risques: Risque[]) => void;
 }
 
-const probabiliteLabels = ['Très faible', 'Faible', 'Moyenne', 'Forte'];
-const impactLabels = ['Mineur', 'Modéré', 'Majeur', 'Critique'];
+// Grille 5×5 — labels alignés sur l'échelle 1-5
+const probabiliteLabels = ['Très faible', 'Faible', 'Moyenne', 'Forte', 'Très forte'];
+const impactLabels = ['Mineur', 'Modéré', 'Significatif', 'Majeur', 'Critique'];
 
 export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
   const risques = useRisques({ status: 'open' });
   const matrix = buildRiskMatrix(risques);
 
-  // impact et probabilite sont des index 0-3, on ajoute 1 pour obtenir l'échelle 1-4
+  // Couleur de cellule basée sur le score P×I (seuils depuis constants.ts)
   const getCellColor = (impactIdx: number, probabiliteIdx: number) => {
     const score = (impactIdx + 1) * (probabiliteIdx + 1);
-    if (score >= 12) return 'bg-error-500 hover:bg-error-600';
-    if (score >= 9) return 'bg-warning-500 hover:bg-warning-600';
-    if (score >= 5) return 'bg-info-400 hover:bg-info-500';
+    if (score >= SEUILS_RISQUES.critique) return 'bg-error-500 hover:bg-error-600';
+    if (score >= SEUILS_RISQUES.majeur) return 'bg-warning-500 hover:bg-warning-600';
+    if (score >= SEUILS_RISQUES.modere) return 'bg-info-400 hover:bg-info-500';
     return 'bg-success-400 hover:bg-success-500';
   };
 
@@ -46,8 +48,8 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
         </div>
 
         <div className="flex-1">
-          {/* Matrix grid */}
-          <div className="grid grid-cols-5 gap-1">
+          {/* Matrix grid — 5 colonnes de données + 1 colonne labels = grid-cols-6 */}
+          <div className="grid grid-cols-6 gap-1">
             {/* Empty corner */}
             <div />
 
@@ -64,7 +66,7 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
 
             {/* Matrix rows (from high impact to low) */}
             {[...impactLabels].reverse().map((impactLabel, reverseIndex) => {
-              const impact = 3 - reverseIndex; // 3, 2, 1, 0
+              const impact = 4 - reverseIndex; // 4, 3, 2, 1, 0
 
               return (
                 <React.Fragment key={`row-${impact}`}>
@@ -78,14 +80,14 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
 
                   {/* Cells */}
                   {probabiliteLabels.map((_, probIndex) => {
-                    const count = matrix[impact][probIndex];
+                    const count = matrix[impact]?.[probIndex] ?? 0;
                     const cellRisques = getRisquesForCell(probIndex, impact);
 
                     return (
                       <button
                         key={`cell-${impact}-${probIndex}`}
                         className={cn(
-                          'h-16 rounded-lg flex items-center justify-center transition-all cursor-pointer',
+                          'h-14 rounded-lg flex items-center justify-center transition-all cursor-pointer',
                           getCellColor(impact, probIndex),
                           count > 0 && 'ring-2 ring-white ring-offset-2'
                         )}
@@ -97,7 +99,7 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
                         }`}
                       >
                         {count > 0 && (
-                          <span className="text-2xl font-bold text-white">
+                          <span className="text-xl font-bold text-white">
                             {count}
                           </span>
                         )}
@@ -118,23 +120,23 @@ export function MatriceCriticite({ onCellClick }: MatriceCriticiteProps) {
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend — seuils alignés sur constants.ts (grille 5×5, max = 25) */}
       <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-success-400" />
-          <span className="text-xs text-primary-500">Faible (1-4)</span>
+          <span className="text-xs text-primary-500">Faible (1-{SEUILS_RISQUES.modere - 1})</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-info-400" />
-          <span className="text-xs text-primary-500">Modéré (5-8)</span>
+          <span className="text-xs text-primary-500">Modéré ({SEUILS_RISQUES.modere}-{SEUILS_RISQUES.majeur - 1})</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-warning-500" />
-          <span className="text-xs text-primary-500">Majeur (9-11)</span>
+          <span className="text-xs text-primary-500">Majeur ({SEUILS_RISQUES.majeur}-{SEUILS_RISQUES.critique - 1})</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-error-500" />
-          <span className="text-xs text-primary-500">Critique (12-16)</span>
+          <span className="text-xs text-primary-500">Critique ({SEUILS_RISQUES.critique}-25)</span>
         </div>
       </div>
     </Card>

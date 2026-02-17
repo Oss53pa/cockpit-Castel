@@ -520,7 +520,7 @@ export function useProph3tDashboard(): Proph3tDashboardData {
       budgetTotal: budget.reduce((s, b) => s + (b.montantPrevu || 0), 0),
       budgetConsomme: budget.reduce((s, b) => s + (b.montantRealise || 0), 0),
       risquesActifs: risques.filter(r => r.status !== 'ferme').length,
-      risquesCritiques: risques.filter(r => (r.score ?? 0) >= 12).length,
+      risquesCritiques: risques.filter(r => (r.score ?? 0) >= 16).length,
     };
 
     // ========================================================================

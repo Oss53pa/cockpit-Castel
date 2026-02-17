@@ -336,7 +336,7 @@ export function EnhancedReportExport() {
       const actionsCompleted = actions.filter(a => a.statut === 'termine').length;
       const actionsTotal = actions.filter(a => a.statut !== 'annule').length;
       const jalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
-      const criticalRisks = risques.filter(r => r.score >= 12 && r.status !== 'closed').length;
+      const criticalRisks = risques.filter(r => r.score >= 16 && r.status !== 'closed').length;
 
       const executiveSummary = generateExecutiveSummary(
         {
@@ -517,10 +517,10 @@ export function EnhancedReportExport() {
             didParseCell: (data) => {
               if (data.section === 'body' && data.column.index === 3) {
                 const score = parseInt(data.cell.raw as string);
-                if (score >= 12) {
+                if (score >= 16) {
                   data.cell.styles.fillColor = [254, 226, 226];
                   data.cell.styles.fontStyle = 'bold';
-                } else if (score >= 8) {
+                } else if (score >= 10) {
                   data.cell.styles.fillColor = [254, 243, 199];
                 }
               }
@@ -614,7 +614,7 @@ export function EnhancedReportExport() {
         currentY = drawSubtitle(doc, margin, currentY, 'Decisions a prendre');
 
         const blockedActions = actions.filter(a => a.statut === 'bloque').slice(0, 2);
-        const criticalRisksItems = risques.filter(r => r.score >= 12 && r.status === 'active').slice(0, 2);
+        const criticalRisksItems = risques.filter(r => r.score >= 16 && r.status === 'active').slice(0, 2);
 
         if (blockedActions.length > 0 || criticalRisksItems.length > 0) {
           blockedActions.forEach(a => {
@@ -688,13 +688,13 @@ export function EnhancedReportExport() {
           { label: 'Valeur acquise (EV)', value: `${(evmIndicators.EV / 1000000).toFixed(1)} M FCFA` },
           { label: 'Cout reel (AC)', value: `${(evmIndicators.AC / 1000000).toFixed(1)} M FCFA` },
           { label: 'Ecart cout (CV)', value: `${(evmIndicators.CV / 1000000).toFixed(1)} M FCFA`, highlight: evmIndicators.CV < 0 },
-          { label: 'Estimation finale (EAC)', value: `${(evmIndicators.EAC / 1000000).toFixed(1)} M FCFA`, highlight: evmIndicators.EAC > evmIndicators.BAC },
+          { label: 'Estimation finale (EAC)', value: evmIndicators.EAC !== null ? `${(evmIndicators.EAC / 1000000).toFixed(1)} M FCFA` : 'N/A', highlight: evmIndicators.EAC !== null && evmIndicators.EAC > evmIndicators.BAC },
         ]);
 
         // Tableau risques (a droite)
         drawStatsTable(doc, margin + 100, currentY - 37, [
           { label: 'Risques critiques', value: criticalRisks.toString(), highlight: criticalRisks > 0 },
-          { label: 'Risques eleves', value: risques.filter(r => r.score >= 8 && r.score < 12 && r.status !== 'closed').length.toString() },
+          { label: 'Risques eleves', value: risques.filter(r => r.score >= 10 && r.score < 16 && r.status !== 'closed').length.toString() },
           { label: 'Risques materialises', value: risques.filter(r => r.status === 'materialized').length.toString(), highlight: risques.filter(r => r.status === 'materialized').length > 0 },
           { label: 'Risques fermes', value: risques.filter(r => r.status === 'closed').length.toString() },
           { label: 'Total actifs', value: risques.filter(r => r.status !== 'closed').length.toString() },
@@ -931,7 +931,7 @@ export function EnhancedReportExport() {
         // KPIs EVM
         currentY = drawKPIRow(doc, margin, currentY, contentWidth, [
           { label: 'BAC (Budget)', value: `${(evmIndicators.BAC / 1000000).toFixed(1)}M`, status: 'neutral' },
-          { label: 'EAC (Estimation)', value: `${(evmIndicators.EAC / 1000000).toFixed(1)}M`, status: evmIndicators.EAC <= evmIndicators.BAC ? 'good' : 'bad' },
+          { label: 'EAC (Estimation)', value: evmIndicators.EAC !== null ? `${(evmIndicators.EAC / 1000000).toFixed(1)}M` : 'N/A', status: evmIndicators.EAC !== null && evmIndicators.EAC <= evmIndicators.BAC ? 'good' : 'bad' },
           { label: 'SPI', value: evmIndicators.SPI.toFixed(2), status: evmIndicators.SPI >= 1 ? 'good' : evmIndicators.SPI >= 0.9 ? 'warning' : 'bad' },
           { label: 'CPI', value: evmIndicators.CPI.toFixed(2), status: evmIndicators.CPI >= 1 ? 'good' : evmIndicators.CPI >= 0.9 ? 'warning' : 'bad' },
         ]);
@@ -962,7 +962,7 @@ export function EnhancedReportExport() {
             ['Valeur acquise (EV)', Math.round(evmIndicators.EV).toLocaleString('fr-FR'), '-', evmIndicators.SPI >= 1 ? 'En avance' : 'En retard'],
             ['Ecart planning (SV)', Math.round(evmIndicators.SV).toLocaleString('fr-FR'), '-', evmIndicators.SV >= 0 ? 'Positif' : 'Negatif'],
             ['Ecart cout (CV)', Math.round(evmIndicators.CV).toLocaleString('fr-FR'), '-', evmIndicators.CV >= 0 ? 'Economie' : 'Surcout'],
-            ['Estimation finale (EAC)', Math.round(evmIndicators.EAC).toLocaleString('fr-FR'), '-', evmIndicators.VAC >= 0 ? 'Sous BAC' : 'Depassement'],
+            ['Estimation finale (EAC)', evmIndicators.EAC !== null ? Math.round(evmIndicators.EAC).toLocaleString('fr-FR') : 'N/A', '-', evmIndicators.VAC !== null && evmIndicators.VAC >= 0 ? 'Sous BAC' : evmIndicators.VAC !== null ? 'Depassement' : 'N/A'],
           ],
           theme: 'plain',
           headStyles: { fillColor: COLORS.primary, textColor: [255, 255, 255], fontSize: 8 },
@@ -1047,7 +1047,7 @@ export function EnhancedReportExport() {
         currentY = drawKPIRow(doc, margin, currentY, contentWidth, [
           { label: 'Total actifs', value: risques.filter(r => r.status !== 'closed').length.toString(), status: 'neutral' },
           { label: 'Critiques', value: criticalRisks.toString(), status: criticalRisks === 0 ? 'good' : 'bad' },
-          { label: 'Eleves', value: risques.filter(r => r.score >= 8 && r.score < 12 && r.status !== 'closed').length.toString(), status: 'warning' },
+          { label: 'Eleves', value: risques.filter(r => r.score >= 10 && r.score < 16 && r.status !== 'closed').length.toString(), status: 'warning' },
           { label: 'Fermes', value: risques.filter(r => r.status === 'closed').length.toString(), status: 'good' },
         ]);
 
@@ -1106,10 +1106,10 @@ export function EnhancedReportExport() {
           didParseCell: (data) => {
             if (data.section === 'body' && data.column.index === 5) {
               const score = parseInt(data.cell.raw as string);
-              if (score >= 12) {
+              if (score >= 16) {
                 data.cell.styles.fillColor = [254, 226, 226];
                 data.cell.styles.fontStyle = 'bold';
-              } else if (score >= 8) {
+              } else if (score >= 10) {
                 data.cell.styles.fillColor = [254, 243, 199];
               }
             }
@@ -1375,15 +1375,15 @@ export function EnhancedReportExport() {
           ['CPI', evmIndicators.CPI],
           ['SV', evmIndicators.SV],
           ['CV', evmIndicators.CV],
-          ['EAC', evmIndicators.EAC],
-          ['VAC', evmIndicators.VAC],
+          ['EAC', evmIndicators.EAC ?? 'N/A'],
+          ['VAC', evmIndicators.VAC ?? 'N/A'],
           [''],
           ['STATISTIQUES'],
           ['Actions totales', actions.length],
           ['Actions terminees', actions.filter(a => a.statut === 'termine').length],
           ['Actions bloquees', actions.filter(a => a.statut === 'bloque').length],
           ['Jalons totaux', jalons.length],
-          ['Risques critiques', risques.filter(r => r.score >= 12 && r.status !== 'closed').length],
+          ['Risques critiques', risques.filter(r => r.score >= 16 && r.status !== 'closed').length],
           ['Alertes non traitees', alertes.filter(a => !a.traitee).length],
         ];
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);

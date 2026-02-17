@@ -217,6 +217,22 @@ export const DEFAULT_SEUILS_UI = {
 export const SEUILS_UI = DEFAULT_SEUILS_UI;
 
 // ============================================================================
+// PONDÉRATION DES AXES — SOURCE UNIQUE (importée partout)
+// Total axes actifs (hors divers) = 95 → normaliser sur ce total
+// ============================================================================
+
+export const AXES_POIDS = {
+  axe1_rh: 10,
+  axe2_commercial: 20,
+  axe3_technique: 10,
+  axe4_budget: 10,
+  axe5_marketing: 10,
+  axe6_exploitation: 5,
+  axe7_construction: 30,
+  axe8_divers: 0,
+} as const;
+
+// ============================================================================
 // CONFIGURATION AXES - POIDS ET COULEURS (DEFAULT)
 // ============================================================================
 
@@ -227,7 +243,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'RH',
     color: '#EF4444',
     numero: 1,
-    poids: 10
+    poids: AXES_POIDS.axe1_rh,
   },
   commercialisation: {
     code: 'axe2_commercial',
@@ -235,7 +251,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'COM',
     color: '#3B82F6',
     numero: 2,
-    poids: 20
+    poids: AXES_POIDS.axe2_commercial,
   },
   technique: {
     code: 'axe3_technique',
@@ -243,7 +259,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'TECH',
     color: '#8B5CF6',
     numero: 3,
-    poids: 10
+    poids: AXES_POIDS.axe3_technique,
   },
   budget: {
     code: 'axe4_budget',
@@ -251,7 +267,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'BUD',
     color: '#F59E0B',
     numero: 4,
-    poids: 10
+    poids: AXES_POIDS.axe4_budget,
   },
   marketing: {
     code: 'axe5_marketing',
@@ -259,7 +275,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'MKT',
     color: '#EC4899',
     numero: 5,
-    poids: 10
+    poids: AXES_POIDS.axe5_marketing,
   },
   exploitation: {
     code: 'axe6_exploitation',
@@ -267,7 +283,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'EXP',
     color: '#10B981',
     numero: 6,
-    poids: 5
+    poids: AXES_POIDS.axe6_exploitation,
   },
   construction: {
     code: 'axe7_construction',
@@ -275,7 +291,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'CON',
     color: '#F97316',
     numero: 7,
-    poids: 35
+    poids: AXES_POIDS.axe7_construction,
   },
   divers: {
     code: 'axe8_divers',
@@ -283,7 +299,7 @@ export const DEFAULT_AXES_CONFIG_FULL = {
     labelCourt: 'DIV',
     color: '#6B7280',
     numero: 8,
-    poids: 0
+    poids: AXES_POIDS.axe8_divers,
   },
 } as const;
 
@@ -542,4 +558,35 @@ export const DEFAULT_CONFIG_SCENARIOS = {
   rampup_q1_factor: 0.5,
   horizonsReport: [1, 3, 6],
   facteur_acceleration_retard: 1.3,
+} as const;
+
+// ============================================================================
+// TTL FIREBASE — Durées d'expiration standardisées par collection
+// ============================================================================
+
+export const FIREBASE_TTL = {
+  SHARED_REPORTS: 90,     // jours — rapports partagés (shared-reports)
+  UPDATE_LINKS: 30,       // jours — liens de mise à jour (updateLinks)
+  SYNC_SNAPSHOTS: 14,     // jours — snapshots de synchronisation
+} as const;
+
+// ============================================================================
+// SEUILS UNIFIÉS — Point d'entrée unique pour TOUS les seuils métier (P4.2)
+// ============================================================================
+
+export const SEUILS = {
+  /** Seuils d'alerte en jours (actions & jalons) */
+  alertes: { j1: 1, j3: 3, j7: 7, j15: 15, j30: 30 },
+  /** Seuil d'alerte budget (%) */
+  budget: { alerte_pct: 90 },
+  /** Seuils de risque (matrice 5×5, score max=25) */
+  risques: SEUILS_RISQUES,
+  /** Seuils de confiance Proph3t */
+  confiance: { bon: 70, moyen: 40 },
+  /** Seuils de vélocité */
+  velocite: { alerte: 0.8 },
+  /** Seuils EVM (SPI/CPI) */
+  evm: { bon: 1.0, attention: 0.9, critique: 0.8 },
+  /** Seuils de progression (%) */
+  progression: { risque: 80, faible: 50, minimum: 10 },
 } as const;

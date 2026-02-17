@@ -317,7 +317,7 @@ export function generateReportHTML(
                       <div class="item-meta">${r.mitigation || 'Aucune mitigation'}</div>
                     </div>
                   </div>
-                  <span class="badge ${r.score >= 15 ? 'danger' : 'warning'}">Score: ${r.score}</span>
+                  <span class="badge ${r.score >= 16 ? 'danger' : 'warning'}">Score: ${r.score}</span>
                 </li>
               `).join('')}
             </ul>
@@ -395,7 +395,7 @@ export function generateReportHTML(
         <h1>${report.titre}</h1>
         <div class="subtitle">Periode: ${report.periode.displayText}</div>
         <div class="meta">
-          <span>Genere le ${new Date(report.dateGeneration).toLocaleDateString('fr-FR')}</span>
+          <span>Snapshot du ${new Date(report.dateGeneration).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
           <span>Par ${report.genereePar}</span>
           ${report.meteoGlobale ? `
             <span class="meteo-badge">
@@ -426,7 +426,7 @@ export function generateReportHTML(
       <!-- Footer -->
       <div class="footer">
         <p>Rapport genere automatiquement par COCKPIT - ${PROJET_CONFIG.nom}</p>
-        <p>${new Date().toLocaleString('fr-FR')}</p>
+        <p>Donnees extraites le ${new Date(report.dateGeneration).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
       </div>
     </body>
     </html>
@@ -446,7 +446,8 @@ export function downloadReportHTML(report: GeneratedReport, options: ExportOptio
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${report.titre.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
+  const dateStr = new Date(report.dateGeneration).toISOString().slice(0, 16).replace(/[T:]/g, '-');
+  link.download = `${report.titre.replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr}.html`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

@@ -261,9 +261,9 @@ export function exportCOPILToPDF(data: COPILExportData): void {
         // Color code the score cell
         if (data.section === 'body' && data.column.index === 1) {
           const score = parseInt(data.cell.text[0]);
-          if (score >= 12) {
+          if (score >= 16) {
             doc.setFillColor(...COLORS.error);
-          } else if (score >= 8) {
+          } else if (score >= 10) {
             doc.setFillColor(...COLORS.warning);
           } else {
             doc.setFillColor(...COLORS.info);
@@ -613,7 +613,7 @@ export async function exportCOPILToPPTX(data: COPILExportData): Promise<void> {
   if (data.risques.length > 0) {
     const risquesData = data.risques.slice(0, 5).map((r, i) => [
       `${i + 1}`,
-      { text: r.score.toString(), options: { bold: true, color: r.score >= 12 ? COPIL_COLORS.error : r.score >= 8 ? COPIL_COLORS.warning : COPIL_COLORS.info } },
+      { text: r.score.toString(), options: { bold: true, color: r.score >= 16 ? COPIL_COLORS.error : r.score >= 10 ? COPIL_COLORS.warning : COPIL_COLORS.info } },
       r.titre.substring(0, 25) + (r.titre.length > 25 ? '...' : ''),
     ]);
 

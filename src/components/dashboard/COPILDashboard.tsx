@@ -177,7 +177,7 @@ function MeteoProjetSection() {
   const trends = useCOPILTrends(siteId);
 
   const criticalRisks = risques.filter(
-    (r) => r.score >= 12 && r.status !== 'closed'
+    (r) => r.score >= 16 && r.status !== 'closed'
   ).length;
   const jalonsEnDanger = jalons.filter(
     (j) => j.statut === 'en_danger' || j.statut === 'depasse'
@@ -352,7 +352,7 @@ function FaitsMarquantsCOPILSection() {
     // ATTENTIONS: Risques nouveaux avec score >= 8
     const risquesAttention = risques.filter((r) => {
       const score = r.score;
-      return score >= 8 && score < 12 && r.status !== 'closed';
+      return score >= 10 && score < 16 && r.status !== 'closed';
     });
     risquesAttention.slice(0, 3).forEach((r) => {
       attentions.push({
@@ -388,9 +388,9 @@ function FaitsMarquantsCOPILSection() {
       });
     });
 
-    // ALERTES: Risques critiques (score >= 12)
+    // ALERTES: Risques critiques (score >= 16)
     const risquesCritiques = risques.filter(
-      (r) => r.score >= 12 && r.status !== 'closed'
+      (r) => r.score >= 16 && r.status !== 'closed'
     );
     risquesCritiques.slice(0, 2).forEach((r) => {
       alertes.push({
@@ -580,9 +580,9 @@ function Top5RisquesSection() {
   }, [risques]);
 
   const getScoreColor = (score: number) => {
-    if (score >= 12) return 'bg-error-500';
-    if (score >= 8) return 'bg-warning-500';
-    if (score >= 4) return 'bg-info-500';
+    if (score >= 16) return 'bg-error-500';
+    if (score >= 10) return 'bg-warning-500';
+    if (score >= 5) return 'bg-info-500';
     return 'bg-success-500';
   };
 
@@ -1022,7 +1022,7 @@ function DecisionsCOPILSection() {
 
     // Risques critiques
     const criticalRisks = risques
-      .filter((r) => r.score >= 12 && r.status === 'active')
+      .filter((r) => r.score >= 16 && r.status === 'active')
       .slice(0, 2);
     criticalRisks.forEach((r) => {
       items.push({
@@ -1171,7 +1171,7 @@ export function COPILDashboard() {
   const syncData = useSync(siteId, PROJET_CONFIG.projectId);
 
   // Counters for tab badges
-  const risquesCritiques = risques.filter((r) => r.score >= 12 && r.status !== 'closed').length;
+  const risquesCritiques = risques.filter((r) => r.score >= 16 && r.status !== 'closed').length;
   const alertesNonTraitees = alertes.filter((a) => !a.traitee).length;
   const decisionsEnAttente = actions.filter((a) => a.statut === 'bloque').length;
 
@@ -1184,7 +1184,7 @@ export function COPILDashboard() {
         avancementProjet: syncData.syncStatus?.projectProgress || 0,
         avancementMobilisation: syncData.syncStatus?.mobilizationProgress || 0,
         budget: budgetSynthese.tauxRealisation,
-        risques: risques.filter((r) => r.score >= 12 && r.status !== 'closed').length,
+        risques: risques.filter((r) => r.score >= 16 && r.status !== 'closed').length,
         jalons:
           jalons.length > 0
             ? (jalons.filter((j) => j.statut === 'atteint').length / jalons.length) * 100

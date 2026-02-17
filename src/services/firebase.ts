@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, query, where, getDocs, orderBy, onSnapshot, Unsubscribe, Firestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, collection, doc, setDoc, getDoc, updateDoc, query, where, getDocs, orderBy, onSnapshot, Unsubscribe, Firestore } from 'firebase/firestore';
 import { logger } from '@/lib/logger';
 
 // Configuration Firebase via variables d'environnement
@@ -22,7 +22,15 @@ let firestore: Firestore | null = null;
 if (isFirebaseConfigured) {
   // Initialiser Firebase seulement si configuré
   app = initializeApp(firebaseConfig);
-  firestore = getFirestore(app);
+  try {
+    firestore = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+    logger.info('[Firebase] Persistence offline activée');
+  } catch {
+    // initializeFirestore ne peut être appelé qu'une fois par app — fallback
+    firestore = getFirestore(app);
+  }
 } else {
   logger.warn('[Firebase] Configuration incomplète - Firebase désactivé');
   logger.warn('[Firebase] Configurez les variables VITE_FIREBASE_* dans .env');

@@ -22,16 +22,17 @@ import {
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRisques, useRisquesCritiques } from '@/hooks';
+import { SEUILS_RISQUES } from '@/data/constants';
 import type { Risque, RisqueCategory } from '@/types';
 
 // Type pour le niveau de risque
 type RisqueNiveau = 'critique' | 'majeur' | 'modere' | 'faible';
 
-// Fonction pour déterminer le niveau d'un risque basé sur son score
+// Fonction pour déterminer le niveau d'un risque basé sur son score (seuils depuis constants.ts)
 function getNiveauRisque(score: number): RisqueNiveau {
-  if (score >= 12) return 'critique';
-  if (score >= 8) return 'majeur';
-  if (score >= 4) return 'modere';
+  if (score >= SEUILS_RISQUES.critique) return 'critique';
+  if (score >= SEUILS_RISQUES.majeur) return 'majeur';
+  if (score >= SEUILS_RISQUES.modere) return 'modere';
   return 'faible';
 }
 

@@ -21,16 +21,17 @@ import {
 import { Card, Badge, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useRisques } from '@/hooks';
+import { SEUILS_RISQUES } from '@/data/constants';
 import type { Risque } from '@/types';
 
 // Types pour la compatibilité
 type RisqueNiveau = 'critique' | 'majeur' | 'modere' | 'faible';
 
-// Fonction pour déterminer le niveau du risque
+// Fonction pour déterminer le niveau du risque (seuils depuis constants.ts)
 const getNiveauRisque = (score: number): RisqueNiveau => {
-  if (score >= 12) return 'critique';
-  if (score >= 8) return 'majeur';
-  if (score >= 4) return 'modere';
+  if (score >= SEUILS_RISQUES.critique) return 'critique';
+  if (score >= SEUILS_RISQUES.majeur) return 'majeur';
+  if (score >= SEUILS_RISQUES.modere) return 'modere';
   return 'faible';
 };
 
@@ -235,10 +236,10 @@ export function RisquesTop10() {
     const actifs = risquesData.filter(r => r.status !== 'ferme');
     return {
       total: actifs.length,
-      critique: actifs.filter(r => (r.score || 0) >= 12).length,
-      majeur: actifs.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length,
-      modere: actifs.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8).length,
-      faible: actifs.filter(r => (r.score || 0) < 4).length,
+      critique: actifs.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length,
+      majeur: actifs.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique).length,
+      modere: actifs.filter(r => (r.score || 0) >= SEUILS_RISQUES.modere && (r.score || 0) < SEUILS_RISQUES.majeur).length,
+      faible: actifs.filter(r => (r.score || 0) < SEUILS_RISQUES.modere).length,
     };
   }, [risquesData]);
 
@@ -270,8 +271,8 @@ export function RisquesTop10() {
   };
 
   // Stats calculées depuis données réelles
-  const criticalCount = top10Risks.filter(r => (r.score || 0) >= 12).length;
-  const majeurCount = top10Risks.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length;
+  const criticalCount = top10Risks.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique).length;
+  const majeurCount = top10Risks.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique).length;
   const avgScore = top10Risks.length > 0
     ? Math.round(top10Risks.reduce((sum, r) => sum + (r.score || 0), 0) / top10Risks.length)
     : 0;

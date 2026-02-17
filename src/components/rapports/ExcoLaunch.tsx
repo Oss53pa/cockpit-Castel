@@ -2005,7 +2005,7 @@ export function ExcoLaunch() {
       }).length;
 
       const jalonsAtteints = axeJalons.filter((j) => j.statut === 'atteint').length;
-      const risquesCritiques = axeRisques.filter((r) => (r.score || 0) >= 12).length;
+      const risquesCritiques = axeRisques.filter((r) => (r.score || 0) >= 16).length;
 
       const avancement = axeActions.length > 0
         ? Math.round(axeActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / axeActions.length)
@@ -2931,7 +2931,7 @@ export function ExcoLaunch() {
       const budgetColor = tauxConsommation > 100 ? '#EF4444' : tauxConsommation > 80 ? '#F59E0B' : '#10B981';
 
       const totalRisques = (risques || []).length;
-      const risquesCritiques = (risques || []).filter(r => (r.score || 0) >= 12).length;
+      const risquesCritiques = (risques || []).filter(r => (r.score || 0) >= 16).length;
       const risquesStatus = risquesCritiques > 0 ? `${risquesCritiques} critique${risquesCritiques > 1 ? 's' : ''}` : `${totalRisques} identifié${totalRisques > 1 ? 's' : ''}`;
       const risquesColor = risquesCritiques > 0 ? '#EF4444' : totalRisques > 5 ? '#F59E0B' : '#10B981';
 
@@ -3263,22 +3263,22 @@ export function ExcoLaunch() {
           <div className="flex-1 p-4">
             <div className="grid grid-cols-3 gap-2 mb-3">
               <div className="bg-red-50 rounded-lg p-2 border border-red-200 text-center">
-                <div className="text-xl font-bold text-red-600">{topRisques.filter(r => (r.score || 0) >= 12).length}</div>
-                <div className="text-[10px] text-red-700">Critiques (≥12)</div>
+                <div className="text-xl font-bold text-red-600">{topRisques.filter(r => (r.score || 0) >= 16).length}</div>
+                <div className="text-[10px] text-red-700">Critiques (≥16)</div>
               </div>
               <div className="bg-orange-50 rounded-lg p-2 border border-orange-200 text-center">
-                <div className="text-xl font-bold text-orange-600">{topRisques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12).length}</div>
-                <div className="text-[10px] text-orange-700">Élevés (8-11)</div>
+                <div className="text-xl font-bold text-orange-600">{topRisques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16).length}</div>
+                <div className="text-[10px] text-orange-700">Élevés (10-15)</div>
               </div>
               <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200 text-center">
-                <div className="text-xl font-bold text-yellow-600">{topRisques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8).length}</div>
+                <div className="text-xl font-bold text-yellow-600">{topRisques.filter(r => (r.score || 0) >= 5 && (r.score || 0) < 10).length}</div>
                 <div className="text-[10px] text-yellow-700">Modérés (4-7)</div>
               </div>
             </div>
             <div className="space-y-1">
               {topRisques.map((risque, idx) => (
                 <div key={risque.id || idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
-                  <span className={`w-2 h-2 rounded-full ${(risque.score || 0) >= 12 ? 'bg-red-500' : (risque.score || 0) >= 8 ? 'bg-orange-500' : 'bg-yellow-500'}`} />
+                  <span className={`w-2 h-2 rounded-full ${(risque.score || 0) >= 16 ? 'bg-red-500' : (risque.score || 0) >= 10 ? 'bg-orange-500' : 'bg-yellow-500'}`} />
                   <span className="flex-1 truncate">{risque.titre || 'Risque'}</span>
                   <span className="font-medium">{risque.score || 0}</span>
                 </div>
@@ -3574,13 +3574,13 @@ export function ExcoLaunch() {
         // Risques slide
         if (slideType === 'risques') {
           const axeRisques = getRisquesForAxe(axeKey);
-          const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 12);
-          const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 8 && (r.score || 0) < 12);
-          const risquesModeres = axeRisques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
+          const risquesCritiques = axeRisques.filter(r => (r.score || 0) >= 16);
+          const risquesEleves = axeRisques.filter(r => (r.score || 0) >= 10 && (r.score || 0) < 16);
+          const risquesModeres = axeRisques.filter(r => (r.score || 0) >= 5 && (r.score || 0) < 10);
 
           const getRisqueStyle = (score: number) => {
-            if (score >= 12) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-800', desc: 'text-red-700' };
-            if (score >= 8) return { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', desc: 'text-orange-700' };
+            if (score >= 16) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-800', desc: 'text-red-700' };
+            if (score >= 10) return { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', desc: 'text-orange-700' };
             return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-800', desc: 'text-yellow-700' };
           };
 

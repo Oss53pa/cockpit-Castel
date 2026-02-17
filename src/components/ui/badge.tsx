@@ -86,10 +86,10 @@ export function CriticiteBadge({
   let variant: BadgeProps['variant'];
   let label: string;
 
-  if (score >= 12) {
+  if (score >= 16) {
     variant = 'error';
     label = 'Critique';
-  } else if (score >= 9) {
+  } else if (score >= 10) {
     variant = 'warning';
     label = 'Majeur';
   } else if (score >= 5) {

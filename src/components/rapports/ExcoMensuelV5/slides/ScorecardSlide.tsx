@@ -21,7 +21,7 @@ export function ScorecardSlide({ data }: Props) {
   const totalJalons = data.axesData.reduce((s, a) => s + a.jalonsTotal, 0);
   const totalJalonsAtteints = data.axesData.reduce((s, a) => s + a.jalonsAtteints, 0);
   const axesA0 = data.axesData.filter(a => a.avancement === 0).length;
-  const axesEnBaisse = data.axesData.filter(a => a.tendance === 'down').length;
+  const axesEnRetard = data.axesData.filter(a => a.tendance === 'down').length;
 
   const cible = Math.round(data.pourcentageTempsEcoule);
 
@@ -74,14 +74,14 @@ export function ScorecardSlide({ data }: Props) {
           <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
             Alertes
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: axesA0 + axesEnBaisse > 0 ? C.red : C.green }}>
-            {axesA0 + axesEnBaisse}
+          <div style={{ fontSize: 24, fontWeight: 700, color: axesA0 + axesEnRetard > 0 ? C.red : C.green }}>
+            {axesA0 + axesEnRetard}
           </div>
           <div style={{ fontSize: 11, color: C.gray500 }}>
             {axesA0 > 0 ? `${axesA0} à 0%` : ''}
-            {axesA0 > 0 && axesEnBaisse > 0 ? ' · ' : ''}
-            {axesEnBaisse > 0 ? `${axesEnBaisse} en baisse` : ''}
-            {axesA0 === 0 && axesEnBaisse === 0 ? 'Aucune alerte' : ''}
+            {axesA0 > 0 && axesEnRetard > 0 ? ' · ' : ''}
+            {axesEnRetard > 0 ? `${axesEnRetard} en retard` : ''}
+            {axesA0 === 0 && axesEnRetard === 0 ? 'Aucune alerte' : ''}
           </div>
         </SlideCard>
       </div>

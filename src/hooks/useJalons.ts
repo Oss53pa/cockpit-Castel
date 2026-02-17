@@ -13,7 +13,7 @@ import {
 import { autoUpdateJalonStatus } from '@/services/autoCalculationService';
 import { trackChange } from './useHistorique';
 import { useAppStore } from '@/stores/appStore';
-import { SEUILS_SANTE_AXE } from '@/data/constants';
+import { SEUILS_SANTE_AXE, SEUILS } from '@/data/constants';
 import { withWriteContext } from '@/db/writeContext';
 
 // Champs à tracker pour l'historique des modifications
@@ -171,7 +171,8 @@ export async function deleteJalon(id: number): Promise<void> {
 
 export function calculateJalonStatus(
   jalon: Jalon,
-  actionsLiees: { avancement: number }[]
+  actionsLiees: { avancement: number }[],
+  allJalons?: Jalon[]
 ): JalonStatus {
   const daysUntil = getDaysUntil(jalon.date_prevue);
   const avgAvancement =
@@ -184,13 +185,24 @@ export function calculateJalonStatus(
     return 'atteint';
   }
 
+  // P3.6 — Bloqué : prérequis non atteints
+  if (allJalons && jalon.prerequis_jalons && jalon.prerequis_jalons.length > 0) {
+    const prerequisNonAtteints = jalon.prerequis_jalons.some(prereqId => {
+      const prereq = allJalons.find(j => j.id_jalon === prereqId);
+      return !prereq || !prereq.date_reelle; // pas trouvé ou pas atteint
+    });
+    if (prerequisNonAtteints) {
+      return 'bloque';
+    }
+  }
+
   // Overdue
   if (daysUntil < 0) {
     return 'depasse';
   }
 
-  // At risk: less than enDanger days and progress < 80%
-  if (daysUntil < SEUILS_SANTE_AXE.jalons.enDanger && avgAvancement < 80) {
+  // At risk: less than enDanger days and progress < seuil
+  if (daysUntil < SEUILS_SANTE_AXE.jalons.enDanger && avgAvancement < SEUILS.progression.risque) {
     return 'en_danger';
   }
 
@@ -328,7 +340,7 @@ export async function recalculateJalonStatuses(): Promise<void> {
       .equals(jalon.id!)
       .toArray();
 
-    const newStatus = calculateJalonStatus(jalon, actions);
+    const newStatus = calculateJalonStatus(jalon, actions, jalons);
 
     if (newStatus !== jalon.statut) {
       await db.jalons.update(jalon.id!, { statut: newStatus });

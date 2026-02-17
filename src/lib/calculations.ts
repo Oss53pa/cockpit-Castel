@@ -1,6 +1,26 @@
 import type { Action, Jalon, Risque, MeteoProjet, SousTache, MeteoJalon, StatutJalonV2, StatutActionV2 } from '@/types';
 import { getDaysUntil } from './utils';
-import { SEUILS_METEO_DASHBOARD } from '@/data/constants';
+import { SEUILS_METEO_DASHBOARD, SEUILS_RISQUES } from '@/data/constants';
+
+// ============================================================================
+// GARDE-FOUS GLOBAUX
+// ============================================================================
+
+/** Division sécurisée — retourne fallback si diviseur = 0 */
+export function safeDivide(a: number, b: number, fallback = 0): number {
+  return b === 0 ? fallback : a / b;
+}
+
+/** Array sécurisé — retourne [] si undefined/null */
+export function safeArray<T>(arr: T[] | undefined | null): T[] {
+  return arr ?? [];
+}
+
+/** Date sécurisée — retourne null si chaîne invalide */
+export function safeDate(d: string | null | undefined): string | null {
+  if (!d) return null;
+  return !isNaN(Date.parse(d)) ? d : null;
+}
 
 // ============================================================================
 // SPÉCIFICATIONS V2.0 - CALCULS AUTOMATISÉS
@@ -61,15 +81,21 @@ export function calculerPourcentageJalon(actions: Action[]): number {
 export function calculerStatutJalon(
   pourcentage: number,
   dateDebutPrevue: Date | string,
-  dateFinPrevue: Date | string,
-  dateValidation?: Date | string | null
+  datePrevue: Date | string,
+  dateValidation?: Date | string | null,
+  prerequisBloque?: boolean
 ): StatutJalonV2 {
   const now = new Date();
   const debut = new Date(dateDebutPrevue);
-  const fin = new Date(dateFinPrevue);
+  const fin = new Date(datePrevue);
 
   if (dateValidation) {
     return 'ATTEINT';
+  }
+
+  // P3.6 — Si des prérequis ne sont pas atteints → bloqué
+  if (prerequisBloque) {
+    return 'BLOQUE';
   }
 
   if (pourcentage === 0 && debut > now) {
@@ -103,12 +129,16 @@ export function calculerMeteoJalon(
   const debut = new Date(dateDebutPrevue);
   const fin = new Date(dateFinPrevue);
 
-  // Calcul du % théorique basé sur le temps écoulé
+  // J-3 : Garde durée = 0 (début = fin, ou dates invalides)
   const dureeTotal = fin.getTime() - debut.getTime();
+  if (dureeTotal <= 0) {
+    // Durée nulle ou négative → indéterminé, on renvoie NUAGEUX par défaut
+    return pourcentageReel >= 100 ? 'SOLEIL' : 'NUAGEUX';
+  }
+
+  // Calcul du % théorique basé sur le temps écoulé
   const dureeEcoulee = Math.max(0, now.getTime() - debut.getTime());
-  const pourcentageTheorique = dureeTotal > 0
-    ? Math.min(100, (dureeEcoulee / dureeTotal) * 100)
-    : (now >= fin ? 100 : 0);
+  const pourcentageTheorique = Math.min(100, (dureeEcoulee / dureeTotal) * 100);
 
   // Écart entre réel et théorique
   const ecart = pourcentageReel - pourcentageTheorique;
@@ -155,15 +185,32 @@ export function normaliserStatutJalon(statut: string): StatutJalonV2 {
     'A_VALIDER': 'A_VALIDER',
     'ATTEINT': 'ATTEINT',
     'EN_RETARD': 'EN_RETARD',
+    'BLOQUE': 'BLOQUE',
     // Statuts legacy
     'a_venir': 'A_VENIR',
     'en_approche': 'EN_COURS',
     'en_danger': 'EN_RETARD',
+    'bloque': 'BLOQUE',
     'atteint': 'ATTEINT',
     'depasse': 'EN_RETARD',
     'annule': 'ATTEINT',
   };
   return mapping[statut] || 'A_VENIR';
+}
+
+// ============================================================================
+// DATE COMPARISON UTILITY (P1.4 — toujours comparer via Date, jamais via string)
+// ============================================================================
+
+/** Compare deux dates ISO : retourne true si dateFin est dans le passé par rapport à today */
+export function isOverdue(dateFin: string | null | undefined, today?: string): boolean {
+  if (!dateFin) return false;
+  const fin = new Date(dateFin);
+  if (isNaN(fin.getTime())) return false;
+  const ref = today ? new Date(today) : new Date();
+  ref.setHours(0, 0, 0, 0);
+  fin.setHours(0, 0, 0, 0);
+  return fin.getTime() < ref.getTime();
 }
 
 // ============================================================================
@@ -272,15 +319,12 @@ export function calculateRiskScore(
 
 /**
  * Niveau de risque basé sur la matrice 5×5 (max score = 25)
- * - critique : >= 16  (ex: P4×I4, P5×I4, P4×I5, P5×I5)
- * - high     : >= 10  (ex: P2×I5, P5×I2, P3×I4)
- * - medium   : >= 5   (ex: P1×I5, P5×I1, P2×I3)
- * - low      : < 5    (ex: P1×I4, P2×I2)
+ * Seuils importés de SEUILS_RISQUES (constants.ts) — source unique
  */
 export function getRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
-  if (score >= 16) return 'critical';
-  if (score >= 10) return 'high';
-  if (score >= 5) return 'medium';
+  if (score >= SEUILS_RISQUES.critique) return 'critical';
+  if (score >= SEUILS_RISQUES.majeur) return 'high';
+  if (score >= SEUILS_RISQUES.modere) return 'medium';
   return 'low';
 }
 
@@ -299,14 +343,16 @@ export function getRiskColor(score: number): string {
 }
 
 export function buildRiskMatrix(risques: Risque[]): number[][] {
-  // 4x4 matrix: [impact][probabilite] = count
-  const matrix = Array(4)
+  // 5x5 matrix: [impact][probabilite] = count (grille 5×5, max score = 25)
+  const matrix = Array(5)
     .fill(null)
-    .map(() => Array(4).fill(0));
+    .map(() => Array(5).fill(0));
 
   risques.forEach((r) => {
     if (r.status !== 'closed' && r.status !== 'ferme') {
-      matrix[r.impact - 1][r.probabilite - 1]++;
+      const impactIdx = Math.min(4, Math.max(0, (r.impact || 1) - 1));
+      const probIdx = Math.min(4, Math.max(0, (r.probabilite || 1) - 1));
+      matrix[impactIdx][probIdx]++;
     }
   });
 
@@ -417,7 +463,7 @@ export function interpretCPI(cpi: number): 'under_budget' | 'on_budget' | 'over_
 
 export function isActionLate(action: Action): boolean {
   if (action.statut === 'termine') return false;
-  return getDaysUntil(action.date_fin_prevue) < 0;
+  return isOverdue(action.date_fin_prevue);
 }
 
 export function getActionDaysLate(action: Action): number {

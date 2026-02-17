@@ -7,7 +7,7 @@ import {
   sendAlerteEmailSimple as sendAlerteEmail,
   getAlerteResponsableByEntity as getAlerteResponsable,
 } from '@/services/alerteEmailService';
-import { SEUILS_SYNC_REPORT, SEUILS_RISQUES } from '@/data/constants';
+import { SEUILS_SYNC_REPORT, SEUILS_RISQUES, SEUILS } from '@/data/constants';
 import { detecterConflitsDates } from '@/lib/dateCalculations';
 import { logger } from '@/lib/logger';
 
@@ -174,6 +174,8 @@ export async function generateAlertesAutomatiques(): Promise<void> {
   for (const action of actions) {
     if (action.statut === 'termine') continue;
 
+    // Guard: skip deadline check if no valid date (getDaysUntil returns 0 for null → false alert)
+    const hasValidDate = !!action.date_fin_prevue;
     const daysUntil = getDaysUntil(action.date_fin_prevue);
 
     // Action blocked
@@ -201,20 +203,28 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       }
     }
 
-    // Deadline approaching/passed
+    // Deadline approaching/passed (skip if no valid date to avoid false alerts)
     let alertType: AlerteType | null = null;
     let criticite: Criticite = 'medium';
 
-    if (daysUntil < 0) {
+    if (!hasValidDate) {
+      // No date → no deadline alert
+    } else if (daysUntil < 0) {
       alertType = 'echeance_action';
       criticite = 'critical';
-    } else if (daysUntil <= 1) {
+    } else if (daysUntil <= SEUILS.alertes.j1) {
+      alertType = 'echeance_action';
+      criticite = 'critical';
+    } else if (daysUntil <= SEUILS.alertes.j3) {
       alertType = 'echeance_action';
       criticite = 'high';
-    } else if (daysUntil <= 3) {
+    } else if (daysUntil <= SEUILS.alertes.j7) {
       alertType = 'echeance_action';
       criticite = 'medium';
-    } else if (daysUntil <= 7) {
+    } else if (daysUntil <= SEUILS.alertes.j15) {
+      alertType = 'echeance_action';
+      criticite = 'low';
+    } else if (daysUntil <= SEUILS.alertes.j30) {
       alertType = 'echeance_action';
       criticite = 'low';
     }
@@ -285,11 +295,11 @@ export async function generateAlertesAutomatiques(): Promise<void> {
         });
       }
     }
-    // Jalon en approche (0 < daysUntil <= 30)
-    else if (daysUntil <= 30 && daysUntil > 0) {
+    // Jalon en approche (0 < daysUntil <= J-30)
+    else if (daysUntil <= SEUILS.alertes.j30 && daysUntil > 0) {
       let criticite: Criticite = 'medium';
-      if (daysUntil <= 7) criticite = 'critical';
-      else if (daysUntil <= 15) criticite = 'high';
+      if (daysUntil <= SEUILS.alertes.j7) criticite = 'critical';
+      else if (daysUntil <= SEUILS.alertes.j15) criticite = 'high';
 
       const existing = await db.alertes
         .filter(
@@ -377,16 +387,16 @@ export async function generateAlertesAutomatiques(): Promise<void> {
     }
   }
 
-  // Check for desynchronisation between Construction (technique) and Mobilisation (5 autres axes)
-  // Construction = axe3_technique
-  const actionsTechniques = actions.filter((a) => a.axe === 'axe3_technique');
+  // Check for desynchronisation between Construction (axe7) and Mobilisation (5 autres axes)
+  // Convention écart: construction - mobilisation. Positif = construction en avance, négatif = en retard.
+  const actionsConstruction = actions.filter((a) => a.axe === 'axe7_construction');
   // Mobilisation = les 5 autres axes (RH, Commercial, Budget, Marketing, Exploitation)
   // Utilise la constante centralisée MOBILISATION_AXES pour éviter les incohérences
   const actionsMobilisation = actions.filter((a) => (MOBILISATION_AXES as readonly string[]).includes(a.axe));
 
-  const avancementTechnique =
-    actionsTechniques.length > 0
-      ? actionsTechniques.reduce((sum, a) => sum + a.avancement, 0) / actionsTechniques.length
+  const avancementConstruction =
+    actionsConstruction.length > 0
+      ? actionsConstruction.reduce((sum, a) => sum + a.avancement, 0) / actionsConstruction.length
       : 0;
 
   const avancementMobilisation =
@@ -394,39 +404,15 @@ export async function generateAlertesAutomatiques(): Promise<void> {
       ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
       : 0;
 
-  const ecartSync = avancementMobilisation - avancementTechnique;
+  const ecartSync = avancementConstruction - avancementMobilisation;
 
-  // Alert if mobilisation is too far ahead (risk of wasted resources)
+  // Alert if construction is too far ahead (mobilisation lagging)
   if (ecartSync > SEUILS_SYNC_REPORT.attention) {
     const existing = await db.alertes
       .filter(
         (a) =>
           a.type === 'desynchronisation_chantier_mobilisation' &&
-          a.message.includes('gaspillage') &&
-          !a.traitee
-      )
-      .first();
-
-    if (!existing) {
-      await createAlerte({
-        type: 'desynchronisation_chantier_mobilisation',
-        titre: 'Risque de gaspillage ressources',
-        message: `La mobilisation (${Math.round(avancementMobilisation)}%) est en avance de ${Math.round(ecartSync)} points sur la construction (${Math.round(avancementTechnique)}%). Risque de gaspillage de ressources.`,
-        criticite: ecartSync > SEUILS_SYNC_REPORT.attention * 2 ? 'critical' : 'high',
-        entiteType: 'action',
-        entiteId: 0, // Global alert, not linked to specific action
-        lu: false,
-        traitee: false,
-      });
-    }
-  }
-
-  // Alert if technical progress is too far behind (risk of delayed opening)
-  if (ecartSync < -SEUILS_SYNC_REPORT.attention) {
-    const existing = await db.alertes
-      .filter(
-        (a) =>
-          a.type === 'desynchronisation_chantier_mobilisation' &&
+          a.message.includes('mobilisation') &&
           a.message.includes('retard') &&
           !a.traitee
       )
@@ -435,11 +421,37 @@ export async function generateAlertesAutomatiques(): Promise<void> {
     if (!existing) {
       await createAlerte({
         type: 'desynchronisation_chantier_mobilisation',
-        titre: 'Risque de retard ouverture',
-        message: `La construction (${Math.round(avancementTechnique)}%) est en retard de ${Math.round(Math.abs(ecartSync))} points sur la mobilisation (${Math.round(avancementMobilisation)}%). Risque de retard d'ouverture.`,
+        titre: 'Mobilisation en retard sur la construction',
+        message: `La construction (${Math.round(avancementConstruction)}%) est en avance de ${Math.round(ecartSync)} points sur la mobilisation (${Math.round(avancementMobilisation)}%). La mobilisation doit rattraper.`,
+        criticite: ecartSync > SEUILS_SYNC_REPORT.attention * 2 ? 'critical' : 'high',
+        entiteType: 'action',
+        entiteId: 0,
+        lu: false,
+        traitee: false,
+      });
+    }
+  }
+
+  // Alert if construction is too far behind (risk of delayed opening)
+  if (ecartSync < -SEUILS_SYNC_REPORT.attention) {
+    const existing = await db.alertes
+      .filter(
+        (a) =>
+          a.type === 'desynchronisation_chantier_mobilisation' &&
+          a.message.includes('construction') &&
+          a.message.includes('retard') &&
+          !a.traitee
+      )
+      .first();
+
+    if (!existing) {
+      await createAlerte({
+        type: 'desynchronisation_chantier_mobilisation',
+        titre: 'Construction en retard - risque ouverture',
+        message: `La construction (${Math.round(avancementConstruction)}%) est en retard de ${Math.round(Math.abs(ecartSync))} points sur la mobilisation (${Math.round(avancementMobilisation)}%). Risque de retard d'ouverture.`,
         criticite: ecartSync < -(SEUILS_SYNC_REPORT.attention * 2) ? 'critical' : 'high',
         entiteType: 'action',
-        entiteId: 0, // Global alert, not linked to specific action
+        entiteId: 0,
         lu: false,
         traitee: false,
       });
@@ -579,19 +591,18 @@ export async function autoResolveAlertes(): Promise<number> {
       }
 
       case 'desynchronisation_chantier_mobilisation': {
-        // Résolu si l'écart de synchronisation est revenu sous 20%
+        // Résolu si l'écart de synchronisation est revenu sous le seuil
         const actions = await db.actions.toArray();
-        const actionsTechniques = actions.filter(a => a.axe === 'axe3_technique');
-        const axesMobilisation = ['axe1_rh', 'axe2_commercial', 'axe4_budget', 'axe5_marketing', 'axe6_exploitation'];
-        const actionsMobilisation = actions.filter(a => axesMobilisation.includes(a.axe));
+        const actionsConstruction = actions.filter(a => a.axe === 'axe7_construction');
+        const actionsMobilisation = actions.filter(a => (MOBILISATION_AXES as readonly string[]).includes(a.axe));
 
-        const avancementTechnique = actionsTechniques.length > 0
-          ? actionsTechniques.reduce((sum, a) => sum + a.avancement, 0) / actionsTechniques.length
+        const avancementConstruction = actionsConstruction.length > 0
+          ? actionsConstruction.reduce((sum, a) => sum + a.avancement, 0) / actionsConstruction.length
           : 0;
         const avancementMobilisation = actionsMobilisation.length > 0
           ? actionsMobilisation.reduce((sum, a) => sum + a.avancement, 0) / actionsMobilisation.length
           : 0;
-        const ecartSync = Math.abs(avancementMobilisation - avancementTechnique);
+        const ecartSync = Math.abs(avancementConstruction - avancementMobilisation);
 
         if (ecartSync <= SEUILS_SYNC_REPORT.attention) {
           shouldResolve = true;

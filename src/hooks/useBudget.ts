@@ -302,10 +302,10 @@ export function calculateEVM(
   const SV = EV - PV; // Schedule Variance
   const CV = EV - AC; // Cost Variance
 
-  // Forecasts
-  const EAC = CPI > 0 ? BAC / CPI : BAC; // Estimate at Completion
-  const ETC = EAC - AC; // Estimate to Complete
-  const VAC = BAC - EAC; // Variance at Completion
+  // Forecasts — garde division par zéro (P4.1)
+  const EAC = CPI > 0 ? BAC / CPI : null; // Estimate at Completion (null si CPI=0)
+  const ETC = EAC !== null ? EAC - AC : null; // Estimate to Complete
+  const VAC = EAC !== null ? BAC - EAC : null; // Variance at Completion
 
   return { PV, EV, AC, BAC, SPI, CPI, SV, CV, EAC, ETC, VAC };
 }

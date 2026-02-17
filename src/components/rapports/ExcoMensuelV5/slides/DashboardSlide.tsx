@@ -52,7 +52,7 @@ export function DashboardSlide({ data }: Props) {
   // Score
   const scoreColor = score >= 80 ? C.green : score >= 50 ? C.orange : C.red;
   const trendIcon = cs?.trend === 'up' ? '↑' : cs?.trend === 'down' ? '↓' : '→';
-  const trendText = cs?.trend === 'up' ? 'En hausse' : cs?.trend === 'down' ? 'En baisse' : 'Stable';
+  const trendText = cs?.trend === 'up' ? 'En progression' : cs?.trend === 'down' ? 'En recul' : 'Stable';
   const trendLabel = score >= 80 ? 'Maîtrisé' : score >= 50 ? 'Vigilance' : 'Critique';
 
   // Météo

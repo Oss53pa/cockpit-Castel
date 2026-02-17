@@ -8,7 +8,7 @@ import { Rocket, Calendar, Clock } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { PROJET_CONFIG, SEUILS_UI } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_UI, DATE_REFERENCE_OUVERTURE } from '@/data/constants';
 
 interface CompteAReboursProps {
   dateOuverture?: string; // Format YYYY-MM-DD
@@ -105,7 +105,7 @@ function CircularCountdown({
   );
 }
 
-export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softOpening, avancementGlobal }: CompteAReboursProps) {
+export function CompteARebours({ dateOuverture = DATE_REFERENCE_OUVERTURE, avancementGlobal }: CompteAReboursProps) {
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -136,10 +136,10 @@ export function CompteARebours({ dateOuverture = PROJET_CONFIG.jalonsClés.softO
       const diffWeeks = Math.floor(diffDays / 7);
       const diffMonths = Math.floor(diffDays / 30);
 
-      // Calculate progress from project start to end
+      // Calculate progress from project start to soft opening (not dateFin)
       const projectStart = new Date(PROJET_CONFIG.dateDebut);
-      const projectEnd = new Date(PROJET_CONFIG.dateFin);
-      const totalDays = Math.ceil((projectEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
+      const targetEnd = new Date(dateOuverture);
+      const totalDays = Math.ceil((targetEnd.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
       const elapsed = totalDays - diffDays;
       const progressPercent = Math.max(0, Math.min(100, (elapsed / totalDays) * 100));
 

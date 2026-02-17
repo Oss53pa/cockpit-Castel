@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
 import type { AvancementAxe, MeteoProjet, Axe } from '@/types';
-import { PROJET_CONFIG, DATE_REFERENCE_OUVERTURE, SEUILS_SYNC_REPORT, AXES_CONFIG_FULL, SEUILS_METEO_DASHBOARD, SEUILS_METEO_AXE_DASHBOARD } from '@/data/constants';
+import { PROJET_CONFIG, DATE_REFERENCE_OUVERTURE, SEUILS_SYNC_REPORT, AXES_CONFIG_FULL, AXES_POIDS, SEUILS_METEO_DASHBOARD, SEUILS_METEO_AXE_DASHBOARD, SEUILS_RISQUES } from '@/data/constants';
 
 // ============================================================================
 // TYPES POUR TENDANCES
@@ -219,8 +219,11 @@ export function useMeteoProjet(): MeteoProjet {
     if (orageuxCount >= totalAxes * 0.5) {
       // >= 50% des axes sont ORAGEUX → ROUGE
       meteoFromAxes = 'rouge';
+    } else if (orageuxCount >= 2) {
+      // >= 2 axes ORAGEUX → ORANGE
+      meteoFromAxes = 'orange';
     } else if (orageuxCount >= 1 || nuageuxCount >= totalAxes * 0.5) {
-      // >= 1 axe ORAGEUX ou >= 50% NUAGEUX → ORANGE (utilisé comme 'jaune')
+      // >= 1 axe ORAGEUX ou >= 50% NUAGEUX → JAUNE
       meteoFromAxes = 'jaune';
     } else {
       meteoFromAxes = 'vert';
@@ -231,10 +234,9 @@ export function useMeteoProjet(): MeteoProjet {
     const alertesCritiques = alertesNonTraitees.filter((a) => a.criticite === 'critical').length;
     const alertesHautes = alertesNonTraitees.filter((a) => a.criticite === 'high').length;
 
-    // Check for late actions
-    const todayStr = today.toISOString().split('T')[0];
+    // Check for late actions (comparaison Date, pas string)
     const actionsEnRetard = actions.filter(
-      (a) => a.statut !== 'termine' && a.date_fin_prevue < todayStr
+      (a) => a.statut !== 'termine' && a.date_fin_prevue && new Date(a.date_fin_prevue).getTime() < today.getTime()
     ).length;
 
     // Si alertes critiques dépassent le seuil → forcer ROUGE
@@ -262,9 +264,8 @@ export function useAvancementGlobal(): number {
     const actions = await db.actions.toArray();
     if (actions.length === 0) return 0;
 
-    // Avancement pondéré par le poids de chaque axe (AXES_CONFIG_FULL)
-    const axeWeightMap: Record<string, number> = {};
-    Object.values(AXES_CONFIG_FULL).forEach(a => { axeWeightMap[a.code] = a.poids; });
+    // Avancement pondéré par le poids de chaque axe (AXES_POIDS — source unique)
+    const axeWeightMap: Record<string, number> = AXES_POIDS;
 
     // Calculer l'avancement moyen par axe
     const axeAvancements: { axe: string; avancement: number; poids: number }[] = [];
@@ -273,7 +274,7 @@ export function useAvancementGlobal(): number {
     for (const axe of axes) {
       const axeActions = actions.filter(a => a.axe === axe);
       const avg = axeActions.reduce((sum, a) => sum + a.avancement, 0) / axeActions.length;
-      const poids = axeWeightMap[axe] ?? 0;
+      const poids = (axeWeightMap as Record<string, number>)[axe] ?? 0;
       axeAvancements.push({ axe, avancement: avg, poids });
     }
 
@@ -433,7 +434,7 @@ export function useCOPILTrends(siteId: number = 1): COPILTrends | null {
       const budgetRealise = budget.reduce((sum, b) => sum + (b.montantRealise || 0), 0);
       const currentBudgetRatio = budgetPrevu > 0 ? (budgetRealise / budgetPrevu) * 100 : 0;
 
-      const currentRisquesCritiques = risques.filter(r => (r.score ?? 0) >= 12 && r.status !== 'closed' && r.status !== 'ferme').length;
+      const currentRisquesCritiques = risques.filter(r => (r.score ?? 0) >= SEUILS_RISQUES.critique && r.status !== 'closed' && r.status !== 'ferme').length;
 
       const currentJalonsAtteints = jalons.filter(j => j.statut === 'atteint').length;
       const currentJalonsRatio = jalons.length > 0 ? (currentJalonsAtteints / jalons.length) * 100 : 0;

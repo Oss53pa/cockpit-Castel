@@ -33,37 +33,43 @@ import { logger } from '@/lib/logger';
 // TYPES
 // ============================================================================
 
-// Probabilité
-const PROBABILITES = ['FAIBLE', 'MOYENNE', 'ELEVEE'] as const;
+// Probabilité (5 niveaux — matrice 5×5, score max = 25)
+const PROBABILITES = ['TRES_FAIBLE', 'FAIBLE', 'MOYENNE', 'FORTE', 'TRES_FORTE'] as const;
 type Probabilite = typeof PROBABILITES[number];
 
 const PROBABILITE_LABELS: Record<Probabilite, string> = {
+  TRES_FAIBLE: 'Très faible',
   FAIBLE: 'Faible',
   MOYENNE: 'Moyenne',
-  ELEVEE: 'Élevée',
+  FORTE: 'Forte',
+  TRES_FORTE: 'Très forte',
 };
 
 const PROBABILITE_COLORS: Record<Probabilite, string> = {
-  FAIBLE: 'bg-green-100 text-green-700 border-green-300',
+  TRES_FAIBLE: 'bg-green-100 text-green-700 border-green-300',
+  FAIBLE: 'bg-emerald-100 text-emerald-700 border-emerald-300',
   MOYENNE: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  ELEVEE: 'bg-red-100 text-red-700 border-red-300',
+  FORTE: 'bg-orange-100 text-orange-700 border-orange-300',
+  TRES_FORTE: 'bg-red-100 text-red-700 border-red-300',
 };
 
-// Impact
-const IMPACTS = ['FAIBLE', 'MOYEN', 'ELEVE', 'CRITIQUE'] as const;
+// Impact (5 niveaux — matrice 5×5, score max = 25)
+const IMPACTS = ['MINEUR', 'MODERE', 'SIGNIFICATIF', 'MAJEUR', 'CRITIQUE'] as const;
 type Impact = typeof IMPACTS[number];
 
 const IMPACT_LABELS: Record<Impact, string> = {
-  FAIBLE: 'Faible',
-  MOYEN: 'Moyen',
-  ELEVE: 'Élevé',
+  MINEUR: 'Mineur',
+  MODERE: 'Modéré',
+  SIGNIFICATIF: 'Significatif',
+  MAJEUR: 'Majeur',
   CRITIQUE: 'Critique',
 };
 
 const IMPACT_COLORS: Record<Impact, string> = {
-  FAIBLE: 'bg-green-100 text-green-700 border-green-300',
-  MOYEN: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  ELEVE: 'bg-orange-100 text-orange-700 border-orange-300',
+  MINEUR: 'bg-green-100 text-green-700 border-green-300',
+  MODERE: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  SIGNIFICATIF: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  MAJEUR: 'bg-orange-100 text-orange-700 border-orange-300',
   CRITIQUE: 'bg-red-100 text-red-700 border-red-300',
 };
 
@@ -109,23 +115,15 @@ type RisqueWithExtras = Risque & {
   commentaires?: Comment[];
 };
 
-// Calcul criticité
+// Calcul criticité (matrice 5×5 — basé sur score = prob × impact)
 function calculerCriticite(probabilite: Probabilite, impact: Impact): Criticite {
-  const matrice: Record<string, Criticite> = {
-    'FAIBLE_FAIBLE': 'VERT',
-    'FAIBLE_MOYEN': 'VERT',
-    'FAIBLE_ELEVE': 'JAUNE',
-    'FAIBLE_CRITIQUE': 'ORANGE',
-    'MOYENNE_FAIBLE': 'VERT',
-    'MOYENNE_MOYEN': 'JAUNE',
-    'MOYENNE_ELEVE': 'ORANGE',
-    'MOYENNE_CRITIQUE': 'ROUGE',
-    'ELEVEE_FAIBLE': 'JAUNE',
-    'ELEVEE_MOYEN': 'ORANGE',
-    'ELEVEE_ELEVE': 'ROUGE',
-    'ELEVEE_CRITIQUE': 'ROUGE',
-  };
-  return matrice[`${probabilite}_${impact}`] || 'JAUNE';
+  const probNum: Record<Probabilite, number> = { TRES_FAIBLE: 1, FAIBLE: 2, MOYENNE: 3, FORTE: 4, TRES_FORTE: 5 };
+  const impNum: Record<Impact, number> = { MINEUR: 1, MODERE: 2, SIGNIFICATIF: 3, MAJEUR: 4, CRITIQUE: 5 };
+  const score = probNum[probabilite] * impNum[impact];
+  if (score >= 16) return 'ROUGE';
+  if (score >= 10) return 'ORANGE';
+  if (score >= 5) return 'JAUNE';
+  return 'VERT';
 }
 
 // Tabs
@@ -189,19 +187,22 @@ export function RisqueFormContent({
   const [categorie, setCategorie] = useState(risque?.categorie || '');
   const [proprietaire, setProprietaire] = useState(risque?.proprietaire || '');
 
-  // Convertir les valeurs numériques en enums
+  // Convertir les valeurs numériques (1-5) en enums
   const getProbabiliteFromNum = (num?: number): Probabilite => {
     if (!num) return 'MOYENNE';
-    if (num <= 1) return 'FAIBLE';
-    if (num <= 2) return 'MOYENNE';
-    return 'ELEVEE';
+    if (num <= 1) return 'TRES_FAIBLE';
+    if (num <= 2) return 'FAIBLE';
+    if (num <= 3) return 'MOYENNE';
+    if (num <= 4) return 'FORTE';
+    return 'TRES_FORTE';
   };
 
   const getImpactFromNum = (num?: number): Impact => {
-    if (!num) return 'MOYEN';
-    if (num <= 1) return 'FAIBLE';
-    if (num <= 2) return 'MOYEN';
-    if (num <= 3) return 'ELEVE';
+    if (!num) return 'MODERE';
+    if (num <= 1) return 'MINEUR';
+    if (num <= 2) return 'MODERE';
+    if (num <= 3) return 'SIGNIFICATIF';
+    if (num <= 4) return 'MAJEUR';
     return 'CRITIQUE';
   };
 
@@ -267,9 +268,9 @@ export function RisqueFormContent({
   const criticite = useMemo(() => calculerCriticite(probabilite, impact), [probabilite, impact]);
   const criticiteConfig = CRITICITE_CONFIG[criticite];
 
-  // Calcul score
-  const probabiliteToNum: Record<Probabilite, number> = { FAIBLE: 1, MOYENNE: 2, ELEVEE: 3 };
-  const impactToNum: Record<Impact, number> = { FAIBLE: 1, MOYEN: 2, ELEVE: 3, CRITIQUE: 4 };
+  // Calcul score (1-5 × 1-5 = max 25)
+  const probabiliteToNum: Record<Probabilite, number> = { TRES_FAIBLE: 1, FAIBLE: 2, MOYENNE: 3, FORTE: 4, TRES_FORTE: 5 };
+  const impactToNum: Record<Impact, number> = { MINEUR: 1, MODERE: 2, SIGNIFICATIF: 3, MAJEUR: 4, CRITIQUE: 5 };
   const score = probabiliteToNum[probabilite] * impactToNum[impact];
 
   // Notifier les changements de statut (seulement si callback fourni)

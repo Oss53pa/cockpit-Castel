@@ -1435,7 +1435,7 @@ function SlideRisquesMajeurs() {
   }, [risques.data]);
 
   const totalRisques = risques.data?.filter(r => r.status !== 'ferme').length || 0;
-  const totalCritiques = risques.data?.filter(r => r.status !== 'ferme' && (r.score || 0) >= 12).length || 0;
+  const totalCritiques = risques.data?.filter(r => r.status !== 'ferme' && (r.score || 0) >= 16).length || 0;
 
   // Convertir score en probabilité/impact lisible
   const getProbabiliteFromScore = (probabilite: number): string => {
@@ -1504,11 +1504,11 @@ function SlideRisquesMajeurs() {
       </Card>
 
       {/* Détails des risques critiques - Design Premium */}
-      {top5Risques.filter(r => (r.score || 0) >= 12).length > 0 && (
+      {top5Risques.filter(r => (r.score || 0) >= 16).length > 0 && (
         <Card padding="md" className="border-slate-200">
           <h4 className="font-semibold text-slate-800 mb-3">Détails Risques Critiques</h4>
           <div className="space-y-2">
-            {top5Risques.filter(r => (r.score || 0) >= 12).map((risque, idx) => (
+            {top5Risques.filter(r => (r.score || 0) >= 16).map((risque, idx) => (
               <div key={risque.id || idx} className="p-3 bg-slate-50 rounded-xl border-l-4 border-rose-500">
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-medium text-slate-800">{risque.titre}</span>

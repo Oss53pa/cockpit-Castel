@@ -653,7 +653,7 @@ export function AxesSettings() {
         ).length,
         risquesTotal: axeRisques.length,
         risquesCritiques: axeRisques.filter((r) =>
-          r.statut === 'ouvert' && r.score_actuel && r.score_actuel >= 12
+          r.statut === 'ouvert' && r.score_actuel && r.score_actuel >= 16
         ).length,
       };
     }

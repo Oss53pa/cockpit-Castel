@@ -440,6 +440,7 @@ export const JALON_STATUSES = [
   'a_venir',
   'en_approche',
   'en_danger',
+  'bloque',
   'atteint',
   'depasse',
   'annule',
@@ -450,6 +451,7 @@ export const JALON_STATUS_LABELS: Record<JalonStatus, string> = {
   a_venir: 'À venir',
   en_approche: 'En approche',
   en_danger: 'En danger',
+  bloque: 'Bloqué',
   atteint: 'Atteint',
   depasse: 'Dépassé',
   annule: 'Annulé',
@@ -459,6 +461,7 @@ export const JALON_STATUS_STYLES: Record<JalonStatus, { bg: string; text: string
   a_venir: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300', icon: 'Clock' },
   en_approche: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', icon: 'TrendingUp' },
   en_danger: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', icon: 'AlertTriangle' },
+  bloque: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300', icon: 'Lock' },
   atteint: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300', icon: 'CheckCircle' },
   depasse: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300', icon: 'AlertCircle' },
   annule: { bg: 'bg-neutral-100', text: 'text-neutral-500', border: 'border-neutral-300', icon: 'X' },
@@ -749,12 +752,13 @@ export const RISQUE_PROXIMITE_LABELS: Record<RisqueProximite, string> = {
   long_terme: 'Long terme (> 3 mois)',
 };
 
-// Impact et Probabilité (échelle 1-4)
+// Impact et Probabilité (échelle 1-5, grille 5×5)
 export const RISQUE_IMPACT_LABELS: Record<number, string> = {
   1: 'Mineur',
   2: 'Modéré',
-  3: 'Majeur',
-  4: 'Critique',
+  3: 'Significatif',
+  4: 'Majeur',
+  5: 'Critique',
 };
 
 export const RISQUE_PROBABILITE_LABELS: Record<number, string> = {
@@ -762,6 +766,7 @@ export const RISQUE_PROBABILITE_LABELS: Record<number, string> = {
   2: 'Faible',
   3: 'Moyenne',
   4: 'Forte',
+  5: 'Très forte',
 };
 
 // ============================================================================
@@ -943,7 +948,7 @@ export interface NoteAction {
 /**
  * Statuts de jalon selon spécifications v2.0
  */
-export const STATUTS_JALON_V2 = ['A_VENIR', 'EN_COURS', 'A_VALIDER', 'ATTEINT', 'EN_RETARD'] as const;
+export const STATUTS_JALON_V2 = ['A_VENIR', 'EN_COURS', 'A_VALIDER', 'ATTEINT', 'EN_RETARD', 'BLOQUE'] as const;
 export type StatutJalonV2 = typeof STATUTS_JALON_V2[number];
 
 /**
@@ -2150,19 +2155,20 @@ export interface IAStats {
 // ============================================================================
 
 export const getScoreStyle = (score: number) => {
-  if (score >= 12) return {
+  // Seuils calibrés pour matrice 5×5 (max = 25)
+  if (score >= 16) return {
     bg: 'bg-red-500',
     text: 'text-white',
     label: 'Critique',
     description: 'Action immédiate requise',
   };
-  if (score >= 8) return {
+  if (score >= 10) return {
     bg: 'bg-orange-500',
     text: 'text-white',
     label: 'Élevé',
     description: 'Plan de mitigation prioritaire',
   };
-  if (score >= 4) return {
+  if (score >= 5) return {
     bg: 'bg-yellow-400',
     text: 'text-neutral-900',
     label: 'Modéré',

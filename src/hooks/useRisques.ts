@@ -49,7 +49,7 @@ export function useRisque(id: number | undefined) {
 export function useRisquesCritiques() {
   return useLiveQuery(async () => {
     const risques = await db.risques.toArray();
-    return risques.filter((r) => (r.score ?? 0) >= 12 && r.status !== 'closed' && r.status !== 'ferme');
+    return risques.filter((r) => (r.score ?? 0) >= 16 && r.status !== 'closed' && r.status !== 'ferme');
   }) ?? [];
 }
 

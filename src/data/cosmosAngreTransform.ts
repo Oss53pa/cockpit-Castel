@@ -399,7 +399,7 @@ function transformRisque(refRisque: {
     probabilite: refRisque.probabilite,
     impact: refRisque.impact,
     score: refRisque.criticite,
-    status: refRisque.criticite >= 12 ? 'open' : 'mitigated',
+    status: refRisque.criticite >= 16 ? 'open' : 'mitigated',
     responsableId: refRisque.responsable ? responsableToUserId[refRisque.responsable] || 1 : 1,
     planMitigation: refRisque.mitigation || '',
     actionsPreventives: [],

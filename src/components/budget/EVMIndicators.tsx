@@ -4,6 +4,7 @@ import { Card, Badge, Progress } from '@/components/ui';
 import { useEVMIndicators } from '@/hooks';
 import { formatCurrency } from '@/lib/utils';
 import { interpretSPI, interpretCPI } from '@/lib/calculations';
+import { SEUILS } from '@/data/constants';
 
 export function EVMIndicators() {
   const evm = useEVMIndicators();
@@ -25,8 +26,8 @@ export function EVMIndicators() {
   };
 
   const getStatusIcon = (value: number) => {
-    if (value > 1.05) return <TrendingUp className="h-4 w-4 text-success-500" />;
-    if (value >= 0.95) return <Minus className="h-4 w-4 text-info-500" />;
+    if (value > SEUILS.evm.bon + 0.05) return <TrendingUp className="h-4 w-4 text-success-500" />;
+    if (value >= SEUILS.evm.attention + 0.05) return <Minus className="h-4 w-4 text-info-500" />;
     return <TrendingDown className="h-4 w-4 text-error-500" />;
   };
 
@@ -49,7 +50,7 @@ export function EVMIndicators() {
           <Progress
             value={Math.min(evm.SPI * 100, 150)}
             max={150}
-            variant={evm.SPI >= 0.95 ? 'success' : 'error'}
+            variant={evm.SPI >= SEUILS.evm.attention + 0.05 ? 'success' : 'error'}
             size="sm"
           />
           {getStatusBadge(spiStatus)}
@@ -67,7 +68,7 @@ export function EVMIndicators() {
           <Progress
             value={Math.min(evm.CPI * 100, 150)}
             max={150}
-            variant={evm.CPI >= 0.95 ? 'success' : 'error'}
+            variant={evm.CPI >= SEUILS.evm.attention + 0.05 ? 'success' : 'error'}
             size="sm"
           />
           {getStatusBadge(cpiStatus)}
@@ -119,22 +120,21 @@ export function EVMIndicators() {
       <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
         <div className="text-center">
           <p className="text-xs text-primary-400">EAC (Estimate at Completion)</p>
-          <p className="text-sm font-semibold">{formatCurrency(evm.EAC)}</p>
+          <p className="text-sm font-semibold">{evm.EAC !== null ? formatCurrency(evm.EAC) : 'N/A'}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-primary-400">ETC (Estimate to Complete)</p>
-          <p className="text-sm font-semibold">{formatCurrency(evm.ETC)}</p>
+          <p className="text-sm font-semibold">{evm.ETC !== null ? formatCurrency(evm.ETC) : 'N/A'}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-primary-400">VAC (Variance at Completion)</p>
           <p
             className={cn(
               'text-sm font-semibold',
-              evm.VAC >= 0 ? 'text-success-600' : 'text-error-600'
+              evm.VAC === null ? 'text-primary-400' : evm.VAC >= 0 ? 'text-success-600' : 'text-error-600'
             )}
           >
-            {evm.VAC >= 0 ? '+' : ''}
-            {formatCurrency(evm.VAC)}
+            {evm.VAC === null ? 'N/A' : `${evm.VAC >= 0 ? '+' : ''}${formatCurrency(evm.VAC)}`}
           </p>
         </div>
       </div>

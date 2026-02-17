@@ -1322,13 +1322,13 @@ export function useExcoV5Data(savedExcoId?: number | null): ExcoV5Data {
       // Actions les plus critiques (non terminées, triées par date)
       const topActionsAxe = [...axeActions]
         .filter(a => a.statut !== 'termine')
-        .sort((a, b) => a.date_fin_prevue.localeCompare(b.date_fin_prevue))
+        .sort((a, b) => (a.date_fin_prevue || '').localeCompare(b.date_fin_prevue || ''))
         .slice(0, 5);
 
       // Prochain jalon
       const prochainJalon = axeJalons
         .filter(j => j.statut !== 'atteint' && j.statut !== 'annule')
-        .sort((a, b) => a.date_prevue.localeCompare(b.date_prevue))[0] ?? null;
+        .sort((a, b) => (a.date_prevue || '').localeCompare(b.date_prevue || ''))[0] ?? null;
 
       const meteo = deriveAxeMeteo(avancement, prevu, risquesCritiques);
 

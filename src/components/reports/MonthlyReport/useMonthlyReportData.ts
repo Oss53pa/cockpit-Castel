@@ -540,8 +540,8 @@ export function useMonthlyReportData(): MonthlyReportData | null {
 
     const riskStats = {
       critical: risquesActifs.filter(r => (r.score ?? 0) >= 16).length,
-      high: risquesActifs.filter(r => (r.score ?? 0) >= 9 && (r.score ?? 0) < 16).length,
-      moderate: risquesActifs.filter(r => (r.score ?? 0) < 9).length,
+      high: risquesActifs.filter(r => (r.score ?? 0) >= 10 && (r.score ?? 0) < 16).length,
+      moderate: risquesActifs.filter(r => (r.score ?? 0) < 10).length,
     };
 
     // ------------------------------------------------------------------

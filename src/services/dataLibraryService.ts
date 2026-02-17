@@ -369,8 +369,8 @@ async function fetchRisquesMatrice(): Promise<ChartData> {
         data: activeRisques.map((r) => r.score || (r.probabilite * r.impact)),
         backgroundColor: activeRisques.map((r) => {
           const score = r.score || (r.probabilite * r.impact);
-          if (score >= 12) return THEME_COLORS.error;
-          if (score >= 9) return THEME_COLORS.warning;
+          if (score >= 16) return THEME_COLORS.error;
+          if (score >= 10) return THEME_COLORS.warning;
           if (score >= 5) return THEME_COLORS.info;
           return THEME_COLORS.success;
         }),

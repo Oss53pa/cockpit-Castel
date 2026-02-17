@@ -6,6 +6,7 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getReportFromFirebase } from '@/services/firebaseRealtimeSync';
+import { FIREBASE_TTL } from '@/data/constants';
 
 export function ReportViewPage() {
   const { token } = useParams<{ token: string }>();
@@ -24,16 +25,17 @@ export function ReportViewPage() {
 
     getReportFromFirebase(token)
       .then((result) => {
-        if (result) {
-          setHtml(result.html);
-          setTitle(result.title || 'Rapport EXCO');
-        } else {
+        if (result.status === 'ok') {
+          setHtml(result.data.html);
+          setTitle(result.data.title || 'Rapport EXCO');
+        } else if (result.status === 'expired') {
+          setError(`Ce rapport a expiré (disponible ${FIREBASE_TTL.UPDATE_LINKS} jours après création). Contactez l'administrateur pour un nouveau lien.`);
+        } else if (result.status === 'not_found') {
           // Fallback: try localStorage (same-browser access)
           try {
             const localReports = JSON.parse(localStorage.getItem('shared_reports') || '{}');
             const local = localReports[token];
             if (local && local.html) {
-              // Check expiration
               if (!local.expiresAt || new Date(local.expiresAt) > new Date()) {
                 setHtml(local.html);
                 setTitle(local.title || 'Rapport EXCO');
@@ -43,7 +45,23 @@ export function ReportViewPage() {
           } catch {
             // ignore localStorage errors
           }
-          setError('Rapport non trouvé ou lien expiré');
+          setError('Ce rapport n\'existe pas ou a été supprimé.');
+        } else {
+          // status === 'error' — fallback localStorage
+          try {
+            const localReports = JSON.parse(localStorage.getItem('shared_reports') || '{}');
+            const local = localReports[token];
+            if (local && local.html) {
+              if (!local.expiresAt || new Date(local.expiresAt) > new Date()) {
+                setHtml(local.html);
+                setTitle(local.title || 'Rapport EXCO');
+                return;
+              }
+            }
+          } catch {
+            // ignore
+          }
+          setError('Impossible de charger le rapport. Vérifiez votre connexion.');
         }
       })
       .catch(() => {
@@ -61,7 +79,7 @@ export function ReportViewPage() {
         } catch {
           // ignore
         }
-        setError('Erreur lors du chargement du rapport');
+        setError('Impossible de charger le rapport. Vérifiez votre connexion.');
       })
       .finally(() => setLoading(false));
   }, [token]);
@@ -123,6 +141,7 @@ export function ReportViewPage() {
   }
 
   if (error || !html) {
+    const isExpired = error?.includes('expiré');
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6' }}>
         <div style={{
@@ -130,14 +149,15 @@ export function ReportViewPage() {
           boxShadow: '0 4px 24px rgba(0,0,0,0.1)', maxWidth: 400,
         }}>
           <div style={{
-            width: 48, height: 48, borderRadius: '50%', background: '#fef2f2',
+            width: 48, height: 48, borderRadius: '50%',
+            background: isExpired ? '#fffbeb' : '#fef2f2',
             display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
             fontSize: 24,
           }}>
-            !
+            {isExpired ? '\u23F0' : '!'}
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-            Rapport non disponible
+            {isExpired ? 'Rapport expiré' : 'Rapport non disponible'}
           </h1>
           <p style={{ fontSize: 14, color: '#6b7280' }}>
             {error || 'Lien invalide ou expiré.'}

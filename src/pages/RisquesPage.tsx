@@ -4,7 +4,7 @@ import { useAppStore } from '@/stores';
 import { Button, Select, SelectOption, Card, Badge, Tooltip, useToast } from '@/components/ui';
 import { excelService } from '@/services/excelService';
 import { useRisques, useJalons, createRisque, updateRisque, usePermissions } from '@/hooks';
-import { PROJET_CONFIG } from '@/data/constants';
+import { PROJET_CONFIG, SEUILS_RISQUES } from '@/data/constants';
 import { RisquesRegistre, MatriceCriticite, RisqueForm, RisquesTop10, RisquesSynthese } from '@/components/risques';
 import { RisqueFormContent, type RisqueFormSaveData } from '@/components/shared/RisqueFormContent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui';
@@ -165,16 +165,16 @@ export function RisquesPage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 12) return 'bg-error-500 text-white';
-    if (score >= 9) return 'bg-warning-500 text-white';
-    if (score >= 5) return 'bg-info-400 text-white';
+    if (score >= SEUILS_RISQUES.critique) return 'bg-error-500 text-white';
+    if (score >= SEUILS_RISQUES.majeur) return 'bg-warning-500 text-white';
+    if (score >= SEUILS_RISQUES.modere) return 'bg-info-400 text-white';
     return 'bg-success-400 text-white';
   };
 
   const getScoreLabel = (score: number) => {
-    if (score >= 12) return 'Critique';
-    if (score >= 9) return 'Majeur';
-    if (score >= 5) return 'Modéré';
+    if (score >= SEUILS_RISQUES.critique) return 'Critique';
+    if (score >= SEUILS_RISQUES.majeur) return 'Majeur';
+    if (score >= SEUILS_RISQUES.modere) return 'Modéré';
     return 'Faible';
   };
 
@@ -417,9 +417,9 @@ export function RisquesPage() {
                             <div className="flex items-center gap-2 mb-1">
                               <AlertTriangle className={cn(
                                 'h-4 w-4',
-                                risque.probabilite * risque.impact >= 12 ? 'text-error-500' :
-                                risque.probabilite * risque.impact >= 9 ? 'text-warning-500' :
-                                risque.probabilite * risque.impact >= 5 ? 'text-info-500' : 'text-success-500'
+                                risque.probabilite * risque.impact >= SEUILS_RISQUES.critique ? 'text-error-500' :
+                                risque.probabilite * risque.impact >= SEUILS_RISQUES.majeur ? 'text-warning-500' :
+                                risque.probabilite * risque.impact >= SEUILS_RISQUES.modere ? 'text-info-500' : 'text-success-500'
                               )} />
                               <h4 className="font-medium text-primary-900">{risque.titre}</h4>
                             </div>

@@ -9,6 +9,15 @@ export function formatCurrency(amount: number, currency = 'XOF'): string {
   if (amount === 0 || amount === null || amount === undefined) {
     return '0 FCFA';
   }
+  // Grands nombres : Mds / M pour lisibilité (P4.6 BUDGET-2)
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) {
+    return `${sign}${(abs / 1_000_000_000).toFixed(1).replace('.', ',')} Mds FCFA`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}${(abs / 1_000_000).toFixed(1).replace('.', ',')} M FCFA`;
+  }
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,

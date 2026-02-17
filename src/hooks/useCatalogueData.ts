@@ -333,10 +333,10 @@ export function useCatalogueData(): CatalogueData {
 
     // 8. Risques par niveau (Bar)
     const risquesByNiveau = {
-      'Critique (≥12)': risques.filter(r => (r.score ?? 0) >= 12).length,
-      'Élevé (8-11)': risques.filter(r => (r.score ?? 0) >= 8 && (r.score ?? 0) < 12).length,
-      'Modéré (4-7)': risques.filter(r => (r.score ?? 0) >= 4 && (r.score ?? 0) < 8).length,
-      'Faible (<4)': risques.filter(r => (r.score ?? 0) < 4).length,
+      'Critique (≥16)': risques.filter(r => (r.score ?? 0) >= 16).length,
+      'Élevé (10-15)': risques.filter(r => (r.score ?? 0) >= 10 && (r.score ?? 0) < 16).length,
+      'Modéré (5-9)': risques.filter(r => (r.score ?? 0) >= 5 && (r.score ?? 0) < 10).length,
+      'Faible (<5)': risques.filter(r => (r.score ?? 0) < 5).length,
     };
 
     result.push({
@@ -859,12 +859,12 @@ export function useCatalogueData(): CatalogueData {
       id: 'kpi-risques-critiques',
       code: 'RSK_CRIT',
       name: 'Risques Critiques',
-      description: 'Risques avec score ≥ 12',
+      description: 'Risques avec score ≥ 16',
       category: 'risques',
       unit: '',
       format: 'number',
       target: 0,
-      currentValue: risques.filter(r => (r.score ?? 0) >= 12).length,
+      currentValue: risques.filter(r => (r.score ?? 0) >= 16).length,
       axe: 'Transverse',
     });
 

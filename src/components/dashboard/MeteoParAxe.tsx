@@ -6,7 +6,7 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { useAvancementParAxe } from '@/hooks';
-import { AXE_SHORT_LABELS, AXE_CONFIG, type Axe } from '@/types';
+import { AXE_SHORT_LABELS, AXE_CONFIG, AXES, type Axe } from '@/types';
 import { cn } from '@/lib/utils';
 import type { Trend } from '@/lib/calculations';
 import { useEffect, useState, useRef } from 'react';
@@ -257,20 +257,14 @@ export function MeteoParAxe({ onAxeClick }: MeteoParAxeProps) {
     return config && config.poids > 0;
   });
 
-  // Si pas de données, afficher quand même les 6 axes avec 0%
+  // Si pas de données, afficher tous les axes avec poids > 0 à 0%
   const axesAfficher =
     axesAffiches.length > 0
       ? axesAffiches
-      : (
-          [
-            'axe1_rh',
-            'axe2_commercial',
-            'axe3_technique',
-            'axe4_budget',
-            'axe5_marketing',
-            'axe6_exploitation',
-          ] as Axe[]
-        ).map((axe) => ({
+      : (AXES.filter(axe => {
+          const config = AXE_CONFIG[axe];
+          return config && config.poids > 0;
+        }) as Axe[]).map((axe) => ({
           axe,
           avancement: 0,
           prevu: 0,
@@ -298,7 +292,7 @@ export function MeteoParAxe({ onAxeClick }: MeteoParAxeProps) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {axesAfficher.map((data, index) => (
           <MeteoAxeCard
             key={data.axe}
