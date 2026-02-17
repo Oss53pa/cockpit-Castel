@@ -110,7 +110,7 @@ export const convertToDbRisque = (
     tendance_risque: 'stable',
     detectabilite: 2,
     velocite: 'normale',
-    proximite: risque.score >= 12 ? 'imminent' : risque.score >= 8 ? 'court_terme' : 'moyen_terme',
+    proximite: risque.score >= 16 ? 'imminent' : risque.score >= 10 ? 'court_terme' : 'moyen_terme',
 
     // Impact détaillé
     impact_cout: null,
@@ -169,8 +169,8 @@ export const convertToDbRisque = (
     }],
 
     // Alertes
-    alertes_actives: risque.score >= 12,
-    seuil_alerte_score: risque.score >= 12 ? 12 : 8,
+    alertes_actives: risque.score >= 16,
+    seuil_alerte_score: risque.score >= 16 ? 16 : 10,
     canal_alerte: ['email'],
     notifier: [proprietaire],
 
@@ -253,9 +253,9 @@ export async function getRisquesStats(siteId: number = 1): Promise<{
   const risques = await db.risques.where('siteId').equals(siteId).toArray();
 
   const parNiveau = {
-    critique: risques.filter(r => r.score >= 12).length,
-    majeur: risques.filter(r => r.score >= 8 && r.score < 12).length,
-    modere: risques.filter(r => r.score >= 4 && r.score < 8).length,
+    critique: risques.filter(r => r.score >= 16).length,
+    majeur: risques.filter(r => r.score >= 10 && r.score < 16).length,
+    modere: risques.filter(r => r.score >= 5 && r.score < 10).length,
     faible: risques.filter(r => r.score < 4).length,
   };
 

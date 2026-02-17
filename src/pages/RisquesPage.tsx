@@ -496,11 +496,11 @@ export function RisquesPage() {
         </h4>
         <div className="text-xs text-primary-600 space-y-2">
           <p>
-            <strong>Méthodologie :</strong> Score de risque = Probabilité × Impact (échelle 1-4 chacun).
-            Les risques sont classés en 4 niveaux : <span className="text-error-600 font-medium">Critique (12-16)</span>,{' '}
-            <span className="text-warning-600 font-medium">Majeur (8-11)</span>,{' '}
-            <span className="text-info-600 font-medium">Modéré (4-7)</span>,{' '}
-            <span className="text-success-600 font-medium">Faible (1-3)</span>.
+            <strong>Méthodologie :</strong> Score de risque = Probabilité × Impact (échelle 1-5 chacun).
+            Les risques sont classés en 4 niveaux : <span className="text-error-600 font-medium">Critique (16-25)</span>,{' '}
+            <span className="text-warning-600 font-medium">Majeur (10-15)</span>,{' '}
+            <span className="text-info-600 font-medium">Modéré (5-9)</span>,{' '}
+            <span className="text-success-600 font-medium">Faible (1-4)</span>.
           </p>
           <p>
             <strong>Gouvernance :</strong> Les risques critiques sont revus hebdomadairement par la DGA,

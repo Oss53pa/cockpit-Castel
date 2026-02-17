@@ -349,7 +349,7 @@ function FaitsMarquantsCOPILSection() {
       });
     });
 
-    // ATTENTIONS: Risques nouveaux avec score >= 8
+    // ATTENTIONS: Risques nouveaux avec score >= 10
     const risquesAttention = risques.filter((r) => {
       const score = r.score;
       return score >= 10 && score < 16 && r.status !== 'closed';

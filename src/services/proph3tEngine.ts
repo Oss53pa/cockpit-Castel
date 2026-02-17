@@ -719,8 +719,8 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
 
   const critical = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.critique);
   const high = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.majeur && (r.score || 0) < SEUILS_RISQUES.critique);
-  const medium = ctx.risques.filter(r => (r.score || 0) >= 4 && (r.score || 0) < 8);
-  const low = ctx.risques.filter(r => (r.score || 0) < 4);
+  const medium = ctx.risques.filter(r => (r.score || 0) >= SEUILS_RISQUES.modere && (r.score || 0) < SEUILS_RISQUES.majeur);
+  const low = ctx.risques.filter(r => (r.score || 0) < SEUILS_RISQUES.modere);
 
   let report = `# Analyse des Risques\n\n`;
   report += `**Total:** ${ctx.risques.length} risques identifies\n\n`;
@@ -729,8 +729,8 @@ function analyzeRisksLocal(ctx: ProjectContext): string {
   report += `| Niveau | Nombre | % |\n|--------|--------|---|\n`;
   report += `| Critique (>=${SEUILS_RISQUES.critique}) | ${critical.length} | ${Math.round(critical.length / ctx.risques.length * 100)}% |\n`;
   report += `| Eleve (${SEUILS_RISQUES.majeur}-${SEUILS_RISQUES.critique - 1}) | ${high.length} | ${Math.round(high.length / ctx.risques.length * 100)}% |\n`;
-  report += `| Modere (4-7) | ${medium.length} | ${Math.round(medium.length / ctx.risques.length * 100)}% |\n`;
-  report += `| Faible (<4) | ${low.length} | ${Math.round(low.length / ctx.risques.length * 100)}% |\n\n`;
+  report += `| Modere (${SEUILS_RISQUES.modere}-${SEUILS_RISQUES.majeur - 1}) | ${medium.length} | ${Math.round(medium.length / ctx.risques.length * 100)}% |\n`;
+  report += `| Faible (<${SEUILS_RISQUES.modere}) | ${low.length} | ${Math.round(low.length / ctx.risques.length * 100)}% |\n\n`;
 
   if (critical.length > 0) {
     report += `## Risques Critiques - Action Immediate\n\n`;

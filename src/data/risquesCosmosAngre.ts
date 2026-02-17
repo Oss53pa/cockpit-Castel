@@ -78,7 +78,7 @@ export const getCouleurNiveau = (niveau: RisqueNiveau): string => {
 
 export const REGISTRE_RISQUES_COSMOS_ANGRE: RisqueCosmosAngre[] = [
   // ═══════════════════════════════════════════════════════════════════════════
-  // CRITIQUE (Score >= 12) — 25 risques
+  // CRITIQUE (Score >= 16) — 25 risques
   // ═══════════════════════════════════════════════════════════════════════════
   { id: 'R01', code: 'R01', titre: "Taux d'occupation insuffisant à l'ouverture (<85%)", description: "Le taux d'occupation pourrait ne pas atteindre 85% au moment du Soft Opening.", categorie: 'commercial', probabilite: 3, impact: 5, score: 15, niveau: 'critique', responsable: 'HT', statut: 'Ouvert' },
   { id: 'R02', code: 'R02', titre: 'Mise en service électricité retardée', description: "La CIE pourrait retarder la mise en service électrique définitive.", categorie: 'technique', probabilite: 3, impact: 5, score: 15, niveau: 'critique', responsable: 'DN', statut: 'Ouvert' },
