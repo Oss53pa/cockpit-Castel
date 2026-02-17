@@ -3,7 +3,7 @@
  * Widget avec jauge circulaire animée et décomposition des facteurs
  */
 
-import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Activity, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Clock, RefreshCw, Info } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useEffect, useState, useRef } from 'react';
@@ -150,10 +150,12 @@ function FactorBar({
   factor,
   delay,
   isVisible,
+  tooltip,
 }: {
   factor: ScoreFactor;
   delay: number;
   isVisible: boolean;
+  tooltip?: string;
 }) {
   const [width, setWidth] = useState(0);
   const TrendIcon =
@@ -183,6 +185,7 @@ function FactorBar({
         <div className="flex items-center gap-2">
           <factor.icon className="w-4 h-4 text-neutral-400" />
           <span className="text-neutral-700 font-medium">{factor.label}</span>
+          {tooltip && <InfoTooltip text={tooltip} />}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-neutral-900 font-semibold">{Math.round(factor.score)}</span>
@@ -208,6 +211,37 @@ function FactorBar({
         />
       </div>
     </div>
+  );
+}
+
+// Tooltip on hover
+const FACTOR_TOOLTIPS: Record<string, string> = {
+  'Avancement': 'Poids : 25%\nMoyenne des avancements de toutes les actions du projet.',
+  'Jalons': 'Poids : 20%\n% de jalons atteints par rapport au total des jalons.',
+  'Budget': 'Poids : 15%\n% du budget consommé par rapport au budget prévu.',
+  'Occupation': 'Poids : 15%\nTaux d\'occupation commerciale (BEFA signés / boutiques cibles).',
+  'Vélocité': 'Poids : 15%\n% d\'actions terminées parmi toutes les actions (hors micro-actions).',
+  'Sync': 'Poids : 10%\nSynchronisation entre avancement global et jalons. 100 = parfaitement aligné.',
+};
+
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span
+      className="relative inline-flex items-center cursor-help"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <Info className="w-3.5 h-3.5 text-neutral-400 ml-1" />
+      {show && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+          <div className="bg-neutral-800 text-white text-[11px] leading-relaxed px-3 py-2 rounded-lg shadow-lg whitespace-pre-line w-56">
+            {text}
+          </div>
+          <div className="w-0 h-0 mx-auto border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-neutral-800" />
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -296,8 +330,9 @@ export function ScoreSante() {
             <Activity className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-primary-500 uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-primary-500 uppercase tracking-wider flex items-center">
               Score de Santé
+              <InfoTooltip text={"État de santé global du projet.\nMoyenne pondérée de 6 facteurs :\n• Avancement (25%)\n• Jalons (20%)\n• Budget (15%)\n• Occupation (15%)\n• Vélocité (15%)\n• Sync (10%)\n\n≥ 80 = Excellent\n≥ 60 = Bon\n≥ 40 = Modéré\n< 40 = Critique"} />
             </h3>
             <p className="text-xs text-neutral-500">Indicateur global du projet</p>
           </div>
@@ -321,6 +356,7 @@ export function ScoreSante() {
                   factor={factor}
                   delay={200 + index * 100}
                   isVisible={isVisible}
+                  tooltip={FACTOR_TOOLTIPS[factor.label]}
                 />
               ))}
             </div>

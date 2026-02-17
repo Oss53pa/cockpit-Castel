@@ -275,6 +275,74 @@ function WRiskBadge({ score }: { score: number }) {
   );
 }
 
+/** Info tooltip on hover */
+function WInfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'help' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: C.gray200,
+          color: C.gray500,
+          fontSize: 10,
+          fontWeight: 700,
+          marginLeft: 4,
+          flexShrink: 0,
+        }}
+      >
+        ?
+      </span>
+      {show && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginBottom: 6,
+            background: C.navy,
+            color: C.white,
+            fontSize: 11,
+            lineHeight: 1.5,
+            padding: '10px 14px',
+            borderRadius: 8,
+            width: 260,
+            whiteSpace: 'pre-line',
+            zIndex: 100,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: `6px solid ${C.navy}`,
+            }}
+          />
+        </div>
+      )}
+    </span>
+  );
+}
+
 /** SVG Trend Chart (real vs ideal) */
 function WTrendChart({
   data,
@@ -1140,11 +1208,17 @@ export function WeeklyReportV2() {
       <WSection title="Projection" number={9}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>RATIO PROGRESSION</div>
+            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              RATIO PROGRESSION
+              <WInfoTooltip text={"Avancement réel ÷ avancement théorique × 100.\n100% = parfaitement à l'heure.\n< 100% = en retard sur le planning.\n> 100% = en avance."} />
+            </div>
             <div style={{ fontSize: 24, fontWeight: 800, color: C.navy }}>{f2(data.projection.ratioProgression)}%</div>
           </WCard>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>FIN ESTIMÉE</div>
+            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              FIN ESTIMÉE
+              <WInfoTooltip text={"Date estimée de fin du projet, calculée en extrapolant le rythme actuel d'avancement.\nSi le projet avance à 50% du rythme prévu, la fin estimée sera 2× plus loin."} />
+            </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: !data.projection.projectionDisponible ? C.gray400 : data.projection.retardJours > 0 ? C.red : C.green }}>
               {data.projection.projectionDisponible && data.projection.finEstimee
                 ? formatDate(data.projection.finEstimee)
@@ -1158,7 +1232,10 @@ export function WeeklyReportV2() {
             </div>
           </WCard>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>RETARD PROJETÉ</div>
+            <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              RETARD PROJETÉ
+              <WInfoTooltip text={"Nombre de jours de retard estimé par rapport à la date cible d'ouverture, basé sur le rythme actuel."} />
+            </div>
             <div
               style={{
                 fontSize: 24,
@@ -1208,19 +1285,22 @@ export function WeeklyReportV2() {
                 >
                   {data.confidenceScore.score}
                 </div>
-                <div style={{ fontSize: 11, color: C.gray500 }}>/ 100</div>
+                <div style={{ fontSize: 11, color: C.gray500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  / 100
+                  <WInfoTooltip text={"Score de Confiance d'Ouverture : probabilité d'ouvrir à temps.\nMoyenne pondérée de 6 facteurs :\n• Vélocité (30%) — actions terminées parmi celles dues\n• Jalons (20%) — jalons atteints dans les 30j\n• Risques (15%) — pénalité par risque critique/majeur\n• Occupation (15%) — taux d'occupation commerciale\n• Budget (10%) — écart engagement vs réalisation\n• Sync (10%) — synchronisation construction/mobilisation"} />
+                </div>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 8 }}>
                   Facteurs de confiance
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 12 }}>
-                  <div>Vélocité: <strong>{f2(data.confidenceScore.factors.velocite.value)}%</strong></div>
-                  <div>Jalons: <strong>{f2(data.confidenceScore.factors.jalons.value)}%</strong></div>
-                  <div>Risques: <strong>{f2(data.confidenceScore.factors.risques.value)}%</strong></div>
-                  <div>Occupation: <strong>{f2(data.confidenceScore.factors.occupation.value)}%</strong></div>
-                  <div>Budget: <strong>{f2(data.confidenceScore.factors.budget.value)}%</strong></div>
-                  <div>Sync: <strong>{f2(data.confidenceScore.factors.sync.value)}%</strong></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Vélocité: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.velocite.value)}%</strong><WInfoTooltip text={"Poids : 30%\n% d'actions terminées parmi celles dont l'échéance est dépassée."} /></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Jalons: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.jalons.value)}%</strong><WInfoTooltip text={"Poids : 20%\n% de jalons atteints ou en bonne voie parmi ceux des 30 prochains jours."} /></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Risques: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.risques.value)}%</strong><WInfoTooltip text={"Poids : 15%\n100 − pénalités. Chaque risque critique (≥16) = −15 pts, majeur (≥10) = −8 pts."} /></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Occupation: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.occupation.value)}%</strong><WInfoTooltip text={"Poids : 15%\nTaux d'occupation commerciale du centre."} /></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Budget: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.budget.value)}%</strong><WInfoTooltip text={"Poids : 10%\n100 − écart entre taux d'engagement et taux de réalisation."} /></div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>Sync: <strong style={{ marginLeft: 4 }}>{f2(data.confidenceScore.factors.sync.value)}%</strong><WInfoTooltip text={"Poids : 10%\nSynchronisation entre les axes Construction et Mobilisation."} /></div>
                 </div>
               </div>
               <div>
