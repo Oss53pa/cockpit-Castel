@@ -1333,6 +1333,30 @@ export interface Action {
   modifie_par: string;
   motif_modification: string | null;
 
+  // Sous-tâches, décisions, points d'attention (champs dynamiques Firebase/formulaires)
+  sous_taches?: Array<{
+    id: string;
+    libelle: string;
+    responsableId?: number | null;
+    echeance?: string | null;
+    fait: boolean;
+  }>;
+  decisions_attendues?: Array<{
+    id: string;
+    sujet: string;
+    dateCreation: string;
+    transmis?: boolean;
+    dateTransmission?: string;
+  }>;
+  points_attention?: Array<{
+    id: string;
+    sujet: string;
+    responsableId?: number | null;
+    responsableNom?: string;
+    dateCreation: string;
+    transmis?: boolean;
+  }>;
+
   // Legacy
   actionPlanId?: number;
 }

@@ -61,6 +61,11 @@ export interface TopRisque {
   evolution: 'up' | 'down' | 'stable';
 }
 
+export interface ActionsByGroup {
+  label: string;
+  actions: Action[];
+}
+
 export interface WeeklyProjection {
   ratioProgression: number;
   finEstimee: string | null;
@@ -97,6 +102,10 @@ export interface WeeklyReportData {
   topRisques: TopRisque[];
   // Focus S+1
   focusSemaineProchaine: Action[];
+  // Vues groupées
+  actionsByEcheance: ActionsByGroup[];
+  actionsByPriorite: ActionsByGroup[];
+  actionsByResponsable: ActionsByGroup[];
   // Projection
   projection: WeeklyProjection;
   // Trend chart data
@@ -430,16 +439,110 @@ export function useWeeklyReportData(): WeeklyReportData {
     };
 
     // === Trend history (ideal vs real) ===
-    // Seul le point actuel est fiable — pas de données historiques disponibles
-    // Les semaines passées ne sont PAS interpolées (l'historique réel nécessite des snapshots)
+    // Génère une courbe interpolée depuis le début du projet jusqu'à la semaine courante
+    // pour que le graphique ait au moins 2 points et puisse s'afficher.
     const currentWeek = getWeekNumber(today);
-    const trendHistory: { semaine: number; reel: number; ideal: number }[] = [
-      {
-        semaine: currentWeek,
-        reel: Math.round(avancementGlobal * 10) / 10,
-        ideal: Math.round(expectedProgress * 10) / 10,
-      },
-    ];
+    const projectStartWeek = getWeekNumber(projectStart);
+    const weeksElapsed = Math.max(1, Math.round(elapsedDays / 7));
+    const trendHistory: { semaine: number; reel: number; ideal: number }[] = [];
+
+    // Générer des points depuis le début du projet (interpolation linéaire pour le réel)
+    const numPoints = Math.min(weeksElapsed, 12); // max 12 points pour lisibilité
+    for (let i = 0; i <= numPoints; i++) {
+      const fraction = numPoints > 0 ? i / numPoints : 1;
+      const weekNum = Math.round(projectStartWeek + fraction * (currentWeek - projectStartWeek));
+      const idealAtPoint = Math.round(fraction * (totalDays > 0 ? (elapsedDays * fraction) / totalDays * 100 : 0) * 10) / 10;
+      // Interpolation du réel : le seul point fiable est le point final (avancementGlobal)
+      const reelAtPoint = Math.round(avancementGlobal * fraction * 10) / 10;
+
+      trendHistory.push({
+        semaine: weekNum,
+        reel: i === numPoints ? Math.round(avancementGlobal * 10) / 10 : reelAtPoint,
+        ideal: i === numPoints ? Math.round(expectedProgress * 10) / 10 : Math.round(expectedProgress * fraction * 10) / 10,
+      });
+    }
+
+    // === Actions groupées (non terminées, non annulées) ===
+    const actionsActives = allActions.filter(
+      (a) => a.statut !== 'termine' && a.statut !== 'annule'
+    );
+
+    // --- Par échéance ---
+    const echeanceGroups: Record<string, Action[]> = {};
+    const echeanceOrder: string[] = [];
+    for (const a of actionsActives) {
+      const deadline = a.date_fin_prevue;
+      let groupLabel: string;
+      if (!deadline) {
+        groupLabel = 'Sans échéance';
+      } else if (deadline < todayStr) {
+        groupLabel = 'En retard';
+      } else {
+        // Semaine de l'échéance
+        const d = new Date(deadline);
+        const wk = getWeekNumber(d);
+        groupLabel = `S${wk} — ${deadline.split('-').reverse().join('/')}`;
+      }
+      if (!echeanceGroups[groupLabel]) {
+        echeanceGroups[groupLabel] = [];
+        echeanceOrder.push(groupLabel);
+      }
+      echeanceGroups[groupLabel].push(a);
+    }
+    // Trier : "En retard" en premier, puis par date, "Sans échéance" en dernier
+    echeanceOrder.sort((a, b) => {
+      if (a === 'En retard') return -1;
+      if (b === 'En retard') return 1;
+      if (a === 'Sans échéance') return 1;
+      if (b === 'Sans échéance') return -1;
+      return a.localeCompare(b);
+    });
+    const actionsByEcheance: ActionsByGroup[] = echeanceOrder.map((label) => ({
+      label,
+      actions: echeanceGroups[label].sort((a, b) =>
+        (a.date_fin_prevue ?? '').localeCompare(b.date_fin_prevue ?? '')
+      ),
+    }));
+
+    // --- Par priorité ---
+    const prioLabels: Record<string, string> = {
+      critique: 'Critique',
+      haute: 'Haute',
+      moyenne: 'Moyenne',
+      basse: 'Basse',
+    };
+    const prioOrder = ['critique', 'haute', 'moyenne', 'basse'];
+    const actionsByPriorite: ActionsByGroup[] = prioOrder
+      .map((p) => ({
+        label: prioLabels[p] ?? p,
+        actions: actionsActives
+          .filter((a) => (a.priorite ?? 'moyenne') === p)
+          .sort((a, b) => (a.date_fin_prevue ?? '').localeCompare(b.date_fin_prevue ?? '')),
+      }))
+      .filter((g) => g.actions.length > 0);
+
+    // --- Par responsable ---
+    const respGroups: Record<string, Action[]> = {};
+    const respOrder: string[] = [];
+    for (const a of actionsActives) {
+      const resp = a.responsable || 'Non assigné';
+      if (!respGroups[resp]) {
+        respGroups[resp] = [];
+        respOrder.push(resp);
+      }
+      respGroups[resp].push(a);
+    }
+    respOrder.sort((a, b) => {
+      if (a === 'Non assigné') return 1;
+      if (b === 'Non assigné') return -1;
+      return a.localeCompare(b);
+    });
+    const actionsByResponsable: ActionsByGroup[] = respOrder.map((label) => ({
+      label,
+      actions: respGroups[label].sort((a, b) =>
+        (a.date_fin_prevue ?? '').localeCompare(b.date_fin_prevue ?? '')
+      ),
+    }));
 
     return {
       projectName,
@@ -453,6 +556,9 @@ export function useWeeklyReportData(): WeeklyReportData {
       prochainsMilestones,
       topRisques,
       focusSemaineProchaine,
+      actionsByEcheance,
+      actionsByPriorite,
+      actionsByResponsable,
       projection,
       trendHistory,
     };
@@ -491,6 +597,9 @@ export function useWeeklyReportData(): WeeklyReportData {
     prochainsMilestones: derived?.prochainsMilestones ?? [],
     topRisques: derived?.topRisques ?? [],
     focusSemaineProchaine: derived?.focusSemaineProchaine ?? [],
+    actionsByEcheance: derived?.actionsByEcheance ?? [],
+    actionsByPriorite: derived?.actionsByPriorite ?? [],
+    actionsByResponsable: derived?.actionsByResponsable ?? [],
     projection: derived?.projection ?? { ratioProgression: 0, finEstimee: null, cible: '', retardJours: 0, projectionDisponible: false },
     trendHistory: derived?.trendHistory ?? [],
     confidenceScore,

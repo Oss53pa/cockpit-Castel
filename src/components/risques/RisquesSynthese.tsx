@@ -147,7 +147,7 @@ export function RisquesSynthese() {
           <div className="bg-warning-50 rounded-lg p-4 text-center border border-warning-200">
             <div className="text-3xl font-bold text-warning-700">{syntheseRisques.parNiveau.majeur}</div>
             <div className="text-sm text-warning-600 font-medium">Majeurs</div>
-            <div className="text-xs text-warning-500 mt-1">Score 8-11</div>
+            <div className="text-xs text-warning-500 mt-1">Score 10-15</div>
           </div>
           <div className="bg-info-50 rounded-lg p-4 text-center border border-info-200">
             <div className="text-3xl font-bold text-info-700">{syntheseRisques.parNiveau.modere}</div>

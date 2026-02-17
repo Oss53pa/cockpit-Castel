@@ -318,7 +318,7 @@ export function RisquesTop10() {
           </div>
           <div className="bg-warning-50 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-warning-700">{majeurCount}</div>
-            <div className="text-xs text-warning-600">Majeurs (Score 8-11)</div>
+            <div className="text-xs text-warning-600">Majeurs (Score 10-15)</div>
           </div>
           <div className="bg-primary-50 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-primary-700">{synthese.total}</div>
@@ -358,15 +358,15 @@ export function RisquesTop10() {
         <span className="text-primary-500 font-medium">Légende criticité:</span>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-error-500" />
-          <span>Critique (12-16)</span>
+          <span>Critique (16-25)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-warning-500" />
-          <span>Majeur (8-11)</span>
+          <span>Majeur (10-15)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-info-500" />
-          <span>Modéré (4-7)</span>
+          <span>Modéré (5-9)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-success-500" />

@@ -481,9 +481,9 @@ function Proph3tHealthPanel() {
                 <span className="font-medium">{dbStats.totalJalons}</span>
                 <span className="text-primary-500">Risques totaux:</span>
                 <span className="font-medium">{dbStats.totalRisques}</span>
-                <span className="text-primary-500">- Critiques (≥12):</span>
+                <span className="text-primary-500">- Critiques (≥16):</span>
                 <span className="font-medium text-error-600">{dbStats.risquesCritiques}</span>
-                <span className="text-primary-500">- Majeurs (8-11):</span>
+                <span className="text-primary-500">- Majeurs (10-15):</span>
                 <span className="font-medium text-warning-600">{dbStats.risquesMajeurs}</span>
                 <span className="text-primary-500">Alertes totales:</span>
                 <span className="font-medium">{dbStats.totalAlertes}</span>

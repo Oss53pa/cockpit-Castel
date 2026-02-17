@@ -2774,15 +2774,15 @@ export function Exco() {
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="bg-red-50 rounded-lg p-2 border border-red-200 text-center">
                   <div className="text-xl font-bold text-red-600">{criticalRisques12.length}</div>
-                  <div className="text-[10px] text-red-700">Critiques (≥12)</div>
+                  <div className="text-[10px] text-red-700">Critiques (≥16)</div>
                 </div>
                 <div className="bg-orange-50 rounded-lg p-2 border border-orange-200 text-center">
                   <div className="text-xl font-bold text-orange-600">{highRisques12.length}</div>
-                  <div className="text-[10px] text-orange-700">Élevés (8-11)</div>
+                  <div className="text-[10px] text-orange-700">Élevés (10-15)</div>
                 </div>
                 <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200 text-center">
                   <div className="text-xl font-bold text-yellow-600">{mediumRisques12.length}</div>
-                  <div className="text-[10px] text-yellow-700">Modérés (4-7)</div>
+                  <div className="text-[10px] text-yellow-700">Modérés (5-9)</div>
                 </div>
               </div>
 
@@ -3559,7 +3559,7 @@ export function Exco() {
                     )}
                     {highRisques19.length > 0 && (
                       <div>
-                        <div className="text-[9px] text-orange-600 font-medium mb-0.5">Eleves (score 8-11):</div>
+                        <div className="text-[9px] text-orange-600 font-medium mb-0.5">Eleves (score 10-15):</div>
                         {highRisques19.slice(0, 2).map((r, idx) => (
                           <div key={idx} className="bg-white rounded p-1 mb-0.5 border-l-2 border-orange-500">
                             <div className="text-[9px] font-medium text-gray-800">{r.titre}</div>
@@ -3821,10 +3821,10 @@ export function Exco() {
               {/* Légende */}
               <div className="flex justify-center gap-4 mt-3 pt-3 border-t">
                 {[
-                  { label: 'Critique (≥12)', color: '#E11D48' },
-                  { label: 'Élevé (8-11)', color: '#F97316' },
-                  { label: 'Modéré (4-7)', color: '#EAB308' },
-                  { label: 'Faible (1-3)', color: '#059669' },
+                  { label: 'Critique (≥16)', color: '#E11D48' },
+                  { label: 'Élevé (10-15)', color: '#F97316' },
+                  { label: 'Modéré (5-9)', color: '#EAB308' },
+                  { label: 'Faible (1-4)', color: '#059669' },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }} />

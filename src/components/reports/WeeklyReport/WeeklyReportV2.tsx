@@ -15,6 +15,7 @@ import type {
   MilestonePreview,
   TopRisque,
   WeeklyProjection,
+  ActionsByGroup,
 } from './useWeeklyReportData';
 import type { Action, Risque } from '@/types';
 
@@ -636,8 +637,12 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 6. DECISIONS & ARBITRAGES */}
       {/* ================================================================ */}
-      {data.pendingDecisions.length > 0 && (
-        <WSection title="Décisions & Arbitrages en attente" number={4}>
+      <WSection title="Décisions & Arbitrages en attente" number={4}>
+        {data.pendingDecisions.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune décision en attente.</div>
+          </WCard>
+        ) : (
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {data.pendingDecisions.slice(0, 4).map((a) => (
               <WCard
@@ -654,11 +659,11 @@ export function WeeklyReportV2() {
                 <div style={{ fontSize: 12, color: C.gray500, marginBottom: 6 }}>
                   Axe : {AXES_V5.find((ax) => ax.dbCode === a.axe)?.labelCourt ?? a.axe}
                 </div>
-                {a.decisions_attendues && (
+                {a.decisions_attendues && a.decisions_attendues.length > 0 && (
                   <div style={{ fontSize: 12, color: C.navy, background: C.gray50, padding: '6px 8px', borderRadius: 6 }}>
                     {a.decisions_attendues.slice(0, 2).map((d, i) => (
                       <div key={i} style={{ marginBottom: 2 }}>
-                        • {typeof d === 'string' ? d : (d as { description?: string }).description ?? ''}
+                        • {typeof d === 'string' ? d : d.sujet ?? ''}
                       </div>
                     ))}
                   </div>
@@ -666,13 +671,13 @@ export function WeeklyReportV2() {
               </WCard>
             ))}
           </div>
-        </WSection>
-      )}
+        )}
+      </WSection>
 
       {/* ================================================================ */}
       {/* 7. AVANCEMENT PAR AXE */}
       {/* ================================================================ */}
-      <WSection title="Avancement par axe" number={data.pendingDecisions.length > 0 ? 5 : 4}>
+      <WSection title="Avancement par axe" number={5}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           {data.axesData.map((axe) => (
             <WCard key={axe.id} style={{ padding: '14px 16px' }}>
@@ -722,7 +727,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 8. PROCHAINS JALONS 14j */}
       {/* ================================================================ */}
-      <WSection title="Prochains jalons (14 jours)" number={data.pendingDecisions.length > 0 ? 6 : 5}>
+      <WSection title="Prochains jalons (14 jours)" number={6}>
         {data.prochainsMilestones.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun jalon prévu dans les 14 prochains jours.</div>
@@ -797,7 +802,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 9. TOP 5 RISQUES */}
       {/* ================================================================ */}
-      <WSection title="Top 5 risques actifs" number={data.pendingDecisions.length > 0 ? 7 : 6}>
+      <WSection title="Top 5 risques actifs" number={7}>
         {data.topRisques.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun risque actif identifié.</div>
@@ -843,7 +848,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 10. FOCUS S+1 */}
       {/* ================================================================ */}
-      <WSection title="Focus semaine prochaine" number={data.pendingDecisions.length > 0 ? 8 : 7}>
+      <WSection title="Focus semaine prochaine" number={8}>
         {data.focusSemaineProchaine.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action prioritaire identifiée pour la semaine prochaine.</div>
@@ -908,9 +913,205 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 11. PROJECTION */}
+      {/* 9. VUE PAR ÉCHÉANCE */}
       {/* ================================================================ */}
-      <WSection title="Projection" number={data.pendingDecisions.length > 0 ? 9 : 8}>
+      <WSection title="Actions par échéance" number={9}>
+        {data.actionsByEcheance.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+          </WCard>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {data.actionsByEcheance.map((group) => (
+              <WCard key={group.label} style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: group.label === 'En retard' ? C.red : C.navy,
+                      background: group.label === 'En retard' ? C.redBg : C.gray50,
+                      padding: '3px 10px',
+                      borderRadius: 12,
+                    }}
+                  >
+                    {group.label}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.gray400 }}>
+                    {group.actions.length} action{group.actions.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {group.actions.slice(0, 8).map((a, i) => (
+                    <div
+                      key={a.id ?? i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '4px 0',
+                        borderBottom: i < Math.min(group.actions.length, 8) - 1 ? `1px solid ${C.gray100}` : 'none',
+                        fontSize: 12,
+                      }}
+                    >
+                      <WStatusDot color={prioriteColor(a.priorite)} />
+                      <span style={{ flex: 1, fontWeight: 500, color: C.navy }}>{a.titre}</span>
+                      <span style={{ fontSize: 11, color: C.gray400, minWidth: 60, textAlign: 'right' }}>
+                        {formatDate(a.date_fin_prevue)}
+                      </span>
+                      <span style={{ fontSize: 11, color: C.gray400, minWidth: 80, textAlign: 'right' }}>
+                        {a.responsable || '—'}
+                      </span>
+                    </div>
+                  ))}
+                  {group.actions.length > 8 && (
+                    <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
+                      + {group.actions.length - 8} autre{group.actions.length - 8 > 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </WCard>
+            ))}
+          </div>
+        )}
+      </WSection>
+
+      {/* ================================================================ */}
+      {/* 10. VUE PAR PRIORITÉ */}
+      {/* ================================================================ */}
+      <WSection title="Actions par priorité" number={10}>
+        {data.actionsByPriorite.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+          </WCard>
+        ) : (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {data.actionsByPriorite.map((group) => {
+              const prioColorMap: Record<string, string> = {
+                Critique: C.red,
+                Haute: C.orange,
+                Moyenne: C.gold,
+                Basse: C.gray400,
+              };
+              const groupColor = prioColorMap[group.label] ?? C.gray400;
+              return (
+                <WCard
+                  key={group.label}
+                  style={{
+                    flex: '1 1 200px',
+                    borderTop: `3px solid ${groupColor}`,
+                    padding: '14px 16px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: groupColor }}>{group.label}</span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: groupColor + '22',
+                        color: groupColor,
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                      }}
+                    >
+                      {group.actions.length}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {group.actions.slice(0, 6).map((a, i) => (
+                      <div
+                        key={a.id ?? i}
+                        style={{
+                          padding: '4px 0',
+                          borderBottom: i < Math.min(group.actions.length, 6) - 1 ? `1px solid ${C.gray100}` : 'none',
+                          fontSize: 12,
+                        }}
+                      >
+                        <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
+                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
+                          {formatDate(a.date_fin_prevue)} — {a.responsable || 'Non assigné'}
+                        </div>
+                      </div>
+                    ))}
+                    {group.actions.length > 6 && (
+                      <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
+                        + {group.actions.length - 6} autre{group.actions.length - 6 > 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
+                </WCard>
+              );
+            })}
+          </div>
+        )}
+      </WSection>
+
+      {/* ================================================================ */}
+      {/* 11. VUE PAR RESPONSABLE */}
+      {/* ================================================================ */}
+      <WSection title="Actions par responsable" number={11}>
+        {data.actionsByResponsable.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune action active.</div>
+          </WCard>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
+            {data.actionsByResponsable.map((group) => (
+              <WCard key={group.label} style={{ padding: '14px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{group.label}</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background: C.navy + '15',
+                      color: C.navy,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                    }}
+                  >
+                    {group.actions.length}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {group.actions.slice(0, 6).map((a, i) => (
+                    <div
+                      key={a.id ?? i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '4px 0',
+                        borderBottom: i < Math.min(group.actions.length, 6) - 1 ? `1px solid ${C.gray100}` : 'none',
+                        fontSize: 12,
+                      }}
+                    >
+                      <WStatusDot color={prioriteColor(a.priorite)} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 500, color: C.navy }}>{a.titre}</div>
+                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 1 }}>
+                          {formatDate(a.date_fin_prevue)} — {a.priorite}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {group.actions.length > 6 && (
+                    <div style={{ fontSize: 11, color: C.gray400, paddingTop: 4 }}>
+                      + {group.actions.length - 6} autre{group.actions.length - 6 > 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </WCard>
+            ))}
+          </div>
+        )}
+      </WSection>
+
+      {/* ================================================================ */}
+      {/* 12. PROJECTION */}
+      {/* ================================================================ */}
+      <WSection title="Projection" number={12}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4 }}>RATIO PROGRESSION</div>
@@ -950,10 +1151,10 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 12. PROPH3T IA */}
+      {/* 13. PROPH3T IA */}
       {/* ================================================================ */}
       {data.confidenceScore && (
-        <WSection title="PROPH3T — Score de Confiance" number={data.pendingDecisions.length > 0 ? 10 : 9}>
+        <WSection title="PROPH3T — Score de Confiance" number={13}>
           <WCard
             style={{
               borderLeft: `4px solid ${
@@ -1022,9 +1223,9 @@ export function WeeklyReportV2() {
       )}
 
       {/* ================================================================ */}
-      {/* 13. NOTES */}
+      {/* 14. NOTES */}
       {/* ================================================================ */}
-      <WSection title="Notes & commentaires" number={data.pendingDecisions.length > 0 ? 11 : 10}>
+      <WSection title="Notes & commentaires" number={14}>
         <WCard>
           <textarea
             value={data.notes}

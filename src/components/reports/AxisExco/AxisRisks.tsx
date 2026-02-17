@@ -156,7 +156,7 @@ export function AxisRisks({ risques, axeColor }: AxisRisksProps) {
           'p-3 rounded-lg',
           stats.critiques > 0 ? 'bg-error-100' : 'bg-success-100'
         )}>
-          <p className="text-xs text-gray-600">Critiques (≥12)</p>
+          <p className="text-xs text-gray-600">Critiques (≥16)</p>
           <p className={cn(
             'text-2xl font-bold',
             stats.critiques > 0 ? 'text-error-600' : 'text-success-600'
