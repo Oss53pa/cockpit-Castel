@@ -314,6 +314,30 @@ export function AxeSlide({ data, axeId, printMode }: Props) {
                       {isLate ? 'En retard' : badge.label}
                     </span>
                   </div>
+
+                  {/* Sous-tâches */}
+                  {action.sous_taches && (action.sous_taches as Array<{ id: string; libelle: string; responsableId?: number | null; echeance?: string | null; fait: boolean; avancement?: number }>).length > 0 && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.gray200}` }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: C.gray500, marginBottom: 4 }}>
+                        Sous-tâches ({(action.sous_taches as Array<{ fait: boolean }>).filter(s => s.fait).length}/{(action.sous_taches as Array<{ fait: boolean }>).length})
+                      </div>
+                      {(action.sous_taches as Array<{ id: string; libelle: string; responsableId?: number | null; echeance?: string | null; fait: boolean; avancement?: number }>).map(st => (
+                        <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: C.gray500, padding: '1px 0' }}>
+                          <span style={{ color: st.fait ? C.green : C.gray400 }}>
+                            {st.fait ? '✓' : '○'}
+                          </span>
+                          <span style={{ flex: 1, textDecoration: st.fait ? 'line-through' : 'none', color: st.fait ? C.gray400 : C.navy }}>
+                            {st.libelle}
+                          </span>
+                          {st.echeance && (
+                            <span style={{ fontSize: 10, color: C.gray400 }}>
+                              {formatDate(st.echeance)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

@@ -181,6 +181,32 @@ export function ActionsPrioritairesSlide({
                     </div>
                   )}
 
+                  {action.sousTaches && action.sousTaches.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <span className="text-xs text-gray-400">
+                        Sous-tâches ({action.sousTaches.filter(s => s.fait).length}/{action.sousTaches.length})
+                      </span>
+                      <div className="mt-1 space-y-0.5">
+                        {action.sousTaches.map((st) => (
+                          <div key={st.id} className="flex items-center gap-2 text-xs text-gray-600">
+                            <span className={st.fait ? 'text-green-500' : 'text-gray-400'}>
+                              {st.fait ? '✓' : '○'}
+                            </span>
+                            <span className={`flex-1 ${st.fait ? 'line-through text-gray-400' : ''}`}>
+                              {st.libelle}
+                            </span>
+                            {st.responsable && (
+                              <span className="text-gray-400 truncate max-w-[60px]">{st.responsable}</span>
+                            )}
+                            {st.echeance && (
+                              <span className="text-gray-400">{formatDate(st.echeance)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {action.risqueAssocie && (
                     <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
                       <AlertCircle className="h-3 w-3" />

@@ -503,6 +503,7 @@ export interface ActionPrioritaireM1 {
   priorite: 'critique' | 'haute' | 'moyenne';
   livrables: string[];
   risqueAssocie?: string;
+  sousTaches?: Array<{ id: string; libelle: string; responsable?: string; echeance?: string | null; fait: boolean; avancement?: number }>;
 }
 
 export interface JalonM1 {

@@ -280,6 +280,8 @@ export function AxisActions({ actions, users, axeColor }: AxisActionsProps) {
                     const VelocityIcon = velocity.trend === 'up' ? TrendingUp :
                       velocity.trend === 'down' ? TrendingDown : Minus;
 
+                    const sousTaches = (action as Action & { sous_taches?: Array<{ id: string; libelle: string; responsableId?: number | null; echeance?: string | null; fait: boolean; avancement?: number }> }).sous_taches;
+
                     return (
                       <TableRow key={action.id} className={cn(
                         'hover:bg-gray-50',
@@ -292,6 +294,36 @@ export function AxisActions({ actions, users, axeColor }: AxisActionsProps) {
                               <p className="text-xs text-gray-500 line-clamp-1">
                                 {action.description}
                               </p>
+                            )}
+                            {sousTaches && sousTaches.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-gray-100">
+                                <p className="text-xs font-semibold text-gray-500 mb-1">
+                                  Sous-tâches ({sousTaches.filter(s => s.fait).length}/{sousTaches.length})
+                                </p>
+                                <div className="space-y-0.5">
+                                  {sousTaches.map((st) => (
+                                    <div key={st.id} className="flex items-center gap-2 text-xs text-gray-600">
+                                      <span className={st.fait ? 'text-success-500' : 'text-gray-400'}>
+                                        {st.fait ? '✓' : '○'}
+                                      </span>
+                                      <span className={`flex-1 ${st.fait ? 'line-through text-gray-400' : ''}`}>
+                                        {st.libelle}
+                                      </span>
+                                      {st.responsableId && (
+                                        <span className="text-gray-400 flex items-center gap-0.5">
+                                          <User className="h-3 w-3" />
+                                          {getResponsable(st.responsableId)}
+                                        </span>
+                                      )}
+                                      {st.echeance && (
+                                        <span className="text-gray-400">
+                                          {new Date(st.echeance).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
                         </TableCell>

@@ -189,40 +189,76 @@ export function ActionsByAxis({
                   <tbody>
                     {actions.map((action) => {
                       const { status, color, icon: StatusIcon } = getActionStatus(action);
+                      const sousTaches = (action as Action & { sous_taches?: Array<{ id: string; libelle: string; responsableId?: number | null; echeance?: string | null; fait: boolean; avancement?: number }> }).sous_taches;
                       return (
-                        <tr
-                          key={action.id}
-                          className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors"
-                        >
-                          <td className="p-3">
-                            <span className="font-medium text-zinc-900 text-sm">
-                              {action.titre}
-                            </span>
-                            {action.code && (
-                              <span className="ml-2 text-xs text-zinc-500">
-                                ({action.code})
+                        <React.Fragment key={action.id}>
+                          <tr className="border-b border-zinc-100 hover:bg-zinc-50 transition-colors">
+                            <td className="p-3">
+                              <span className="font-medium text-zinc-900 text-sm">
+                                {action.titre}
                               </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-sm text-zinc-600">
-                            {action.responsable || 'Non assigné'}
-                          </td>
-                          <td className="p-3 text-center text-sm text-zinc-600">
-                            {formatDate(action.date_debut)}
-                          </td>
-                          <td className="p-3 text-center text-sm text-zinc-600">
-                            {formatDate(action.date_fin_prevue)}
-                          </td>
-                          <td className="p-3">
-                            <ProgressBar value={action.avancement || 0} />
-                          </td>
-                          <td className="p-3">
-                            <div className={`flex items-center justify-center gap-1 text-xs font-medium ${color}`}>
-                              <StatusIcon className="h-3.5 w-3.5" />
-                              <span>{status}</span>
-                            </div>
-                          </td>
-                        </tr>
+                              {action.code && (
+                                <span className="ml-2 text-xs text-zinc-500">
+                                  ({action.code})
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-sm text-zinc-600">
+                              {action.responsable || 'Non assigné'}
+                            </td>
+                            <td className="p-3 text-center text-sm text-zinc-600">
+                              {formatDate(action.date_debut)}
+                            </td>
+                            <td className="p-3 text-center text-sm text-zinc-600">
+                              {formatDate(action.date_fin_prevue)}
+                            </td>
+                            <td className="p-3">
+                              <ProgressBar value={action.avancement || 0} />
+                            </td>
+                            <td className="p-3">
+                              <div className={`flex items-center justify-center gap-1 text-xs font-medium ${color}`}>
+                                <StatusIcon className="h-3.5 w-3.5" />
+                                <span>{status}</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {sousTaches && sousTaches.length > 0 && (
+                            <tr className="border-b border-zinc-100 bg-zinc-50/50">
+                              <td colSpan={6} className="px-3 py-2 pl-8">
+                                <div className="text-xs font-semibold text-zinc-500 mb-1">
+                                  Sous-tâches ({sousTaches.filter(s => s.fait).length}/{sousTaches.length})
+                                </div>
+                                <div className="space-y-1">
+                                  {sousTaches.map((st) => (
+                                    <div key={st.id} className="flex items-center gap-3 text-xs text-zinc-600">
+                                      <span className={st.fait ? 'text-green-500' : 'text-zinc-400'}>
+                                        {st.fait ? '✓' : '○'}
+                                      </span>
+                                      <span className={`flex-1 ${st.fait ? 'line-through text-zinc-400' : ''}`}>
+                                        {st.libelle}
+                                      </span>
+                                      {st.responsableId && (
+                                        <span className="text-zinc-500">
+                                          {action.responsable || '-'}
+                                        </span>
+                                      )}
+                                      {st.echeance && (
+                                        <span className="text-zinc-500">
+                                          {formatDate(st.echeance)}
+                                        </span>
+                                      )}
+                                      {st.avancement !== undefined && (
+                                        <span className="text-zinc-500 font-medium w-8 text-right">
+                                          {st.avancement}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>

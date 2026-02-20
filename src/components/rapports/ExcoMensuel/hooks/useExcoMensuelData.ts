@@ -627,6 +627,13 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
         dateLimite: a.date_fin_prevue || '',
         priorite: (a.priorite === 'critique' || a.priorite === 'haute') ? a.priorite as 'critique' | 'haute' : 'moyenne',
         livrables: [],
+        sousTaches: (a as typeof a & { sous_taches?: Array<{ id: string; libelle: string; responsableId?: number | null; echeance?: string | null; fait: boolean; avancement?: number }> }).sous_taches?.map(st => ({
+          id: st.id,
+          libelle: st.libelle,
+          echeance: st.echeance,
+          fait: st.fait,
+          avancement: st.avancement,
+        })),
       })),
       jalonsM1: jalonsM1.map(j => ({
         id: j.id?.toString() || '',
