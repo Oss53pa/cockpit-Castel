@@ -178,7 +178,11 @@ export interface ExternalUpdateData {
         sujet: string;
         responsableId?: number | null;
         responsableNom?: string;
+        responsableIds?: number[];
+        responsableNoms?: string[];
         dateCreation: string;
+        transmis?: boolean;
+        dateTransmission?: string;
       }>;
       decisionsAttendues?: Array<{
         id: string;

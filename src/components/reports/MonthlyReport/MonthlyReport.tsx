@@ -8,6 +8,10 @@ import { useState, useRef, useCallback } from "react";
 import { C } from '@/components/rapports/ExcoMensuelV5/constants';
 import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
 import { useMonthlyReportData } from './useMonthlyReportData';
+import { useActions } from '@/hooks/useActions';
+import { useJalons } from '@/hooks/useJalons';
+import { useRisques } from '@/hooks/useRisques';
+import { useAvancementGlobal } from '@/hooks/useDashboard';
 
 /** Round to max 2 decimal places */
 const f2 = (v: number) => Math.round(v * 100) / 100;
@@ -120,9 +124,34 @@ export function MonthlyReport() {
   const reportRef = useRef<HTMLDivElement>(null);
   const d = useMonthlyReportData();
 
+  // Data hooks for email stats
+  const allActions = useActions();
+  const allJalons = useJalons();
+  const allRisques = useRisques();
+  const avancementGlobal = useAvancementGlobal();
+
   const generateReportHtml = useCallback(() => {
     return reportRef.current?.innerHTML ?? '';
   }, []);
+
+  const getReportData = useCallback(() => {
+    const now = new Date();
+    const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const monthLabel = `${MONTHS_FR[now.getMonth()]} ${now.getFullYear()}`;
+    const risquesActifs = (allRisques ?? []).filter(r => r.status !== 'closed' && r.status !== 'ferme');
+    return {
+      moisCourant: monthLabel,
+      allActions: allActions ?? [],
+      allJalons: allJalons ?? [],
+      allRisques: risquesActifs,
+      avancementGlobal: avancementGlobal ?? 0,
+      kpis: {
+        totalActions: (allActions ?? []).length,
+        jalonsTotal: (allJalons ?? []).length,
+        totalRisques: risquesActifs.length,
+      },
+    } as any;
+  }, [allActions, allJalons, allRisques, avancementGlobal]);
 
   if (!d) {
     return (
@@ -141,6 +170,7 @@ export function MonthlyReport() {
   const nextMonthName = d.nextMonthLabel.replace(' (à venir)', '');
 
   return (
+    <>
     <div ref={reportRef} style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 50%, ${C.navyMid} 100%)`, color: C.white, padding: "28px 32px" }}>
@@ -507,16 +537,18 @@ export function MonthlyReport() {
           <div style={{ fontSize: 10, color: C.gray400, marginTop: 4 }}>Document confidentiel — Diffusion restreinte COPIL & Direction Générale</div>
         </div>
       </div>
-
-      {/* SendReportModal */}
-      <SendReportModal
-        isOpen={showSendModal}
-        onClose={() => setShowSendModal(false)}
-        presentationDate={d.month}
-        generateHtml={generateReportHtml}
-        reportTitle="Rapport Mensuel"
-      />
     </div>
+
+    {/* SendReportModal — outside reportRef to avoid capturing modal HTML in shared report */}
+    <SendReportModal
+      isOpen={showSendModal}
+      onClose={() => setShowSendModal(false)}
+      presentationDate={d.month}
+      generateHtml={generateReportHtml}
+      getData={getReportData}
+      reportTitle="Rapport Mensuel"
+    />
+    </>
   );
 }
 

@@ -1353,8 +1353,11 @@ export interface Action {
     sujet: string;
     responsableId?: number | null;
     responsableNom?: string;
+    responsableIds?: number[];
+    responsableNoms?: string[];
     dateCreation: string;
     transmis?: boolean;
+    dateTransmission?: string;
   }>;
 
   // Legacy

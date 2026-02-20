@@ -1721,6 +1721,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
               presentationDate={presentationDate}
               generateHtml={generateHtml}
               getData={() => v5Ref.current?.getData()}
+              reportTitle="EXCO Mensuel"
             />
           </div>
         </TabsContent>

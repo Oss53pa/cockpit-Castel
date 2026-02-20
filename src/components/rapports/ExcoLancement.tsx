@@ -1546,13 +1546,13 @@ function SlidePointsAttention() {
         const points = (action as any).points_attention || [];
         points
           .filter((point: { transmis?: boolean }) => !point.transmis) // Seulement les non cochés
-          .forEach((point: { id: string; sujet: string; responsableNom?: string; dateCreation: string; transmis?: boolean }) => {
+          .forEach((point: { id: string; sujet: string; responsableNom?: string; responsableNoms?: string[]; dateCreation: string; transmis?: boolean }) => {
             idx++;
             allPoints.push({
               numero: idx,
               sujet: point.sujet,
               responsable: action.responsable || '-',
-              responsablePoint: point.responsableNom,
+              responsablePoint: point.responsableNoms?.join(', ') || point.responsableNom,
               actionTitre: action.titre,
               axe: action.axe,
             });
@@ -2127,11 +2127,32 @@ export function ExcoLancement() {
   const actions = useActions();
   const jalons = useJalons();
   const risques = useRisques();
+  const avancementGlobalVal = useAvancementGlobal();
   const budgetSynthese = useBudgetSynthese();
   const budgetParAxe = useBudgetParAxe();
   const currentSite = useCurrentSite();
   const allSites = useSites();
   const users = useUsers(); // Utilisateurs depuis la DB
+
+  // Provide data for SendReportModal email stats
+  const getReportData = useCallback(() => {
+    const now = new Date();
+    const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const monthLabel = `${MONTHS_FR[now.getMonth()]} ${now.getFullYear()}`;
+    const risquesActifs = (risques ?? []).filter(r => r.status !== 'closed' && r.status !== 'ferme');
+    return {
+      moisCourant: monthLabel,
+      allActions: actions ?? [],
+      allJalons: jalons ?? [],
+      allRisques: risquesActifs,
+      avancementGlobal: avancementGlobalVal ?? 0,
+      kpis: {
+        totalActions: (actions ?? []).length,
+        jalonsTotal: (jalons ?? []).length,
+        totalRisques: risquesActifs.length,
+      },
+    } as any;
+  }, [actions, jalons, risques, avancementGlobalVal]);
 
   // Mapping des rôles vers titres professionnels
   const ROLE_TITRES: Record<string, string> = {
@@ -3150,6 +3171,7 @@ export function ExcoLancement() {
         onClose={() => setShowSendModal(false)}
         presentationDate={presentationDate}
         generateHtml={generateHtmlContent}
+        getData={getReportData}
         reportTitle="EXCO Lancement"
       />
     </div>

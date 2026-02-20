@@ -960,7 +960,7 @@ export function Exco() {
           grouped[axe].push({
             id: p.id,
             sujet: p.sujet,
-            responsableNom: p.responsableNom,
+            responsableNom: p.responsableNoms?.join(', ') || p.responsableNom,
             actionTitre: action.titre,
           });
         }

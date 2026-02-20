@@ -102,8 +102,10 @@ interface Note {
 interface PointAttention {
   id: string;
   sujet: string;
-  responsableId: number | null;
-  responsableNom?: string;
+  responsableId?: number | null; // Legacy single responsable
+  responsableNom?: string; // Legacy single nom
+  responsableIds?: number[]; // Multiple responsables
+  responsableNoms?: string[]; // Multiple noms
   dateCreation: string;
   transmis?: boolean;
   dateTransmission?: string;
@@ -486,19 +488,40 @@ export function ActionFormContent({
     setPointsAttention([...pointsAttention, {
       id: crypto.randomUUID(),
       sujet: '',
-      responsableId: null,
-      responsableNom: '',
+      responsableIds: [],
+      responsableNoms: [],
       dateCreation: new Date().toISOString(),
     }]);
   };
 
-  const handleUpdatePointAttention = (index: number, field: keyof PointAttention, value: PointAttention[keyof PointAttention]) => {
-    const updates: Partial<PointAttention> = { [field]: value };
-    if (field === 'responsableId' && value) {
-      const user = users.find(u => u.id === value);
-      if (user) updates.responsableNom = `${user.prenom} ${user.nom}`;
-    }
-    setPointsAttention(updateItemAt(pointsAttention, index, updates));
+  const handleUpdatePointAttention = (index: number, updates: Partial<PointAttention>) => {
+    setPointsAttention(prev => updateItemAt(prev, index, updates));
+  };
+
+  const handleTogglePointAttentionResponsable = (index: number, userId: number) => {
+    setPointsAttention(prev => {
+      const pa = prev[index];
+      const currentIds = pa.responsableIds || (pa.responsableId ? [pa.responsableId] : []);
+      const currentNoms = pa.responsableNoms || (pa.responsableNom ? [pa.responsableNom] : []);
+      const existingIdx = currentIds.indexOf(userId);
+      let newIds: number[];
+      let newNoms: string[];
+      if (existingIdx >= 0) {
+        newIds = currentIds.filter((_, i) => i !== existingIdx);
+        newNoms = currentNoms.filter((_, i) => i !== existingIdx);
+      } else {
+        const user = users.find(u => u.id === userId);
+        newIds = [...currentIds, userId];
+        newNoms = [...currentNoms, user ? `${user.prenom} ${user.nom}` : ''];
+      }
+      return updateItemAt(prev, index, {
+        responsableIds: newIds,
+        responsableNoms: newNoms,
+        // Backward compat: keep first responsable in legacy fields
+        responsableId: newIds[0] ?? null,
+        responsableNom: newNoms[0] ?? '',
+      });
+    });
   };
 
   const handleRemovePointAttention = (index: number) => {
@@ -514,8 +537,8 @@ export function ActionFormContent({
     }]);
   };
 
-  const handleUpdateDecisionAttendue = (index: number, field: keyof DecisionAttendue, value: DecisionAttendue[keyof DecisionAttendue]) => {
-    setDecisionsAttendues(updateItemAt(decisionsAttendues, index, { [field]: value }));
+  const handleUpdateDecisionAttendue = (index: number, updates: Partial<DecisionAttendue>) => {
+    setDecisionsAttendues(prev => updateItemAt(prev, index, updates));
   };
 
   const handleRemoveDecisionAttendue = (index: number) => {
@@ -997,6 +1020,43 @@ export function ActionFormContent({
                         </button>
                       )}
                     </div>
+                    {/* Responsable + Échéance */}
+                    <div className="flex items-center gap-3 mt-2 ml-[7.5rem]">
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <User className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                        {isEditing ? (
+                          <select
+                            value={st.responsableId ?? ''}
+                            onChange={(e) => handleUpdateSousTache(index, 'responsableId', e.target.value ? Number(e.target.value) : null)}
+                            className="flex-1 h-8 px-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                          >
+                            <option value="">Responsable...</option>
+                            {users.map(u => (
+                              <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-sm text-neutral-600">
+                            {st.responsableId ? users.find(u => u.id === st.responsableId)?.prenom + ' ' + users.find(u => u.id === st.responsableId)?.nom : '-'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={st.echeance ?? ''}
+                            onChange={(e) => handleUpdateSousTache(index, 'echeance', e.target.value || null)}
+                            className="h-8 px-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          />
+                        ) : (
+                          <span className="text-sm text-neutral-600">
+                            {st.echeance ? new Date(st.echeance).toLocaleDateString('fr-FR') : '-'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1096,20 +1156,20 @@ export function ActionFormContent({
                           onClick={() => {
                             if (!isEditing) return;
                             const newVal = !pa.transmis;
-                            handleUpdatePointAttention(index, 'transmis', newVal);
-                            if (newVal) {
-                              handleUpdatePointAttention(index, 'dateTransmission', new Date().toISOString());
-                            }
+                            handleUpdatePointAttention(index, {
+                              transmis: newVal,
+                              ...(newVal ? { dateTransmission: new Date().toISOString() } : {}),
+                            });
                           }}
                         >
                           <Checkbox
                             checked={pa.transmis || false}
                             disabled={!isEditing}
                             onCheckedChange={(checked) => {
-                              handleUpdatePointAttention(index, 'transmis', checked);
-                              if (checked) {
-                                handleUpdatePointAttention(index, 'dateTransmission', new Date().toISOString());
-                              }
+                              handleUpdatePointAttention(index, {
+                                transmis: !!checked,
+                                ...(checked ? { dateTransmission: new Date().toISOString() } : {}),
+                              });
                             }}
                           />
                           <span className={`text-sm font-medium ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>
@@ -1130,7 +1190,7 @@ export function ActionFormContent({
                         {isEditing ? (
                           <Input
                             value={pa.sujet}
-                            onChange={(e) => handleUpdatePointAttention(index, 'sujet', e.target.value)}
+                            onChange={(e) => handleUpdatePointAttention(index, { sujet: e.target.value })}
                             placeholder="Décrivez le point d'attention..."
                             className={pa.transmis ? 'border-green-300 focus:border-green-500' : 'border-amber-300 focus:border-amber-500'}
                           />
@@ -1139,27 +1199,77 @@ export function ActionFormContent({
                         )}
                       </div>
 
-                      {/* Responsable */}
-                      <div className="flex items-center gap-3">
+                      {/* Responsables (multi) */}
+                      <div className="flex items-start gap-3">
                         <div className="flex-1">
-                          <Label className={`text-xs mb-1 ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>Responsable</Label>
+                          <Label className={`text-xs mb-1 ${pa.transmis ? 'text-green-700' : 'text-amber-700'}`}>Responsable(s)</Label>
                           {isEditing ? (
-                            <Select
-                              value={pa.responsableId?.toString() || ''}
-                              onChange={(e) => handleUpdatePointAttention(index, 'responsableId', e.target.value ? parseInt(e.target.value) : null)}
-                            >
-                              <SelectOption value="">Sélectionner...</SelectOption>
-                              {users.map(user => (
-                                <SelectOption key={user.id} value={user.id.toString()}>
-                                  {user.prenom} {user.nom}
-                                </SelectOption>
-                              ))}
-                            </Select>
+                            <div className="space-y-2">
+                              {/* Badges des responsables sélectionnés */}
+                              {(() => {
+                                const ids = pa.responsableIds || (pa.responsableId ? [pa.responsableId] : []);
+                                const noms = pa.responsableNoms || (pa.responsableNom ? [pa.responsableNom] : []);
+                                return ids.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {ids.map((uid, uidx) => (
+                                      <span
+                                        key={uid}
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${pa.transmis ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}
+                                      >
+                                        <User className="w-3 h-3" />
+                                        {noms[uidx] || 'Inconnu'}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleTogglePointAttentionResponsable(index, uid)}
+                                          className="ml-0.5 hover:text-red-600"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : null;
+                              })()}
+                              {/* Select pour ajouter */}
+                              <Select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleTogglePointAttentionResponsable(index, parseInt(e.target.value));
+                                  }
+                                }}
+                              >
+                                <SelectOption value="">+ Ajouter un responsable...</SelectOption>
+                                {users
+                                  .filter(user => {
+                                    const ids = pa.responsableIds || (pa.responsableId ? [pa.responsableId] : []);
+                                    return !ids.includes(user.id);
+                                  })
+                                  .map(user => (
+                                    <SelectOption key={user.id} value={user.id.toString()}>
+                                      {user.prenom} {user.nom}
+                                    </SelectOption>
+                                  ))}
+                              </Select>
+                            </div>
                           ) : (
-                            <p className="text-sm flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {pa.responsableNom || 'Non assigné'}
-                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const noms = pa.responsableNoms || (pa.responsableNom ? [pa.responsableNom] : []);
+                                return noms.length > 0 ? noms.map((nom, i) => (
+                                  <span key={i} className="text-sm flex items-center gap-1">
+                                    <User className="w-3 h-3" />
+                                    {nom}
+                                    {i < noms.length - 1 && ','}
+                                  </span>
+                                )) : (
+                                  <p className="text-sm flex items-center gap-1">
+                                    <User className="w-3 h-3" />
+                                    Non assigné
+                                  </p>
+                                );
+                              })()}
+                            </div>
                           )}
                         </div>
 
@@ -1229,20 +1339,20 @@ export function ActionFormContent({
                           onClick={() => {
                             if (!isEditing) return;
                             const newVal = !da.transmis;
-                            handleUpdateDecisionAttendue(index, 'transmis', newVal);
-                            if (newVal) {
-                              handleUpdateDecisionAttendue(index, 'dateTransmission', new Date().toISOString());
-                            }
+                            handleUpdateDecisionAttendue(index, {
+                              transmis: newVal,
+                              ...(newVal ? { dateTransmission: new Date().toISOString() } : {}),
+                            });
                           }}
                         >
                           <Checkbox
                             checked={da.transmis || false}
                             disabled={!isEditing}
                             onCheckedChange={(checked) => {
-                              handleUpdateDecisionAttendue(index, 'transmis', checked);
-                              if (checked) {
-                                handleUpdateDecisionAttendue(index, 'dateTransmission', new Date().toISOString());
-                              }
+                              handleUpdateDecisionAttendue(index, {
+                                transmis: !!checked,
+                                ...(checked ? { dateTransmission: new Date().toISOString() } : {}),
+                              });
                             }}
                           />
                           <span className={`text-sm font-medium ${da.transmis ? 'text-green-700' : 'text-purple-700'}`}>
@@ -1264,7 +1374,7 @@ export function ActionFormContent({
                           {isEditing ? (
                             <Input
                               value={da.sujet}
-                              onChange={(e) => handleUpdateDecisionAttendue(index, 'sujet', e.target.value)}
+                              onChange={(e) => handleUpdateDecisionAttendue(index, { sujet: e.target.value })}
                               placeholder="Décrivez la décision attendue..."
                               className={da.transmis ? 'border-green-300 focus:border-green-500' : 'border-purple-300 focus:border-purple-500'}
                             />

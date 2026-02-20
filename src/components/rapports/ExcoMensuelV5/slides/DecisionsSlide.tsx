@@ -86,7 +86,7 @@ export function DecisionsSlide({ data, printMode }: Props) {
 
     for (const action of data.allActions) {
       const pa = (action as Record<string, unknown>).points_attention as
-        Array<{ id: string; sujet: string; dateCreation: string; transmis?: boolean; responsableNom?: string }> | undefined;
+        Array<{ id: string; sujet: string; dateCreation: string; transmis?: boolean; responsableNom?: string; responsableNoms?: string[] }> | undefined;
       if (!pa) continue;
       for (const p of pa) {
         if (p.transmis) continue; // Only show unchecked/non-transmitted
@@ -95,7 +95,7 @@ export function DecisionsSlide({ data, printMode }: Props) {
           sujet: p.sujet,
           dateCreation: p.dateCreation,
           transmis: false,
-          responsableNom: p.responsableNom || '',
+          responsableNom: p.responsableNoms?.join(', ') || p.responsableNom || '',
           actionTitre: action.titre,
           actionId: action.id_action,
           axe: action.axe,

@@ -606,13 +606,13 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
     <div class="container">
       <div class="header">
         <div class="header-logo">${PROJET_CONFIG.nom}</div>
-        <div class="header-subtitle">EXCO Mensuel</div>
+        <div class="header-subtitle">{{rapport_titre}}</div>
         <div class="header-period">{{rapport_periode}}</div>
       </div>
       <div class="content">
         <p class="greeting">Bonjour <strong>{{recipient_name}}</strong>,</p>
 
-        <p class="intro-text">{{sender_name}} vous partage le rapport EXCO de suivi du projet ${PROJET_CONFIG.nom}. Ce rapport couvre la periode <strong>{{rapport_periode}}</strong>.</p>
+        <p class="intro-text">{{sender_name}} vous partage le rapport {{rapport_titre}} de suivi du projet ${PROJET_CONFIG.nom}. Ce rapport couvre la periode <strong>{{rapport_periode}}</strong>.</p>
 
         <div class="report-summary">
           <div class="report-summary-title">Resume du rapport</div>
@@ -1506,6 +1506,7 @@ export interface ReportShareParams {
   senderName: string;
   reportLink: string;
   reportPeriod: string;
+  reportTitle?: string;
   stats: {
     totalActions: number;
     totalJalons: number;
@@ -1534,8 +1535,9 @@ export async function getReportShareTemplate(): Promise<EmailTemplate | undefine
   }
 
   // Auto-upgrade: si l'ancien template (sans la couleur gold #B8953F) est détecté,
-  // le remplacer par le nouveau design navy/gold COSMOS
-  if (template && !template.bodyHtml.includes('#B8953F')) {
+  // ou si le template a encore "EXCO Mensuel" en dur au lieu de {{rapport_titre}},
+  // le remplacer par le nouveau design navy/gold COSMOS avec placeholders dynamiques
+  if (template && (!template.bodyHtml.includes('#B8953F') || !template.bodyHtml.includes('{{rapport_titre}}'))) {
     const newTemplate = DEFAULT_TEMPLATES.find(t => t.entityType === 'rapport');
     if (newTemplate) {
       await db.emailTemplates.update(template.id!, {
@@ -1574,6 +1576,7 @@ export async function sendReportShareEmail(params: ReportShareParams): Promise<E
     recipient_name: params.recipientName,
     sender_name: params.senderName,
     rapport_periode: params.reportPeriod,
+    rapport_titre: params.reportTitle || 'EXCO Mensuel',
     report_link: params.reportLink,
     total_actions: String(params.stats.totalActions),
     total_jalons: String(params.stats.totalJalons),

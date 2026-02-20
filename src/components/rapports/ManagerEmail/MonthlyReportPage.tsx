@@ -204,6 +204,48 @@ export function MonthlyReportPage() {
   const allJalons = useJalons();
   const users = useUsers();
 
+  // Provide data for SendReportModal email stats
+  const getReportData = useCallback(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const monthLabel = `${MONTHS_FR[month].charAt(0).toUpperCase() + MONTHS_FR[month].slice(1)} ${year}`;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+    const today = now.toISOString().split('T')[0];
+
+    const activeActions = (allActions ?? []).filter(a => {
+      if (a.statut === 'annule') return false;
+      if (a.date_fin_prevue && a.date_fin_prevue >= monthStart && a.date_fin_prevue <= monthEnd) return true;
+      if (a.statut !== 'termine' && a.date_fin_prevue && a.date_fin_prevue < monthStart) return true;
+      return false;
+    });
+
+    const monthJalons = (allJalons ?? []).filter(j => j.date_prevue && j.date_prevue >= monthStart && j.date_prevue <= monthEnd);
+
+    const actionsEnRetard = activeActions.filter(a => {
+      if (!a.date_fin_prevue) return false;
+      return a.date_fin_prevue < today && (a.avancement ?? 0) < 100 && a.statut !== 'termine';
+    });
+
+    return {
+      moisCourant: monthLabel,
+      allActions: activeActions,
+      allJalons: monthJalons,
+      allRisques: [],
+      avancementGlobal: activeActions.length > 0
+        ? activeActions.reduce((s, a) => s + (a.avancement ?? 0), 0) / activeActions.length
+        : 0,
+      kpis: {
+        totalActions: activeActions.length,
+        jalonsTotal: monthJalons.length,
+        totalRisques: 0,
+        actionsEnRetard: actionsEnRetard.length,
+      },
+    } as any;
+  }, [allActions, allJalons]);
+
   const d = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -318,6 +360,7 @@ export function MonthlyReportPage() {
   const urgentThisWeek = filtered.filter(a => a.deadlineDay <= new Date().getDate() + 7 && a.status !== "completed");
 
   return (
+    <>
     <div ref={reportRef} style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyMid} 100%)`, color: C.white, padding: "22px 28px" }}>
@@ -555,16 +598,18 @@ export function MonthlyReportPage() {
           <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>CRMC / New Heaven SA — Cosmos Angré</div>
         </div>
       </div>
-
-      {/* Send Report Modal */}
-      <SendReportModal
-        isOpen={showSendModal}
-        onClose={() => setShowSendModal(false)}
-        presentationDate={presentationDate}
-        generateHtml={generateReportHtml}
-        reportTitle="Rappel Actions"
-      />
     </div>
+
+    {/* Send Report Modal — outside reportRef to avoid capturing modal HTML in shared report */}
+    <SendReportModal
+      isOpen={showSendModal}
+      onClose={() => setShowSendModal(false)}
+      presentationDate={presentationDate}
+      generateHtml={generateReportHtml}
+      getData={getReportData}
+      reportTitle="Rappel Actions"
+    />
+    </>
   );
 }
 

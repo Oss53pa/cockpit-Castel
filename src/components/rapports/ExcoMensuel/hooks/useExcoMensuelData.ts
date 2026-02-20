@@ -313,7 +313,7 @@ export function useExcoMensuelData(periodeLabel: string = ''): UseExcoMensuelDat
         .flatMap(a => ((a as any).points_attention || []).map((pa: any) => ({
           id: pa.id,
           sujet: pa.sujet,
-          responsableNom: pa.responsableNom || '',
+          responsableNom: pa.responsableNoms?.join(', ') || pa.responsableNom || '',
           actionTitre: a.titre,
           actionId: a.id?.toString() || '',
           dateCreation: pa.dateCreation,

@@ -141,6 +141,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
       recipient_name: recipientName,
       sender_name: senderName,
       rapport_periode: reportPeriod,
+      rapport_titre: reportTitle || 'EXCO Mensuel',
       report_link: '#apercu',
       total_actions: String(data?.kpis?.totalActions || data?.allActions?.length || 0),
       total_jalons: String(data?.kpis?.jalonsTotal || data?.allJalons?.length || 0),
@@ -235,6 +236,7 @@ export function SendReportModal({ isOpen, onClose, presentationDate, generateHtm
             senderName,
             reportLink: link,
             reportPeriod,
+            reportTitle: reportTitle || 'EXCO Mensuel',
             stats,
           };
 
