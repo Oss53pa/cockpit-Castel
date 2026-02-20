@@ -66,6 +66,16 @@ export interface ActionsByGroup {
   actions: Action[];
 }
 
+export interface PointAttentionItem {
+  pointAttention: NonNullable<Action['points_attention']>[number];
+  actionParente: Action;
+}
+
+export interface SousTacheItem {
+  sousTache: NonNullable<Action['sous_taches']>[number];
+  actionParente: Action;
+}
+
 export interface WeeklyProjection {
   ratioProgression: number;
   finEstimee: string | null;
@@ -96,6 +106,10 @@ export interface WeeklyReportData {
   highlights: WeeklyHighlight[];
   // Decisions
   pendingDecisions: Action[];
+  // Points d'attention
+  pointsAttention: PointAttentionItem[];
+  // Sous-tâches à échéance
+  sousTachesEcheance: SousTacheItem[];
   // Milestones
   prochainsMilestones: MilestonePreview[];
   // Risques
@@ -277,6 +291,25 @@ export function useWeeklyReportData(): WeeklyReportData {
         a.decisions_attendues.length > 0 &&
         a.statut !== 'termine'
     );
+
+    // === Points d'attention (non transmis, actions actives) ===
+    const pointsAttention: PointAttentionItem[] = allActions
+      .filter((a) => a.statut !== 'termine' && a.statut !== 'annule' && a.points_attention?.length)
+      .flatMap((a) =>
+        (a.points_attention ?? [])
+          .filter((pa) => !pa.transmis)
+          .map((pa) => ({ pointAttention: pa, actionParente: a }))
+      );
+
+    // === Sous-tâches à échéance (non terminées, avec deadline, actions actives) ===
+    const sousTachesEcheance: SousTacheItem[] = allActions
+      .filter((a) => a.statut !== 'termine' && a.statut !== 'annule' && a.sous_taches?.length)
+      .flatMap((a) =>
+        (a.sous_taches ?? [])
+          .filter((st) => !st.fait && st.echeance)
+          .map((st) => ({ sousTache: st, actionParente: a }))
+      )
+      .sort((a, b) => (a.sousTache.echeance ?? '').localeCompare(b.sousTache.echeance ?? ''));
 
     // === Axes Data ===
     const axesData: AxeWeeklyData[] = AXES_V5.map((axeConfig) => {
@@ -552,6 +585,8 @@ export function useWeeklyReportData(): WeeklyReportData {
       weatherSummary,
       highlights,
       pendingDecisions,
+      pointsAttention,
+      sousTachesEcheance,
       axesData,
       prochainsMilestones,
       topRisques,
@@ -594,6 +629,8 @@ export function useWeeklyReportData(): WeeklyReportData {
     axesData: derived?.axesData ?? [],
     highlights: derived?.highlights ?? [],
     pendingDecisions: derived?.pendingDecisions ?? [],
+    pointsAttention: derived?.pointsAttention ?? [],
+    sousTachesEcheance: derived?.sousTachesEcheance ?? [],
     prochainsMilestones: derived?.prochainsMilestones ?? [],
     topRisques: derived?.topRisques ?? [],
     focusSemaineProchaine: derived?.focusSemaineProchaine ?? [],

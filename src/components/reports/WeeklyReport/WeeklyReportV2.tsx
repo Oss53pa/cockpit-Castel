@@ -16,6 +16,8 @@ import type {
   TopRisque,
   WeeklyProjection,
   ActionsByGroup,
+  PointAttentionItem,
+  SousTacheItem,
 } from './useWeeklyReportData';
 import type { Action, Risque } from '@/types';
 
@@ -745,9 +747,160 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
+      {/* 5. POINTS D'ATTENTION */}
+      {/* ================================================================ */}
+      <WSection title="Points d'attention" number={5}>
+        {data.pointsAttention.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucun point d'attention non transmis.</div>
+          </WCard>
+        ) : (
+          <WCard style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: C.gray50 }}>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Sujet
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Action parente
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Responsable(s)
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Date création
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Statut
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.pointsAttention.map((item, i) => {
+                  const pa = item.pointAttention;
+                  const responsables = pa.responsableNoms?.length
+                    ? pa.responsableNoms.join(', ')
+                    : pa.responsableNom || item.actionParente.responsable || '—';
+                  return (
+                    <tr key={pa.id ?? i} style={{ borderTop: `1px solid ${C.gray200}` }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 600, color: C.navy }}>
+                        {pa.sujet}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: 12, color: C.gray600 }}>
+                        {item.actionParente.titre}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: 12, color: C.gray600 }}>
+                        {responsables}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '10px 14px', fontSize: 12, color: C.gray500 }}>
+                        {formatDate(pa.dateCreation)}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '10px 14px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: pa.transmis ? C.greenBg : C.orangeBg,
+                            color: pa.transmis ? C.green : C.orange,
+                          }}
+                        >
+                          {pa.transmis ? 'Transmis' : 'Non transmis'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </WCard>
+        )}
+      </WSection>
+
+      {/* ================================================================ */}
+      {/* 6. SOUS-TÂCHES À ÉCHÉANCE */}
+      {/* ================================================================ */}
+      <WSection title="Sous-tâches à échéance" number={6}>
+        {data.sousTachesEcheance.length === 0 ? (
+          <WCard>
+            <div style={{ color: C.gray400, fontSize: 13 }}>Aucune sous-tâche avec échéance en cours.</div>
+          </WCard>
+        ) : (
+          <WCard style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: C.gray50 }}>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Sous-tâche
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Action parente
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Échéance
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 14px', fontWeight: 600, color: C.gray500, fontSize: 11 }}>
+                    Statut
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sousTachesEcheance.map((item, i) => {
+                  const st = item.sousTache;
+                  const isOverdue = st.echeance && st.echeance < new Date().toISOString().split('T')[0];
+                  return (
+                    <tr key={st.id ?? i} style={{ borderTop: `1px solid ${C.gray200}` }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 600, color: C.navy }}>
+                        {st.libelle}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: 12, color: C.gray600 }}>
+                        {item.actionParente.titre}
+                      </td>
+                      <td
+                        style={{
+                          textAlign: 'center',
+                          padding: '10px 14px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: isOverdue ? C.red : C.navy,
+                        }}
+                      >
+                        {formatDate(st.echeance ?? '')}
+                        {isOverdue && (
+                          <span style={{ fontSize: 10, color: C.red, marginLeft: 4 }}>En retard</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '10px 14px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: st.fait ? C.greenBg : C.orangeBg,
+                            color: st.fait ? C.green : C.orange,
+                          }}
+                        >
+                          {st.fait ? 'Fait' : 'À faire'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </WCard>
+        )}
+      </WSection>
+
+      {/* ================================================================ */}
       {/* 7. AVANCEMENT PAR AXE */}
       {/* ================================================================ */}
-      <WSection title="Avancement par axe" number={5}>
+      <WSection title="Avancement par axe" number={7}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           {data.axesData.map((axe) => (
             <WCard key={axe.id} style={{ padding: '14px 16px' }}>
@@ -797,7 +950,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 8. PROCHAINS JALONS 14j */}
       {/* ================================================================ */}
-      <WSection title="Prochains jalons (14 jours)" number={6}>
+      <WSection title="Prochains jalons (14 jours)" number={8}>
         {data.prochainsMilestones.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun jalon prévu dans les 14 prochains jours.</div>
@@ -872,7 +1025,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 9. TOP 5 RISQUES */}
       {/* ================================================================ */}
-      <WSection title="Top 5 risques actifs" number={7}>
+      <WSection title="Top 5 risques actifs" number={9}>
         {data.topRisques.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun risque actif identifié.</div>
@@ -916,9 +1069,9 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 8. FOCUS & ACTIONS (avec onglets) */}
+      {/* 10. FOCUS & ACTIONS (avec onglets) */}
       {/* ================================================================ */}
-      <WSection title="Actions & Focus" number={8}>
+      <WSection title="Actions & Focus" number={10}>
         {/* Onglets de filtre */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
           {([
@@ -1204,9 +1357,9 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 9. PROJECTION */}
+      {/* 11. PROJECTION */}
       {/* ================================================================ */}
-      <WSection title="Projection" number={9}>
+      <WSection title="Projection" number={11}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1255,10 +1408,10 @@ export function WeeklyReportV2() {
       </WSection>
 
       {/* ================================================================ */}
-      {/* 10. PROPH3T IA */}
+      {/* 12. PROPH3T IA */}
       {/* ================================================================ */}
       {data.confidenceScore && (
-        <WSection title="PROPH3T — Score de Confiance" number={10}>
+        <WSection title="PROPH3T — Score de Confiance" number={12}>
           <WCard
             style={{
               borderLeft: `4px solid ${
@@ -1330,9 +1483,9 @@ export function WeeklyReportV2() {
       )}
 
       {/* ================================================================ */}
-      {/* 11. NOTES */}
+      {/* 13. NOTES */}
       {/* ================================================================ */}
-      <WSection title="Notes & commentaires" number={11}>
+      <WSection title="Notes & commentaires" number={13}>
         <WCard>
           <textarea
             value={data.notes}
