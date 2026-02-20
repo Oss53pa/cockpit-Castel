@@ -258,12 +258,10 @@ function ActionRow({
                 <Eye className="h-4 w-4 mr-2" />
                 Voir
               </DropdownMenuItem>
-              {canEdit && (
-                <DropdownMenuItem onClick={() => onEdit(action)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => onEdit(action)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Modifier
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onSend(action)}>
                 <Send className="h-4 w-4 mr-2" />
                 Envoyer

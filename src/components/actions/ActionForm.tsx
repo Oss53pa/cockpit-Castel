@@ -132,7 +132,7 @@ export function ActionForm({ action, open, onClose, onSuccess }: ActionFormProps
             users={users}
             jalons={jalons}
             actionsDisponibles={allActions.filter(a => a.id !== action.id)}
-            isEditing={canEdit}
+            isEditing={true}
             isExternal={false}
             onSave={handleSave}
             onCancel={onClose}

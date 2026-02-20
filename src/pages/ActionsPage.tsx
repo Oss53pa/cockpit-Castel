@@ -227,12 +227,10 @@ export function ActionsPage() {
             })}
           </div>
 
-          {canCreate && (
-            <Button onClick={handleAdd}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle action
-            </Button>
-          )}
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle action
+          </Button>
         </div>
       </div>
 
