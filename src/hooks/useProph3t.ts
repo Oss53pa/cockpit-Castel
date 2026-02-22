@@ -212,15 +212,28 @@ export function useProph3tHealth(): HealthData | null {
       ? Math.round((budgetConsomme / budgetTotal) * 100)
       : 0;
 
-    // 4. Occupation RÉELLE (BEFA signés / boutiques cibles)
-    const commercialActions = actions.filter((a) => a.axe === 'axe2_commercial');
-    const boutiquesMax = sites[0]?.boutiquesMax || 0;
-    const befaSignes = commercialActions.filter(a => a.statut === 'termine').length;
-    const occupationScore = boutiquesMax > 0
-      ? Math.round(Math.min(100, (befaSignes / boutiquesMax) * 100))
-      : commercialActions.length > 0
-        ? Math.round(commercialActions.reduce((sum, a) => sum + (a.avancement || 0), 0) / commercialActions.length)
+    // 4. Occupation — même logique que useDashboardKPIs (action "taux d'occupation")
+    const actionOccupation = actions.find((a) =>
+      a.id_action === 'A-COM-J8.6' ||
+      a.id_action === 'A-COM-8.6' ||
+      (a.titre?.toLowerCase().includes('taux') && a.titre?.toLowerCase().includes('occupation'))
+    );
+    let occupationScore: number;
+    if (actionOccupation) {
+      occupationScore = Math.round(actionOccupation.avancement ?? 0);
+    } else {
+      // Fallback: moyenne d'avancement des actions commerciales de leasing/occupation
+      const actionsLeasing = actions.filter((a) =>
+        a.axe === 'axe2_commercial' &&
+        (a.titre?.toLowerCase().includes('bail') ||
+         a.titre?.toLowerCase().includes('locataire') ||
+         a.titre?.toLowerCase().includes('leasing') ||
+         a.titre?.toLowerCase().includes('occupation'))
+      );
+      occupationScore = actionsLeasing.length > 0
+        ? Math.round(actionsLeasing.reduce((sum, a) => sum + (a.avancement || 0), 0) / actionsLeasing.length)
         : 0;
+    }
 
     // 5. Vélocité - % d'actions terminées RÉEL (exclure actions durée ≤ 1 jour)
     const actionsAvecDuree = actions.filter(a => {
