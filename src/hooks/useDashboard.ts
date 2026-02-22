@@ -55,8 +55,16 @@ export function useDashboardKPIs() {
       (a.titre?.toLowerCase().includes('taux') && a.titre?.toLowerCase().includes('occupation'))
     );
     let tauxOccupation: number;
+    let sousTachesOccupation: Array<{ libelle: string; avancement: number }> = [];
     if (actionOccupation) {
       tauxOccupation = actionOccupation.avancement ?? 0;
+      // Extraire les sous-tâches pour ventilation (dont X% centre commercial, etc.)
+      if (actionOccupation.sous_taches && actionOccupation.sous_taches.length > 0) {
+        sousTachesOccupation = actionOccupation.sous_taches.map(st => ({
+          libelle: st.libelle,
+          avancement: st.avancement ?? 0,
+        }));
+      }
     } else {
       // Fallback: moyenne d'avancement des actions commerciales de leasing/occupation
       const actionsLeasing = actions.filter((a) =>
@@ -79,6 +87,7 @@ export function useDashboardKPIs() {
 
     return {
       tauxOccupation,
+      sousTachesOccupation,
       budgetConsomme,
       budgetTotal,
       jalonsAtteints,
@@ -92,6 +101,7 @@ export function useDashboardKPIs() {
     };
   }) ?? {
     tauxOccupation: 0,
+    sousTachesOccupation: [] as Array<{ libelle: string; avancement: number }>,
     budgetConsomme: 0,
     budgetTotal: 0,
     jalonsAtteints: 0,

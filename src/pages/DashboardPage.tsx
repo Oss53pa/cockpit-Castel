@@ -405,7 +405,14 @@ export function DashboardPage() {
                     title="Taux d'occupation"
                     value={`${Math.round(kpis.tauxOccupation)}%`}
                     subtitle="Surface commerciale"
-                    annotation={kpis.tauxOccupation >= 70 ? 'En phase' : 'En dessous de la cible'}
+                    annotation={
+                      (kpis.tauxOccupation >= 70 ? 'En phase' : 'En dessous de la cible')
+                      + (kpis.sousTachesOccupation.length > 0
+                        ? ' · ' + kpis.sousTachesOccupation
+                            .map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`)
+                            .join(' · ')
+                        : '')
+                    }
                     icon={Building2}
                     progress={kpis.tauxOccupation}
                     variant={kpis.tauxOccupation >= 70 ? 'success' : 'warning'}

@@ -1340,6 +1340,7 @@ export interface Action {
     responsableId?: number | null;
     echeance?: string | null;
     fait: boolean;
+    avancement?: number; // 0-100%
   }>;
   decisions_attendues?: Array<{
     id: string;
