@@ -40,6 +40,9 @@ export function DashboardSlide({ data }: Props) {
   const avancement = Math.round(data.avancementGlobal);
   const cibleAvancement = Math.round(tempsEcoule);
   const occupation = data.kpis.tauxOccupation;
+  const ventilationOccupation = (data.kpis.sousTachesOccupation ?? []).length > 0
+    ? (data.kpis.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')
+    : '';
   const jalonsAtteints = data.kpis.jalonsAtteints;
   const jalonsTotal = data.kpis.jalonsTotal;
   const jalonsPct = jalonsTotal > 0 ? Math.round((jalonsAtteints / jalonsTotal) * 100) : 0;
@@ -81,7 +84,7 @@ export function DashboardSlide({ data }: Props) {
         <KpiCard
           label="Occupation"
           value={`${occupation}%`}
-          sub={`Cible: ${PROJET_CONFIG.occupationCible}%`}
+          sub={`Cible: ${PROJET_CONFIG.occupationCible}%${ventilationOccupation ? ' · ' + ventilationOccupation : ''}`}
           color={getKpiColor(occupation, PROJET_CONFIG.occupationCible)}
         />
         <KpiCard

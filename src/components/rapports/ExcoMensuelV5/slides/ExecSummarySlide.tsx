@@ -119,6 +119,11 @@ export function ExecSummarySlide({ data, printMode }: Props) {
             <div>
               <div style={{ fontSize: 11, color: C.gray500, marginBottom: 2 }}>Occupation</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: C.blue }}>{data.kpis.tauxOccupation}%</div>
+              {(data.kpis.sousTachesOccupation ?? []).length > 0 && (
+                <div style={{ fontSize: 9, color: C.gray500, marginTop: 2 }}>
+                  {(data.kpis.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')}
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: 11, color: C.gray500, marginBottom: 2 }}>Budget engagé</div>

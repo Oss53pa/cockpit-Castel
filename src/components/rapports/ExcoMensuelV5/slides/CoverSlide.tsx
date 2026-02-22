@@ -63,7 +63,7 @@ export function CoverSlide({ data }: Props) {
         <KpiEncart
           label="Taux d'Occupation"
           value={`${Math.round(data.kpis.tauxOccupation)}%`}
-          sub={`Cible ${PROJET_CONFIG.occupationCible}%`}
+          sub={`Cible ${PROJET_CONFIG.occupationCible}%${(data.kpis.sousTachesOccupation ?? []).length > 0 ? ' · ' + (data.kpis.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ') : ''}`}
         />
         <KpiEncart
           label="Score Santé"

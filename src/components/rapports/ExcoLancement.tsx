@@ -534,6 +534,9 @@ function SlideRappelProjet() {
           <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
             <p className="text-2xl font-bold text-slate-900">{(kpis?.tauxOccupation || 0).toFixed(1)}%</p>
             <p className="text-xs text-slate-500 mt-1">Occupation</p>
+            {(kpis?.sousTachesOccupation ?? []).length > 0 && (
+              <p className="text-[10px] text-slate-400 mt-0.5">{(kpis?.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')}</p>
+            )}
           </div>
           <div className="p-4 bg-white rounded-xl border border-slate-200 text-center shadow-sm">
             <p className="text-2xl font-bold text-slate-900">{jalonsAtteints}/{jalonsTotal}</p>
@@ -577,6 +580,9 @@ function SlidePageGarde() {
   const totalActions = kpis?.totalActions ?? 0;
   const avancementGlobal = useAvancementGlobal();
   const tauxOccupation = kpis?.tauxOccupation ?? 0;
+  const ventilationOccupation = (kpis?.sousTachesOccupation ?? []).length > 0
+    ? (kpis?.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')
+    : '';
 
   return (
     <div
@@ -632,7 +638,7 @@ function SlidePageGarde() {
         <div style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '20px 24px' }}>
           <div style={{ fontSize: 11, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Taux d'Occupation</div>
           <div style={{ fontSize: 32, fontWeight: 700, color: C.gold, lineHeight: 1 }}>{Math.round(tauxOccupation)}%</div>
-          <div style={{ marginTop: 8, fontSize: 13, color: C.gray400 }}>Cible 85%</div>
+          <div style={{ marginTop: 8, fontSize: 13, color: C.gray400 }}>Cible 85%{ventilationOccupation ? ` · ${ventilationOccupation}` : ''}</div>
         </div>
         <div style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '20px 24px' }}>
           <div style={{ fontSize: 11, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Actions</div>
@@ -847,6 +853,9 @@ function SlideAxeCommercial() {
   const actionsTerminees = actionsCommerciales.filter(a => a.statut === 'termine').length;
   const tauxOccupationReel = kpis?.tauxOccupation || 0;
   const tauxCible = 85;
+  const ventilationOccupationCommercial = (kpis?.sousTachesOccupation ?? []).length > 0
+    ? (kpis?.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')
+    : '';
 
   return (
     <div className="space-y-6">
@@ -932,6 +941,9 @@ function SlideAxeCommercial() {
             <span className="text-sm text-gray-400 ml-2">/ {tauxCible}% cible</span>
           </div>
         </div>
+        {ventilationOccupationCommercial && (
+          <p className="text-xs text-gray-400 mt-2">{ventilationOccupationCommercial}</p>
+        )}
       </Card>
 
       {/* Points d'Attention - données réelles depuis Cockpit */}
@@ -2247,8 +2259,13 @@ export function ExcoLancement() {
       .sort((a, b) => new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime())
       .slice(0, 5);
 
+    const ventilationOcc = (kpis?.sousTachesOccupation ?? []).length > 0
+      ? (kpis?.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')
+      : '';
+
     return {
       tauxOccupation: kpis?.tauxOccupation || 0,
+      ventilationOccupation: ventilationOcc,
       jalonsTotal: jalonsData.length,
       jalonsAtteints: jalonsData.filter(j => j.statut === 'atteint').length,
       actionsTotal: actionsData.length,
@@ -2438,7 +2455,7 @@ export function ExcoLancement() {
             <tr class="border-b"><td class="py-2 font-medium">Bâtiments</td><td class="text-right">${siteData.nombreBatiments}</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Soft Opening</td><td class="text-right">${new Date(siteData.softOpening).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
             <tr class="border-b"><td class="py-2 font-medium">Inauguration</td><td class="text-right">${new Date(siteData.inauguration).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</td></tr>
-            <tr><td class="py-2 font-medium">Occupation actuelle</td><td class="text-right font-bold ${cockpitData.tauxOccupation >= 85 ? 'text-green-600' : 'text-amber-600'}">${cockpitData.tauxOccupation.toFixed(1)}%</td></tr>
+            <tr><td class="py-2 font-medium">Occupation actuelle</td><td class="text-right font-bold ${cockpitData.tauxOccupation >= 85 ? 'text-green-600' : 'text-amber-600'}">${cockpitData.tauxOccupation.toFixed(1)}%${cockpitData.ventilationOccupation ? ' (' + cockpitData.ventilationOccupation + ')' : ''}</td></tr>
           </table>
         </div>
         <div class="bg-gray-50 p-6 rounded-lg">
@@ -2502,7 +2519,7 @@ export function ExcoLancement() {
       <div class="bg-gray-50 p-6 rounded-lg">
         <h3 class="font-bold mb-4">KPIs Commercial (temps réel)</h3>
         <div class="grid grid-cols-4 gap-4 text-center">
-          <div class="bg-indigo-50 p-4 rounded-lg"><p class="text-2xl font-bold text-indigo-700">${cockpitData.tauxOccupation.toFixed(1)}%</p><p class="text-xs text-indigo-600">Occupation</p></div>
+          <div class="bg-indigo-50 p-4 rounded-lg"><p class="text-2xl font-bold text-indigo-700">${cockpitData.tauxOccupation.toFixed(1)}%</p><p class="text-xs text-indigo-600">Occupation</p>${cockpitData.ventilationOccupation ? `<p class="text-[10px] text-indigo-400 mt-1">${cockpitData.ventilationOccupation}</p>` : ''}</div>
           <div class="bg-green-50 p-4 rounded-lg"><p class="text-2xl font-bold text-green-700">${cockpitData.actionsByAxe('axe2_commercial').filter(a => a.statut === 'termine').length}</p><p class="text-xs text-green-600">Actions faites</p></div>
           <div class="bg-blue-50 p-4 rounded-lg"><p class="text-2xl font-bold text-blue-700">${cockpitData.jalonsByAxe('axe2_commercial').filter(j => j.statut === 'atteint').length}/${cockpitData.jalonsByAxe('axe2_commercial').length}</p><p class="text-xs text-blue-600">Jalons</p></div>
           <div class="bg-purple-50 p-4 rounded-lg"><p class="text-2xl font-bold text-purple-700">${siteData.occupationCible}%</p><p class="text-xs text-purple-600">Cible</p></div>

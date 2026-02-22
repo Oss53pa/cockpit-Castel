@@ -754,6 +754,11 @@ export function Exco() {
     alert('Paramètres de design enregistrés !');
   };
 
+  // Ventilation occupation depuis sous-tâches
+  const ventilationOccupation = (kpis.sousTachesOccupation ?? []).length > 0
+    ? (kpis.sousTachesOccupation ?? []).map(st => `dont ${Math.round(st.avancement)}% ${st.libelle}`).join(' · ')
+    : '';
+
   // KPIs state - calcul sécurisé du budget consommé
   const budgetConsumedCalc = budget.prevu > 0 ? Math.round((budget.realise / budget.prevu) * 100) : 0;
   const [kpiValues, setKpiValues] = useState({
@@ -2173,14 +2178,15 @@ export function Exco() {
                 </div>
                 <div className="col-span-2 grid grid-cols-2 gap-3">
                   {[
-                    { label: 'Occupation', value: `${kpiValues.occupation}%`, color: '#10B981' },
-                    { label: 'Budget consommé', value: `${kpiValues.budgetConsumed}%`, color: '#F59E0B' },
-                    { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}/${kpiValues.totalMilestones}`, color: primaryColor },
-                    { label: 'Actions réalisées', value: `${kpiValues.actionsCompleted}/${kpiValues.totalActions}`, color: accentColor },
+                    { label: 'Occupation', value: `${kpiValues.occupation}%`, color: '#10B981', sub: ventilationOccupation },
+                    { label: 'Budget consommé', value: `${kpiValues.budgetConsumed}%`, color: '#F59E0B', sub: '' },
+                    { label: 'Jalons atteints', value: `${kpiValues.milestonesAchieved}/${kpiValues.totalMilestones}`, color: primaryColor, sub: '' },
+                    { label: 'Actions réalisées', value: `${kpiValues.actionsCompleted}/${kpiValues.totalActions}`, color: accentColor, sub: '' },
                   ].map((kpi) => (
                     <div key={kpi.label} className="p-3 rounded-lg bg-gray-50 border">
                       <div className="text-xl font-bold" style={{ color: kpi.color }}>{kpi.value}</div>
                       <div className="text-xs text-gray-500">{kpi.label}</div>
+                      {kpi.sub && <div className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</div>}
                     </div>
                   ))}
                 </div>
@@ -3281,7 +3287,7 @@ export function Exco() {
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
-                      Occupation: {kpiValues.occupation}% (cible {siteData.occupationCible}%)
+                      Occupation: {kpiValues.occupation}% (cible {siteData.occupationCible}%){ventilationOccupation ? ` — ${ventilationOccupation}` : ''}
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="h-3 w-3 text-gray-400" />
@@ -4455,6 +4461,7 @@ export function Exco() {
       <div class="kpi-card">
         <div class="kpi-value">${kpiValues.occupation}%</div>
         <div class="kpi-label">Occupation</div>
+        ${ventilationOccupation ? `<div class="kpi-sub" style="font-size:10px;color:#999;margin-top:2px">${ventilationOccupation}</div>` : ''}
       </div>
       <div class="kpi-card">
         <div class="kpi-value">${kpiValues.budgetConsumed}%</div>
@@ -5248,7 +5255,7 @@ export function Exco() {
             slide.addText('Points clés', { x: 0.5, y: 1.1, w: 4, h: 0.4, fontSize: 14, fontFace: fontFamily, color: primaryHex, bold: true });
             const keyPoints = [
               `Météo projet: ${weatherConfig[projectWeather].label.split(' ')[0]}`,
-              `Occupation: ${kpiValues.occupation}% (cible ${siteData.occupationCible}%)`,
+              `Occupation: ${kpiValues.occupation}% (cible ${siteData.occupationCible}%)${ventilationOccupation ? ' — ' + ventilationOccupation : ''}`,
               `Budget: ${kpiValues.budgetConsumed}% consommé`,
               `${decisionPoints.length} décision(s) en attente DG`,
             ];
