@@ -6,7 +6,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getReportFromFirebase } from '@/services/firebaseRealtimeSync';
-import { FIREBASE_TTL } from '@/data/constants';
 
 export function ReportViewPage() {
   const { token } = useParams<{ token: string }>();
@@ -29,7 +28,8 @@ export function ReportViewPage() {
           setHtml(result.data.html);
           setTitle(result.data.title || 'Rapport EXCO');
         } else if (result.status === 'expired') {
-          setError(`Ce rapport a expiré (disponible ${FIREBASE_TTL.UPDATE_LINKS} jours après création). Contactez l'administrateur pour un nouveau lien.`);
+          const expiredAt = result.expiresAt ? new Date(result.expiresAt).toLocaleString('fr-FR') : '';
+          setError(`Ce rapport a expiré${expiredAt ? ` le ${expiredAt}` : ''}. Contactez l'administrateur pour un nouveau lien.`);
         } else if (result.status === 'not_found') {
           // Fallback: try localStorage (same-browser access)
           try {

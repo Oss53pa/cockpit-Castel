@@ -26,6 +26,7 @@ import {
   orderBy,
   limit,
   serverTimestamp,
+  Timestamp,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -446,6 +447,9 @@ export async function createUpdateLinkInFirebase(
       // Non-blocking — ccProgress reste undefined
     }
 
+    // Convertir expiresAt en Firestore Timestamp pour compatibilité TTL & security rules
+    const expiresAtTimestamp = Timestamp.fromDate(new Date(expiresAt));
+
     const updateData: ExternalUpdateData = {
       token,
       siteId: PROJET_CONFIG.projectId, // Discriminant multi-site
@@ -459,7 +463,8 @@ export async function createUpdateLinkInFirebase(
       recipientEmail,
       recipientName,
       createdAt: new Date().toISOString(),
-      expiresAt,
+      expiresAt: expiresAtTimestamp as any,
+      expiresAtISO: expiresAt,
       isUsed: false,
       isExpired: false,
       isSynced: false,
@@ -531,13 +536,23 @@ export async function getUpdateLinkFromFirebase(token: string): Promise<External
     const data = docSnap.data() as ExternalUpdateData;
     logger.info('[Firebase] Document trouvé:', { token: data.token, entityType: data.entityType, entityId: data.entityId });
 
-    // Vérifier expiration
-    if (new Date(data.expiresAt) < new Date() && !data.isExpired) {
+    // Vérifier expiration — supporter Firestore Timestamp ET string ISO
+    const expiresAtDate = (data.expiresAt as any)?.toDate
+      ? (data.expiresAt as any).toDate()
+      : new Date(data.expiresAt);
+
+    // Normaliser expiresAt en string ISO pour le consommateur
+    const normalizedData = {
+      ...data,
+      expiresAt: expiresAtDate.toISOString(),
+    };
+
+    if (expiresAtDate < new Date() && !data.isExpired) {
       await updateDoc(docRef, { isExpired: true });
-      return { ...data, isExpired: true };
+      return { ...normalizedData, isExpired: true };
     }
 
-    return data;
+    return normalizedData;
   } catch (e) {
     logger.error('[Firebase] Erreur lors de la récupération du lien:', e);
     return null;
@@ -970,8 +985,13 @@ export async function storeReportInFirebase(
   try {
     const htmlBytes = new Blob([html]).size;
     const docRef = doc(firestoreDb, COLLECTION_SHARED_REPORTS, token);
-    // Utiliser le TTL par défaut si expiresAt n'est pas fourni
-    const expiresAt = metadata.expiresAt || new Date(Date.now() + FIREBASE_TTL.UPDATE_LINKS * 24 * 60 * 60 * 1000).toISOString();
+    // Convertir expiresAt en Firestore Timestamp pour compatibilité TTL & security rules
+    const expiresAtDate = metadata.expiresAt
+      ? new Date(metadata.expiresAt)
+      : new Date(Date.now() + FIREBASE_TTL.SHARED_REPORTS * 24 * 60 * 60 * 1000);
+    const expiresAtTimestamp = Timestamp.fromDate(expiresAtDate);
+    // Garder aussi la version ISO string pour lecture facile côté client
+    const expiresAtISO = expiresAtDate.toISOString();
 
     if (htmlBytes <= MAX_CHUNK_SIZE) {
       // Small enough — store inline
@@ -983,7 +1003,8 @@ export async function storeReportInFirebase(
         title: metadata.title,
         period: metadata.period,
         senderName: metadata.senderName,
-        expiresAt,
+        expiresAt: expiresAtTimestamp,
+        expiresAtISO,
         createdAt: serverTimestamp(),
         viewCount: 0,
       });
@@ -997,7 +1018,8 @@ export async function storeReportInFirebase(
         title: metadata.title,
         period: metadata.period,
         senderName: metadata.senderName,
-        expiresAt,
+        expiresAt: expiresAtTimestamp,
+        expiresAtISO,
         createdAt: serverTimestamp(),
         viewCount: 0,
         chunked: true,
@@ -1039,8 +1061,29 @@ export async function getReportFromFirebase(
   if (!firestoreDb) {
     const initialized = await initRealtimeSync();
     if (!initialized || !firestoreDb) {
-      logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport');
-      return { status: 'error', message: 'Impossible d\'initialiser Firebase' };
+      // Fallback: essayer d'initialiser directement avec les credentials hardcodées
+      try {
+        const existingApps = getApps();
+        const fallbackAppName = 'cockpit-report-reader';
+        let fallbackApp = existingApps.find(app => app.name === fallbackAppName);
+
+        if (!fallbackApp) {
+          fallbackApp = initializeApp({
+            apiKey: 'AIzaSyDyKoEfaHikYC7FyxfNuo6L1jQOEC5Y9l0',
+            authDomain: 'cockpit-project-management.firebaseapp.com',
+            projectId: 'cockpit-project-management',
+            storageBucket: 'cockpit-project-management.firebasestorage.app',
+            messagingSenderId: '525943959593',
+            appId: '1:525943959593:web:2f69e6d45c76ddf5846c38',
+          }, fallbackAppName);
+        }
+
+        firestoreDb = getFirestore(fallbackApp);
+        logger.info('[Firebase] Fallback réussi pour lecture rapport');
+      } catch (fallbackError) {
+        logger.error('[Firebase] Impossible d\'initialiser Firestore pour lire le rapport:', fallbackError);
+        return { status: 'error', message: 'Impossible d\'initialiser Firebase' };
+      }
     }
   }
 
@@ -1055,10 +1098,16 @@ export async function getReportFromFirebase(
 
     const data = docSnap.data();
 
-    // Vérifier l'expiration
-    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+    // Vérifier l'expiration — supporter Firestore Timestamp ET string ISO
+    const expiresAtDate = data.expiresAt?.toDate
+      ? data.expiresAt.toDate()                   // Firestore Timestamp
+      : data.expiresAt
+        ? new Date(data.expiresAt)                 // String ISO (ancien format)
+        : null;
+
+    if (expiresAtDate && expiresAtDate < new Date()) {
       logger.warn('[Firebase] Rapport expiré:', token);
-      return { status: 'expired', expiresAt: data.expiresAt };
+      return { status: 'expired', expiresAt: expiresAtDate.toISOString() };
     }
 
     // Incrémenter le compteur de vues (non-blocking)
@@ -1088,13 +1137,18 @@ export async function getReportFromFirebase(
       return { status: 'not_found' };
     }
 
+    // Normaliser expiresAt en ISO string pour le client
+    const expiresAtISO = data.expiresAtISO
+      || (data.expiresAt?.toDate ? data.expiresAt.toDate().toISOString() : data.expiresAt)
+      || '';
+
     return {
       status: 'ok',
       data: {
         html,
         title: data.title,
         period: data.period,
-        expiresAt: data.expiresAt,
+        expiresAt: expiresAtISO,
       },
     };
   } catch (error) {
@@ -1157,11 +1211,14 @@ export async function storeSharedReportSnapshot(
 
   try {
     const docRef = doc(firestoreDb, COLLECTION_SHARED_SNAPSHOTS, shareId);
-    // Assurer un expiresAt par défaut si non fourni
-    const expiresAt = data.expiresAt || new Date(Date.now() + FIREBASE_TTL.SHARED_REPORTS * 24 * 60 * 60 * 1000).toISOString();
+    // Assurer un expiresAt par défaut si non fourni, stocké comme Firestore Timestamp
+    const expiresAtDate = data.expiresAt
+      ? new Date(data.expiresAt)
+      : new Date(Date.now() + FIREBASE_TTL.SHARED_REPORTS * 24 * 60 * 60 * 1000);
     await setDoc(docRef, {
       ...data,
-      expiresAt,
+      expiresAt: Timestamp.fromDate(expiresAtDate),
+      expiresAtISO: expiresAtDate.toISOString(),
       dataVersion: 2, // P5: version post-correction (Phase 1-4)
       createdAt: serverTimestamp(),
       viewCount: 0,
@@ -1201,10 +1258,15 @@ export async function getSharedReportSnapshot(
 
     const data = docSnap.data() as SharedReportSnapshot & { viewCount?: number };
 
-    // Vérifier l'expiration
-    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+    // Vérifier l'expiration — supporter Firestore Timestamp ET string ISO
+    const expiresAtVal = (data as any).expiresAt;
+    const expiresAtDate = expiresAtVal?.toDate
+      ? expiresAtVal.toDate()
+      : expiresAtVal ? new Date(expiresAtVal) : null;
+
+    if (expiresAtDate && expiresAtDate < new Date()) {
       logger.warn('[Firebase] Snapshot rapport expiré:', shareId);
-      return { status: 'expired', expiresAt: data.expiresAt };
+      return { status: 'expired', expiresAt: expiresAtDate.toISOString() };
     }
 
     // Incrémenter le compteur de vues (non-blocking)

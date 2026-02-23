@@ -14,6 +14,7 @@ import {
   limit,
   getDocs,
   deleteDoc,
+  Timestamp,
 } from 'firebase/firestore';
 import { getRealtimeFirestore, initRealtimeSync } from '@/services/firebaseRealtimeSync';
 import { logger } from '@/lib/logger';
@@ -42,11 +43,13 @@ async function runCleanup(): Promise<void> {
     if (!db) return;
   }
 
-  const now = new Date().toISOString();
+  const now = Timestamp.now();
+  const nowISO = new Date().toISOString();
   let totalDeleted = 0;
 
   for (const collectionName of COLLECTIONS_TO_CLEAN) {
     try {
+      // Requête principale : expiresAt en Firestore Timestamp (nouveau format)
       const q = query(
         collection(db, collectionName),
         where('expiresAt', '<', now),
@@ -66,6 +69,26 @@ async function runCleanup(): Promise<void> {
 
       if (snapshot.size > 0) {
         logger.info(`[Cleanup] ${snapshot.size} documents expirés supprimés de ${collectionName}`);
+      }
+
+      // Requête secondaire : expiresAt en string ISO (ancien format — rétrocompatibilité)
+      try {
+        const qLegacy = query(
+          collection(db, collectionName),
+          where('expiresAtISO', '<', nowISO),
+          limit(CLEANUP_BATCH_SIZE)
+        );
+        const legacySnap = await getDocs(qLegacy);
+        for (const docSnap of legacySnap.docs) {
+          try {
+            await deleteDoc(docSnap.ref);
+            totalDeleted++;
+          } catch (e) {
+            logger.warn(`[Cleanup] Erreur suppression legacy ${collectionName}/${docSnap.id}:`, e);
+          }
+        }
+      } catch {
+        // expiresAtISO index might not exist — non-blocking
       }
     } catch (e) {
       logger.warn(`[Cleanup] Erreur lecture ${collectionName}:`, e);
