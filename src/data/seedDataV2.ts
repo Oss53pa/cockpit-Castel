@@ -60,7 +60,7 @@ export const SEED_USERS: Omit<User, 'id'>[] = [
   // Lecteurs
   { nom: 'Sanankoua', prenom: 'Cheick', email: 'Csanankoua@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
   { nom: 'Assie', prenom: 'Julien', email: 'jassie@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
-  { nom: 'Keita', prenom: 'Mariam', email: 'mkeita@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
+  { nom: 'Keita', prenom: 'Mariama', email: 'mkeita@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
 ];
 
 // ============================================================================

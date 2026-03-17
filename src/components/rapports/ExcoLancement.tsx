@@ -2414,7 +2414,7 @@ export function ExcoLancement() {
       <h1 class="text-3xl font-bold mb-2">EXCO Report</h1>
       <p class="text-lg opacity-90">Projet Cosmos Angré - Validation Stratégique</p>
       <p class="text-sm opacity-75 mt-2">Date: ${dateFormatted}</p>
-      <p class="text-sm opacity-75">Présenté par: ${siteData.presentateur.nom}, ${siteData.presentateur.titre} | Destinataires: ${siteData.destinataires.join(', ')}</p>
+      <p class="text-sm opacity-75">Présenté par: ${siteData.presentateur.nom}${siteData.presentateur.titre ? `, ${siteData.presentateur.titre}` : ''} | Destinataires: ${siteData.destinataires.join(', ')}</p>
     </div>
   </div>
 
@@ -2803,7 +2803,7 @@ export function ExcoLancement() {
         x: 0.5, y: 4.2, w: 9, h: 0.4,
         fontSize: 16, fontFace: fontFamily, color: accentColor, align: 'center',
       });
-      coverSlide.addText(`Présenté par : ${siteData.presentateur.nom}, ${siteData.presentateur.titre}`, {
+      coverSlide.addText(`Présenté par : ${siteData.presentateur.nom}${siteData.presentateur.titre ? `, ${siteData.presentateur.titre}` : ''}`, {
         x: 0.5, y: 4.8, w: 9, h: 0.3,
         fontSize: 11, fontFace: fontFamily, color: 'CCCCCC', align: 'center',
       });
@@ -2940,7 +2940,7 @@ export function ExcoLancement() {
             Projet Cosmos Angré - Validation Stratégique
           </p>
           <p className="text-xs text-primary-400">
-            Présenté par : {siteData.presentateur.nom}, {siteData.presentateur.titre} | Destinataires : {siteData.destinataires.join(', ')}
+            Présenté par : {siteData.presentateur.nom}{siteData.presentateur.titre ? `, ${siteData.presentateur.titre}` : ''} | Destinataires : {siteData.destinataires.join(', ')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

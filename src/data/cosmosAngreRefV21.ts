@@ -22,7 +22,7 @@ export const RESPONSABLES_V21 = {
   IT: 'Julien Assie',
   RH: 'Hadja Timite',
   TECHNIQUE: 'Adele Affian',
-  JURIDIQUE: 'Mariam Keita',
+  JURIDIQUE: 'Mariama Keita',
   // Rôles fonctionnels
   TOUS: 'Équipe projet',
   DIRECTION: 'Direction',

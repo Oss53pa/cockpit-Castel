@@ -151,7 +151,7 @@ export const DEFAULT_PROJET_CONFIG = {
   ],
   presentateur: {
     nom: 'Pamela Atokouna',
-    titre: 'DGA',
+    titre: 'SDR',
   },
   destinataires: ['PDG', 'Actionnaires'],
   devise: 'FCFA',
@@ -590,3 +590,27 @@ export const SEUILS = {
   /** Seuils de progression (%) */
   progression: { risque: 80, faible: 50, minimum: 10 },
 } as const;
+
+// ============================================================================
+// SEUILS DÉCLENCHEMENT AUTOMATIQUE DES RISQUES (DEFAULT)
+// ============================================================================
+
+export const DEFAULT_SEUILS_RISK_TRIGGER = {
+  /** Écart sync Construction/Mobilisation déclenchant matérialisation (%) */
+  syncGapPercent: 15,
+  /** Avancement min actions RH avant matérialisation (%) */
+  progressMinPercent: 30,
+  /** Jours restants avant Soft Opening pour déclencher règle RH */
+  daysRemainingRH: 60,
+  /** Budget consommé max avant matérialisation financière (%) */
+  budgetMaxPercent: 110,
+  /** Avancement min générique avant matérialisation (%) */
+  genericProgressMin: 20,
+  /** Jours restants avant Soft Opening pour déclencher règle générique */
+  daysRemainingGeneric: 90,
+  /** Nombre min d'actions en retard pour matérialiser */
+  overdueActionsMin: 2,
+} as const;
+
+/** @deprecated Utiliser useParametreMetier('seuils_risk_trigger') */
+export const SEUILS_RISK_TRIGGER = DEFAULT_SEUILS_RISK_TRIGGER;

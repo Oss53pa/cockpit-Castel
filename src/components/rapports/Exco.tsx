@@ -5357,7 +5357,7 @@ export function Exco() {
             EXCO Mensuel — Cosmos Angré
           </h3>
           <p className="text-xs text-primary-400">
-            Présenté par : {siteData.presentateur.nom}, {siteData.presentateur.titre} | Destinataires : {siteData.destinataires.join(', ')}
+            Présenté par : {siteData.presentateur.nom}{siteData.presentateur.titre ? `, ${siteData.presentateur.titre}` : ''} | Destinataires : {siteData.destinataires.join(', ')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

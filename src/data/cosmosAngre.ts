@@ -237,7 +237,7 @@ const usersData: Omit<User, 'id'>[] = [
   // ID 6 - Lecteur (Rocklane Capital)
   { nom: 'Assie', prenom: 'Julien', email: 'jassie@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
   // ID 7 - Lecteur (Rocklane Capital)
-  { nom: 'Keita', prenom: 'Mariam', email: 'mkeita@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
+  { nom: 'Keita', prenom: 'Mariama', email: 'mkeita@rocklanecapital.com', role: 'viewer', createdAt: new Date().toISOString() },
 ];
 
 // Mapping des noms vers les IDs utilisateurs
@@ -249,7 +249,7 @@ const userNameToId: Record<string, number> = {
   'Adele Affian': 4,
   'Cheick Sanankoua': 5,
   'Julien Assie': 6,
-  'Mariam Keita': 7,
+  'Mariama Keita': 7,
   // Par rôle fonctionnel (pour compatibilité)
   'Admin': 1,
   'Manager': 2,

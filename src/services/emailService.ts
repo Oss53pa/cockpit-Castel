@@ -664,7 +664,7 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, 'id'>[] = [
           <div class="contact-info">
             <div class="contact-label">Votre contact</div>
             <div class="contact-name">${PROJET_CONFIG.presentateur.nom}</div>
-            <div class="contact-role">${PROJET_CONFIG.presentateur.titre}</div>
+            ${PROJET_CONFIG.presentateur.titre ? `<div class="contact-role">${PROJET_CONFIG.presentateur.titre}</div>` : ''}
           </div>
         </div>
       </div>
