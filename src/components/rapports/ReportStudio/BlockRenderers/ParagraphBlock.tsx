@@ -9,6 +9,8 @@ interface ParagraphBlockProps {
   isEditing: boolean;
   onSelect: () => void;
   onUpdate: (updates: Partial<ParagraphBlockType>) => void;
+  onSlashTrigger?: (position: { top: number; left: number }, filter: string, element: HTMLElement) => void;
+  onSlashClose?: () => void;
 }
 
 export function ParagraphBlock({
@@ -17,6 +19,8 @@ export function ParagraphBlock({
   isEditing,
   onSelect,
   onUpdate,
+  onSlashTrigger,
+  onSlashClose,
 }: ParagraphBlockProps) {
   const [localContent, setLocalContent] = useState(block.content);
   const [toolbarPosition, setToolbarPosition] = useState<{ top: number; left: number } | undefined>();
@@ -56,10 +60,49 @@ export function ParagraphBlock({
     });
   }, [block.formatting, onUpdate]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setLocalContent(newValue);
+
+    // Slash command detection
+    if (onSlashTrigger && textareaRef.current) {
+      const cursorPos = textareaRef.current.selectionStart;
+      const textBeforeCursor = newValue.substring(0, cursorPos);
+      const lastSlashIndex = textBeforeCursor.lastIndexOf('/');
+
+      if (lastSlashIndex !== -1) {
+        const charBeforeSlash = lastSlashIndex > 0 ? textBeforeCursor[lastSlashIndex - 1] : undefined;
+        // Only trigger if "/" is at start of line or after whitespace
+        if (lastSlashIndex === 0 || charBeforeSlash === '\n' || charBeforeSlash === ' ') {
+          const textAfterSlash = textBeforeCursor.substring(lastSlashIndex + 1);
+          if (!textAfterSlash.includes(' ') && !textAfterSlash.includes('\n')) {
+            const rect = textareaRef.current.getBoundingClientRect();
+            onSlashTrigger(
+              { top: rect.bottom + 4, left: rect.left },
+              textAfterSlash,
+              textareaRef.current
+            );
+            return;
+          }
+        }
+      }
+      // No valid slash — close menu if open
+      onSlashClose?.();
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
+      onSlashClose?.();
       setLocalContent(block.content);
       textareaRef.current?.blur();
+    }
+    if (e.key === 'Backspace' && onSlashClose) {
+      // Will be handled by onChange, but if content becomes empty, close
+      const ta = textareaRef.current;
+      if (ta && ta.selectionStart <= 1 && localContent.startsWith('/')) {
+        onSlashClose();
+      }
     }
     // Keyboard shortcuts for formatting
     if (e.ctrlKey || e.metaKey) {
@@ -130,7 +173,7 @@ export function ParagraphBlock({
         <textarea
           ref={textareaRef}
           value={localContent}
-          onChange={(e) => setLocalContent(e.target.value)}
+          onChange={handleChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={cn(

@@ -46,6 +46,8 @@ interface SectionRendererProps {
   onDuplicateSection?: () => void;
   onDeleteSection?: () => void;
   onToggleSectionLock?: () => void;
+  onSlashTrigger?: (position: { top: number; left: number }, filter: string, element: HTMLElement) => void;
+  onSlashClose?: () => void;
   depth?: number;
 }
 
@@ -79,6 +81,8 @@ export function SectionRenderer({
   onDuplicateSection,
   onDeleteSection,
   onToggleSectionLock,
+  onSlashTrigger,
+  onSlashClose,
   depth = 0,
 }: SectionRendererProps) {
   const hasBlocks = section.blocks && section.blocks.length > 0;
@@ -321,6 +325,8 @@ export function SectionRenderer({
                 onSelect={() => onSelectBlock(block.id)}
                 onUpdate={(updates) => onUpdateBlock(block.id, updates)}
                 onEdit={() => onEditBlock(block)}
+                onSlashTrigger={onSlashTrigger}
+                onSlashClose={onSlashClose}
               />
             </div>
           ))}
@@ -397,6 +403,8 @@ export function SectionRenderer({
               onDuplicateBlock={onDuplicateBlock}
               onMoveBlock={onMoveBlock}
               onAddBlock={onAddBlock}
+              onSlashTrigger={onSlashTrigger}
+              onSlashClose={onSlashClose}
               depth={depth + 1}
             />
           ))}

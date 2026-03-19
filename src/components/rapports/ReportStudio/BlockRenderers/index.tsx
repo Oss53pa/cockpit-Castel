@@ -34,6 +34,8 @@ interface BlockRendererProps {
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onEdit?: () => void;
   onRefresh?: () => void;
+  onSlashTrigger?: (position: { top: number; left: number }, filter: string, element: HTMLElement) => void;
+  onSlashClose?: () => void;
 }
 
 export function BlockRenderer({
@@ -45,6 +47,8 @@ export function BlockRenderer({
   onUpdate,
   onEdit,
   onRefresh,
+  onSlashTrigger,
+  onSlashClose,
 }: BlockRendererProps) {
   // sectionId is required by interface for context but not used directly in rendering
   void _sectionId;
@@ -57,6 +61,8 @@ export function BlockRenderer({
           isEditing={isEditing}
           onSelect={onSelect}
           onUpdate={onUpdate}
+          onSlashTrigger={onSlashTrigger}
+          onSlashClose={onSlashClose}
         />
       );
 

@@ -51,6 +51,7 @@ import {
 } from '@/hooks/useReports';
 import { useUsers } from '@/hooks';
 import { logger } from '@/lib/logger';
+import { chatWithClaude } from './aiHelpers';
 
 interface ReportStudioProps {
   reportId: number;
@@ -534,17 +535,25 @@ export function ReportStudio({
           activities={store.activities}
           onToggle={() => store.toggleAIPanel()}
           onSetTab={(tab) => store.setAIPanelTab(tab)}
-          onSendMessage={(message) => {
+          onSendMessage={async (message) => {
             store.addChatMessage({ role: 'user', content: message });
-            // Simulate AI response
             store.setAILoading(true);
-            setTimeout(() => {
+            try {
+              const reply = await chatWithClaude(
+                message,
+                store.content.sections,
+                store.aiPanel.chatMessages
+              );
+              store.addChatMessage({ role: 'assistant', content: reply });
+            } catch (error) {
+              logger.error('AI chat error:', error);
               store.addChatMessage({
                 role: 'assistant',
-                content: `Je comprends votre question concernant "${message}". Voici mon analyse basée sur les données du rapport...`,
+                content: 'Désolé, une erreur est survenue lors de la communication avec l\'IA. Veuillez réessayer.',
               });
+            } finally {
               store.setAILoading(false);
-            }, 1500);
+            }
           }}
           onResolveComment={(commentId) =>
             store.resolveComment(commentId, 'Utilisateur')

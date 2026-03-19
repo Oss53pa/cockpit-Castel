@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Eye, Edit, ZoomIn, ZoomOut, Grid, FileText, Columns2, StretchVertical, Maximize2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -77,27 +77,34 @@ export function DocumentCanvas({
   void _isEditing;
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  // Track which block triggered the slash menu so we can replace it
+  const slashTriggerBlockRef = useRef<{ sectionId: string; blockId: string } | null>(null);
 
-  // Slash command menu state
-  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
-  const [slashMenuPosition] = useState({ top: 0, left: 0 });
-  const [slashFilter, setSlashFilter] = useState('');
-
-  // Handle slash command insertion
+  // Handle slash command insertion — replaces the trigger paragraph block content
   const handleSlashInsert = useCallback(
     (type: string, options?: Record<string, unknown>) => {
       if (selectedSectionId) {
+        // If the slash was triggered from a paragraph block, delete it first (it only contained "/...")
+        if (slashTriggerBlockRef.current) {
+          const { sectionId, blockId } = slashTriggerBlockRef.current;
+          // Delete the temporary paragraph that contained "/"
+          onDeleteBlock(sectionId, blockId);
+          slashTriggerBlockRef.current = null;
+        }
         onAddBlock(selectedSectionId, type, undefined, options);
       }
-      setSlashMenuOpen(false);
-      setSlashFilter('');
     },
-    [selectedSectionId, onAddBlock]
+    [selectedSectionId, onAddBlock, onDeleteBlock]
   );
 
   // Initialize slash commands with handlers
   const {
+    isOpen: slashMenuOpen,
+    position: slashMenuPosition,
+    filter: slashFilter,
     commands,
+    handleTextChange: slashHandleTextChange,
+    close: slashClose,
   } = useSlashCommands(handleSlashInsert);
 
   // Handle slash command selection
@@ -105,11 +112,23 @@ export function DocumentCanvas({
     command.action();
   }, []);
 
-  // Close slash menu
-  const handleCloseSlashMenu = useCallback(() => {
-    setSlashMenuOpen(false);
-    setSlashFilter('');
-  }, []);
+  // Slash trigger callback from ParagraphBlock
+  const handleSlashTrigger = useCallback(
+    (position: { top: number; left: number }, filter: string, element: HTMLElement) => {
+      // Find the currently selected block to track for replacement
+      if (selectedSectionId && selectedBlockId) {
+        slashTriggerBlockRef.current = { sectionId: selectedSectionId, blockId: selectedBlockId };
+      }
+      slashHandleTextChange('/' + filter, filter.length + 1, element);
+    },
+    [selectedSectionId, selectedBlockId, slashHandleTextChange]
+  );
+
+  // Slash close callback
+  const handleSlashClose = useCallback(() => {
+    slashClose();
+    slashTriggerBlockRef.current = null;
+  }, [slashClose]);
 
   // Calculate document dimensions based on page settings
   const getPageDimensions = () => {
@@ -407,6 +426,8 @@ export function DocumentCanvas({
                             onMoveBlock(section.id, blockId, direction)
                           }
                           onAddBlock={(type, index) => onAddBlock(section.id, type, index)}
+                          onSlashTrigger={handleSlashTrigger}
+                          onSlashClose={handleSlashClose}
                         />
                       ))
                     ) : (
@@ -465,6 +486,8 @@ export function DocumentCanvas({
                             onMoveBlock(section.id, blockId, direction)
                           }
                           onAddBlock={(type, index) => onAddBlock(section.id, type, index)}
+                          onSlashTrigger={handleSlashTrigger}
+                          onSlashClose={handleSlashClose}
                         />
                       ))
                     ) : (
@@ -683,7 +706,7 @@ export function DocumentCanvas({
         filter={slashFilter}
         commands={commands}
         onSelect={handleSlashSelect}
-        onClose={handleCloseSlashMenu}
+        onClose={handleSlashClose}
       />
     </div>
   );
