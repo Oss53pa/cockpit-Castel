@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import {
   Save,
   Download,
@@ -14,6 +14,7 @@ import {
   Loader2,
   ArrowLeft,
   History,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,12 @@ import {
 import { useUsers } from '@/hooks';
 import { logger } from '@/lib/logger';
 import { chatWithClaude } from './aiHelpers';
+import { DEFAULT_PROJET_CONFIG } from '@/data/constants';
+
+const MOIS_LABELS = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+];
 
 interface ReportStudioProps {
   reportId: number;
@@ -73,6 +80,35 @@ export function ReportStudio({
   const currentUser = users.find(u => u.role === 'admin') || users[0];
   const userId = currentUser?.id || 1;
   const userName = currentUser ? `${currentUser.prenom} ${currentUser.nom}` : 'Utilisateur';
+
+  // --- Mois de reporting ---
+  // Initialiser depuis le rapport existant ou le mois courant
+  const initMonth = store.report?.periodEnd
+    ? new Date(store.report.periodEnd).getMonth()
+    : new Date().getMonth();
+  const initYear = store.report?.periodEnd
+    ? new Date(store.report.periodEnd).getFullYear()
+    : new Date().getFullYear();
+  const [reportingMonth, setReportingMonth] = useState(initMonth);
+  const [reportingYear, setReportingYear] = useState(initYear);
+
+  const reportingYears = useMemo(() => {
+    const startYear = new Date(DEFAULT_PROJET_CONFIG.dateDebut).getFullYear();
+    const current = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = startYear; y <= current + 1; y++) years.push(y);
+    return years;
+  }, []);
+
+  const handleReportingMonthChange = useCallback((month: number, year: number) => {
+    setReportingMonth(month);
+    setReportingYear(year);
+    const periodStart = DEFAULT_PROJET_CONFIG.dateDebut; // Début du projet
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const periodEnd = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
+    const periodLabel = `${MOIS_LABELS[month]} ${year}`;
+    store.updateReport({ periodStart, periodEnd, periodLabel });
+  }, [store]);
 
   // Initialize report in store when loaded
   useEffect(() => {
@@ -327,6 +363,12 @@ export function ReportStudio({
               >
                 {REPORT_STATUS_LABELS[store.report.status]}
               </Badge>
+              {store.report.periodLabel && (
+                <span className="text-xs text-blue-600 flex items-center gap-1 font-medium">
+                  <Calendar className="h-3 w-3" />
+                  Données: {DEFAULT_PROJET_CONFIG.dateDebut} au {store.report.periodEnd}
+                </span>
+              )}
               {store.ui.lastSavedAt && (
                 <span className="text-xs text-gray-400 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -376,6 +418,29 @@ export function ReportStudio({
             <Palette className="h-4 w-4 mr-2" />
             Design
           </Button>
+
+          {/* Mois de reporting */}
+          <div className="flex items-center gap-1 px-2 py-1 rounded-md border bg-blue-50 border-blue-200">
+            <Calendar className="h-4 w-4 text-blue-600" />
+            <select
+              value={reportingMonth}
+              onChange={(e) => handleReportingMonthChange(Number(e.target.value), reportingYear)}
+              className="text-sm bg-transparent border-none outline-none cursor-pointer text-blue-800 font-medium"
+            >
+              {MOIS_LABELS.map((label, i) => (
+                <option key={i} value={i}>{label}</option>
+              ))}
+            </select>
+            <select
+              value={reportingYear}
+              onChange={(e) => handleReportingMonthChange(reportingMonth, Number(e.target.value))}
+              className="text-sm bg-transparent border-none outline-none cursor-pointer text-blue-800 font-medium w-16"
+            >
+              {reportingYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Save */}
           <Button
