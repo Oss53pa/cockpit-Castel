@@ -432,11 +432,14 @@ function WMiniChart({ value, max = 100, color }: { value: number; max?: number; 
 // COMPOSANT PRINCIPAL
 // ============================================================================
 
-// Section definitions for the config panel
+// Section definitions for the config panel (avec sous-sections)
 const WEEKLY_SECTIONS: ReportSection[] = [
   { id: 'meteo', title: 'Météo Projet', icon: '🌩️', visible: true },
   { id: 'kpis', title: 'Indicateurs clés', icon: '📊', visible: true },
-  { id: 'trajectoire', title: 'Trajectoire & Synchronisation', icon: '📈', visible: true },
+  { id: 'trajectoire', title: 'Trajectoire & Synchronisation', icon: '📈', visible: true, children: [
+    { id: 'trajectoire_courbe', title: 'Courbe tendance', icon: '📈', visible: true },
+    { id: 'trajectoire_sync', title: 'Synchronisation Chantier', icon: '🔄', visible: true },
+  ]},
   { id: 'faits', title: 'Faits marquants', icon: '🏆', visible: true },
   { id: 'decisions', title: 'Décisions & Arbitrages', icon: '🔴', visible: true },
   { id: 'attention', title: "Points d'attention", icon: '⚠️', visible: true },
@@ -458,9 +461,27 @@ export function WeeklyReportV2() {
   });
   const [sections, setSections] = useState<ReportSection[]>(WEEKLY_SECTIONS);
   const handleToggleSection = useCallback((sectionId: string) => {
-    setSections(prev => prev.map(s => s.id === sectionId ? { ...s, visible: !s.visible } : s));
+    setSections(prev => prev.map(s => {
+      if (s.id === sectionId) return { ...s, visible: !s.visible };
+      if (s.children) {
+        const updatedChildren = s.children.map(c => c.id === sectionId ? { ...c, visible: !c.visible } : c);
+        if (updatedChildren !== s.children) return { ...s, children: updatedChildren };
+      }
+      return s;
+    }));
   }, []);
-  const visibleSet = useMemo(() => new Set(sections.filter(s => s.visible).map(s => s.id)), [sections]);
+  const visibleSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of sections) {
+      if (s.visible) set.add(s.id);
+      if (s.children) {
+        for (const c of s.children) {
+          if (c.visible && s.visible) set.add(c.id);
+        }
+      }
+    }
+    return set;
+  }, [sections]);
   const referenceDate = useMemo(() => new Date(period.year, period.month, 15), [period]);
 
   const data = useWeeklyReportData(referenceDate);
@@ -678,13 +699,16 @@ export function WeeklyReportV2() {
       {visibleSet.has('trajectoire') && (<WSection title="Trajectoire & Synchronisation" number={2}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {/* Trend chart */}
+          {visibleSet.has('trajectoire_courbe') && (
           <WCard style={{ flex: 2, minWidth: 300 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: C.gray500, marginBottom: 8 }}>
               Progression Réel vs Idéal
             </div>
             <WTrendChart data={data.trendHistory} />
           </WCard>
+          )}
           {/* Sync */}
+          {visibleSet.has('trajectoire_sync') && (
           <WCard style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: C.gray500, marginBottom: 12 }}>
               Construction vs Mobilisation
@@ -724,6 +748,7 @@ export function WeeklyReportV2() {
               </span>
             </div>
           </WCard>
+          )}
         </div>
       </WSection>)}
 

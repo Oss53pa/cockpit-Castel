@@ -1,17 +1,17 @@
 /**
  * ReportConfigPanel — Panneau de configuration réutilisable pour tous les rapports
- * Permet de choisir la période de reporting et les sections visibles
+ * Permet de choisir la période de reporting et les sections/sous-sections visibles
  */
 
 import { useState } from 'react';
 import { Settings2, Eye, EyeOff, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export interface ReportSection {
   id: string;
   title: string;
   icon: string;
   visible: boolean;
+  children?: ReportSection[];
 }
 
 export interface ReportPeriodConfig {
@@ -20,15 +20,11 @@ export interface ReportPeriodConfig {
 }
 
 interface ReportConfigPanelProps {
-  /** Sections configurables du rapport */
   sections: ReportSection[];
   onToggleSection: (sectionId: string) => void;
-  /** Période courante */
   period: ReportPeriodConfig;
   onPeriodChange: (period: ReportPeriodConfig) => void;
-  /** Style du header pour intégrer au thème du rapport */
   accentColor?: string;
-  /** Ouvrir le panneau par défaut */
   defaultOpen?: boolean;
 }
 
@@ -36,6 +32,76 @@ const MONTHS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
+
+/** Count all visible items (sections + sub-sections) */
+function countVisible(sections: ReportSection[]): { visible: number; total: number } {
+  let visible = 0;
+  let total = 0;
+  for (const s of sections) {
+    total++;
+    if (s.visible) visible++;
+    if (s.children) {
+      for (const c of s.children) {
+        total++;
+        if (c.visible) visible++;
+      }
+    }
+  }
+  return { visible, total };
+}
+
+function SectionRow({
+  section,
+  onToggle,
+  accentColor,
+  indent = false,
+}: {
+  section: ReportSection;
+  onToggle: (id: string) => void;
+  accentColor: string;
+  indent?: boolean;
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: indent ? '4px 10px 4px 28px' : '6px 10px',
+        borderRadius: 6,
+        cursor: 'pointer',
+        transition: 'background 0.15s',
+        background: section.visible ? 'transparent' : '#f9fafb',
+        opacity: section.visible ? 1 : 0.5,
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f3f4f6'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = section.visible ? 'transparent' : '#f9fafb'; }}
+    >
+      <input
+        type="checkbox"
+        checked={section.visible}
+        onChange={() => onToggle(section.id)}
+        style={{ accentColor, width: indent ? 12 : 14, height: indent ? 12 : 14, cursor: 'pointer' }}
+      />
+      {section.visible ? (
+        <Eye size={indent ? 10 : 12} color="#6b7280" />
+      ) : (
+        <EyeOff size={indent ? 10 : 12} color="#d1d5db" />
+      )}
+      <span style={{
+        fontSize: indent ? 11 : 12,
+        fontWeight: indent ? 400 : 500,
+        color: section.visible ? (indent ? '#6b7280' : '#374151') : '#9ca3af',
+        textDecoration: section.visible ? 'none' : 'line-through',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {section.icon} {section.title}
+      </span>
+    </label>
+  );
+}
 
 export function ReportConfigPanel({
   sections,
@@ -50,7 +116,7 @@ export function ReportConfigPanel({
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
-  const visibleCount = sections.filter(s => s.visible).length;
+  const { visible: visibleCount, total: totalCount } = countVisible(sections);
 
   return (
     <div style={{ margin: '0 0 16px 0' }}>
@@ -63,7 +129,7 @@ export function ReportConfigPanel({
           gap: 8,
           background: isOpen ? `${accentColor}10` : 'white',
           border: `1px solid ${isOpen ? accentColor : '#e5e7eb'}`,
-          borderRadius: 10,
+          borderRadius: isOpen ? '10px 10px 0 0' : 10,
           padding: '10px 16px',
           cursor: 'pointer',
           width: '100%',
@@ -76,7 +142,7 @@ export function ReportConfigPanel({
           Configuration du rapport
         </span>
         <span style={{ fontSize: 11, color: '#9ca3af', marginRight: 8 }}>
-          {MONTHS_FR[period.month]} {period.year} · {visibleCount}/{sections.length} sections
+          {MONTHS_FR[period.month]} {period.year} · {visibleCount}/{totalCount} sections
         </span>
         {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
@@ -180,56 +246,24 @@ export function ReportConfigPanel({
                 </span>
               </div>
               <span style={{ fontSize: 11, color: '#9ca3af' }}>
-                {visibleCount}/{sections.length} affichées
+                {visibleCount}/{totalCount} affichées
               </span>
             </div>
 
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: 4,
-              maxHeight: 200,
+              gap: 2,
+              maxHeight: 300,
               overflowY: 'auto',
             }}>
               {sections.map((section) => (
-                <label
-                  key={section.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    transition: 'background 0.15s',
-                    background: section.visible ? 'transparent' : '#f9fafb',
-                    opacity: section.visible ? 1 : 0.5,
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f3f4f6'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = section.visible ? 'transparent' : '#f9fafb'; }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={section.visible}
-                    onChange={() => onToggleSection(section.id)}
-                    style={{ accentColor, width: 14, height: 14, cursor: 'pointer' }}
-                  />
-                  {section.visible ? (
-                    <Eye size={12} color="#6b7280" />
-                  ) : (
-                    <EyeOff size={12} color="#d1d5db" />
-                  )}
-                  <span style={{
-                    fontSize: 12,
-                    color: section.visible ? '#374151' : '#9ca3af',
-                    textDecoration: section.visible ? 'none' : 'line-through',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {section.icon} {section.title}
-                  </span>
-                </label>
+                <div key={section.id}>
+                  <SectionRow section={section} onToggle={onToggleSection} accentColor={accentColor} />
+                  {section.children && section.visible && section.children.map((child) => (
+                    <SectionRow key={child.id} section={child} onToggle={onToggleSection} accentColor={accentColor} indent />
+                  ))}
+                </div>
               ))}
             </div>
           </div>
