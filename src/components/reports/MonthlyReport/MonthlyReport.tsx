@@ -4,10 +4,11 @@
  * Données 100% live via useMonthlyReportData
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { C } from '@/components/rapports/ExcoMensuelV5/constants';
 import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
 import { useMonthlyReportData } from './useMonthlyReportData';
+import { ReportConfigPanel, type ReportSection, type ReportPeriodConfig } from '@/components/reports/ReportConfigPanel';
 import { useActions } from '@/hooks/useActions';
 import { useJalons } from '@/hooks/useJalons';
 import { useRisques } from '@/hooks/useRisques';
@@ -118,11 +119,74 @@ const METEO_COLORS: Record<string, { color: string; bg: string; emoji: string }>
 // COMPOSANT PRINCIPAL
 // ============================================================================
 
+// Section definitions for the config panel (avec sous-sections)
+const MONTHLY_SECTIONS: ReportSection[] = [
+  { id: 'meteo', title: 'Météo Projet', icon: '🌩️', visible: true },
+  { id: 'kpis', title: 'Indicateurs Clés', icon: '📊', visible: true, children: [
+    { id: 'kpis_cards', title: 'Cartes KPI', icon: '🔢', visible: true },
+    { id: 'kpis_courbe', title: 'Évolution mensuelle', icon: '📈', visible: true },
+    { id: 'kpis_sync', title: 'Synchronisation Chantier', icon: '🔄', visible: true },
+  ]},
+  { id: 'realisations', title: 'Réalisations du Mois', icon: '🏆', visible: true },
+  { id: 'decisions', title: 'Décisions Requises', icon: '🔴', visible: true },
+  { id: 'axes', title: 'Avancement par Axe', icon: '📈', visible: true },
+  { id: 'jalons', title: 'Jalons', icon: '🎯', visible: true, children: [
+    { id: 'jalons_mois', title: 'Jalons ce mois', icon: '📅', visible: true },
+    { id: 'jalons_next', title: 'Jalons mois suivant', icon: '📅', visible: true },
+  ]},
+  { id: 'budget', title: 'Exécution Budgétaire', icon: '💰', visible: true, children: [
+    { id: 'budget_synthese', title: 'Synthèse budgétaire', icon: '💵', visible: true },
+    { id: 'budget_categories', title: 'Détail par catégorie', icon: '📊', visible: true },
+  ]},
+  { id: 'risques', title: 'Cartographie des Risques', icon: '⚠️', visible: true, children: [
+    { id: 'risques_stats', title: 'Statistiques risques', icon: '📊', visible: true },
+    { id: 'risques_top5', title: 'Top 5 risques', icon: '🔥', visible: true },
+  ]},
+  { id: 'actions', title: "Plan d'Action", icon: '📋', visible: true },
+  { id: 'projection', title: 'Projection & Trajectoire', icon: '🔮', visible: true },
+  { id: 'ia', title: 'Analyse PROPH3T', icon: '🤖', visible: true },
+  { id: 'notes', title: 'Notes COPIL', icon: '📝', visible: true },
+];
+
 export function MonthlyReport() {
   const [_tab, setTab] = useState("all");
   const [showSendModal, setShowSendModal] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
-  const d = useMonthlyReportData();
+
+  // --- Config state: period + visible sections ---
+  const [period, setPeriod] = useState<ReportPeriodConfig>({
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
+  });
+  const [sections, setSections] = useState<ReportSection[]>(MONTHLY_SECTIONS);
+
+  const handleToggleSection = useCallback((sectionId: string) => {
+    setSections(prev => prev.map(s => {
+      if (s.id === sectionId) return { ...s, visible: !s.visible };
+      if (s.children) {
+        const updatedChildren = s.children.map(c => c.id === sectionId ? { ...c, visible: !c.visible } : c);
+        if (updatedChildren !== s.children) return { ...s, children: updatedChildren };
+      }
+      return s;
+    }));
+  }, []);
+
+  const visibleSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of sections) {
+      if (s.visible) set.add(s.id);
+      if (s.children) {
+        for (const c of s.children) {
+          if (c.visible && s.visible) set.add(c.id);
+        }
+      }
+    }
+    return set;
+  }, [sections]);
+
+  // Reference date built from period selection
+  const referenceDate = useMemo(() => new Date(period.year, period.month, 15), [period]);
+  const d = useMonthlyReportData(referenceDate);
 
   // Data hooks for email stats
   const allActions = useActions();
@@ -171,6 +235,18 @@ export function MonthlyReport() {
 
   return (
     <>
+    {/* Config Panel — hors du reportRef pour ne pas apparaître dans les exports */}
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '16px 32px 0' }}>
+      <ReportConfigPanel
+        sections={sections}
+        onToggleSection={handleToggleSection}
+        period={period}
+        onPeriodChange={setPeriod}
+        accentColor={C.navy}
+        defaultOpen
+      />
+    </div>
+
     <div ref={reportRef} style={{ fontFamily: "'Exo 2', Inter, system-ui, sans-serif", background: C.offWhite, minHeight: "100vh", color: C.navy }}>
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyLight} 50%, ${C.navyMid} 100%)`, color: C.white, padding: "28px 32px" }}>
@@ -200,6 +276,7 @@ export function MonthlyReport() {
       <div style={{ padding: "24px 32px", maxWidth: 960, margin: "0 auto" }}>
 
         {/* Météo */}
+        {visibleSet.has('meteo') && (
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, background: mc.bg, borderRadius: 12, padding: "16px 20px", border: `1px solid ${mc.color}30` }}>
             <span style={{ fontSize: 42 }}>{d.weatherEmoji}</span>
@@ -209,9 +286,11 @@ export function MonthlyReport() {
             </div>
           </div>
         </div>
+        )}
 
         {/* KPIs */}
-        <Sec title="Tableau de Bord — Indicateurs Clés" icon="📊">
+        {visibleSet.has('kpis') && (<><Sec title="Tableau de Bord — Indicateurs Clés" icon="📊">
+          {visibleSet.has('kpis_cards') && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
             {d.kpis.map((k, i) => (
               <Card key={i} style={{ textAlign: "center", position: "relative" }}>
@@ -226,10 +305,13 @@ export function MonthlyReport() {
               </Card>
             ))}
           </div>
+          )}
         </Sec>
 
         {/* Courbe + Sync */}
+        {(visibleSet.has('kpis_courbe') || visibleSet.has('kpis_sync')) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
+          {visibleSet.has('kpis_courbe') && (
           <Card>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 8, textTransform: "uppercase" }}>📈 Évolution mensuelle</div>
             <MiniChart trendMonthly={d.trendMonthly} trendIdeal={d.trendIdeal} />
@@ -238,6 +320,8 @@ export function MonthlyReport() {
               <span style={{ color: C.gray300 }}>- - Trajectoire cible</span>
             </div>
           </Card>
+          )}
+          {visibleSet.has('kpis_sync') && (
           <Card>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 12, textTransform: "uppercase" }}>🔄 Synchronisation Chantier / Mobilisation</div>
             <div style={{ marginBottom: 12 }}>
@@ -260,9 +344,13 @@ export function MonthlyReport() {
               </div>
             </div>
           </Card>
+          )}
         </div>
+        )}
+        </>)}
 
         {/* Réalisations du mois */}
+        {visibleSet.has('realisations') && (
         <Sec title="Réalisations du Mois" icon="🏆" accent={C.green}>
           <Card style={{ background: C.greenBg, border: `1px solid ${C.green}20` }}>
             {d.achievements.length > 0 ? d.achievements.map((a, i) => (
@@ -275,9 +363,10 @@ export function MonthlyReport() {
             )}
           </Card>
         </Sec>
+        )}
 
         {/* Décisions requises COPIL */}
-        {d.decisions.length > 0 && (
+        {visibleSet.has('decisions') && d.decisions.length > 0 && (
           <Sec title="Décisions Requises — COPIL" icon="🔴" accent={C.red}>
             {d.decisions.map((x, i) => (
               <Card key={i} style={{ marginBottom: 10, borderLeft: `4px solid ${x.urgency === "critical" ? C.red : C.orange}` }}>
@@ -296,6 +385,7 @@ export function MonthlyReport() {
         )}
 
         {/* Axes */}
+        {visibleSet.has('axes') && (
         <Sec title="Avancement Détaillé par Axe Stratégique" icon="📈" pageBreak>
           {d.axes.map((a, i) => {
             const delta = a.pct - a.janPct;
@@ -324,10 +414,13 @@ export function MonthlyReport() {
             );
           })}
         </Sec>
+        )}
 
         {/* Jalons */}
+        {visibleSet.has('jalons') && (
         <Sec title={`Jalons — ${d.currentMonthLabel} & ${d.nextMonthLabel.replace(' (à venir)', '')}`} icon="🎯">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {visibleSet.has('jalons_mois') && (
             <Card>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>{d.currentMonthLabel}</div>
               {d.milestonesCurrent.length > 0 ? d.milestonesCurrent.map((m, i) => (
@@ -342,6 +435,8 @@ export function MonthlyReport() {
                 <div style={{ fontSize: 12, color: C.gray500, textAlign: "center", padding: 12 }}>Aucun jalon ce mois</div>
               )}
             </Card>
+            )}
+            {visibleSet.has('jalons_next') && (
             <Card>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 10 }}>{d.nextMonthLabel}</div>
               {d.milestonesNext.length > 0 ? d.milestonesNext.map((m, i) => (
@@ -356,12 +451,16 @@ export function MonthlyReport() {
                 <div style={{ fontSize: 12, color: C.gray500, textAlign: "center", padding: 12 }}>Aucun jalon le mois prochain</div>
               )}
             </Card>
+            )}
           </div>
         </Sec>
+        )}
 
         {/* Budget */}
+        {visibleSet.has('budget') && (
         <Sec title="Exécution Budgétaire" icon="💰" accent={C.green}>
           <Card>
+            {visibleSet.has('budget_synthese') && (<>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16, textAlign: "center" }}>
               {[
                 { l: "Budget prévu", v: `${f2(d.budget.prevu)}M`, c: C.navy },
@@ -381,7 +480,8 @@ export function MonthlyReport() {
               <span>Engagé {d.budget.prevu > 0 ? f2((d.budget.engage / d.budget.prevu) * 100) : 0}%</span>
               <span>100%</span>
             </div>
-            {d.budget.lines.length > 0 && (
+            </>)}
+            {visibleSet.has('budget_categories') && d.budget.lines.length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 8 }}>Ventilation par catégorie (M FCFA)</div>
                 {d.budget.lines.map((l, i) => (
@@ -401,9 +501,12 @@ export function MonthlyReport() {
             )}
           </Card>
         </Sec>
+        )}
 
         {/* Risques */}
+        {visibleSet.has('risques') && (
         <Sec title="Cartographie des Risques" icon="⚠️" accent={C.orange}>
+          {visibleSet.has('risques_stats') && (
           <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
             {[
               { l: "Critiques (≥16)", n: d.riskStats.critical, c: C.red },
@@ -416,7 +519,8 @@ export function MonthlyReport() {
               </div>
             ))}
           </div>
-          {d.risks.length > 0 && (
+          )}
+          {visibleSet.has('risques_top5') && d.risks.length > 0 && (
             <Card>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.navy, marginBottom: 10 }}>Top 5 — Risques Critiques</div>
               {d.risks.map((r, i) => {
@@ -443,8 +547,10 @@ export function MonthlyReport() {
             </Card>
           )}
         </Sec>
+        )}
 
         {/* Plan d'action M+1 */}
+        {visibleSet.has('actions') && (
         <Sec title={`Plan d'Action — ${nextMonthName}`} icon="📋" accent={C.purple}>
           <Card>
             {d.actions.length > 0 ? d.actions.map((a, i) => {
@@ -466,8 +572,10 @@ export function MonthlyReport() {
             )}
           </Card>
         </Sec>
+        )}
 
         {/* Projection */}
+        {visibleSet.has('projection') && (
         <Sec title="Projection & Trajectoire" icon="🔮" accent={C.purple}>
           <Card style={{ background: `linear-gradient(135deg, ${C.purpleBg} 0%, ${C.purpleBg} 100%)`, border: `1px solid ${C.purple}` }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, textAlign: "center", marginBottom: 16 }}>
@@ -495,8 +603,10 @@ export function MonthlyReport() {
             )}
           </Card>
         </Sec>
+        )}
 
         {/* PROPH3T */}
+        {visibleSet.has('ia') && (
         <Sec title="Analyse PROPH3T — Intelligence Artificielle" icon="🤖" accent={C.purple}>
           <Card style={{ background: `linear-gradient(135deg, ${C.blueBg} 0%, ${C.purpleBg} 100%)`, border: `1px solid ${C.blue}` }}>
             <div style={{ fontSize: 13, lineHeight: 1.7, color: C.navy, marginBottom: 12 }}>
@@ -519,8 +629,10 @@ export function MonthlyReport() {
             </div>
           </Card>
         </Sec>
+        )}
 
         {/* Notes COPIL */}
+        {visibleSet.has('notes') && (
         <Sec title="Notes & Commentaires COPIL" icon="📝">
           <Card>
             <textarea placeholder="Saisissez les notes et décisions du COPIL..." style={{ width: "100%", minHeight: 100, border: `1px solid ${C.gray200}`, borderRadius: 8, padding: 12, fontSize: 13, fontFamily: "inherit", resize: "vertical", color: C.navy }} />
@@ -529,6 +641,7 @@ export function MonthlyReport() {
             </div>
           </Card>
         </Sec>
+        )}
 
         {/* Footer */}
         <div style={{ textAlign: "center", padding: "20px 0", borderTop: `2px solid ${C.navy}`, marginTop: 16 }}>

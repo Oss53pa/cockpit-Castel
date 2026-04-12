@@ -171,8 +171,8 @@ const LS_KEY_PREFIX = 'weekly-report-notes-';
 // HOOK PRINCIPAL
 // ============================================================================
 
-export function useWeeklyReportData(): WeeklyReportData {
-  const today = new Date();
+export function useWeeklyReportData(referenceDate?: Date): WeeklyReportData {
+  const today = referenceDate ?? new Date();
   const weekNum = getWeekNumber(today);
   const todayStr = today.toISOString().split('T')[0];
 
