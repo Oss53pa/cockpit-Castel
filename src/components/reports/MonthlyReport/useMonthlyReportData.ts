@@ -213,7 +213,7 @@ export interface MonthlyReportData {
 // HOOK PRINCIPAL
 // ============================================================================
 
-export function useMonthlyReportData(): MonthlyReportData | null {
+export function useMonthlyReportData(referenceDate?: Date): MonthlyReportData | null {
   const allActions = useActions();
   const allJalons = useJalons();
   const allRisques = useRisques();
@@ -233,7 +233,7 @@ export function useMonthlyReportData(): MonthlyReportData | null {
     // Wait for essential data to load
     if (!allActions || !allJalons || !kpis) return null;
 
-    const now = new Date();
+    const now = referenceDate ?? new Date();
     const todayStr = now.toISOString().split('T')[0];
 
     // ------------------------------------------------------------------
@@ -689,5 +689,6 @@ export function useMonthlyReportData(): MonthlyReportData | null {
     budgetParCategorie,
     confidenceScore,
     currentSite,
+    referenceDate,
   ]);
 }

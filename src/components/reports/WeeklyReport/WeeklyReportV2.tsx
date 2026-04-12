@@ -4,11 +4,12 @@
  * Données 100% live via useWeeklyReportData
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { C, AXES_V5, METEO_CONFIG } from '@/components/rapports/ExcoMensuelV5/constants';
 import type { MeteoLevel } from '@/components/rapports/ExcoMensuelV5/constants';
 import { SendReportModal } from '@/components/rapports/ExcoMensuelV5/SendReportModal';
 import { useWeeklyReportData } from './useWeeklyReportData';
+import { ReportConfigPanel, type ReportSection, type ReportPeriodConfig } from '@/components/reports/ReportConfigPanel';
 import type {
   WeeklyHighlight,
   AxeWeeklyData,
@@ -431,8 +432,38 @@ function WMiniChart({ value, max = 100, color }: { value: number; max?: number; 
 // COMPOSANT PRINCIPAL
 // ============================================================================
 
+// Section definitions for the config panel
+const WEEKLY_SECTIONS: ReportSection[] = [
+  { id: 'meteo', title: 'Météo Projet', icon: '🌩️', visible: true },
+  { id: 'kpis', title: 'Indicateurs clés', icon: '📊', visible: true },
+  { id: 'trajectoire', title: 'Trajectoire & Synchronisation', icon: '📈', visible: true },
+  { id: 'faits', title: 'Faits marquants', icon: '🏆', visible: true },
+  { id: 'decisions', title: 'Décisions & Arbitrages', icon: '🔴', visible: true },
+  { id: 'attention', title: "Points d'attention", icon: '⚠️', visible: true },
+  { id: 'soustaches', title: 'Sous-tâches à échéance', icon: '📋', visible: true },
+  { id: 'axes', title: 'Avancement par axe', icon: '📈', visible: true },
+  { id: 'jalons', title: 'Prochains jalons', icon: '🎯', visible: true },
+  { id: 'risques', title: 'Top 5 risques actifs', icon: '⚠️', visible: true },
+  { id: 'actions', title: 'Actions & Focus', icon: '📋', visible: true },
+  { id: 'projection', title: 'Projection', icon: '🔮', visible: true },
+  { id: 'ia', title: 'PROPH3T — Score de Confiance', icon: '🤖', visible: true },
+  { id: 'notes', title: 'Notes & commentaires', icon: '📝', visible: true },
+];
+
 export function WeeklyReportV2() {
-  const data = useWeeklyReportData();
+  // --- Config state ---
+  const [period, setPeriod] = useState<ReportPeriodConfig>({
+    month: new Date().getMonth(),
+    year: new Date().getFullYear(),
+  });
+  const [sections, setSections] = useState<ReportSection[]>(WEEKLY_SECTIONS);
+  const handleToggleSection = useCallback((sectionId: string) => {
+    setSections(prev => prev.map(s => s.id === sectionId ? { ...s, visible: !s.visible } : s));
+  }, []);
+  const visibleSet = useMemo(() => new Set(sections.filter(s => s.visible).map(s => s.id)), [sections]);
+  const referenceDate = useMemo(() => new Date(period.year, period.month, 15), [period]);
+
+  const data = useWeeklyReportData(referenceDate);
   const reportRef = useRef<HTMLDivElement>(null);
   const [showSendModal, setShowSendModal] = useState(false);
   const [focusView, setFocusView] = useState<'focus' | 'echeance' | 'priorite' | 'responsable'>('focus');
@@ -480,6 +511,18 @@ export function WeeklyReportV2() {
 
   return (
     <>
+    {/* Config Panel — hors du reportRef pour ne pas apparaître dans les exports */}
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 24px 0' }}>
+      <ReportConfigPanel
+        sections={sections}
+        onToggleSection={handleToggleSection}
+        period={period}
+        onPeriodChange={setPeriod}
+        accentColor={C.navy}
+        defaultOpen
+      />
+    </div>
+
     <div
       ref={reportRef}
       style={{
@@ -571,7 +614,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 2. METEO BANNER */}
       {/* ================================================================ */}
-      {(() => {
+      {visibleSet.has('meteo') && (() => {
         const cfg = METEO_CONFIG[data.meteo];
         return (
           <div
@@ -598,7 +641,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 3. KPIs */}
       {/* ================================================================ */}
-      <WSection title="Indicateurs clés" number={1}>
+      {visibleSet.has('kpis') && (<WSection title="Indicateurs clés" number={1}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WKpiCard
             label="Avancement"
@@ -627,12 +670,12 @@ export function WeeklyReportV2() {
             color={C.green}
           />
         </div>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 4. COURBE + SYNC */}
       {/* ================================================================ */}
-      <WSection title="Trajectoire & Synchronisation" number={2}>
+      {visibleSet.has('trajectoire') && (<WSection title="Trajectoire & Synchronisation" number={2}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {/* Trend chart */}
           <WCard style={{ flex: 2, minWidth: 300 }}>
@@ -682,12 +725,12 @@ export function WeeklyReportV2() {
             </div>
           </WCard>
         </div>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 5. FAITS MARQUANTS */}
       {/* ================================================================ */}
-      <WSection title="Faits marquants de la semaine" number={3}>
+      {visibleSet.has('faits') && (<WSection title="Faits marquants de la semaine" number={3}>
         <WCard>
           {data.highlights.length === 0 ? (
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun fait marquant cette semaine.</div>
@@ -704,12 +747,12 @@ export function WeeklyReportV2() {
             </div>
           )}
         </WCard>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 6. DECISIONS & ARBITRAGES */}
       {/* ================================================================ */}
-      <WSection title="Décisions & Arbitrages en attente" number={4}>
+      {visibleSet.has('decisions') && (<WSection title="Décisions & Arbitrages en attente" number={4}>
         {data.pendingDecisions.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucune décision en attente.</div>
@@ -744,12 +787,12 @@ export function WeeklyReportV2() {
             ))}
           </div>
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 5. POINTS D'ATTENTION */}
       {/* ================================================================ */}
-      <WSection title="Points d'attention" number={5}>
+      {visibleSet.has('attention') && (<WSection title="Points d'attention" number={5}>
         {data.pointsAttention.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun point d'attention non transmis.</div>
@@ -818,12 +861,12 @@ export function WeeklyReportV2() {
             </table>
           </WCard>
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 6. SOUS-TÂCHES À ÉCHÉANCE */}
       {/* ================================================================ */}
-      <WSection title="Sous-tâches à échéance" number={6}>
+      {visibleSet.has('soustaches') && (<WSection title="Sous-tâches à échéance" number={6}>
         {data.sousTachesEcheance.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucune sous-tâche avec échéance en cours.</div>
@@ -895,12 +938,12 @@ export function WeeklyReportV2() {
             </table>
           </WCard>
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 7. AVANCEMENT PAR AXE */}
       {/* ================================================================ */}
-      <WSection title="Avancement par axe" number={7}>
+      {visibleSet.has('axes') && (<WSection title="Avancement par axe" number={7}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
           {data.axesData.map((axe) => (
             <WCard key={axe.id} style={{ padding: '14px 16px' }}>
@@ -945,12 +988,12 @@ export function WeeklyReportV2() {
             </WCard>
           ))}
         </div>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 8. PROCHAINS JALONS 14j */}
       {/* ================================================================ */}
-      <WSection title="Prochains jalons (14 jours)" number={8}>
+      {visibleSet.has('jalons') && (<WSection title="Prochains jalons (14 jours)" number={8}>
         {data.prochainsMilestones.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun jalon prévu dans les 14 prochains jours.</div>
@@ -1020,12 +1063,12 @@ export function WeeklyReportV2() {
             </table>
           </WCard>
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 9. TOP 5 RISQUES */}
       {/* ================================================================ */}
-      <WSection title="Top 5 risques actifs" number={9}>
+      {visibleSet.has('risques') && (<WSection title="Top 5 risques actifs" number={9}>
         {data.topRisques.length === 0 ? (
           <WCard>
             <div style={{ color: C.gray400, fontSize: 13 }}>Aucun risque actif identifié.</div>
@@ -1066,12 +1109,12 @@ export function WeeklyReportV2() {
             })}
           </div>
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 10. FOCUS & ACTIONS (avec onglets) */}
       {/* ================================================================ */}
-      <WSection title="Actions & Focus" number={10}>
+      {visibleSet.has('actions') && (<WSection title="Actions & Focus" number={10}>
         {/* Onglets de filtre */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
           {([
@@ -1354,12 +1397,12 @@ export function WeeklyReportV2() {
             </div>
           )
         )}
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 11. PROJECTION */}
       {/* ================================================================ */}
-      <WSection title="Projection" number={11}>
+      {visibleSet.has('projection') && (<WSection title="Projection" number={11}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <WCard style={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
             <div style={{ fontSize: 11, color: C.gray500, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1405,12 +1448,12 @@ export function WeeklyReportV2() {
             </div>
           </WCard>
         </div>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* 12. PROPH3T IA */}
       {/* ================================================================ */}
-      {data.confidenceScore && (
+      {visibleSet.has('ia') && data.confidenceScore && (
         <WSection title="PROPH3T — Score de Confiance" number={12}>
           <WCard
             style={{
@@ -1485,7 +1528,7 @@ export function WeeklyReportV2() {
       {/* ================================================================ */}
       {/* 13. NOTES */}
       {/* ================================================================ */}
-      <WSection title="Notes & commentaires" number={13}>
+      {visibleSet.has('notes') && (<WSection title="Notes & commentaires" number={13}>
         <WCard>
           <textarea
             value={data.notes}
@@ -1505,7 +1548,7 @@ export function WeeklyReportV2() {
             }}
           />
         </WCard>
-      </WSection>
+      </WSection>)}
 
       {/* ================================================================ */}
       {/* FOOTER */}
