@@ -307,6 +307,10 @@ export function RapportsPage() {
   // EXCO state
   const [excoTemplate, setExcoTemplate] = useState<'launch' | 'monthly'>('launch');
   const [presentationDate, setPresentationDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [reportingMonth, setReportingMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedExcoId, setSelectedExcoId] = useState<number | null>(null);
   const [savingExco, setSavingExco] = useState(false);
@@ -1652,6 +1656,17 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
                         className="text-xs px-2 py-1.5 border border-primary-200 rounded-md bg-white text-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-400"
                       />
                     </div>
+
+                    {/* Mois de reporting */}
+                    <div className="flex items-center gap-1.5 mr-2">
+                      <span className="text-xs text-primary-500 font-medium">Mois :</span>
+                      <input
+                        type="month"
+                        value={reportingMonth}
+                        onChange={(e) => setReportingMonth(e.target.value)}
+                        className="text-xs px-2 py-1.5 border border-primary-200 rounded-md bg-white text-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                      />
+                    </div>
                   </>
                 )}
 
@@ -1712,7 +1727,7 @@ body{font-family:'Exo 2',Inter,system-ui,sans-serif;margin:0;padding:0;backgroun
             )}
 
             {/* Selected template */}
-            {excoTemplate === 'launch' ? <ExcoLancement /> : <ExcoMensuelV5 ref={v5Ref} savedExcoId={selectedExcoId} />}
+            {excoTemplate === 'launch' ? <ExcoLancement /> : <ExcoMensuelV5 ref={v5Ref} savedExcoId={selectedExcoId} reportingMonth={reportingMonth} />}
 
             {/* Send Report Modal */}
             <SendReportModal

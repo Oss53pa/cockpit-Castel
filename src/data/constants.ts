@@ -9,7 +9,7 @@ import type { Priorite } from '@/types';
 
 // Responsables selon le référentiel officiel
 export const RESPONSABLES = {
-  DGA: 'DGA',
+  SDR: 'SDR',
   CENTER_MANAGER: 'Center Manager',
   FM: 'FM',
   COMMERCIAL_MGR: 'Commercial Mgr',

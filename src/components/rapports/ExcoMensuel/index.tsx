@@ -235,7 +235,7 @@ export function ExcoMensuel({
   const siteName = currentSite?.nom || PROJET_CONFIG.nom;
 
   // Présentateur dynamique depuis la DB (premier admin ou premier utilisateur)
-  const ROLE_TITRES: Record<string, string> = { admin: 'DGA', manager: 'Consultant', viewer: 'Lecteur' };
+  const ROLE_TITRES: Record<string, string> = { admin: 'SDR', manager: 'Consultant', viewer: 'Lecteur' };
   const adminUser = users.find(u => u.role === 'admin') || users[0];
   const presentateur = adminUser
     ? `${adminUser.prenom} ${adminUser.nom}, ${ROLE_TITRES[adminUser.role] || 'Manager'}`

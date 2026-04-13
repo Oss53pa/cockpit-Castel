@@ -577,7 +577,7 @@ export const ACTIONS_AXE6_EXPLOITATION: Omit<Action, 'id'>[] = [
   createAction('A-EXP-3.1', 'Rédiger les procédures opérationnelles', 'axe6_exploitation', '2026-09-25', DN, '', 'J-EXP-3', { date_debut: '2026-09-15' }),
   createAction('A-EXP-3.2', 'Élaborer le plan de sécurité', 'axe6_exploitation', '2026-09-25', HT, '', 'J-EXP-3', { date_debut: '2026-09-15' }),
   createAction('A-EXP-3.3', 'Adapter les procédures Yopougon pour Angré', 'axe6_exploitation', '2026-10-05', DN, '', 'J-EXP-3', { date_debut: '2026-09-25', projectPhase: 'phase3_lancement' }),
-  createAction('A-EXP-3.4', 'Valider les procédures avec la DGA', 'axe6_exploitation', '2026-10-10', PA, '', 'J-EXP-3', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
+  createAction('A-EXP-3.4', 'Valider les procédures avec la SDR', 'axe6_exploitation', '2026-10-10', PA, '', 'J-EXP-3', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
   // J-EXP-4 : Centre prêt à opérer (05/10 → 16/10/2026)
   createAction('A-EXP-4.1', 'Établir la check-list pré-ouverture', 'axe6_exploitation', '2026-10-08', DN, '', 'J-EXP-4', { date_debut: '2026-10-05', projectPhase: 'phase3_lancement' }),
   createAction('A-EXP-4.2', 'Réaliser le test exploitation grandeur nature', 'axe6_exploitation', '2026-10-12', DN, '', 'J-EXP-4', { date_debut: '2026-10-08', projectPhase: 'phase3_lancement' }),

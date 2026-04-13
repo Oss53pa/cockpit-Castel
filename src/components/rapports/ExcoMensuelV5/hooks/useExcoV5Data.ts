@@ -1159,7 +1159,7 @@ function useSavedExcoV5Data(savedExcoId?: number): ExcoV5Data | null {
 // MAIN HOOK
 // ============================================================================
 
-export function useExcoV5Data(savedExcoId?: number | null): ExcoV5Data {
+export function useExcoV5Data(savedExcoId?: number | null, reportingMonth?: string): ExcoV5Data {
   // If a saved EXCO ID is provided, load from DB snapshot instead of live data
   const savedData = useSavedExcoV5Data(savedExcoId ?? undefined);
   if (savedExcoId && savedData) return savedData;
@@ -1207,7 +1207,9 @@ export function useExcoV5Data(savedExcoId?: number | null): ExcoV5Data {
   const elapsedDays = Math.max(0, (today.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24));
   const pourcentageTempsEcoule = totalDays > 0 ? Math.min(100, (elapsedDays / totalDays) * 100) : 0;
 
-  const moisCourant = today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const moisCourant = reportingMonth
+    ? new Date(reportingMonth + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    : today.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   // Global avancement — pondéré par axe (même calcul que useAvancementGlobal)
   const avancementGlobal = useMemo(() => {

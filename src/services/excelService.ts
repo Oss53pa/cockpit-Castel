@@ -430,7 +430,7 @@ export function downloadTemplate(type: 'jalons' | 'actions' | 'risques' | 'respo
     },
     risques: {
       headers: ['code', 'titre', 'categorie', 'probabilite', 'impact', 'mitigation', 'responsable', 'statut'],
-      exemple: ['R-001', 'Retard chantier CC', 'CONSTRUCTION', 'ELEVEE', 'CRITIQUE', 'Suivi hebdomadaire', 'DGA', 'OUVERT'],
+      exemple: ['R-001', 'Retard chantier CC', 'CONSTRUCTION', 'ELEVEE', 'CRITIQUE', 'Suivi hebdomadaire', 'SDR', 'OUVERT'],
       instructions: [
         'categorie : CONSTRUCTION, COMMERCIAL, RH, BUDGET, TECHNIQUE, EXTERNE',
         'probabilite : FAIBLE / MOYENNE / ELEVEE',

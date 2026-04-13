@@ -292,7 +292,7 @@ export function RisquesSynthese() {
               <Badge variant="error">Hebdomadaire</Badge>
             </div>
             <p className="text-sm text-primary-700">Risques critiques ({syntheseRisques.parNiveau.critique})</p>
-            <p className="text-xs text-primary-500 mt-1">Responsable: DGA</p>
+            <p className="text-xs text-primary-500 mt-1">Responsable: SDR</p>
           </div>
           <div className="bg-white rounded-lg p-3 border">
             <div className="flex items-center gap-2 mb-1">
@@ -313,7 +313,7 @@ export function RisquesSynthese() {
               <Badge variant="secondary">Trimestriel</Badge>
             </div>
             <p className="text-sm text-primary-700">Revue globale + faibles</p>
-            <p className="text-xs text-primary-500 mt-1">Responsable: DGA + PDG</p>
+            <p className="text-xs text-primary-500 mt-1">Responsable: SDR + PDG</p>
           </div>
         </div>
       </Card>

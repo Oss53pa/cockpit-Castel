@@ -253,7 +253,7 @@ const userNameToId: Record<string, number> = {
   // Par rôle fonctionnel (pour compatibilité)
   'Admin': 1,
   'Manager': 2,
-  'DGA': 1,
+  'SDR': 1,
   'Center Manager': 3,
   'FM': 4,
   'Commercial Mgr': 2,

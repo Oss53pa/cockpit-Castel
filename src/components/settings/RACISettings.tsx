@@ -19,7 +19,7 @@ interface _RACISection {
 // Roles/Stakeholders
 const STAKEHOLDERS = [
   { key: 'PDG', label: 'PDG' },
-  { key: 'DGA', label: 'DGA' },
+  { key: 'SDR', label: 'SDR' },
   { key: 'CenterMgr', label: 'Center Mgr' },
   { key: 'CommercialMgr', label: 'Commercial Mgr' },
   { key: 'FM', label: 'FM' },
@@ -38,48 +38,48 @@ const RACI_LEGEND: { letter: RACIRole; name: string; description: string; color:
 
 // RACI Data - Phase Préparation
 const RACI_PREPARATION: RACIEntry[] = [
-  { livrable: 'Budget projet consolidé', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
-  { livrable: 'Plan commercialisation', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'C' } },
-  { livrable: 'Organigramme cible', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Stratégie communication', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' } },
-  { livrable: 'Audit technique', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Grille tarifaire', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
-  { livrable: 'Étude de marché', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'I' } },
+  { livrable: 'Budget projet consolidé', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
+  { livrable: 'Plan commercialisation', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'C' } },
+  { livrable: 'Organigramme cible', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Stratégie communication', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' } },
+  { livrable: 'Audit technique', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Grille tarifaire', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
+  { livrable: 'Étude de marché', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'I' } },
 ];
 
 // RACI Data - Phase Mobilisation
 const RACI_MOBILISATION: RACIEntry[] = [
-  { livrable: 'Recrutement managers', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Recrutement équipes', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Signatures BEFA 70%', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
-  { livrable: 'Signature Carrefour', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
-  { livrable: 'Handover technique', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Réception OPR', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Levée réserves', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Contrats exploitation', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'C' } },
-  { livrable: 'Procédures exploitation', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Systèmes (ERP, GMAO)', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'R' } },
-  { livrable: 'Campagne teasing', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' } },
-  { livrable: 'Site web', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' } },
+  { livrable: 'Recrutement managers', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Recrutement équipes', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Signatures BEFA 70%', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
+  { livrable: 'Signature Carrefour', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
+  { livrable: 'Handover technique', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Réception OPR', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Levée réserves', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Contrats exploitation', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'C' } },
+  { livrable: 'Procédures exploitation', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Systèmes (ERP, GMAO)', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'R' } },
+  { livrable: 'Campagne teasing', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' } },
+  { livrable: 'Site web', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' } },
 ];
 
 // RACI Data - Phase Lancement
 const RACI_LANCEMENT: RACIEntry[] = [
-  { livrable: 'Commission sécurité', roles: { PDG: 'C', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Soft Opening', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'I' } },
-  { livrable: 'Inauguration', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'R', CommercialMgr: 'C', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'C' } },
-  { livrable: 'Campagne lancement', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' } },
-  { livrable: 'Formation équipes', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
-  { livrable: 'Test grandeur nature', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Commission sécurité', roles: { PDG: 'C', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Soft Opening', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'I' } },
+  { livrable: 'Inauguration', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'R', CommercialMgr: 'C', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'C' } },
+  { livrable: 'Campagne lancement', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' } },
+  { livrable: 'Formation équipes', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
+  { livrable: 'Test grandeur nature', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' } },
 ];
 
 // RACI Data - Gouvernance & Reporting
 const RACI_GOUVERNANCE: RACIEntry[] = [
-  { livrable: 'Flash hebdo', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' } },
-  { livrable: 'Rapport mensuel investisseurs', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
-  { livrable: 'EXCO mensuel', roles: { PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' } },
-  { livrable: 'COPIL projet', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
-  { livrable: 'Arbitrages budget', roles: { PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
+  { livrable: 'Flash hebdo', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' } },
+  { livrable: 'Rapport mensuel investisseurs', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
+  { livrable: 'EXCO mensuel', roles: { PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' } },
+  { livrable: 'COPIL projet', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' } },
+  { livrable: 'Arbitrages budget', roles: { PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' } },
 ];
 
 // Component for RACI cell

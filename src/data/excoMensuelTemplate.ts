@@ -125,7 +125,7 @@ const SLIDE_DECISIONS: Omit<ExcoMensuelSlide, 'sectionId'> = {
   id: 'slide_12',
   numero: '12',
   titre: 'Points DG : Décisions Requises',
-  description: 'Arbitrages en Attente avec montant, urgence, deadline et recommandation DGA',
+  description: 'Arbitrages en Attente avec montant, urgence, deadline et recommandation SDR',
   type: 'decisions_table',
   included: true,
 };

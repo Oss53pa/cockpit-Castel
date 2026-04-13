@@ -47,10 +47,10 @@ export const BUILDINGS_DETAIL = [
 // 3. AXES STRATÉGIQUES AVEC POIDS
 // ============================================================================
 export const AXES_STRATEGIQUES = [
-  { code: 'axe1_rh', nom: 'RH & Organisation', poids: 20, responsable: RESPONSABLES.DGA, perimetre: 'Recrutement, formation, mobilisation équipes' },
+  { code: 'axe1_rh', nom: 'RH & Organisation', poids: 20, responsable: RESPONSABLES.SDR, perimetre: 'Recrutement, formation, mobilisation équipes' },
   { code: 'axe2_commercial', nom: 'Commercialisation', poids: 25, responsable: RESPONSABLES.COMMERCIAL_MGR, perimetre: 'BEFA, occupation, mix commercial' },
   { code: 'axe3_technique', nom: 'Technique & Handover', poids: 20, responsable: RESPONSABLES.FM, perimetre: 'Réceptions, fit-out, équipements' },
-  { code: 'axe4_budget', nom: 'Budget & Pilotage', poids: 15, responsable: RESPONSABLES.DGA, perimetre: 'Budget, trésorerie, reporting' },
+  { code: 'axe4_budget', nom: 'Budget & Pilotage', poids: 15, responsable: RESPONSABLES.SDR, perimetre: 'Budget, trésorerie, reporting' },
   { code: 'axe5_marketing', nom: 'Marketing & Communication', poids: 15, responsable: RESPONSABLES.MARKETING_MGR, perimetre: 'Campagnes, événements, signalétique' },
   { code: 'axe6_exploitation', nom: 'Exploitation & Systèmes', poids: 5, responsable: RESPONSABLES.CENTER_MANAGER, perimetre: 'Procédures, contrats, systèmes' },
 ];
@@ -107,11 +107,11 @@ export const VAGUES_RECRUTEMENT = [
     periode: 'T1 2026 (Janvier – Mars)',
     effectif: { min: 4, max: 5 },
     postes: [
-      { poste: 'Center Manager', dateEntree: '2026-02-28', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.DGA },
-      { poste: 'Commercial Manager', dateEntree: '2026-03-15', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.DGA },
-      { poste: 'Facility Manager', dateEntree: '2026-03-31', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.DGA },
-      { poste: 'Security Manager', dateEntree: '2026-03-31', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.DGA },
-      { poste: 'Marketing Manager', dateEntree: '2026-04-15', priorite: 'haute' as Priorite, rattachement: RESPONSABLES.DGA },
+      { poste: 'Center Manager', dateEntree: '2026-02-28', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.SDR },
+      { poste: 'Commercial Manager', dateEntree: '2026-03-15', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.SDR },
+      { poste: 'Facility Manager', dateEntree: '2026-03-31', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.SDR },
+      { poste: 'Security Manager', dateEntree: '2026-03-31', priorite: 'critique' as Priorite, rattachement: RESPONSABLES.SDR },
+      { poste: 'Marketing Manager', dateEntree: '2026-04-15', priorite: 'haute' as Priorite, rattachement: RESPONSABLES.SDR },
     ],
   },
   {
@@ -199,24 +199,24 @@ export const CONTRATS_EXPLOITATION = [
 // 9. GOUVERNANCE - INSTANCES DE PILOTAGE
 // ============================================================================
 export const INSTANCES_PILOTAGE = [
-  { instance: 'COPIL Projet', frequence: 'Mensuel', participants: ['DGA', 'PDG', 'Investisseurs'], objet: 'Décisions stratégiques' },
-  { instance: 'EXCO', frequence: 'Mensuel', participants: ['DGA', 'Managers'], objet: 'Revue détaillée par axe' },
-  { instance: 'Réunion projet', frequence: 'Hebdomadaire', participants: ['DGA', 'Managers'], objet: 'Suivi avancement' },
-  { instance: 'Point chantier', frequence: 'Hebdomadaire', participants: ['DGA', 'FM', 'Constructeur'], objet: 'Travaux, réserves' },
-  { instance: 'Point commercialisation', frequence: 'Hebdomadaire', participants: ['DGA', 'Commercial'], objet: 'Pipeline, négociations' },
+  { instance: 'COPIL Projet', frequence: 'Mensuel', participants: ['SDR', 'PDG', 'Investisseurs'], objet: 'Décisions stratégiques' },
+  { instance: 'EXCO', frequence: 'Mensuel', participants: ['SDR', 'Managers'], objet: 'Revue détaillée par axe' },
+  { instance: 'Réunion projet', frequence: 'Hebdomadaire', participants: ['SDR', 'Managers'], objet: 'Suivi avancement' },
+  { instance: 'Point chantier', frequence: 'Hebdomadaire', participants: ['SDR', 'FM', 'Constructeur'], objet: 'Travaux, réserves' },
+  { instance: 'Point commercialisation', frequence: 'Hebdomadaire', participants: ['SDR', 'Commercial'], objet: 'Pipeline, négociations' },
 ];
 
 // ============================================================================
 // 10. STRUCTURE DE REPORTING
 // ============================================================================
 export const STRUCTURE_REPORTING = [
-  { rapport: 'Flash projet', frequence: 'Hebdomadaire', destinataires: ['PDG'], responsable: RESPONSABLES.DGA },
+  { rapport: 'Flash projet', frequence: 'Hebdomadaire', destinataires: ['PDG'], responsable: RESPONSABLES.SDR },
   { rapport: 'Dashboard opérationnel', frequence: 'Hebdomadaire', destinataires: ['Direction'], responsable: RESPONSABLES.CENTER_MANAGER },
   { rapport: 'Rapport de gestion', frequence: 'Mensuel', destinataires: ['Investisseurs'], responsable: RESPONSABLES.CENTER_MANAGER },
   { rapport: 'Analyse marketing', frequence: 'Mensuel', destinataires: ['Direction'], responsable: RESPONSABLES.MARKETING_MGR },
   { rapport: 'Revue commerciale', frequence: 'Mensuel', destinataires: ['Direction'], responsable: RESPONSABLES.COMMERCIAL_MGR },
   { rapport: 'Rapport technique', frequence: 'Mensuel', destinataires: ['Direction'], responsable: RESPONSABLES.FM },
-  { rapport: 'Rapport consolidé', frequence: 'Trimestriel', destinataires: ['Conseil d\'administration'], responsable: RESPONSABLES.DGA },
+  { rapport: 'Rapport consolidé', frequence: 'Trimestriel', destinataires: ['Conseil d\'administration'], responsable: RESPONSABLES.SDR },
 ];
 
 // ============================================================================
@@ -227,7 +227,7 @@ export const HANDOVER_PHASES = [
     phase: 'A',
     nom: 'Pré-handover',
     periode: 'Avril – Juin 2026',
-    equipe: ['DGA', 'Center Manager', 'Facility Manager', 'Senior Maintenance Officer'],
+    equipe: ['SDR', 'Center Manager', 'Facility Manager', 'Senior Maintenance Officer'],
     activites: [
       { activite: 'Réunions de chantier', frequence: 'Hebdomadaire', objectif: 'Suivi avancement, anticipation' },
       { activite: 'Revue des plans d\'exécution', frequence: 'Continue', objectif: 'Validation technique' },
@@ -373,9 +373,9 @@ export const TYPES_CRISES = [
 ];
 
 export const CELLULE_CRISE = [
-  { role: 'Directeur de crise', titulaire: RESPONSABLES.DGA, suppleant: RESPONSABLES.CENTER_MANAGER },
+  { role: 'Directeur de crise', titulaire: RESPONSABLES.SDR, suppleant: RESPONSABLES.CENTER_MANAGER },
   { role: 'Coordination opérationnelle', titulaire: RESPONSABLES.CENTER_MANAGER, suppleant: RESPONSABLES.FM },
-  { role: 'Porte-parole', titulaire: RESPONSABLES.DGA, suppleant: RESPONSABLES.MARKETING_MGR },
+  { role: 'Porte-parole', titulaire: RESPONSABLES.SDR, suppleant: RESPONSABLES.MARKETING_MGR },
   { role: 'Communication', titulaire: RESPONSABLES.MARKETING_MGR, suppleant: 'Digital Officer' },
   { role: 'Sécurité', titulaire: RESPONSABLES.SECURITY_MGR, suppleant: 'Security Team Lead' },
   { role: 'Technique', titulaire: RESPONSABLES.FM, suppleant: 'Senior Maintenance' },
@@ -391,7 +391,7 @@ export const CONTACTS_URGENCE = [
 
 export const NIVEAUX_ESCALADE = [
   { niveau: 1, description: 'Incident mineur', actions: ['Traitement par équipe sur site', 'Information N+1'] },
-  { niveau: 2, description: 'Incident modéré', actions: ['Mobilisation manager concerné', 'Information Center Manager + DGA', 'Décision action corrective'] },
+  { niveau: 2, description: 'Incident modéré', actions: ['Mobilisation manager concerné', 'Information Center Manager + SDR', 'Décision action corrective'] },
   { niveau: 3, description: 'Crise majeure', actions: ['Activation cellule de crise', 'Information PDG + Investisseurs', 'Communication externe si nécessaire'] },
 ];
 
@@ -438,7 +438,7 @@ export const CHECKLIST_PRE_OUVERTURE = {
     { item: 'Procédures d\'urgence validées', responsable: RESPONSABLES.SECURITY_MGR },
     { item: 'Exercice évacuation réalisé', responsable: RESPONSABLES.SECURITY_MGR },
     { item: 'Plan de sécurité validé', responsable: RESPONSABLES.SECURITY_MGR },
-    { item: 'Commission sécurité - avis favorable', responsable: RESPONSABLES.DGA },
+    { item: 'Commission sécurité - avis favorable', responsable: RESPONSABLES.SDR },
   ],
   commercial: [
     { item: '70% locataires BEFA signés', responsable: RESPONSABLES.COMMERCIAL_MGR },
@@ -459,7 +459,7 @@ export const CHECKLIST_PRE_OUVERTURE = {
     { item: 'Inauguration planifiée', responsable: RESPONSABLES.MARKETING_MGR },
   ],
   rh: [
-    { item: 'Équipe managériale complète', responsable: RESPONSABLES.DGA },
+    { item: 'Équipe managériale complète', responsable: RESPONSABLES.SDR },
     { item: 'Équipe opérationnelle complète', responsable: RESPONSABLES.CENTER_MANAGER },
     { item: 'Toutes formations réalisées', responsable: RESPONSABLES.CENTER_MANAGER },
     { item: 'Planning équipes ouverture validé', responsable: RESPONSABLES.CENTER_MANAGER },

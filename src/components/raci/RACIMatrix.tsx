@@ -51,7 +51,7 @@ const RACI_BG_LIGHT: Record<RACIRole, string> = {
 // Colonnes de rôles
 const ROLES = [
   { key: 'PDG', label: 'PDG' },
-  { key: 'DGA', label: 'DGA' },
+  { key: 'SDR', label: 'SDR' },
   { key: 'CenterMgr', label: 'Center Mgr' },
   { key: 'CommercialMgr', label: 'Commercial' },
   { key: 'FM', label: 'FM' },

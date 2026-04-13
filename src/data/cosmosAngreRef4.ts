@@ -17,7 +17,7 @@ export interface RACIEntry {
   phase: ProjectPhase;
   categorie: 'preparation' | 'mobilisation' | 'lancement' | 'gouvernance';
   PDG: RACIRole;
-  DGA: RACIRole;
+  SDR: RACIRole;
   CenterMgr: RACIRole;
   CommercialMgr: RACIRole;
   FM: RACIRole;
@@ -35,48 +35,48 @@ export const RACI_LEGEND = {
 
 // RACI Phase Préparation
 export const RACI_PREPARATION: RACIEntry[] = [
-  { livrable: 'Budget projet consolidé', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
-  { livrable: 'Plan commercialisation', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'C' },
-  { livrable: 'Organigramme cible', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Stratégie communication', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' },
-  { livrable: 'Audit technique', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Grille tarifaire', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
-  { livrable: 'Étude de marché', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'I' },
+  { livrable: 'Budget projet consolidé', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
+  { livrable: 'Plan commercialisation', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'C' },
+  { livrable: 'Organigramme cible', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Stratégie communication', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' },
+  { livrable: 'Audit technique', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Grille tarifaire', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
+  { livrable: 'Étude de marché', phase: 'phase1_preparation', categorie: 'preparation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'C', Finance: 'I' },
 ];
 
 // RACI Phase Mobilisation
 export const RACI_MOBILISATION: RACIEntry[] = [
-  { livrable: 'Recrutement managers', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Recrutement équipes', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Signatures BEFA 70%', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
-  { livrable: 'Signature Carrefour', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'A', DGA: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
-  { livrable: 'Handover technique', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Réception OPR', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Levée réserves', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Contrats exploitation', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'C' },
-  { livrable: 'Procédures exploitation', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Systèmes (ERP, GMAO)', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'R' },
-  { livrable: 'Campagne teasing', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' },
-  { livrable: 'Site web', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', DGA: 'A', CenterMgr: 'I', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' },
+  { livrable: 'Recrutement managers', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Recrutement équipes', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Signatures BEFA 70%', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
+  { livrable: 'Signature Carrefour', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'A', SDR: 'R', CenterMgr: 'I', CommercialMgr: 'R', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
+  { livrable: 'Handover technique', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Réception OPR', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'C', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Levée réserves', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Contrats exploitation', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'C' },
+  { livrable: 'Procédures exploitation', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Systèmes (ERP, GMAO)', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'R' },
+  { livrable: 'Campagne teasing', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' },
+  { livrable: 'Site web', phase: 'phase2_mobilisation', categorie: 'mobilisation', PDG: 'I', SDR: 'A', CenterMgr: 'I', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'I' },
 ];
 
 // RACI Phase Lancement
 export const RACI_LANCEMENT: RACIEntry[] = [
-  { livrable: 'Commission sécurité', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'C', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Soft Opening', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'A', DGA: 'R', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'I' },
-  { livrable: 'Inauguration', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'A', DGA: 'R', CenterMgr: 'R', CommercialMgr: 'C', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'C' },
-  { livrable: 'Campagne lancement', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', DGA: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' },
-  { livrable: 'Formation équipes', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
-  { livrable: 'Test grandeur nature', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Commission sécurité', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'C', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Soft Opening', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'A', SDR: 'R', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'I' },
+  { livrable: 'Inauguration', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'A', SDR: 'R', CenterMgr: 'R', CommercialMgr: 'C', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'C' },
+  { livrable: 'Campagne lancement', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', SDR: 'A', CenterMgr: 'C', CommercialMgr: 'C', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'R', Finance: 'C' },
+  { livrable: 'Formation équipes', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
+  { livrable: 'Test grandeur nature', phase: 'phase3_lancement', categorie: 'lancement', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'I', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'I', Finance: 'I' },
 ];
 
 // RACI Gouvernance & Reporting
 export const RACI_GOUVERNANCE: RACIEntry[] = [
-  { livrable: 'Flash hebdo', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' },
-  { livrable: 'Rapport mensuel investisseurs', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
-  { livrable: 'EXCO mensuel', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', DGA: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' },
-  { livrable: 'COPIL projet', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
-  { livrable: 'Arbitrages budget', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', DGA: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
+  { livrable: 'Flash hebdo', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'C' },
+  { livrable: 'Rapport mensuel investisseurs', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
+  { livrable: 'EXCO mensuel', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'I', SDR: 'A', CenterMgr: 'R', CommercialMgr: 'R', FM: 'R', SecurityMgr: 'R', MarketingMgr: 'R', Finance: 'R' },
+  { livrable: 'COPIL projet', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'I', FM: 'I', SecurityMgr: 'I', MarketingMgr: 'I', Finance: 'C' },
+  { livrable: 'Arbitrages budget', phase: 'phase2_mobilisation', categorie: 'gouvernance', PDG: 'A', SDR: 'R', CenterMgr: 'C', CommercialMgr: 'C', FM: 'C', SecurityMgr: 'C', MarketingMgr: 'C', Finance: 'R' },
 ];
 
 // Toutes les entrées RACI
@@ -408,7 +408,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Perte de preneurs (désistements)',
     ],
     planMitigation: [
-      { action: 'Réunions chantier hebdomadaires obligatoires', responsable: RESPONSABLES.DGA, deadline: 'Continu', statut: 'en_cours' },
+      { action: 'Réunions chantier hebdomadaires obligatoires', responsable: RESPONSABLES.SDR, deadline: 'Continu', statut: 'en_cours' },
       { action: 'Clause pénalités retard dans contrat constructeur', responsable: 'Juridique', deadline: 'Fait', statut: 'fait' },
       { action: 'Identification anticipée des lots critiques', responsable: RESPONSABLES.FM, deadline: '2026-02-28', statut: 'planifie' },
       { action: 'Plan de rattrapage pré-établi', responsable: RESPONSABLES.FM, deadline: '2026-03-31', statut: 'planifie' },
@@ -425,7 +425,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Plus de 3 lots en retard simultanément',
       'Constructeur ne répond plus aux convocations',
     ],
-    seuilEscalade: 'DGA → PDG si retard > 1 mois',
+    seuilEscalade: 'SDR → PDG si retard > 1 mois',
   },
   {
     id: 'R-002',
@@ -463,7 +463,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Preneur ne peut pas accéder à son local à la date prévue',
       'Plus de 2 conflits de planning par semaine',
     ],
-    seuilEscalade: 'FM → DGA si blocage > 1 semaine',
+    seuilEscalade: 'FM → SDR si blocage > 1 semaine',
   },
   {
     id: 'R-003',
@@ -488,9 +488,9 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Pression sur la trésorerie',
     ],
     planMitigation: [
-      { action: 'Signer Carrefour en priorité absolue', responsable: RESPONSABLES.DGA, deadline: '2026-03-31', statut: 'en_cours' },
+      { action: 'Signer Carrefour en priorité absolue', responsable: RESPONSABLES.SDR, deadline: '2026-03-31', statut: 'en_cours' },
       { action: 'Objectifs commercialisation mensuels stricts', responsable: RESPONSABLES.COMMERCIAL_MGR, deadline: 'Continu', statut: 'en_cours' },
-      { action: 'Incentives preneurs (mois gratuits, fit-out)', responsable: RESPONSABLES.DGA, deadline: 'Si nécessaire', statut: 'planifie' },
+      { action: 'Incentives preneurs (mois gratuits, fit-out)', responsable: RESPONSABLES.SDR, deadline: 'Si nécessaire', statut: 'planifie' },
       { action: 'Grille tarifaire flexible selon timing', responsable: RESPONSABLES.COMMERCIAL_MGR, deadline: 'Validé', statut: 'fait' },
       { action: 'Pipeline de backup pour chaque emplacement', responsable: RESPONSABLES.COMMERCIAL_MGR, deadline: 'Continu', statut: 'en_cours' },
     ],
@@ -505,7 +505,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       '< 60% occupation confirmée au 30/09',
       'Carrefour non signé au 31/03',
     ],
-    seuilEscalade: 'Commercial Mgr → DGA → PDG si < 50% à M-3',
+    seuilEscalade: 'Commercial Mgr → SDR → PDG si < 50% à M-3',
   },
   {
     id: 'R-004',
@@ -515,7 +515,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
     impact: 5,
     score: 10,
     axe: 'AXE 2',
-    responsableSuivi: RESPONSABLES.DGA,
+    responsableSuivi: RESPONSABLES.SDR,
     causesPotentielles: [
       'Stratégie groupe Carrefour change',
       'Conditions commerciales non acceptables',
@@ -529,10 +529,10 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Retard ouverture probable',
     ],
     planMitigation: [
-      { action: 'Négociation prioritaire et dédiée', responsable: RESPONSABLES.DGA, deadline: 'T1 2026', statut: 'en_cours' },
-      { action: 'Conditions préférentielles (loyer, fit-out)', responsable: RESPONSABLES.DGA, deadline: 'Négociation', statut: 'en_cours' },
+      { action: 'Négociation prioritaire et dédiée', responsable: RESPONSABLES.SDR, deadline: 'T1 2026', statut: 'en_cours' },
+      { action: 'Conditions préférentielles (loyer, fit-out)', responsable: RESPONSABLES.SDR, deadline: 'Négociation', statut: 'en_cours' },
       { action: 'Identification alternatives (Auchan, Casino, Prosuma)', responsable: RESPONSABLES.COMMERCIAL_MGR, deadline: '2026-02-28', statut: 'planifie' },
-      { action: 'LOI signée rapidement pour engagement', responsable: RESPONSABLES.DGA, deadline: '2026-02-28', statut: 'en_cours' },
+      { action: 'LOI signée rapidement pour engagement', responsable: RESPONSABLES.SDR, deadline: '2026-02-28', statut: 'en_cours' },
     ],
     planContingence: [
       'Approcher immédiatement alternative #1',
@@ -544,7 +544,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Carrefour refuse conditions révisées',
       'Concurrent annonce deal avec Carrefour',
     ],
-    seuilEscalade: 'DGA → PDG immédiatement si risque de retrait',
+    seuilEscalade: 'SDR → PDG immédiatement si risque de retrait',
   },
   {
     id: 'R-005',
@@ -569,7 +569,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Catastrophe réputationnelle',
     ],
     planMitigation: [
-      { action: 'Pré-visite commission (informelle)', responsable: RESPONSABLES.DGA, deadline: '2026-09-30', statut: 'planifie' },
+      { action: 'Pré-visite commission (informelle)', responsable: RESPONSABLES.SDR, deadline: '2026-09-30', statut: 'planifie' },
       { action: 'Bureau de contrôle agréé pour validation', responsable: RESPONSABLES.FM, deadline: 'Continu', statut: 'en_cours' },
       { action: 'Exercice évacuation avant commission', responsable: RESPONSABLES.SECURITY_MGR, deadline: '2026-10-31', statut: 'planifie' },
       { action: 'Dossier sécurité complet préparé', responsable: RESPONSABLES.SECURITY_MGR, deadline: '2026-10-31', statut: 'planifie' },
@@ -585,7 +585,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'SSI non opérationnel à M-1',
       'Preneurs non conformes à M-1',
     ],
-    seuilEscalade: 'Security Mgr → DGA → PDG immédiatement si avis défavorable',
+    seuilEscalade: 'Security Mgr → SDR → PDG immédiatement si avis défavorable',
   },
   {
     id: 'R-006',
@@ -623,7 +623,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Retard > 2 semaines sur jalons Carrefour',
       'Carrefour ne mobilise pas ses équipes',
     ],
-    seuilEscalade: 'FM → DGA si retard > 3 semaines',
+    seuilEscalade: 'FM → SDR si retard > 3 semaines',
   },
   {
     id: 'R-007',
@@ -633,7 +633,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
     impact: 4,
     score: 12,
     axe: 'AXE 1',
-    responsableSuivi: RESPONSABLES.DGA,
+    responsableSuivi: RESPONSABLES.SDR,
     causesPotentielles: [
       'Profils rares sur le marché ivoirien',
       'Packages non compétitifs',
@@ -642,15 +642,15 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
     ],
     consequences: [
       'Retard mise en place organisation',
-      'Surcharge DGA/Center Manager',
+      'Surcharge SDR/Center Manager',
       'Qualité opérations dégradée',
       'Retard formations équipes',
     ],
     planMitigation: [
-      { action: 'Mandat 2-3 cabinets de recrutement', responsable: RESPONSABLES.DGA, deadline: '2026-01-31', statut: 'en_cours' },
-      { action: 'Packages salariaux compétitifs', responsable: RESPONSABLES.DGA, deadline: 'Validé', statut: 'fait' },
-      { action: 'Recherche régionale (Ghana, Sénégal)', responsable: RESPONSABLES.DGA, deadline: 'Si nécessaire', statut: 'planifie' },
-      { action: 'Backup : promotion interne Cosmos Yopougon', responsable: RESPONSABLES.DGA, deadline: 'Plan B', statut: 'planifie' },
+      { action: 'Mandat 2-3 cabinets de recrutement', responsable: RESPONSABLES.SDR, deadline: '2026-01-31', statut: 'en_cours' },
+      { action: 'Packages salariaux compétitifs', responsable: RESPONSABLES.SDR, deadline: 'Validé', statut: 'fait' },
+      { action: 'Recherche régionale (Ghana, Sénégal)', responsable: RESPONSABLES.SDR, deadline: 'Si nécessaire', statut: 'planifie' },
+      { action: 'Backup : promotion interne Cosmos Yopougon', responsable: RESPONSABLES.SDR, deadline: 'Plan B', statut: 'planifie' },
     ],
     planContingence: [
       'Intérim de managers expérimentés',
@@ -661,7 +661,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Aucun candidat finaliste après 6 semaines',
       'Candidat retenu décline offre',
     ],
-    seuilEscalade: 'DGA → PDG si poste clé vacant à M-4',
+    seuilEscalade: 'SDR → PDG si poste clé vacant à M-4',
   },
   {
     id: 'R-008',
@@ -688,8 +688,8 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
     planMitigation: [
       { action: 'Provisions imprévus 10% intégrées', responsable: RESPONSABLES.FINANCE, deadline: 'Fait', statut: 'fait' },
       { action: 'Revue budgétaire mensuelle', responsable: RESPONSABLES.FINANCE, deadline: 'Continu', statut: 'en_cours' },
-      { action: 'Validation DGA pour tout dépassement > 5M', responsable: RESPONSABLES.DGA, deadline: 'Règle', statut: 'fait' },
-      { action: 'Arbitrages trimestriels formalisés', responsable: RESPONSABLES.DGA, deadline: 'T1, T2, T3', statut: 'planifie' },
+      { action: 'Validation SDR pour tout dépassement > 5M', responsable: RESPONSABLES.SDR, deadline: 'Règle', statut: 'fait' },
+      { action: 'Arbitrages trimestriels formalisés', responsable: RESPONSABLES.SDR, deadline: 'T1, T2, T3', statut: 'planifie' },
     ],
     planContingence: [
       'Priorisation des dépenses critiques',
@@ -702,7 +702,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Cumul écarts > 3% budget total',
       'Engagement non budgété > 10M',
     ],
-    seuilEscalade: 'Finance → DGA → PDG si dépassement > 5%',
+    seuilEscalade: 'Finance → SDR → PDG si dépassement > 5%',
   },
   {
     id: 'R-009',
@@ -742,7 +742,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'NPS prestataire < 6/10',
       'Prestataire ne respecte pas effectifs',
     ],
-    seuilEscalade: 'FM → Center Mgr → DGA si persistance > 2 semaines',
+    seuilEscalade: 'FM → Center Mgr → SDR si persistance > 2 semaines',
   },
   {
     id: 'R-010',
@@ -782,7 +782,7 @@ export const FICHES_RISQUES_TOP10: FicheRisque[] = [
       'Paramétrage < 50% à M-3',
       'Tests échoués à M-2',
     ],
-    seuilEscalade: 'Admin → Center Mgr → DGA si système non opérationnel M-1',
+    seuilEscalade: 'Admin → Center Mgr → SDR si système non opérationnel M-1',
   },
 ];
 

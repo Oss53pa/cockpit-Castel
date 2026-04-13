@@ -129,10 +129,10 @@ export const convertToDbRisque = (
     // Responsabilités
     proprietaire,
     gestionnaire: null,
-    validateur: 'DGA',
+    validateur: 'SDR',
     equipe_response: [],
     escalade_niveau1: 'Managers',
-    escalade_niveau2: 'DGA',
+    escalade_niveau2: 'SDR',
     escalade_niveau3: 'PDG',
 
     // Mitigation

@@ -13,7 +13,7 @@ import type { Priorite } from '@/types';
 // 2.3.1 Actions suivi chantier (A3-001 à A3-005)
 export const ACTIONS_AXE3_CHANTIER = [
   { id: 'A3-001', titre: 'Établir planning détaillé handover', dateDebut: '2026-02-01', dateFin: '2026-02-28', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite },
-  { id: 'A3-002', titre: 'Organiser réunions chantier hebdomadaires', dateDebut: '2026-01-01', dateFin: '2026-12-31', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A3-002', titre: 'Organiser réunions chantier hebdomadaires', dateDebut: '2026-01-01', dateFin: '2026-12-31', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
   { id: 'A3-003', titre: 'Suivre avancement gros œuvre', dateDebut: '2026-01-01', dateFin: '2026-04-30', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite },
   { id: 'A3-004', titre: 'Suivre avancement second œuvre', dateDebut: '2026-05-01', dateFin: '2026-09-30', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite },
   { id: 'A3-005', titre: 'Coordonner avec constructeur sur réserves', dateDebut: '2026-01-01', dateFin: '2026-11-30', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite },
@@ -61,15 +61,15 @@ export const ACTIONS_AXE3_EQUIPEMENTS = [
 // 2.4 ACTIONS AXE 4 : BUDGET & PILOTAGE (A4-001 à A4-010)
 // ============================================================================
 export const ACTIONS_AXE4 = [
-  { id: 'A4-001', titre: 'Consolider budget projet global', dateDebut: '2026-02-01', dateFin: '2026-02-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A4-001', titre: 'Consolider budget projet global', dateDebut: '2026-02-01', dateFin: '2026-02-15', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
   { id: 'A4-002', titre: 'Établir plan de trésorerie projet', dateDebut: '2026-02-15', dateFin: '2026-02-28', responsable: RESPONSABLES.FINANCE, priorite: 'critique' as Priorite },
   { id: 'A4-003', titre: 'Mettre en place reporting budgétaire mensuel', dateDebut: '2026-03-01', dateFin: '2026-12-31', responsable: RESPONSABLES.FINANCE, priorite: 'critique' as Priorite },
   { id: 'A4-004', titre: 'Suivre engagements vs budget', dateDebut: '2026-01-01', dateFin: '2026-12-31', responsable: RESPONSABLES.FINANCE, priorite: 'critique' as Priorite },
   { id: 'A4-005', titre: 'Préparer revue budgétaire T1', dateDebut: '2026-04-01', dateFin: '2026-04-15', responsable: RESPONSABLES.FINANCE, priorite: 'haute' as Priorite },
   { id: 'A4-006', titre: 'Préparer revue budgétaire T2', dateDebut: '2026-07-01', dateFin: '2026-07-15', responsable: RESPONSABLES.FINANCE, priorite: 'haute' as Priorite },
   { id: 'A4-007', titre: 'Préparer revue budgétaire T3', dateDebut: '2026-10-01', dateFin: '2026-10-15', responsable: RESPONSABLES.FINANCE, priorite: 'haute' as Priorite },
-  { id: 'A4-008', titre: 'Négocier contrats prestataires majeurs', dateDebut: '2026-02-01', dateFin: '2026-03-31', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A4-009', titre: 'Élaborer budget exploitation 2027', dateDebut: '2026-10-01', dateFin: '2026-11-30', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A4-008', titre: 'Négocier contrats prestataires majeurs', dateDebut: '2026-02-01', dateFin: '2026-03-31', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A4-009', titre: 'Élaborer budget exploitation 2027', dateDebut: '2026-10-01', dateFin: '2026-11-30', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
   { id: 'A4-010', titre: 'Préparer bilan financier projet', dateDebut: '2027-01-01', dateFin: '2027-01-31', responsable: RESPONSABLES.FINANCE, priorite: 'haute' as Priorite },
 ];
 
@@ -89,9 +89,9 @@ export const ACTIONS_AXE5 = [
   { id: 'A5-010', titre: 'Organiser événement presse', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'haute' as Priorite },
   { id: 'A5-011', titre: 'Coordonner installation signalétique extérieure', dateDebut: '2026-10-15', dateFin: '2026-11-01', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
   { id: 'A5-012', titre: 'Coordonner installation signalétique intérieure', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.MARKETING_MGR, priorite: 'critique' as Priorite },
-  { id: 'A5-013', titre: 'Organiser Soft Opening', dateDebut: '2026-10-01', dateFin: '2026-10-16', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A5-014', titre: 'Organiser Inauguration officielle', dateDebut: '2026-11-01', dateFin: '2026-11-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A5-015', titre: 'Finaliser mission Yvan (parcours client, branding)', dateDebut: '2026-02-01', dateFin: '2026-02-28', responsable: RESPONSABLES.DGA, priorite: 'haute' as Priorite },
+  { id: 'A5-013', titre: 'Organiser Soft Opening', dateDebut: '2026-10-01', dateFin: '2026-10-16', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A5-014', titre: 'Organiser Inauguration officielle', dateDebut: '2026-11-01', dateFin: '2026-11-15', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A5-015', titre: 'Finaliser mission Yvan (parcours client, branding)', dateDebut: '2026-02-01', dateFin: '2026-02-28', responsable: RESPONSABLES.SDR, priorite: 'haute' as Priorite },
 ];
 
 // ============================================================================
@@ -115,26 +115,26 @@ export const ACTIONS_AXE6 = [
   { id: 'A6-015', titre: 'Former équipes aux systèmes', dateDebut: '2026-10-01', dateFin: '2026-10-31', responsable: RESPONSABLES.IT, priorite: 'critique' as Priorite },
   { id: 'A6-016', titre: 'Organiser test exploitation grandeur nature', dateDebut: '2026-11-05', dateFin: '2026-11-10', responsable: RESPONSABLES.CENTER_MANAGER, priorite: 'critique' as Priorite },
   { id: 'A6-017', titre: 'Préparer dossier commission de sécurité', dateDebut: '2026-10-01', dateFin: '2026-10-31', responsable: RESPONSABLES.FM, priorite: 'critique' as Priorite },
-  { id: 'A6-018', titre: 'Obtenir avis favorable commission sécurité', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A6-018', titre: 'Obtenir avis favorable commission sécurité', dateDebut: '2026-11-01', dateFin: '2026-11-10', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
 ];
 
 // ============================================================================
 // 2.7 ACTIONS SPÉCIFIQUES AFFICHAGE (demande Cheick) (A-AFF-001 à A-AFF-003)
 // ============================================================================
 export const ACTIONS_AFFICHAGE = [
-  { id: 'A-AFF-001', titre: 'Rédiger draft contrat affichage (base JC Decaux)', dateDebut: '2026-01-06', dateFin: '2026-01-10', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A-AFF-001', titre: 'Rédiger draft contrat affichage (base JC Decaux)', dateDebut: '2026-01-06', dateFin: '2026-01-10', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
   { id: 'A-AFF-002', titre: 'Revue contrat par Jean Désiré', dateDebut: '2026-01-10', dateFin: '2026-01-14', responsable: RESPONSABLES.JURIDIQUE, priorite: 'critique' as Priorite },
-  { id: 'A-AFF-003', titre: 'Envoyer draft final à Cheick', dateDebut: '2026-01-15', dateFin: '2026-01-15', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A-AFF-003', titre: 'Envoyer draft final à Cheick', dateDebut: '2026-01-15', dateFin: '2026-01-15', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
 ];
 
 // ============================================================================
 // 2.8 ACTIONS BASSIN DE RÉTENTION (demande Cheick) (A-BR-001 à A-BR-004)
 // ============================================================================
 export const ACTIONS_BASSIN = [
-  { id: 'A-BR-001', titre: 'Revu final présentation bassin', dateDebut: '2026-01-05', dateFin: '2026-01-07', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A-BR-002', titre: 'Soumission draft vidéo bassin', dateDebut: '2026-01-08', dateFin: '2026-01-20', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A-BR-003', titre: 'Soumission version finale vidéo', dateDebut: '2026-01-21', dateFin: '2026-01-30', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
-  { id: 'A-BR-004', titre: 'Dossier complet Word + backup Dropbox', dateDebut: '2026-01-15', dateFin: '2026-01-30', responsable: RESPONSABLES.DGA, priorite: 'critique' as Priorite },
+  { id: 'A-BR-001', titre: 'Revu final présentation bassin', dateDebut: '2026-01-05', dateFin: '2026-01-07', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A-BR-002', titre: 'Soumission draft vidéo bassin', dateDebut: '2026-01-08', dateFin: '2026-01-20', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A-BR-003', titre: 'Soumission version finale vidéo', dateDebut: '2026-01-21', dateFin: '2026-01-30', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
+  { id: 'A-BR-004', titre: 'Dossier complet Word + backup Dropbox', dateDebut: '2026-01-15', dateFin: '2026-01-30', responsable: RESPONSABLES.SDR, priorite: 'critique' as Priorite },
 ];
 
 // ============================================================================
@@ -143,16 +143,16 @@ export const ACTIONS_BASSIN = [
 
 // 3.1 RISQUES GLOBAUX PROJET (R-001 à R-010)
 export const RISQUES_GLOBAUX = [
-  { id: 'R-001', titre: 'Retard livraison chantier', description: 'Retard dans la livraison globale du chantier', probabilite: 4, impact: 5, criticite: 20, axe: 'Technique', responsable: RESPONSABLES.DGA, mitigation: 'Suivi hebdo renforcé, pénalités contractuelles' },
+  { id: 'R-001', titre: 'Retard livraison chantier', description: 'Retard dans la livraison globale du chantier', probabilite: 4, impact: 5, criticite: 20, axe: 'Technique', responsable: RESPONSABLES.SDR, mitigation: 'Suivi hebdo renforcé, pénalités contractuelles' },
   { id: 'R-002', titre: 'Dépassement budget projet', description: 'Dépassement significatif du budget prévisionnel', probabilite: 3, impact: 4, criticite: 12, axe: 'Budget', responsable: RESPONSABLES.FINANCE, mitigation: 'Revues mensuelles, provisions contingence' },
   { id: 'R-003', titre: 'Taux d\'occupation insuffisant à l\'ouverture', description: 'Moins de 85% de commercialisation au Soft Opening', probabilite: 3, impact: 5, criticite: 15, axe: 'Commercial', responsable: RESPONSABLES.COMMERCIAL_MGR, mitigation: 'Commercialisation anticipée, incentives' },
-  { id: 'R-004', titre: 'Défaillance locomotive alimentaire', description: 'Carrefour ou équivalent ne signe pas', probabilite: 2, impact: 5, criticite: 10, axe: 'Commercial', responsable: RESPONSABLES.DGA, mitigation: 'Plan B avec alternatives identifiées' },
+  { id: 'R-004', titre: 'Défaillance locomotive alimentaire', description: 'Carrefour ou équivalent ne signe pas', probabilite: 2, impact: 5, criticite: 10, axe: 'Commercial', responsable: RESPONSABLES.SDR, mitigation: 'Plan B avec alternatives identifiées' },
   { id: 'R-005', titre: 'Difficultés recrutement équipes clés', description: 'Impossibilité de recruter les managers clés', probabilite: 3, impact: 4, criticite: 12, axe: 'RH', responsable: RESPONSABLES.RH, mitigation: 'Chasseurs de têtes, packages attractifs' },
   { id: 'R-006', titre: 'Commission sécurité non favorable', description: 'Refus d\'avis favorable par la commission', probabilite: 2, impact: 5, criticite: 10, axe: 'Exploitation', responsable: RESPONSABLES.SECURITY_MGR, mitigation: 'Préparation rigoureuse, pré-visites' },
   { id: 'R-007', titre: 'Retards fit-out preneurs', description: 'Preneurs en retard dans leurs aménagements', probabilite: 4, impact: 4, criticite: 16, axe: 'Technique', responsable: RESPONSABLES.FM, mitigation: 'Planning serré, pénalités, coordination' },
   { id: 'R-008', titre: 'Problèmes techniques équipements', description: 'Défaillance des équipements techniques', probabilite: 3, impact: 4, criticite: 12, axe: 'Technique', responsable: RESPONSABLES.FM, mitigation: 'Tests précoces, maintenance préventive' },
-  { id: 'R-009', titre: 'Contexte socio-économique défavorable', description: 'Conjoncture économique impactant le projet', probabilite: 3, impact: 3, criticite: 9, axe: 'Tous', responsable: RESPONSABLES.DGA, mitigation: 'Veille, plans contingence' },
-  { id: 'R-010', titre: 'Mauvaise coordination inter-axes', description: 'Problèmes de communication entre équipes', probabilite: 3, impact: 4, criticite: 12, axe: 'Tous', responsable: RESPONSABLES.DGA, mitigation: 'Gouvernance projet renforcée' },
+  { id: 'R-009', titre: 'Contexte socio-économique défavorable', description: 'Conjoncture économique impactant le projet', probabilite: 3, impact: 3, criticite: 9, axe: 'Tous', responsable: RESPONSABLES.SDR, mitigation: 'Veille, plans contingence' },
+  { id: 'R-010', titre: 'Mauvaise coordination inter-axes', description: 'Problèmes de communication entre équipes', probabilite: 3, impact: 4, criticite: 12, axe: 'Tous', responsable: RESPONSABLES.SDR, mitigation: 'Gouvernance projet renforcée' },
 ];
 
 // 3.2 RISQUES AXE 1 : RH & ORGANISATION (R1-001 à R1-005)
@@ -197,7 +197,7 @@ export const RISQUES_AXE3 = [
 // 3.5 RISQUES AXE 4 : BUDGET & PILOTAGE (R4-001 à R4-006)
 export const RISQUES_AXE4 = [
   { id: 'R4-001', titre: 'Dépassement budget construction', probabilite: 4, impact: 4, criticite: 16, mitigation: 'Provisions contingence 10%, suivi mensuel' },
-  { id: 'R4-002', titre: 'Dépassement budget pré-exploitation', probabilite: 3, impact: 3, criticite: 9, mitigation: 'Enveloppe plafonnée, arbitrages DGA' },
+  { id: 'R4-002', titre: 'Dépassement budget pré-exploitation', probabilite: 3, impact: 3, criticite: 9, mitigation: 'Enveloppe plafonnée, arbitrages SDR' },
   { id: 'R4-003', titre: 'Coûts fit-out communs imprévus', probabilite: 3, impact: 3, criticite: 9, mitigation: 'Budget dédié, récupération prorata' },
   { id: 'R4-004', titre: 'Problèmes trésorerie projet', probabilite: 2, impact: 4, criticite: 8, mitigation: 'Plan trésorerie, lignes crédit standby' },
   { id: 'R4-005', titre: 'Inflation matériaux/main d\'œuvre', probabilite: 3, impact: 3, criticite: 9, mitigation: 'Clauses révision, achats anticipés' },

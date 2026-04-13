@@ -503,7 +503,7 @@ export function RisquesPage() {
             <span className="text-success-600 font-medium">Faible (1-4)</span>.
           </p>
           <p>
-            <strong>Gouvernance :</strong> Les risques critiques sont revus hebdomadairement par la DGA,
+            <strong>Gouvernance :</strong> Les risques critiques sont revus hebdomadairement par la SDR,
             les majeurs bi-mensuellement par les managers, les modérés mensuellement en COPIL,
             et une revue globale trimestrielle est réalisée avec le PDG.
           </p>

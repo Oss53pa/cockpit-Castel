@@ -380,7 +380,7 @@ export function RisquesTop10() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
           <div className="flex items-center gap-2">
             <Badge variant="error" className="text-xs">Hebdo</Badge>
-            <span className="text-primary-600">Critiques (DGA)</span>
+            <span className="text-primary-600">Critiques (SDR)</span>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="warning" className="text-xs">Bi-mensuel</Badge>
@@ -392,7 +392,7 @@ export function RisquesTop10() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">Trimestriel</Badge>
-            <span className="text-primary-600">Faibles + Revue (DGA+PDG)</span>
+            <span className="text-primary-600">Faibles + Revue (SDR+PDG)</span>
           </div>
         </div>
       </Card>

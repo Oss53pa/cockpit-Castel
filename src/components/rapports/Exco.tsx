@@ -588,7 +588,7 @@ export function Exco() {
 
   // Mapping des rôles vers titres professionnels
   const ROLE_TITRES: Record<string, string> = {
-    admin: 'DGA',
+    admin: 'SDR',
     manager: 'Consultant',
     viewer: 'Lecteur',
   };
@@ -5821,7 +5821,7 @@ export function Exco() {
                                   <Input type="date" value={point.deadline} onChange={(e) => updateDecisionPoint(point.id, 'deadline', e.target.value)} />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="block text-xs font-semibold text-primary-700 mb-1">💡 Recommandation DGA</label>
+                                  <label className="block text-xs font-semibold text-primary-700 mb-1">💡 Recommandation SDR</label>
                                   <Input value={point.recommendation} onChange={(e) => updateDecisionPoint(point.id, 'recommendation', e.target.value)} placeholder="Votre recommandation pour la DG" className="bg-blue-50 border-blue-200" />
                                 </div>
                               </div>

@@ -2168,7 +2168,7 @@ export function ExcoLancement() {
 
   // Mapping des rôles vers titres professionnels
   const ROLE_TITRES: Record<string, string> = {
-    admin: 'DGA',
+    admin: 'SDR',
     manager: 'Consultant',
     viewer: 'Lecteur',
   };

@@ -79,10 +79,11 @@ export interface ExcoV5Handle {
 
 interface ExcoMensuelV5Props {
   savedExcoId?: number | null;
+  reportingMonth?: string; // format "YYYY-MM"
 }
 
-export const ExcoMensuelV5 = forwardRef<ExcoV5Handle, ExcoMensuelV5Props>(function ExcoMensuelV5({ savedExcoId }, ref) {
-  const data = useExcoV5Data(savedExcoId);
+export const ExcoMensuelV5 = forwardRef<ExcoV5Handle, ExcoMensuelV5Props>(function ExcoMensuelV5({ savedExcoId, reportingMonth }, ref) {
+  const data = useExcoV5Data(savedExcoId, reportingMonth);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const slideRef = useRef<HTMLDivElement>(null);
